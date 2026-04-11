@@ -1,14 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { themes, pipeline } from "@/lib/api";
 import type { Theme } from "@/lib/api";
 
-export default function NewPipelinePage() {
+function NewPipelineForm() {
   const router = useRouter();
-  const [ticker, setTicker] = useState("");
-  const [themeId, setThemeId] = useState("");
+  const searchParams = useSearchParams();
+
+  // Pre-fill both fields from URL query params on first mount — used by the
+  // "Run Quick Screen →" CTA on the theme detail page (ThemeDetailClient),
+  // which links here as `/pipeline/new?ticker=VRT&theme=<theme-id>`.
+  //
+  // Lazy initializers (useState(() => ...)) run exactly once on mount and
+  // avoid React 19's set-state-in-effect lint rule that would fire if we
+  // did this hydration inside a useEffect.
+  const [ticker, setTicker] = useState<string>(
+    () => searchParams?.get("ticker")?.toUpperCase() ?? ""
+  );
+  const [themeId, setThemeId] = useState<string>(
+    () => searchParams?.get("theme") ?? ""
+  );
   const [themeList, setThemeList] = useState<Theme[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,5 +153,22 @@ export default function NewPipelinePage() {
         </form>
       </div>
     </main>
+  );
+}
+
+// Next.js 16 requires useSearchParams callers to be wrapped in a Suspense
+// boundary so the page can statically render the fallback shell while the
+// URL params resolve on the client.
+export default function NewPipelinePage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+          <div className="w-6 h-6 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
+        </main>
+      }
+    >
+      <NewPipelineForm />
+    </Suspense>
   );
 }

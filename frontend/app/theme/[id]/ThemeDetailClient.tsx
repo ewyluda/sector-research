@@ -93,7 +93,7 @@ function MetricRow({
 }
 
 // ── Right panel — expanded company view ───────────────────────────────────────
-function CompanyDetail({ card }: { card: CompanySignalCard }) {
+function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: string }) {
   return (
     <div className="h-full overflow-y-auto p-5 space-y-5">
       {/* Header */}
@@ -222,7 +222,7 @@ function CompanyDetail({ card }: { card: CompanySignalCard }) {
       {/* Run Quick Screen CTA */}
       <div className="pt-2">
         <Link
-          href={`/pipeline/new?ticker=${card.ticker}&theme=${card.ticker}`}
+          href={`/pipeline/new?ticker=${card.ticker}&theme=${themeId}`}
           className="block w-full text-center py-2.5 rounded-lg bg-[var(--primary)] text-white text-sm font-medium hover:bg-[var(--primary-dk)] transition-colors"
         >
           Run Quick Screen →
@@ -360,7 +360,7 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
         {/* RIGHT: Expanded company detail */}
         <div className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
           {selected ? (
-            <CompanyDetail card={selected} />
+            <CompanyDetail card={selected} themeId={theme.id} />
           ) : (
             <div className="h-full flex items-center justify-center text-xs text-[var(--text-faint)]">
               Select a company to view details
