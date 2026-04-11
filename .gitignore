@@ -1,0 +1,26 @@
+# Environment & secrets
+.env
+.env.*
+*.secret
+*.secrets
+*.key
+secrets/
+
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.ruff_cache/
+
+# Node
+node_modules/
+.next/
+.turbo/
+
+# IDE
+.cursor/
