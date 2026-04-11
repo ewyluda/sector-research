@@ -4,28 +4,42 @@ Each prompt loads the relevant due-diligence skill context as system instruction
 Long prompts use Anthropic prompt caching (cache_control: {"type": "ephemeral"}).
 """
 
+from backend.app.models.phase_schemas import QUICK_SCREEN_DIMENSIONS
+
+_QS_DIMS_BULLET_LIST = "\n".join(f"- {d}" for d in QUICK_SCREEN_DIMENSIONS)
+_QS_DIMS_JSON_EXAMPLE = ",\n    ".join(
+    f'{{"name": "{d}", "score": <int 0-20>, "max_score": 20, "rationale": "<1 sentence>"}}'
+    for d in QUICK_SCREEN_DIMENSIONS
+)
+
 # ── Quick Screen (Haiku) ──────────────────────────────────────────────────────
 
-QUICK_SCREEN_SYSTEM = """You are an expert equity research analyst performing a rapid investment screen.
+QUICK_SCREEN_SYSTEM = f"""You are an expert equity research analyst performing a rapid investment screen.
 
-Your task is to evaluate a ticker across 5 dimensions and produce a structured GO / WATCHLIST / PASS recommendation.
+Evaluate a ticker across exactly {len(QUICK_SCREEN_DIMENSIONS)} dimensions, then produce a structured JSON verdict.
 
-## Scoring dimensions (each 0–20 pts):
-1. Business quality: moat, competitive position, pricing power
-2. Financial health: balance sheet, cash flow, profitability trend
-3. Growth trajectory: revenue growth rate, growth quality, addressable market
-4. Valuation: absolute and relative valuation vs peers and history
-5. Momentum: price action, earnings revisions, analyst sentiment
+## Dimensions (each 0-20 pts):
+{_QS_DIMS_BULLET_LIST}
 
-## Output format:
-- Overall score: X/100
-- Recommendation: GO | WATCHLIST | PASS
-- One-liner rationale per dimension (5 lines)
-- Summary thesis (2–3 sentences)
-- Key risk to monitor
+## Output format — JSON only, no preamble, no markdown fences:
 
-Be direct. No filler. Cite every data point you use with [Source: X].
-If data is unavailable for a dimension, note it explicitly and score conservatively."""
+{{
+  "overall_score": <int 0-100>,
+  "recommendation": "GO" | "WATCHLIST" | "PASS",
+  "dimensions": [
+    {_QS_DIMS_JSON_EXAMPLE}
+  ],
+  "thesis": "<2-3 sentence summary — the single most important reason this score is what it is>",
+  "key_risk": "<1-2 sentence description of the single biggest risk to monitor>"
+}}
+
+## Rules
+- Output ONLY the JSON object. No backticks, no commentary, no preamble.
+- Every dimension must appear exactly once, with the name spelled exactly as listed above, in that order.
+- Be calibrated. A score of 14/20 is "solid", 18 is "exceptional". Most companies fall 10-14.
+- If data is unavailable for a dimension, still produce a rationale that calls it out explicitly and score conservatively.
+- Recommendation ladder: overall_score >= 60 => GO, 35-59 => WATCHLIST, < 35 => PASS.
+"""
 
 QUICK_SCREEN_USER = """Ticker: {ticker}
 Theme: {theme}
@@ -33,10 +47,7 @@ Theme: {theme}
 Fundamental data:
 {fundamental_data}
 
-FMP screener data:
-{screener_data}
-
-Run a rapid 5-dimension screen. Produce the structured output described in your instructions."""
+Run the rapid 5-dimension screen. Output the JSON verdict described above."""
 
 
 # ── Deep Dive categories (Sonnet) ─────────────────────────────────────────────
