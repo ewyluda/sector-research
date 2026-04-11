@@ -107,12 +107,11 @@ export default function NewPipelinePage() {
             </p>
             <div className="space-y-2">
               {[
-                ["1", "Quick Screen", "30 min · GO/WATCHLIST/PASS decision"],
-                ["2", "Transcript Analysis", "6-pass earnings forensics + BOM inference"],
-                ["3", "Deep Dive", "9 categories in parallel · 90s timeout each"],
-                ["4", "Thesis Construction", "Bull/bear synthesis + variant perception"],
-                ["5", "Risk Stress-Test", "Tail scenarios + invalidation triggers"],
-                ["6", "Position Monitor", "Entry zones + sizing + monitoring cadence"],
+                ["1", "Quick Screen", "GO/WATCHLIST/PASS decision from FMP fundamentals"],
+                ["2", "Deep Dive", "9 categories in parallel (incl. transcript forensics)"],
+                ["3", "Thesis Construction", "Bull/bear synthesis + variant perception"],
+                ["4", "Risk Stress-Test", "Tail scenarios + invalidation triggers"],
+                ["5", "Position Monitor", "Entry zones + sizing + monitoring cadence"],
               ].map(([num, label, sub]) => (
                 <div key={num} className="flex items-start gap-3">
                   <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-[var(--primary)]/15

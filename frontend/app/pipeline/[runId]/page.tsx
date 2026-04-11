@@ -15,13 +15,16 @@ import { QuickScreenCard } from "@/components/QuickScreenCard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+// Backend phases (backend/app/graph/pipeline.py): quick_screen → deep_dive →
+// thesis_construction → risk_stress_test → position_monitor. Transcript
+// analysis is a sub-operation INSIDE deep_dive (nodes.run_transcript_analysis),
+// not its own top-level phase — do not add it back to this rail.
 const PHASE_RAIL = [
   { key: "quick_screen",         label: "Quick Screen",        num: 1 },
-  { key: "transcript_analysis",  label: "Transcript Analysis", num: 2 },
-  { key: "deep_dive",            label: "Deep Dive",           num: 3 },
-  { key: "thesis_construction",  label: "Thesis",              num: 4 },
-  { key: "risk_stress_test",     label: "Risk Stress-Test",    num: 5 },
-  { key: "position_monitor",     label: "Position",            num: 6 },
+  { key: "deep_dive",            label: "Deep Dive",           num: 2 },
+  { key: "thesis_construction",  label: "Thesis",              num: 3 },
+  { key: "risk_stress_test",     label: "Risk Stress-Test",    num: 4 },
+  { key: "position_monitor",     label: "Position",            num: 5 },
 ] as const;
 
 const DEEP_DIVE_CATEGORIES = [
