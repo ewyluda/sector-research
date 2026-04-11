@@ -24,3 +24,9 @@ node_modules/
 
 # IDE
 .cursor/
+
+# Superpowers brainstorming session files (local-only mockups)
+.superpowers/
+
+# Specs and plans
+docs/

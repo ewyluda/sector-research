@@ -2,94 +2,114 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What This Repository Is
+## What this is
 
-A personal stock research application — currently in the **design phase**. The repo contains:
+Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with human-in-the-loop interrupts and citations on every data point). No auth — local-only tool.
 
-1. **Design spec** (`docs/superpowers/specs/2026-04-10-sector-research-app-design.md`) — the authoritative source for the planned architecture, data model, UI pages, and LangGraph pipeline. Read this before any implementation work.
-2. **Due diligence skills** (`skills/due-diligence/`) — the investment research methodology that the app's LangGraph pipeline will execute. These are loaded as system context into LLM phases during a research run.
+Two deployables in a flat layout:
 
-No application code exists yet.
+- `backend/` — FastAPI + async SQLAlchemy + LangGraph + PostgreSQL (Python 3, venv in `backend/venv/`)
+- `frontend/` — Next.js 16 App Router + React 19 + Tailwind v4
+- `.env` at **project root** is the single source of secrets for both sides
 
----
+## ⚠️ Next.js 16 is not the Next.js you know
 
-## Planned Tech Stack
+`frontend/AGENTS.md` says: *"This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code."* Heed this before editing anything in `frontend/`. Do not assume `middleware.ts`, route-handler shapes, caching primitives, or Server Component APIs match older releases — check `node_modules/next/dist/docs/` first.
 
-| Layer | Technology |
-|---|---|
-| Frontend | Next.js 15 (App Router) |
-| Backend | FastAPI (Python) |
-| Agent orchestration | LangGraph |
-| Database | PostgreSQL |
-| LLM (heavy) | Claude Sonnet (`claude-sonnet-4-6`) |
-| LLM (light) | Claude Haiku (`claude-haiku-4-5-20251001`) |
-| Data: fundamentals | FMP API (ultimate tier) |
-| Data: social signal | X API v2 |
+## Common commands
 
-Environment variables go in a single `.env` at project root: `FMP_API_KEY`, `X_BEARER_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL`.
+**Backend** (run from project root so `backend.app.*` absolute imports resolve):
 
----
+```bash
+source backend/venv/bin/activate
+pip install -r backend/requirements.txt
 
-## Skills Framework Architecture
+# Dev server — imports are absolute (backend.app.*), so launch from project root:
+uvicorn backend.app.main:app --reload
 
-The `skills/due-diligence/` tree is a **methodology library** — not executable code. It defines the analysis the LLM agents will perform. Structure:
-
-```
-skills/due-diligence/
-  framework.md              ← Master 6-phase pipeline; read this first
-  scoring-methodology.md    ← Score definitions, weighting math, traffic-light system
-  platform-mapping.md       ← Which skills are Full/Partial/Manual automation
-  categories/               ← 11 analytical categories (01–11), each with sub-skills
-  workflows/                ← 5 pre-built workflows (quick-screen, deep-dive, etc.)
+# Migrations (alembic.ini lives in backend/):
+cd backend && alembic upgrade head
+cd backend && alembic revision --autogenerate -m "description"
 ```
 
-### The 6-Phase Pipeline
+No test framework is configured for the backend.
 
-Phases run sequentially with human interrupts at gates 1, 3, and 5:
+**Frontend:**
 
-1. **Screening** (Phase 1+2, combined as `quick_screen` node) — GO / WATCHLIST / PASS gate
-2. **Deep Dive** (Phase 3, `deep_dive` node) — 9 categories run in parallel as a subgraph
-3. **Thesis Construction** (Phase 4)
-4. **Risk Stress-Test** (Phase 5) — can loop back to Phase 3 for specific categories if risk/reward < 2:1
-5. **Position & Monitor** (Phase 6)
+```bash
+cd frontend
+npm install
+npm run dev        # Next dev server on :3000
+npm run build
+npm run lint       # eslint (flat config in eslint.config.mjs)
+```
 
-### LangGraph State
+Frontend talks to the backend via `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). CORS on the backend allows `http://localhost:3000` by default.
 
-The `ResearchState` TypedDict (defined in the spec) carries: `ticker`, `theme`, `phase`, `phase_outputs`, `citations`, `scores`, `conviction_score`, `thesis_status`, `human_feedback`, `loop_context`. State is persisted to PostgreSQL at every interrupt so runs can be paused and resumed.
+## Environment
 
-### Citation Model
+Single `.env` at project root. `backend/app/config.py` reads it via `env_file="../../.env"` (relative to `backend/app/`), so the backend is hard-coded to that path — don't move the file. Required: `FMP_API_KEY`, `X_BEARER_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL` (asyncpg URL), `DATABASE_URL_SYNC` (used by Alembic).
 
-Every data client method returns `(data, Citation)`. Citations are never optional. The `Citation` dataclass carries: `value`, `metric`, `source_name`, `source_url`, `tier` (1 = authoritative, 2 = qualitative), `retrieved_at`. All citations accumulate in state and render as inline footnotes in the UI.
+## Architecture essentials
 
-### LLM Assignment by Phase
+### The pipeline (read this before touching `backend/app/graph/`)
 
-- Phases 1–2: Claude Haiku (scoring, summarization)
-- Phase 3: Claude Sonnet per category (parallel)
-- Phases 4–5: Claude Sonnet
-- Phase 6: Claude Haiku (structured output)
+`backend/app/graph/pipeline.py` compiles a LangGraph `StateGraph` around a single `ResearchState` dataclass (`graph/state.py`). Flow:
 
-Each phase loads the corresponding skill file from `skills/due-diligence/` as system context. Files >~2000 tokens use Anthropic prompt caching.
+```
+quick_screen (Haiku)
+  → [interrupt]
+  → deep_dive (Sonnet, 9 categories in parallel)
+  → [interrupt]
+  → thesis_construction (Sonnet)
+  → risk_stress_test (Sonnet)
+       ├─ loop_required & loop_count ≤ 2 → back to deep_dive
+       └─ else → position_monitor (Haiku)
+  → [interrupt]
+  → END
+```
 
----
+**Interrupts are not LangGraph `interrupt()` calls.** They're modeled as a status flag: a node sets `state.status = "awaiting_approval"`, the conditional edge returns `END`, and the graph compiles out. The API route `POST /api/runs/{run_id}/advance` rewrites the status, advances `state.phase`, and kicks off the next phase via `asyncio.create_task(pipeline_service._run_phase(...))`. If you add a new phase, update **both** `graph/pipeline.py` edges **and** `services/pipeline.py::_next_phase` — they're parallel sources of truth for routing.
 
-## Key Design Decisions
+`ResearchState` is persisted as JSONB into `research_runs.state` at every phase transition. All serialization goes through `to_dict()` / `from_dict()`. `CategoryResult` and `CategoryError` use a `__type__` discriminator in their dict form so `get_deep_dive_results()` can round-trip them. Add any new state field to `ResearchState` **and** make sure it's JSON-safe — datetime fields are stored as ISO strings, not `datetime` objects.
 
-- **No auth** — personal local tool only
-- **FMP caching TTLs**: quote/price 5 min, fundamentals 24 hr, options 15 min, transcripts 7 days
-- **X API signals run on a schedule** (default every 4 hours) due to rate limits — not on-demand
-- **Discovery signal score** formula: `(mention count / total theme mentions) × 1.5 if not in seed list, × 1.0 if in seed list`
-- **Combined signal score** default weights: 40% X velocity, 40% FMP fundamental quality, 20% discovery score — configurable per theme
-- **Conviction score** weights: Business Quality 20%, Financial Health 15%, Growth 15%, Management 10%, Technical 5%, Macro 5%, Sentiment 5%, Risk (inverted) 10%, Future Durability 15%
-- **Export target**: Obsidian markdown (`01_Projects/` or `02_Areas/Investing-Portfolio/`)
+Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU = "claude-haiku-4-5-20251001"`. `complete()` and `stream_complete()` auto-enable prompt caching (`cache_control: ephemeral`) when the system prompt is >500 chars — keep reused system prompts long enough to benefit.
 
----
+### Discovery engine
 
-## Database Schema (PostgreSQL)
+`services/discovery.py::DiscoveryEngine` runs two passes concurrently per theme:
 
-| Table | Purpose |
-|---|---|
-| `themes` | Curated investment themes with seed tickers, screener criteria, X search terms |
-| `research_runs` | Pipeline runs with full `state` jsonb column |
-| `citations` | All citations from all runs |
-| `signals` | Cached X API signal outputs per ticker/theme |
-| `watchlist` | Tickers parked at interrupt gates |
+1. **FMP screener pass** — runs the theme's `screener_criteria`, then enriches each ticker with income/balance/cashflow/profile via `_fetch_company_fundamentals` (batched 10 at a time to avoid hammering FMP).
+2. **X signal pass** — **does not hit the X API at request time**. It reads pre-computed rows from the `signals` table. Those rows are written by the `signal_scheduler` APScheduler job that runs daily at 2 AM (wired up in `app/main.py` lifespan). Triggering a refresh on demand goes through `POST /api/themes/{id}/signals/refresh`.
+
+Combined score = 40% X velocity + 40% fundamental quality + 20% discovery score when X data is fresh. When X is missing or stale, the weights collapse to 80% fundamental + 20% discovery. Staleness threshold lives in `clients/x_client.py::STALE_THRESHOLD_HOURS`.
+
+### Citations as a first-class primitive
+
+Every data-client method returns `tuple[data, Citation]`, not just data. `models/citation.py` defines two shapes: the `Citation` dataclass (in-memory / embedded in `CompanySignalCard` / etc.) and `CitationRecord` ORM (persisted rows). Inside the LangGraph state, use `StateCitation` (in `graph/state.py`) — it's the JSON-serializable form with an ISO-string timestamp. When adding a new data source, preserve this convention or the report endpoint and frontend's `Citation[]` typing break silently.
+
+### Streaming
+
+`services/pipeline.py::PipelineService` holds an in-memory `dict[run_id, asyncio.Queue]` for SSE subscribers. Events are pushed with `_emit()` and consumed via `event_stream()` which `GET /api/runs/{id}/stream` wraps in a `StreamingResponse`. Event types live as a discriminated union in `frontend/lib/api.ts::SSEEvent` — keep the Python `_emit` calls and the TS union in sync.
+
+### Background task scheduling
+
+Two kinds of async work run under the FastAPI process:
+
+- **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task holds the DB session passed from the request; if you change session lifecycle, verify the background task still has a live session.
+- **Daily signal refresh** — `AsyncIOScheduler` cron job registered in `app/main.py::lifespan`, calls `services.signal_scheduler.run_daily_refresh`.
+
+### Import conventions
+
+Backend uses **absolute imports rooted at project root**: `from backend.app.config import get_settings`. That's why uvicorn must be launched from project root. `backend/migrations/env.py` also imports from `backend.app.*`, so Alembic commands need project root on `PYTHONPATH` (running `alembic` from inside `backend/` works if you've activated the venv and `pip install -e .`'d — otherwise use `PYTHONPATH=.. alembic ...`).
+
+### Frontend layout
+
+- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/library`, `/pipeline/new`, `/pipeline/[runId]`, `/report/[runId]`
+- `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
+- `components/` — small presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
+- Path alias: `@/*` → project root. Tailwind v4 via `@tailwindcss/postcss`.
+
+## State-of-repo notes
+
+The git working tree has a large block of deleted files under `docs/superpowers/` and `skills/due-diligence/` — these were design-phase artifacts replaced by the actual implementation under `backend/` and `frontend/`. The README still references some of them but they no longer exist on disk. If you need the due-diligence methodology that was in `skills/due-diligence/`, recover it from `git show HEAD:...` rather than assuming those files are missing in error.
