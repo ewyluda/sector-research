@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { pipeline as api } from "@/lib/api";
 import type { ReportResponse } from "@/lib/api";
 import { CitationList } from "@/components/CitationList";
+import { QuickScreenCard } from "@/components/QuickScreenCard";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -213,10 +214,20 @@ export default function ReportPage() {
 
         {/* Quick Screen */}
         <SectionCard title="Phase 1 · Quick Screen">
-          <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-            {report.phases.quick_screen?.content || "—"}
-          </p>
-          <CitationList citations={report.phases.quick_screen?.citations ?? []} />
+          {report.phases.quick_screen?.structured ? (
+            <QuickScreenCard
+              structured={report.phases.quick_screen.structured}
+              citations={report.phases.quick_screen.citations ?? []}
+              ticker={report.ticker}
+            />
+          ) : (
+            <>
+              <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
+                {report.phases.quick_screen?.content || "—"}
+              </p>
+              <CitationList citations={report.phases.quick_screen?.citations ?? []} />
+            </>
+          )}
         </SectionCard>
 
         {/* Deep Dive */}
