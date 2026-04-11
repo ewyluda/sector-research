@@ -130,11 +130,31 @@ export interface RunSummary {
   updated_at: string | null;
 }
 
+// ── Phase-specific structured output (Quick Screen first) ─────────────────────
+
+export interface QuickScreenDimension {
+  name: string;
+  score: number;
+  max_score: number;
+  rationale: string;
+}
+
+export interface QuickScreenStructured {
+  overall_score: number;
+  recommendation: "GO" | "WATCHLIST" | "PASS";
+  dimensions: QuickScreenDimension[];
+  thesis: string;
+  key_risk: string;
+}
+
 export interface CategoryOutput {
   score: number;
   content: string;
   key_findings: string[];
   citations: Citation[];
+  // Quick Screen specifically may populate this; other phases leave it undefined.
+  structured?: QuickScreenStructured;
+  parse_error?: string | null;
   // error variant
   __type__?: "CategoryError";
   reason?: string;
