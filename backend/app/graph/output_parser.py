@@ -64,6 +64,7 @@ def parse_structured_output(
         # json.loads first to produce a clearer error than Pydantic's
         json.loads(candidate)
     except json.JSONDecodeError as e:
+        logger.warning("parse_structured_output JSONDecodeError for %s: %s", schema.__name__, e)
         return None, f"JSONDecodeError: {e}"
 
     try:
@@ -71,4 +72,5 @@ def parse_structured_output(
         return parsed, None
     except ValidationError as e:
         # Pydantic v2 has a readable __str__
+        logger.warning("parse_structured_output ValidationError for %s: %s", schema.__name__, e)
         return None, f"ValidationError: {e}"

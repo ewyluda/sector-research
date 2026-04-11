@@ -8,6 +8,7 @@ Exits non-zero on any assertion failure.
 
 from __future__ import annotations
 
+import json
 import sys
 
 from backend.app.graph.output_parser import parse_structured_output
@@ -30,7 +31,6 @@ def _make_good_json(**overrides) -> str:
         "key_risk": "A plausible key risk statement.",
     }
     payload.update(overrides)
-    import json
     return json.dumps(payload)
 
 
@@ -65,7 +65,6 @@ def test_3_json_with_prose_preamble() -> None:
 
 def test_4_missing_dimensions_field() -> None:
     """Output missing the `dimensions` key fails validation."""
-    import json
     payload = json.loads(_make_good_json())
     del payload["dimensions"]
     raw = json.dumps(payload)
@@ -77,7 +76,6 @@ def test_4_missing_dimensions_field() -> None:
 
 def test_5_four_dimensions_instead_of_five() -> None:
     """Only 4 dimensions returned -> length validator fails."""
-    import json
     payload = json.loads(_make_good_json())
     payload["dimensions"] = payload["dimensions"][:4]
     raw = json.dumps(payload)
@@ -88,7 +86,6 @@ def test_5_four_dimensions_instead_of_five() -> None:
 
 def test_6_wrong_dimension_name() -> None:
     """A dimension with an unknown name fails the field validator."""
-    import json
     payload = json.loads(_make_good_json())
     payload["dimensions"][0]["name"] = "Biz Quality"
     raw = json.dumps(payload)
@@ -100,7 +97,6 @@ def test_6_wrong_dimension_name() -> None:
 
 def test_7_dimension_score_out_of_range() -> None:
     """A dimension score > 20 fails the range validator."""
-    import json
     payload = json.loads(_make_good_json())
     payload["dimensions"][0]["score"] = 25
     raw = json.dumps(payload)
