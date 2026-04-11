@@ -3,7 +3,15 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { pipeline as api } from "@/lib/api";
-import type { RunDetail, SSEEvent, AdvanceAction } from "@/lib/api";
+import type {
+  RunDetail,
+  SSEEvent,
+  AdvanceAction,
+  QuickScreenStructured,
+  Citation,
+  CategoryOutput,
+} from "@/lib/api";
+import { QuickScreenCard } from "@/components/QuickScreenCard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -407,9 +415,27 @@ export default function PipelineRunnerPage() {
         setCurrentPhase(event.phase);
         setAwaitingApproval(true);
         setConvictionScore(event.conviction_score);
-        // Non-streaming phases ship their content inside the interrupt event.
-        // If we already have streamed tokens (e.g. thesis_construction),
-        // leave them alone; otherwise seed from event.output.content.
+
+        // Merge the full phase output into local run state so QuickScreenCard
+        // renders immediately during live sessions. The backend emits the full
+        // phase_outputs[phase] dict (including `structured`, `content`,
+        // `parse_error`) inside event.output — see
+        // backend/app/services/pipeline.py:184-193.
+        setRun((prev) => {
+          if (!prev || !event.output || typeof event.output !== "object") {
+            return prev;
+          }
+          return {
+            ...prev,
+            phase_outputs: {
+              ...prev.phase_outputs,
+              [event.phase]: event.output as CategoryOutput,
+            },
+          };
+        });
+
+        // Existing token-seeding fallback — only used when StreamPanel renders
+        // (old runs, parse failures, or non-Quick-Screen phases).
         {
           const out = event.output as { content?: unknown } | null | undefined;
           const content = out && typeof out === "object" ? out.content : null;
@@ -455,6 +481,19 @@ export default function PipelineRunnerPage() {
 
   const isComplete =
     run?.status === "completed" || run?.status === "watchlist";
+
+  // Derive the Quick Screen structured output from run state, with a safe
+  // cast — CategoryOutput already declares the optional `structured` field.
+  const quickScreenOutput = run?.phase_outputs?.quick_screen as
+    | CategoryOutput
+    | undefined;
+  const quickScreenStructured: QuickScreenStructured | null =
+    quickScreenOutput?.structured ?? null;
+  // Prefer per-phase citations if the backend populated them; otherwise fall
+  // back to the run-level accumulator (during Quick Screen, the accumulator
+  // only contains Quick Screen sources anyway).
+  const quickScreenCitations: Citation[] =
+    quickScreenOutput?.citations ?? run?.citations ?? [];
 
   return (
     <main className="min-h-screen bg-[var(--bg)] p-6">
@@ -508,17 +547,20 @@ export default function PipelineRunnerPage() {
           )}
 
           {/* Deep dive category grid */}
-          {inDeepDive && (
+          {inDeepDive ? (
             <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
               <p className="text-xs font-medium text-[var(--text-faint)] uppercase tracking-wider mb-3">
                 Deep Dive — 9 Categories
               </p>
               <DeepDiveCategoryGrid categories={categories} />
             </div>
-          )}
-
-          {/* Streaming output */}
-          {!inDeepDive && (
+          ) : currentPhase === "quick_screen" && quickScreenStructured ? (
+            <QuickScreenCard
+              structured={quickScreenStructured}
+              citations={quickScreenCitations}
+              ticker={run?.ticker ?? ""}
+            />
+          ) : (
             <StreamPanel tokens={tokens} />
           )}
 
