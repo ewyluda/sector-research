@@ -1,0 +1,89 @@
+"""FastAPI application entry point."""
+
+import logging
+from contextlib import asynccontextmanager
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.app.config import get_settings
+from backend.app.clients.fmp import FMPClient
+from backend.app.clients.x_client import XClient
+from backend.app.api.health import router as health_router
+from backend.app.api.themes import router as themes_router
+from backend.app.api.discovery import router as discovery_router
+from backend.app.api.pipeline import router as pipeline_router
+from backend.app.services.pipeline import PipelineService
+
+settings = get_settings()
+
+logging.basicConfig(level=settings.log_level)
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup / shutdown lifecycle."""
+    logger.info("Starting Sector Research App...")
+
+    # Shared API clients
+    app.state.fmp = FMPClient()
+    app.state.x_client = XClient()
+    logger.info("FMP + X clients initialised")
+
+    # Pipeline service
+    app.state.pipeline = PipelineService(fmp=app.state.fmp)
+    logger.info("PipelineService initialised")
+
+    # Daily signal scheduler — 2 AM local time
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(
+        _daily_refresh_job,
+        trigger=CronTrigger(hour=2, minute=0),
+        args=[app],
+        id="daily_signal_refresh",
+        name="Daily X Signal Refresh",
+        replace_existing=True,
+    )
+    scheduler.start()
+    app.state.scheduler = scheduler
+    logger.info("Signal scheduler started (daily @ 02:00)")
+
+    yield
+
+    # Cleanup
+    scheduler.shutdown(wait=False)
+    await app.state.fmp.close()
+    await app.state.x_client.close()
+    logger.info("Shutdown complete")
+
+
+
+async def _daily_refresh_job(app: FastAPI) -> None:
+    """APScheduler job wrapper for the daily signal refresh."""
+    from backend.app.services.signal_scheduler import run_daily_refresh
+    await run_daily_refresh(fmp=app.state.fmp, x_client=app.state.x_client)
+
+
+app = FastAPI(
+    title="Sector Research App",
+    version="0.1.0",
+    lifespan=lifespan,
+)
+
+# CORS — allow Next.js dev server
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Routers
+app.include_router(health_router)
+app.include_router(themes_router, prefix="/api")
+app.include_router(discovery_router, prefix="/api")
+app.include_router(pipeline_router, prefix="/api")
