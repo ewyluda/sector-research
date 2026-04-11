@@ -21,6 +21,8 @@ from typing import Any
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.graph.llm import complete, SONNET, HAIKU
+from backend.app.models.phase_schemas import QuickScreenOutput
+from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
     DEEP_DIVE_SYSTEM, DEEP_DIVE_USER, DEEP_DIVE_CATEGORIES,
@@ -145,30 +147,46 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
                 ticker=state.ticker,
                 theme=state.theme_id,
                 fundamental_data=fundamentals_text,
-                screener_data="See fundamentals above",
             ),
             model=HAIKU,
-            max_tokens=1500,
+            max_tokens=2500,
+            assistant_prefill="{",
         )
 
-        score = _extract_score(response)
+        parsed, parse_err = parse_structured_output(response, QuickScreenOutput)
+
+        if parsed is not None:
+            score = parsed.overall_score
+            recommendation = parsed.recommendation
+            structured = parsed.model_dump()
+        else:
+            # Fallback — preserves original behavior so runs still complete.
+            logger.warning(
+                "[%s] quick_screen JSON parse failed: %s", state.ticker, parse_err
+            )
+            score = _extract_score(response)
+            if score >= 60:
+                recommendation = "GO"
+            elif score >= 35:
+                recommendation = "WATCHLIST"
+            else:
+                recommendation = "PASS"
+            structured = None
+
         state.phase_outputs["quick_screen"] = {
             "__type__": "PhaseOutput",
             "content": response,
+            "structured": structured,
             "score": score,
+            "recommendation": recommendation,
+            "parse_error": parse_err,
         }
         state.scores["quick_screen"] = score
 
-        # Determine recommendation
-        if score >= 60:
-            recommendation = "GO"
-        elif score >= 35:
-            recommendation = "WATCHLIST"
-        else:
-            recommendation = "PASS"
-        state.phase_outputs["quick_screen"]["recommendation"] = recommendation
-
-        logger.info("[%s] quick_screen complete: %d/100 → %s", state.ticker, score, recommendation)
+        logger.info(
+            "[%s] quick_screen complete: %d/100 → %s (structured=%s)",
+            state.ticker, score, recommendation, structured is not None,
+        )
 
     except Exception as e:
         logger.error("[%s] quick_screen failed: %s", state.ticker, e)
