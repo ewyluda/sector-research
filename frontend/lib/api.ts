@@ -147,6 +147,28 @@ export interface QuickScreenStructured {
   key_risk: string;
 }
 
+// ── Thesis Construction structured output ─────────────────────────────────────
+
+export interface ThesisPoint {
+  title: string;
+  evidence: string;
+}
+
+export interface Catalyst {
+  timeframe: string;
+  description: string;
+}
+
+export interface ThesisStructured {
+  core_thesis: string;
+  bull_case: ThesisPoint[];
+  bear_case: ThesisPoint[];
+  variant_perception: string;
+  catalysts: Catalyst[];
+  conviction_score: number;
+  conviction_rationale: string;
+}
+
 export interface CategoryOutput {
   score: number;
   content: string;
