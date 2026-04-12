@@ -161,9 +161,7 @@ class PipelineService:
             elif phase == "deep_dive":
                 state = await self._run_deep_dive_with_streaming(state, run_id)
             elif phase == "thesis_construction":
-                state = await self._run_with_streaming(
-                    state, nodes.node_thesis_construction, run_id, "thesis"
-                )
+                state = await nodes.node_thesis_construction(state)
             elif phase == "risk_stress_test":
                 state = await nodes.node_risk_stress_test(state)
             elif phase == "position_monitor":

@@ -83,6 +83,15 @@ def make_graph(fmp: FMPClient) -> StateGraph:
             return END
         return "thesis_construction"
 
+    def after_thesis(state: dict) -> Literal["risk_stress_test", "__end__"]:
+        """Route: awaiting approval → END (graph pauses), else → risk."""
+        status = state.get("status", "in_progress")
+        if status in ("watchlist", "pass", "completed"):
+            return END
+        if status == "awaiting_approval":
+            return END
+        return "risk_stress_test"
+
     def after_risk(state: dict) -> Literal["deep_dive", "position_monitor", "__end__"]:
         """Route: loop-back → deep_dive, forced watchlist → END, approved → position."""
         status = state.get("status", "in_progress")
@@ -113,7 +122,7 @@ def make_graph(fmp: FMPClient) -> StateGraph:
     builder.add_edge(START, "quick_screen")
     builder.add_conditional_edges("quick_screen", after_quick_screen)
     builder.add_conditional_edges("deep_dive", after_deep_dive)
-    builder.add_edge("thesis_construction", "risk_stress_test")
+    builder.add_conditional_edges("thesis_construction", after_thesis)
     builder.add_conditional_edges("risk_stress_test", after_risk)
     builder.add_conditional_edges("position_monitor", after_position)
 

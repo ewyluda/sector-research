@@ -21,7 +21,7 @@ from typing import Any
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.graph.llm import complete, SONNET, HAIKU
-from backend.app.models.phase_schemas import QuickScreenOutput
+from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput
 from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
@@ -329,24 +329,42 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
                 loop_context=loop_ctx,
             ),
             model=SONNET,
-            max_tokens=3000,
+            max_tokens=4000,
+            assistant_prefill="{",
         )
 
-        conviction = _extract_score(response)
+        parsed, parse_err = parse_structured_output(response, ThesisOutput)
+
+        if parsed is not None:
+            conviction = parsed.conviction_score
+            structured = parsed.model_dump()
+        else:
+            logger.warning(
+                "[%s] thesis JSON parse failed: %s", state.ticker, parse_err
+            )
+            conviction = _extract_score(response)
+            structured = None
+
         state.phase_outputs["thesis"] = {
             "__type__": "PhaseOutput",
             "content": response,
+            "structured": structured,
             "conviction_score": conviction,
+            "parse_error": parse_err,
         }
         state.conviction_score = conviction
         state.thesis_status = "ON TRACK"
         state.scores["thesis"] = conviction
-        logger.info("[%s] thesis complete: conviction %d/100", state.ticker, conviction)
+        logger.info(
+            "[%s] thesis complete: conviction %d/100 (structured=%s)",
+            state.ticker, conviction, structured is not None,
+        )
 
     except Exception as e:
         logger.error("[%s] thesis_construction failed: %s", state.ticker, e)
         state.phase_outputs["thesis"] = {"__type__": "PhaseError", "reason": str(e)}
 
+    state.status = "awaiting_approval"
     return state
 
 
