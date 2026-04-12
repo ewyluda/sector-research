@@ -162,16 +162,33 @@ Your thesis must be:
 - Time-bound: specific catalysts with expected timeframes
 - Variant: articulate what you believe that consensus does not
 
-Structure:
-1. Core thesis (1 paragraph)
-2. Bull case (3 numbered points with evidence)
-3. Bear case (3 numbered points with evidence)
-4. Variant perception: what does the market miss?
-5. Key catalysts with timeframes (3–5)
-6. Conviction score: X/100 with explicit rationale
-7. Thesis status: ON TRACK | DRIFTING | BROKEN (always ON TRACK at initial construction)
+## Output format — JSON only, no preamble, no markdown fences:
 
-End with: CONVICTION: XX/100"""
+{
+  "core_thesis": "<1 paragraph, 2-5 sentences — the central investment argument>",
+  "bull_case": [
+    {"title": "<short headline ~60 chars>", "evidence": "<supporting evidence with source>"},
+    ... 2-5 points total
+  ],
+  "bear_case": [
+    {"title": "<short headline ~60 chars>", "evidence": "<supporting evidence with source>"},
+    ... 2-5 points total
+  ],
+  "variant_perception": "<what you believe that consensus does not — 1-3 sentences>",
+  "catalysts": [
+    {"timeframe": "<e.g. 'Next 1-3 mo', 'Q2 2026', '6-12 mo'>", "description": "<catalyst event>"},
+    ... 3-5 catalysts
+  ],
+  "conviction_score": <int 0-100>,
+  "conviction_rationale": "<why this specific score — 1-3 sentences>"
+}
+
+## Rules
+- Output ONLY the JSON object. No backticks, no commentary, no preamble.
+- Be calibrated. A conviction of 70 means genuinely good, not great. 85+ means exceptional with clear catalysts.
+- Bull and bear points must have specific evidence, not generic statements.
+- Catalysts must have concrete timeframes, not vague "eventually".
+- Every claim must trace to a category analysis from the deep dive results below."""
 
 THESIS_USER = """Ticker: {ticker}
 Theme: {theme}
@@ -185,7 +202,7 @@ Failed categories (treat as gaps):
 Loop context (if re-run):
 {loop_context}
 
-Construct the investment thesis."""
+Construct the investment thesis. Output the JSON verdict described above."""
 
 
 # ── Risk Stress-Test (Sonnet) ─────────────────────────────────────────────────
