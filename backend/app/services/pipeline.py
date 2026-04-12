@@ -234,6 +234,7 @@ class PipelineService:
                     "category": cat,
                     "score": result.score,
                     "key_findings": result.key_findings,
+                    "structured": result.structured,
                 })
             else:
                 self._emit(run_id, {

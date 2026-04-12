@@ -33,16 +33,21 @@ class CategoryResult:
     content: str          # Markdown analysis output
     score: int            # 0–100 composite score for this category
     key_findings: list[str] = field(default_factory=list)
+    structured: dict | None = None  # Parsed DeepDiveCategoryOutput.model_dump()
 
     def to_dict(self) -> dict:
-        return {"__type__": "CategoryResult", "category": self.category,
-                "content": self.content, "score": self.score,
-                "key_findings": self.key_findings}
+        d = {"__type__": "CategoryResult", "category": self.category,
+             "content": self.content, "score": self.score,
+             "key_findings": self.key_findings}
+        if self.structured is not None:
+            d["structured"] = self.structured
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "CategoryResult":
         return cls(category=d["category"], content=d["content"],
-                   score=d["score"], key_findings=d.get("key_findings", []))
+                   score=d["score"], key_findings=d.get("key_findings", []),
+                   structured=d.get("structured"))
 
 
 # ── Citation (portable version for state) ─────────────────────────────────────

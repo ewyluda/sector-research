@@ -21,7 +21,7 @@ from typing import Any
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.graph.llm import complete, SONNET, HAIKU
-from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput
+from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput
 from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
@@ -222,13 +222,30 @@ async def _run_one_category(
                     loop_context=loop_context,
                 ),
                 model=SONNET,
-                max_tokens=2000,
+                max_tokens=3000,
             ),
             timeout=CATEGORY_TIMEOUT,
         )
-        score = _extract_score(response)
-        findings = _extract_key_findings(response)
-        return CategoryResult(category=category, content=response, score=score, key_findings=findings)
+
+        parsed, parse_err = parse_structured_output(response, DeepDiveCategoryOutput)
+
+        if parsed is not None:
+            score = parsed.score
+            findings = [f.finding for f in parsed.key_findings]
+            structured = parsed.model_dump()
+        else:
+            # Fallback — regex extraction preserves original behavior.
+            logger.warning(
+                "[%s] Category '%s' JSON parse failed: %s", ticker, category, parse_err
+            )
+            score = _extract_score(response)
+            findings = _extract_key_findings(response)
+            structured = None
+
+        return CategoryResult(
+            category=category, content=response, score=score,
+            key_findings=findings, structured=structured,
+        )
 
     except asyncio.TimeoutError:
         logger.warning("[%s] Category '%s' timed out after %ds", ticker, category, CATEGORY_TIMEOUT)
@@ -390,27 +407,42 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
                 scores=scores_text,
             ),
             model=SONNET,
-            max_tokens=2500,
+            max_tokens=3000,
         )
 
-        # Parse loop decision
-        rr_match = re.search(r"RISK_REWARD:\s*([\d.]+):1", response)
-        loop_match = re.search(r"LOOP_REQUIRED:\s*(YES|NO)", response)
-        cats_match = re.search(r"LOOP_CATEGORIES:\s*\[([^\]]+)\]", response)
-        reason_match = re.search(r"LOOP_REASON:\s*(.+)", response)
+        parsed, parse_err = parse_structured_output(response, RiskStressTestOutput)
 
-        rr_ratio = float(rr_match.group(1)) if rr_match else 0.0
-        loop_required = (loop_match.group(1) == "YES") if loop_match else False
-        loop_cats = [c.strip().strip('"\'') for c in cats_match.group(1).split(",") if c.strip()] if cats_match else []
-        loop_reason = reason_match.group(1).strip() if reason_match else ""
+        if parsed is not None:
+            rr_ratio = parsed.rr_ratio
+            loop_required = parsed.loop_required
+            loop_cats = parsed.loop_categories
+            loop_reason = parsed.loop_reason
+            structured = parsed.model_dump()
+        else:
+            # Fallback — regex extraction preserves original behavior.
+            logger.warning(
+                "[%s] risk JSON parse failed: %s", state.ticker, parse_err
+            )
+            rr_match = re.search(r"(?:RISK_REWARD|rr_ratio)[:\s]*([\d.]+)", response)
+            loop_match = re.search(r"(?:LOOP_REQUIRED|loop_required)[:\s]*(YES|NO|true|false)", response, re.IGNORECASE)
+            cats_match = re.search(r"(?:LOOP_CATEGORIES|loop_categories)[:\s]*\[([^\]]*)\]", response)
+            reason_match = re.search(r"(?:LOOP_REASON|loop_reason)[:\s]*[\"']?(.+?)(?:[\"']?\s*[,}]|$)", response)
+
+            rr_ratio = float(rr_match.group(1)) if rr_match else 0.0
+            loop_required = loop_match.group(1).upper() in ("YES", "TRUE") if loop_match else False
+            loop_cats = [c.strip().strip('"\'') for c in cats_match.group(1).split(",") if c.strip()] if cats_match else []
+            loop_reason = reason_match.group(1).strip() if reason_match else ""
+            structured = None
 
         state.phase_outputs["risk"] = {
             "__type__": "PhaseOutput",
             "content": response,
+            "structured": structured,
             "rr_ratio": rr_ratio,
             "loop_required": loop_required,
             "loop_categories": loop_cats,
             "loop_reason": loop_reason,
+            "parse_error": parse_err,
         }
 
         # Determine loop-back
@@ -421,16 +453,21 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
                 "reason": loop_reason,
                 "rr_ratio": rr_ratio,
             }
-            # phase stays at risk — graph will route back to deep_dive
+            # Pause for human review — user sees the risk card with the
+            # loop-back recommendation and approves. _next_phase() routes
+            # back to deep_dive when loop_context is set.
+            state.status = "awaiting_approval"
             logger.info("[%s] Loop-back triggered (count %d): %s", state.ticker, state.loop_count, loop_cats)
         elif loop_required and state.loop_count >= 2:
-            # Hit loop cap — force WATCHLIST
             state.status = "watchlist"
             state.thesis_status = "BROKEN"
             logger.info("[%s] Loop cap reached — forcing WATCHLIST", state.ticker)
         else:
             state.status = "awaiting_approval"
-            logger.info("[%s] risk_stress_test complete: RR %.1f:1 — approved", state.ticker, rr_ratio)
+            logger.info(
+                "[%s] risk_stress_test complete: RR %.1f:1 — approved (structured=%s)",
+                state.ticker, rr_ratio, structured is not None,
+            )
 
     except Exception as e:
         logger.error("[%s] risk_stress_test failed: %s", state.ticker, e)
@@ -464,16 +501,32 @@ async def node_position_monitor(state: ResearchState) -> ResearchState:
                 risk_summary=risk_text,
             ),
             model=HAIKU,
-            max_tokens=1500,
+            max_tokens=2000,
+            assistant_prefill="{",
         )
+
+        parsed, parse_err = parse_structured_output(response, PositionMonitorOutput)
+
+        if parsed is not None:
+            structured = parsed.model_dump()
+        else:
+            logger.warning(
+                "[%s] position JSON parse failed: %s", state.ticker, parse_err
+            )
+            structured = None
 
         state.phase_outputs["position"] = {
             "__type__": "PhaseOutput",
             "content": response,
+            "structured": structured,
+            "parse_error": parse_err,
         }
         state.status = "completed"
         state.phase = "completed"
-        logger.info("[%s] position_monitor complete — run finished", state.ticker)
+        logger.info(
+            "[%s] position_monitor complete — run finished (structured=%s)",
+            state.ticker, structured is not None,
+        )
 
     except Exception as e:
         logger.error("[%s] position_monitor failed: %s", state.ticker, e)

@@ -169,13 +169,70 @@ export interface ThesisStructured {
   conviction_rationale: string;
 }
 
+// ── Risk Stress-Test structured output ───────────────────────────────────────
+
+export interface RiskEntry {
+  risk: string;
+  category: string;
+  probability: "Low" | "Medium" | "High";
+  impact: string;
+  mitigation: string;
+}
+
+export interface RiskStressTestStructured {
+  risks: RiskEntry[];
+  rr_ratio: number;
+  rr_verdict: string;
+  loop_required: boolean;
+  loop_categories: string[];
+  loop_reason: string;
+}
+
+// ── Position Monitor structured output ──────────────────────────────────────
+
+export interface MonitoringItem {
+  metric: string;
+  cadence: string;
+  threshold: string;
+}
+
+export interface PositionMonitorStructured {
+  entry_price_low: string;
+  entry_price_high: string;
+  entry_rationale: string;
+  position_size_pct: number;
+  sizing_rationale: string;
+  add_triggers: string[];
+  stop_loss_level: string;
+  stop_loss_rationale: string;
+  invalidation_conditions: string[];
+  monitoring: MonitoringItem[];
+  exit_conditions: string[];
+  time_horizon: string;
+}
+
+// ── Deep Dive structured output ─────────────────────────────────────────────
+
+export interface DeepDiveFinding {
+  finding: string;
+  evidence: string;
+}
+
+export interface DeepDiveCategoryStructured {
+  score: number;
+  score_rationale: string;
+  key_findings: DeepDiveFinding[];
+  analysis: string;
+  data_gaps: string[];
+}
+
 export interface CategoryOutput {
   score: number;
   content: string;
   key_findings: string[];
   citations: Citation[];
   // Quick Screen specifically may populate this; other phases leave it undefined.
-  structured?: QuickScreenStructured;
+  structured?: QuickScreenStructured | DeepDiveCategoryStructured;
   parse_error?: string | null;
   // error variant
   __type__?: "CategoryError";
@@ -204,8 +261,8 @@ export interface ReportResponse {
     quick_screen: CategoryOutput;
     deep_dive: Record<string, CategoryOutput>;
     thesis: CategoryOutput & { structured?: ThesisStructured };
-    risk: { content: string; citations: Citation[] };
-    position: { content: string; citations: Citation[] };
+    risk: CategoryOutput & { structured?: RiskStressTestStructured };
+    position: { content: string; citations: Citation[]; structured?: PositionMonitorStructured; parse_error?: string | null };
   };
   scores: Record<string, number>;
   human_feedback: Record<string, string>;
@@ -229,7 +286,7 @@ export interface ReportResponse {
 export type SSEEvent =
   | { type: "phase_start"; phase: string; label: string }
   | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown }
-  | { type: "category_complete"; category: string; score: number; key_findings: string[] }
+  | { type: "category_complete"; category: string; score: number; key_findings: string[]; structured?: DeepDiveCategoryStructured | null }
   | { type: "category_error"; category: string; reason: string }
   | { type: "token"; text: string }
   | { type: "interrupt"; phase: string; output: unknown; failed_categories: string[]; loop_count: number; loop_context: unknown; conviction_score: number }

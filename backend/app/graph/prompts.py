@@ -59,12 +59,26 @@ Category: {category}
 You have access to fundamental data, financials, and market data for the ticker.
 Your output will be one section of a full institutional-grade research report.
 
-Rules:
-- Every factual claim must be cited: [Source: FMP /endpoint] or [Source: X signal]
+## Output format — JSON only, no preamble, no markdown fences:
+
+{{
+  "score": <int 0-100>,
+  "score_rationale": "<1-2 sentences: why this specific score>",
+  "key_findings": [
+    {{"finding": "<key finding — 1 sentence>", "evidence": "<data source or citation>"}},
+    ... 3-5 findings
+  ],
+  "analysis": "<full 300-600 word prose analysis — detailed, specific, no boilerplate>",
+  "data_gaps": ["<explicitly flagged missing data>", ... 0-3 items]
+}}
+
+## Rules
+- Output ONLY the JSON object. No backticks, no commentary, no preamble.
+- Every factual claim in "analysis" and "evidence" must be cited: [Source: FMP /endpoint] or [Source: X signal].
 - Tier 1 sources (FMP/SEC filings) are authoritative. Tier 2 (X signals) are directional only.
-- Score 0–100 at the end. Be calibrated — a score of 70 means genuinely good, not great.
-- Flag any data gaps explicitly rather than extrapolating
-- Be direct and specific. No boilerplate."""
+- Be calibrated. A score of 70 means genuinely good, not great. 85+ is exceptional.
+- Flag data gaps explicitly rather than extrapolating — put them in "data_gaps".
+- Be direct and specific in the analysis. No boilerplate. Write as if for a portfolio manager."""
 
 DEEP_DIVE_USER = """Ticker: {ticker}
 Theme: {theme}
@@ -75,12 +89,7 @@ Available data:
 
 {loop_context}
 
-Produce a rigorous {category} analysis. Include:
-1. Key findings (3–5 bullet points)
-2. Detailed analysis (400–600 words)
-3. Score: X/100 with explicit rationale
-
-End with: SCORE: XX/100"""
+Produce a rigorous {category} analysis. Output the JSON described above."""
 
 DEEP_DIVE_CATEGORIES = [
     "Business Quality",
@@ -211,19 +220,37 @@ RISK_SYSTEM = """You are stress-testing an investment thesis to determine risk/r
 
 Your job:
 1. Identify the 5 most significant risks (from SEC filings, macro, competitive, execution, valuation)
-2. For each risk: probability (Low/Medium/High), potential impact (-X% to price target), mitigation
-3. Construct a risk register
-4. Estimate risk/reward ratio: upside case / downside case
-5. Determine if risk/reward >= 2:1
+2. For each risk: probability (Low/Medium/High), potential impact (e.g. "-15% to price target"), mitigation
+3. Estimate risk/reward ratio: upside case / downside case
+4. If risk/reward < 2:1, identify SPECIFICALLY which deep-dive categories need deeper investigation
 
-If risk/reward < 2:1, identify SPECIFICALLY which deep-dive categories need deeper investigation
-and why (this triggers a loop-back).
+## Output format — JSON only, no preamble, no markdown fences:
 
-End your output with:
-RISK_REWARD: X.X:1
-LOOP_REQUIRED: YES | NO
-LOOP_CATEGORIES: [list of category names if YES]
-LOOP_REASON: [brief reason]"""
+{
+  "risks": [
+    {
+      "risk": "<concise risk description>",
+      "category": "<SEC filings|Macro|Competitive|Execution|Valuation>",
+      "probability": "Low" | "Medium" | "High",
+      "impact": "<e.g. '-15% to price target' or '-20% revenue if materialized'>",
+      "mitigation": "<specific mitigation or hedge>"
+    }
+  ],
+  "rr_ratio": <float, e.g. 2.5>,
+  "rr_verdict": "<1-3 sentences: why this ratio, upside vs downside case summary>",
+  "loop_required": true | false,
+  "loop_categories": ["<category name if loop_required, else empty array>"],
+  "loop_reason": "<brief reason for loop-back, or empty string if not required>"
+}
+
+## Rules
+- Output ONLY the JSON object. No backticks, no commentary, no preamble.
+- Include 3-7 risks, ordered by significance (highest impact first).
+- probability must be exactly "Low", "Medium", or "High".
+- rr_ratio is upside/downside as a float (e.g. 2.5 means 2.5:1).
+- Set loop_required=true ONLY if rr_ratio < 2.0 AND loop_count < 2. If loop_count is already 2, set loop_required=false regardless.
+- loop_categories must use exact category names from the deep dive: Business Quality, Financial Health, Growth & Earnings, Management & Governance, Technical & Market Structure, Macro & Regime, Sentiment & Narrative, Risk Assessment, Future Durability.
+- Be calibrated. Most theses have 2-4 material risks. Don't invent risks for filler."""
 
 RISK_USER = """Ticker: {ticker}
 Theme: {theme}
@@ -235,22 +262,50 @@ Thesis:
 Category scores:
 {scores}
 
-Stress-test this thesis and produce the risk register."""
+Stress-test this thesis. Output the JSON risk register described above."""
 
 
 # ── Position Monitor (Haiku) ──────────────────────────────────────────────────
 
 POSITION_SYSTEM = """You are building a structured position plan for an approved investment thesis.
 
-Output a clean, actionable plan with:
-1. Entry zone: specific price range with rationale (technical + fundamental)
-2. Position sizing: % of portfolio with conviction-adjusted rationale
-3. Add triggers: conditions to increase position
-4. Stop loss / invalidation: specific price level OR thesis condition
-5. Monitoring cadence: what to watch and how often
-6. Exit thesis: conditions for full exit
+## Output format — JSON only, no preamble, no markdown fences:
 
-Be specific with numbers. No vague ranges. Reference the conviction score in sizing."""
+{
+  "entry_price_low": "<specific price, e.g. '$142'>",
+  "entry_price_high": "<specific price, e.g. '$155'>",
+  "entry_rationale": "<1-3 sentences: why this range, referencing technicals + fundamentals>",
+  "position_size_pct": <float 0-100, typical range 1-5>,
+  "sizing_rationale": "<1-3 sentences: why this size, reference conviction score>",
+  "add_triggers": [
+    "<condition to increase position>",
+    ... 1-4 triggers
+  ],
+  "stop_loss_level": "<specific level with % from entry, e.g. '$128 (-12%)'>",
+  "stop_loss_rationale": "<1-2 sentences: why this level>",
+  "invalidation_conditions": [
+    "<thesis-breaking condition>",
+    ... 1-4 conditions
+  ],
+  "monitoring": [
+    {"metric": "<what to watch>", "cadence": "<Weekly|Monthly|Quarterly>", "threshold": "<alert trigger>"},
+    ... 2-6 items
+  ],
+  "exit_conditions": [
+    "<condition for full exit>",
+    ... 1-4 conditions
+  ],
+  "time_horizon": "<e.g. '6-12 months'>"
+}
+
+## Rules
+- Output ONLY the JSON object. No backticks, no commentary, no preamble.
+- Be specific with numbers. No vague ranges — use exact price levels.
+- Reference the conviction score when justifying position size.
+- Entry rationale must cite both a technical level and a fundamental anchor.
+- Stop loss must be a specific price or percentage, not "below support".
+- Monitoring cadence must be one of: Daily, Weekly, Bi-weekly, Monthly, Quarterly.
+- Invalidation conditions are thesis-BREAKING, not just risks — they mean full exit."""
 
 POSITION_USER = """Ticker: {ticker}
 Conviction score: {conviction_score}/100
@@ -262,4 +317,4 @@ Thesis summary:
 Risk register summary:
 {risk_summary}
 
-Build the position plan."""
+Build the position plan. Output the JSON described above."""

@@ -9,11 +9,15 @@ import type {
   AdvanceAction,
   QuickScreenStructured,
   ThesisStructured,
+  RiskStressTestStructured,
+  PositionMonitorStructured,
   Citation,
   CategoryOutput,
 } from "@/lib/api";
 import { QuickScreenCard } from "@/components/QuickScreenCard";
 import { ThesisCard } from "@/components/ThesisCard";
+import { RiskCard } from "@/components/RiskCard";
+import { PositionCard } from "@/components/PositionCard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -29,29 +33,19 @@ const PHASE_RAIL = [
   { key: "position_monitor",     label: "Position",            num: 5 },
 ] as const;
 
+// Keys must match backend DEEP_DIVE_CATEGORIES in prompts.py exactly —
+// the SSE category_complete events use these display names as keys.
 const DEEP_DIVE_CATEGORIES = [
-  "business_quality",
-  "financial_health",
-  "growth_earnings",
-  "management_governance",
-  "technical_market_structure",
-  "macro_regime",
-  "sentiment_narrative",
-  "risk_assessment",
-  "future_durability",
+  "Business Quality",
+  "Financial Health",
+  "Growth & Earnings",
+  "Management & Governance",
+  "Technical & Market Structure",
+  "Macro & Regime",
+  "Sentiment & Narrative",
+  "Risk Assessment",
+  "Future Durability",
 ] as const;
-
-const CATEGORY_LABELS: Record<string, string> = {
-  business_quality:           "Business Quality",
-  financial_health:           "Financial Health",
-  growth_earnings:            "Growth & Earnings",
-  management_governance:      "Management",
-  technical_market_structure: "Technical Structure",
-  macro_regime:               "Macro & Regime",
-  sentiment_narrative:        "Sentiment",
-  risk_assessment:            "Risk",
-  future_durability:          "Future Durability",
-};
 
 type CatStatus = "pending" | "running" | "pass" | "fail";
 
@@ -175,7 +169,7 @@ function DeepDiveCategoryGrid({
           >
             <div className="flex items-center justify-between gap-1 mb-1">
               <span className="text-xs font-medium leading-tight">
-                {CATEGORY_LABELS[cat] ?? cat}
+                {cat}
               </span>
               <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot[state.status]}`} />
             </div>
@@ -344,11 +338,21 @@ export default function PipelineRunnerPage() {
       setConvictionScore(r.conviction_score);
       if (r.status === "awaiting_approval") setAwaitingApproval(true);
 
-      // Seed the output panel from persisted state. Phases like quick_screen,
-      // risk_stress_test, and position_monitor don't stream tokens — their
-      // content lives only in phase_outputs and would otherwise render as the
-      // "Waiting for output…" placeholder forever.
-      const output = r.phase_outputs?.[r.phase];
+      // Seed the output panel from persisted state. Non-streaming phases
+      // (quick_screen, risk_stress_test, position_monitor) store their content
+      // only in phase_outputs. Without this seed the StreamPanel shows
+      // "Waiting for output…" forever.
+      //
+      // Phase names don't always match storage keys — nodes use short keys
+      // ("thesis", "risk", "position") while the pipeline uses full names.
+      // Apply the same mapping as the SSE interrupt handler.
+      const outputKeyMap: Record<string, string> = {
+        thesis_construction: "thesis",
+        risk_stress_test: "risk",
+        position_monitor: "position",
+      };
+      const outputKey = outputKeyMap[r.phase] ?? r.phase;
+      const output = r.phase_outputs?.[outputKey];
       if (output && typeof output === "object" && "content" in output) {
         const content = (output as { content?: unknown }).content;
         if (typeof content === "string" && content.length > 0) {
@@ -357,6 +361,38 @@ export default function PipelineRunnerPage() {
       }
     });
   }, [runId]);
+
+  // Poll fallback — if SSE misses an event (stream disconnect, race
+  // condition), periodically re-fetch run state so the UI catches up.
+  // Polls every 5s while the run is in_progress, stops once settled.
+  useEffect(() => {
+    if (!runId || awaitingApproval) return;
+    const id = setInterval(() => {
+      api.get(runId).then((r) => {
+        if (r.status === "awaiting_approval" || r.status === "completed" || r.status === "watchlist") {
+          setRun(r);
+          setCurrentPhase(r.phase);
+          setConvictionScore(r.conviction_score);
+          if (r.status === "awaiting_approval") setAwaitingApproval(true);
+          // Seed tokens for the StreamPanel fallback (non-structured path)
+          const keyMap: Record<string, string> = {
+            thesis_construction: "thesis",
+            risk_stress_test: "risk",
+            position_monitor: "position",
+          };
+          const key = keyMap[r.phase] ?? r.phase;
+          const out = r.phase_outputs?.[key];
+          if (out && typeof out === "object" && "content" in out) {
+            const content = (out as { content?: unknown }).content;
+            if (typeof content === "string" && content.length > 0) {
+              setTokens((prev) => (prev.length > 0 ? prev : [content]));
+            }
+          }
+        }
+      }).catch(() => {});
+    }, 5000);
+    return () => clearInterval(id);
+  }, [runId, awaitingApproval]);
 
   // SSE connection
   useEffect(() => {
@@ -503,7 +539,7 @@ export default function PipelineRunnerPage() {
     | CategoryOutput
     | undefined;
   const quickScreenStructured: QuickScreenStructured | null =
-    quickScreenOutput?.structured ?? null;
+    (quickScreenOutput?.structured as QuickScreenStructured | undefined) ?? null;
   // Prefer per-phase citations if the backend populated them; otherwise fall
   // back to the run-level accumulator (during Quick Screen, the accumulator
   // only contains Quick Screen sources anyway).
@@ -518,6 +554,24 @@ export default function PipelineRunnerPage() {
     (thesisOutput?.structured as unknown as ThesisStructured | null) ?? null;
   const thesisCitations: Citation[] =
     thesisOutput?.citations ?? run?.citations ?? [];
+
+  // Risk Stress-Test structured output
+  const riskOutput = run?.phase_outputs?.risk as
+    | CategoryOutput
+    | undefined;
+  const riskStructured: RiskStressTestStructured | null =
+    (riskOutput?.structured as unknown as RiskStressTestStructured | null) ?? null;
+  const riskCitations: Citation[] =
+    riskOutput?.citations ?? run?.citations ?? [];
+
+  // Position Monitor structured output
+  const positionOutput = run?.phase_outputs?.position as
+    | (CategoryOutput & { structured?: PositionMonitorStructured })
+    | undefined;
+  const positionStructured: PositionMonitorStructured | null =
+    (positionOutput?.structured as unknown as PositionMonitorStructured | null) ?? null;
+  const positionCitations: Citation[] =
+    positionOutput?.citations ?? run?.citations ?? [];
 
   return (
     <main className="min-h-screen bg-[var(--bg)] p-6">
@@ -590,6 +644,20 @@ export default function PipelineRunnerPage() {
               citations={thesisCitations}
               ticker={run?.ticker ?? ""}
               thesisStatus={run?.thesis_status ?? "PENDING"}
+            />
+          ) : currentPhase === "risk_stress_test" && riskStructured ? (
+            <RiskCard
+              structured={riskStructured}
+              citations={riskCitations}
+              ticker={run?.ticker ?? ""}
+              loopCount={run?.loop_count ?? 0}
+            />
+          ) : currentPhase === "position_monitor" && positionStructured ? (
+            <PositionCard
+              structured={positionStructured}
+              citations={positionCitations}
+              ticker={run?.ticker ?? ""}
+              convictionScore={convictionScore}
             />
           ) : (
             <StreamPanel tokens={tokens} />

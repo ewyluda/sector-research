@@ -89,3 +89,74 @@ class ThesisOutput(BaseModel):
     catalysts: list[Catalyst] = Field(..., min_length=3, max_length=5)
     conviction_score: int = Field(..., ge=0, le=100)
     conviction_rationale: str = Field(..., min_length=1, max_length=2000)
+
+
+# ── Risk Stress-Test ────────────────────────────────────────────────────────
+
+RISK_PROBABILITY_LEVELS: tuple[str, ...] = ("Low", "Medium", "High")
+
+
+class RiskEntry(BaseModel):
+    """A single risk with probability, impact, and mitigation."""
+    risk: str = Field(..., min_length=1, max_length=600)
+    category: str = Field(..., min_length=1, max_length=100)
+    probability: Literal["Low", "Medium", "High"]
+    impact: str = Field(..., min_length=1, max_length=400)
+    mitigation: str = Field(..., min_length=1, max_length=600)
+
+    @field_validator("probability")
+    @classmethod
+    def probability_must_be_valid(cls, v: str) -> str:
+        if v not in RISK_PROBABILITY_LEVELS:
+            raise ValueError(f"Probability {v!r} not in {RISK_PROBABILITY_LEVELS}")
+        return v
+
+
+class RiskStressTestOutput(BaseModel):
+    # Sonnet is verbose — generous limits.
+    risks: list[RiskEntry] = Field(..., min_length=3, max_length=7)
+    rr_ratio: float = Field(..., ge=0.0, le=50.0)
+    rr_verdict: str = Field(..., min_length=1, max_length=2000)
+    loop_required: bool
+    loop_categories: list[str] = Field(default_factory=list)
+    loop_reason: str = Field(default="", max_length=2000)
+
+
+# ── Position Monitor ───────────────────────────────────────────────────────
+
+class MonitoringItem(BaseModel):
+    """A single metric to monitor with its cadence and alert threshold."""
+    metric: str = Field(..., min_length=1, max_length=200)
+    cadence: str = Field(..., min_length=1, max_length=60)
+    threshold: str = Field(..., min_length=1, max_length=300)
+
+
+class PositionMonitorOutput(BaseModel):
+    entry_price_low: str = Field(..., min_length=1, max_length=80)
+    entry_price_high: str = Field(..., min_length=1, max_length=80)
+    entry_rationale: str = Field(..., min_length=1, max_length=800)
+    position_size_pct: float = Field(..., ge=0.0, le=100.0)
+    sizing_rationale: str = Field(..., min_length=1, max_length=800)
+    add_triggers: list[str] = Field(..., min_length=1, max_length=4)
+    stop_loss_level: str = Field(..., min_length=1, max_length=120)
+    stop_loss_rationale: str = Field(..., min_length=1, max_length=800)
+    invalidation_conditions: list[str] = Field(..., min_length=1, max_length=4)
+    monitoring: list[MonitoringItem] = Field(..., min_length=2, max_length=6)
+    exit_conditions: list[str] = Field(..., min_length=1, max_length=4)
+    time_horizon: str = Field(..., min_length=1, max_length=80)
+
+
+# ── Deep Dive (shared across all 9 categories) ────────────────────────────
+
+class DeepDiveFinding(BaseModel):
+    """A single key finding with supporting evidence."""
+    finding: str = Field(..., min_length=1, max_length=400)
+    evidence: str = Field(..., min_length=1, max_length=400)
+
+
+class DeepDiveCategoryOutput(BaseModel):
+    score: int = Field(..., ge=0, le=100)
+    score_rationale: str = Field(..., min_length=1, max_length=600)
+    key_findings: list[DeepDiveFinding] = Field(..., min_length=3, max_length=5)
+    analysis: str = Field(..., min_length=1, max_length=5000)
+    data_gaps: list[str] = Field(default_factory=list, max_length=3)

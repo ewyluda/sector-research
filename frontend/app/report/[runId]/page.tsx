@@ -3,10 +3,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { pipeline as api } from "@/lib/api";
-import type { ReportResponse } from "@/lib/api";
+import type { ReportResponse, DeepDiveCategoryStructured, QuickScreenStructured } from "@/lib/api";
 import { CitationList } from "@/components/CitationList";
 import { QuickScreenCard } from "@/components/QuickScreenCard";
 import { ThesisCard } from "@/components/ThesisCard";
+import { RiskCard } from "@/components/RiskCard";
+import { PositionCard } from "@/components/PositionCard";
+import { DeepDiveCategoryCard } from "@/components/DeepDiveCategoryCard";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -217,7 +220,7 @@ export default function ReportPage() {
         <SectionCard title="Phase 1 · Quick Screen">
           {report.phases.quick_screen?.structured ? (
             <QuickScreenCard
-              structured={report.phases.quick_screen.structured}
+              structured={report.phases.quick_screen.structured as QuickScreenStructured}
               citations={report.phases.quick_screen.citations ?? []}
               ticker={report.ticker}
             />
@@ -259,6 +262,11 @@ export default function ReportPage() {
                   </div>
                   {cat.__type__ === "CategoryError" ? (
                     <p className="text-sm text-red-400">{cat.reason}</p>
+                  ) : (cat.structured as DeepDiveCategoryStructured | undefined) ? (
+                    <DeepDiveCategoryCard
+                      structured={cat.structured as DeepDiveCategoryStructured}
+                      categoryLabel={CATEGORY_LABELS[key] ?? key}
+                    />
                   ) : (
                     <>
                       <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
@@ -303,18 +311,40 @@ export default function ReportPage() {
 
         {/* Risk */}
         <SectionCard title="Phase 5 · Risk Stress-Test">
-          <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-            {report.phases.risk?.content || "—"}
-          </p>
-          <CitationList citations={report.phases.risk?.citations ?? []} />
+          {report.phases.risk?.structured ? (
+            <RiskCard
+              structured={report.phases.risk.structured}
+              citations={report.phases.risk.citations ?? []}
+              ticker={report.ticker}
+              loopCount={report.loop_count}
+            />
+          ) : (
+            <>
+              <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
+                {report.phases.risk?.content || "—"}
+              </p>
+              <CitationList citations={report.phases.risk?.citations ?? []} />
+            </>
+          )}
         </SectionCard>
 
         {/* Position */}
         <SectionCard title="Phase 6 · Position Plan">
-          <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-            {report.phases.position?.content || "—"}
-          </p>
-          <CitationList citations={report.phases.position?.citations ?? []} />
+          {report.phases.position?.structured ? (
+            <PositionCard
+              structured={report.phases.position.structured}
+              citations={report.phases.position.citations ?? []}
+              ticker={report.ticker}
+              convictionScore={report.conviction_score}
+            />
+          ) : (
+            <>
+              <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
+                {report.phases.position?.content || "—"}
+              </p>
+              <CitationList citations={report.phases.position?.citations ?? []} />
+            </>
+          )}
         </SectionCard>
 
         {/* All citations */}
