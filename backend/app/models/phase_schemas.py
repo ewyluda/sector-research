@@ -63,3 +63,27 @@ class QuickScreenOutput(BaseModel):
         if missing:
             raise ValueError(f"Missing dimensions: {sorted(missing)}")
         return v
+
+
+# ── Thesis Construction ──────────────────────────────────────────────────────
+
+class ThesisPoint(BaseModel):
+    """A single bull or bear case point with supporting evidence."""
+    title: str = Field(..., min_length=1, max_length=140)
+    evidence: str = Field(..., min_length=1, max_length=400)
+
+
+class Catalyst(BaseModel):
+    """A catalyst event with a timeframe estimate."""
+    timeframe: str = Field(..., min_length=1, max_length=40)
+    description: str = Field(..., min_length=1, max_length=240)
+
+
+class ThesisOutput(BaseModel):
+    core_thesis: str = Field(..., min_length=1, max_length=1200)
+    bull_case: list[ThesisPoint] = Field(..., min_length=2, max_length=5)
+    bear_case: list[ThesisPoint] = Field(..., min_length=2, max_length=5)
+    variant_perception: str = Field(..., min_length=1, max_length=600)
+    catalysts: list[Catalyst] = Field(..., min_length=3, max_length=5)
+    conviction_score: int = Field(..., ge=0, le=100)
+    conviction_rationale: str = Field(..., min_length=1, max_length=600)
