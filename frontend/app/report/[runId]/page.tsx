@@ -6,6 +6,7 @@ import { pipeline as api } from "@/lib/api";
 import type { ReportResponse } from "@/lib/api";
 import { CitationList } from "@/components/CitationList";
 import { QuickScreenCard } from "@/components/QuickScreenCard";
+import { ThesisCard } from "@/components/ThesisCard";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -283,10 +284,21 @@ export default function ReportPage() {
 
         {/* Thesis */}
         <SectionCard title="Phase 4 · Thesis Construction">
-          <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-            {report.phases.thesis?.content || "—"}
-          </p>
-          <CitationList citations={report.phases.thesis?.citations ?? []} />
+          {report.phases.thesis?.structured ? (
+            <ThesisCard
+              structured={report.phases.thesis.structured}
+              citations={report.citations ?? []}
+              ticker={report.ticker}
+              thesisStatus={report.thesis_status}
+            />
+          ) : (
+            <>
+              <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
+                {report.phases.thesis?.content || "—"}
+              </p>
+              <CitationList citations={report.phases.thesis?.citations ?? []} />
+            </>
+          )}
         </SectionCard>
 
         {/* Risk */}

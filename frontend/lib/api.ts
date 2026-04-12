@@ -203,7 +203,7 @@ export interface ReportResponse {
   phases: {
     quick_screen: CategoryOutput;
     deep_dive: Record<string, CategoryOutput>;
-    thesis: { content: string; citations: Citation[] };
+    thesis: CategoryOutput & { structured?: ThesisStructured };
     risk: { content: string; citations: Citation[] };
     position: { content: string; citations: Citation[] };
   };
