@@ -8,10 +8,12 @@ import type {
   SSEEvent,
   AdvanceAction,
   QuickScreenStructured,
+  ThesisStructured,
   Citation,
   CategoryOutput,
 } from "@/lib/api";
 import { QuickScreenCard } from "@/components/QuickScreenCard";
+import { ThesisCard } from "@/components/ThesisCard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -498,6 +500,15 @@ export default function PipelineRunnerPage() {
   const quickScreenCitations: Citation[] =
     quickScreenOutput?.citations ?? run?.citations ?? [];
 
+  // Thesis Construction structured output
+  const thesisOutput = run?.phase_outputs?.thesis as
+    | CategoryOutput
+    | undefined;
+  const thesisStructured: ThesisStructured | null =
+    (thesisOutput?.structured as unknown as ThesisStructured | null) ?? null;
+  const thesisCitations: Citation[] =
+    thesisOutput?.citations ?? run?.citations ?? [];
+
   return (
     <main className="min-h-screen bg-[var(--bg)] p-6">
       <div className="max-w-6xl mx-auto flex gap-8">
@@ -562,6 +573,13 @@ export default function PipelineRunnerPage() {
               structured={quickScreenStructured}
               citations={quickScreenCitations}
               ticker={run?.ticker ?? ""}
+            />
+          ) : currentPhase === "thesis_construction" && thesisStructured ? (
+            <ThesisCard
+              structured={thesisStructured}
+              citations={thesisCitations}
+              ticker={run?.ticker ?? ""}
+              thesisStatus={run?.thesis_status ?? "PENDING"}
             />
           ) : (
             <StreamPanel tokens={tokens} />
