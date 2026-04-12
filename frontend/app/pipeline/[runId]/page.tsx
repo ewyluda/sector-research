@@ -421,23 +421,33 @@ export default function PipelineRunnerPage() {
         setAwaitingApproval(true);
         setConvictionScore(event.conviction_score);
 
-        // Merge the full phase output into local run state so QuickScreenCard
-        // renders immediately during live sessions. The backend emits the full
-        // phase_outputs[phase] dict (including `structured`, `content`,
-        // `parse_error`) inside event.output — see
-        // backend/app/services/pipeline.py:184-193.
-        setRun((prev) => {
-          if (!prev || !event.output || typeof event.output !== "object") {
-            return prev;
-          }
-          return {
-            ...prev,
-            phase_outputs: {
-              ...prev.phase_outputs,
-              [event.phase]: event.output as CategoryOutput,
-            },
+        // Merge the full phase output into local run state so structured
+        // dashboards render immediately during live sessions.
+        //
+        // IMPORTANT: phase names don't always match their storage keys in
+        // phase_outputs. The nodes use short keys ("thesis", "risk",
+        // "position") but the pipeline uses full phase names. This map
+        // mirrors PHASE_OUTPUT_KEYS in backend/app/services/pipeline.py.
+        {
+          const outputKeyMap: Record<string, string> = {
+            thesis_construction: "thesis",
+            risk_stress_test: "risk",
+            position_monitor: "position",
           };
-        });
+          const outputKey = outputKeyMap[event.phase] ?? event.phase;
+          setRun((prev) => {
+            if (!prev || !event.output || typeof event.output !== "object") {
+              return prev;
+            }
+            return {
+              ...prev,
+              phase_outputs: {
+                ...prev.phase_outputs,
+                [outputKey]: event.output as CategoryOutput,
+              },
+            };
+          });
+        }
 
         // Existing token-seeding fallback — only used when StreamPanel renders
         // (old runs, parse failures, or non-Quick-Screen phases).

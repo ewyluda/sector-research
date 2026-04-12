@@ -38,6 +38,17 @@ PHASE_META = {
     "completed":          {"label": "Complete",            "phase_num": 6},
 }
 
+# Phase names don't always match their storage keys in state.phase_outputs.
+# The nodes use short keys ("thesis", "risk", "position") but the pipeline
+# uses full phase names ("thesis_construction", "risk_stress_test", etc.).
+# This mapping is used by _run_phase to find the correct phase_output dict
+# when emitting interrupt events.
+PHASE_OUTPUT_KEYS: dict[str, str] = {
+    "thesis_construction": "thesis",
+    "risk_stress_test":    "risk",
+    "position_monitor":    "position",
+}
+
 
 class PipelineService:
     """Manages research run lifecycle."""
@@ -179,7 +190,8 @@ class PipelineService:
 
             # Emit interrupt or completion event
             if state.status == "awaiting_approval":
-                phase_output = state.phase_outputs.get(phase, {})
+                output_key = PHASE_OUTPUT_KEYS.get(phase, phase)
+                phase_output = state.phase_outputs.get(output_key, {})
                 self._emit(run_id, {
                     "type": "interrupt",
                     "phase": phase,
