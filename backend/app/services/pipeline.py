@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
+from backend.app.graph import nodes
 from backend.app.graph.pipeline import make_graph
 from backend.app.graph.state import ResearchState
 from backend.app.models.research_run import ResearchRun
@@ -160,8 +161,6 @@ class PipelineService:
         self, run_id: str, state: ResearchState, db: AsyncSession
     ) -> None:
         """Execute a single phase, stream output, and persist state."""
-        from backend.app.graph import nodes
-
         phase = state.phase
         self._emit(run_id, {"type": "phase_start", "phase": phase,
                              "label": PHASE_META.get(phase, {}).get("label", phase)})

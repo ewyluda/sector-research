@@ -330,7 +330,6 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
             ),
             model=SONNET,
             max_tokens=4000,
-            assistant_prefill="{",
         )
 
         parsed, parse_err = parse_structured_output(response, ThesisOutput)
