@@ -69,21 +69,23 @@ class QuickScreenOutput(BaseModel):
 
 class ThesisPoint(BaseModel):
     """A single bull or bear case point with supporting evidence."""
-    title: str = Field(..., min_length=1, max_length=140)
-    evidence: str = Field(..., min_length=1, max_length=400)
+    title: str = Field(..., min_length=1, max_length=300)
+    evidence: str = Field(..., min_length=1, max_length=1000)
 
 
 class Catalyst(BaseModel):
     """A catalyst event with a timeframe estimate."""
-    timeframe: str = Field(..., min_length=1, max_length=40)
-    description: str = Field(..., min_length=1, max_length=240)
+    timeframe: str = Field(..., min_length=1, max_length=60)
+    description: str = Field(..., min_length=1, max_length=600)
 
 
 class ThesisOutput(BaseModel):
-    core_thesis: str = Field(..., min_length=1, max_length=1200)
+    # Sonnet 4.6 is naturally verbose — generous limits to avoid
+    # ValidationError rejections on well-formed but wordy output.
+    core_thesis: str = Field(..., min_length=1, max_length=4000)
     bull_case: list[ThesisPoint] = Field(..., min_length=2, max_length=5)
     bear_case: list[ThesisPoint] = Field(..., min_length=2, max_length=5)
-    variant_perception: str = Field(..., min_length=1, max_length=600)
+    variant_perception: str = Field(..., min_length=1, max_length=2000)
     catalysts: list[Catalyst] = Field(..., min_length=3, max_length=5)
     conviction_score: int = Field(..., ge=0, le=100)
-    conviction_rationale: str = Field(..., min_length=1, max_length=600)
+    conviction_rationale: str = Field(..., min_length=1, max_length=2000)
