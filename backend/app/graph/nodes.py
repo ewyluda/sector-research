@@ -804,12 +804,32 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
 
     # Format category results
     results = state.get_deep_dive_results()
+
+    # Build concise summary (scores + top 2 findings per category)
+    summary_lines = []
     results_text = ""
     for cat, result in results.items():
         if isinstance(result, CategoryResult):
+            top_findings = "; ".join(result.key_findings[:2]) if result.key_findings else "No key findings"
+            summary_lines.append(f"- {cat}: {result.score}/100 — {top_findings}")
             results_text += f"\n\n## {cat} (Score: {result.score}/100)\n{result.content[:800]}"
         else:
+            summary_lines.append(f"- {cat}: FAILED — {result.reason}")
             results_text += f"\n\n## {cat}\n[FAILED: {result.reason}]"
+
+    category_summary = "\n".join(summary_lines)
+
+    # Extract quick screen context
+    qs_output = state.phase_outputs.get("quick_screen", {})
+    qs_structured = qs_output.get("structured") if isinstance(qs_output, dict) else None
+    qs_verdict = "N/A"
+    qs_score = qs_output.get("score", "N/A") if isinstance(qs_output, dict) else "N/A"
+    qs_thesis = "N/A"
+    qs_risk = "N/A"
+    if qs_structured and isinstance(qs_structured, dict):
+        qs_verdict = qs_structured.get("recommendation", "N/A")
+        qs_thesis = qs_structured.get("thesis", "N/A")
+        qs_risk = qs_structured.get("key_risk", "N/A")
 
     failed = state.failed_categories()
     loop_ctx = str(state.loop_context) if state.loop_context else "None"
@@ -820,6 +840,11 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
             user=THESIS_USER.format(
                 ticker=state.ticker,
                 theme=state.theme_id,
+                quick_screen_verdict=qs_verdict,
+                quick_screen_score=qs_score,
+                quick_screen_thesis=qs_thesis,
+                quick_screen_risk=qs_risk,
+                category_summary=category_summary,
                 category_results=results_text,
                 failed_categories=", ".join(failed) if failed else "None",
                 loop_context=loop_ctx,
