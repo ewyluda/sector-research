@@ -89,6 +89,8 @@ Available data:
 
 {transcript_data}
 
+{macro_data}
+
 {loop_context}
 
 Produce a rigorous {category} analysis. Output the JSON described above."""

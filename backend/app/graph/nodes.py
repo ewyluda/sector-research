@@ -49,6 +49,12 @@ TRANSCRIPT_ROUTING: dict[str, list[str]] = {
     "Growth & Earnings": ["pass1_claims", "pass4_validation", "pass6_bom"],
 }
 
+MACRO_ROUTING: dict[str, list[str]] = {
+    "Macro & Regime": ["fed_funds_rate", "treasury_10y", "treasury_2y", "yield_curve_spread", "cpi", "unemployment", "gdp_growth", "m2_money_supply", "nonfarm_payrolls"],
+    "Risk Assessment": ["fed_funds_rate", "yield_curve_spread", "cpi", "unemployment"],
+    "Future Durability": ["gdp_growth", "cpi", "m2_money_supply"],
+}
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -217,6 +223,7 @@ async def _run_one_category(
     data: str,
     loop_context: str,
     transcript_context: str = "",
+    macro_context: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -229,6 +236,7 @@ async def _run_one_category(
                     category=category,
                     data=data,
                     transcript_data=transcript_context,
+                    macro_data=macro_context,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -579,9 +587,28 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient 
             return ""
         return "Earnings transcript analysis:\n" + "\n\n".join(sections)
 
+    def _build_macro_context(category: str) -> str:
+        macro = (state.curated_financials or {}).get("macro_indicators")
+        if not macro or not isinstance(macro, dict):
+            return ""
+        series_keys = MACRO_ROUTING.get(category)
+        if not series_keys:
+            return ""
+        sections = []
+        for key in series_keys:
+            points = macro.get(key)
+            if points and isinstance(points, list) and len(points) > 0:
+                latest = points[-1]
+                recent = points[-6:] if len(points) >= 6 else points
+                trend_str = ", ".join(f"{p['date']}: {p['value']}" for p in recent)
+                sections.append(f"{key}: latest={latest['value']} ({latest['date']}), trend=[{trend_str}]")
+        if not sections:
+            return ""
+        return "Macro economic indicators (FRED):\n" + "\n".join(sections)
+
     # Run all categories in parallel
     tasks = [
-        _run_one_category(cat, state.ticker, state.theme_id, data_text, loop_ctx_str, _build_transcript_context(cat))
+        _run_one_category(cat, state.ticker, state.theme_id, data_text, loop_ctx_str, _build_transcript_context(cat), _build_macro_context(cat))
         for cat in categories_to_run
     ]
     results = await asyncio.gather(*tasks)
