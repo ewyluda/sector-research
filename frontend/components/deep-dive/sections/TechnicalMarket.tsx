@@ -1,6 +1,7 @@
 import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { BulletRangeChart } from "../charts/BulletRangeChart";
+import { CandlestickChart } from "../charts/CandlestickChart";
 import { ChartSkeleton } from "../skeleton/ChartSkeleton";
 
 interface TechnicalMarketProps {
@@ -22,6 +23,12 @@ export function TechnicalMarket({ financials, structured, score, fallback, isLiv
     <DataRichSection id="technical_market_structure" label="Technical & Market Structure" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
         <>
+          {financials.daily_prices?.length > 0 && (
+            <div>
+              <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Price Action (1Y)</h4>
+              <CandlestickChart data={financials.daily_prices} />
+            </div>
+          )}
           <div>
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">52-Week Price Range</h4>
             {financials.fifty_two_week_low != null && financials.fifty_two_week_high != null ? (

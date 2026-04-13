@@ -389,6 +389,79 @@ def _build_curated_financials(
     )
 
 
+def _build_technical_data(prices: list[dict]) -> list[dict]:
+    """Compute SMA 9/20/50/100/200 and RSI(14) from raw OHLCV data.
+
+    Input: list of {date, open, high, low, close, volume} dicts, newest first (FMP order).
+    Output: list of dicts oldest first (chronological), each with OHLCV + sma_* + rsi fields.
+    """
+    if not prices:
+        return []
+
+    # Reverse to oldest-first for computation
+    rows = list(reversed(prices))
+    closes = [float(r.get("close", 0) or 0) for r in rows]
+    n = len(closes)
+
+    # ── SMA computation ──────────────────────────────────────────────────
+    sma_periods = [9, 20, 50, 100, 200]
+    sma_values: dict[int, list[float | None]] = {}
+    for period in sma_periods:
+        vals: list[float | None] = []
+        for i in range(n):
+            if i < period - 1:
+                vals.append(None)
+            else:
+                vals.append(round(sum(closes[i - period + 1 : i + 1]) / period, 4))
+        sma_values[period] = vals
+
+    # ── RSI(14) computation (Wilder's smoothing) ─────────────────────────
+    rsi_period = 14
+    rsi_values: list[float | None] = [None] * n
+    if n > rsi_period:
+        deltas = [closes[i] - closes[i - 1] for i in range(1, n)]
+        # Seed: simple average of first 14 deltas
+        gains = [max(d, 0) for d in deltas[:rsi_period]]
+        losses = [abs(min(d, 0)) for d in deltas[:rsi_period]]
+        avg_gain = sum(gains) / rsi_period
+        avg_loss = sum(losses) / rsi_period
+
+        if avg_loss == 0:
+            rsi_values[rsi_period] = 100.0
+        else:
+            rsi_values[rsi_period] = round(100 - (100 / (1 + avg_gain / avg_loss)), 2)
+
+        # Subsequent: exponential smoothing
+        for i in range(rsi_period, len(deltas)):
+            gain = max(deltas[i], 0)
+            loss = abs(min(deltas[i], 0))
+            avg_gain = (avg_gain * (rsi_period - 1) + gain) / rsi_period
+            avg_loss = (avg_loss * (rsi_period - 1) + loss) / rsi_period
+            if avg_loss == 0:
+                rsi_values[i + 1] = 100.0
+            else:
+                rsi_values[i + 1] = round(100 - (100 / (1 + avg_gain / avg_loss)), 2)
+
+    # ── Assemble output ──────────────────────────────────────────────────
+    result = []
+    for i, row in enumerate(rows):
+        result.append({
+            "date": row.get("date", ""),
+            "open": float(row.get("open", 0) or 0),
+            "high": float(row.get("high", 0) or 0),
+            "low": float(row.get("low", 0) or 0),
+            "close": closes[i],
+            "volume": int(row.get("volume", 0) or 0),
+            "sma_9": sma_values[9][i],
+            "sma_20": sma_values[20][i],
+            "sma_50": sma_values[50][i],
+            "sma_100": sma_values[100][i],
+            "sma_200": sma_values[200][i],
+            "rsi": rsi_values[i],
+        })
+    return result
+
+
 async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
     """Phase 3: run all 9 categories in parallel. Partial success is OK."""
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
@@ -403,7 +476,12 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
 
     # Fetch fresh fundamentals for the data payload
     try:
-        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _) = (
+        from datetime import date, timedelta
+        today = date.today()
+        one_year_ago = (today - timedelta(days=365)).isoformat()
+        today_str = today.isoformat()
+
+        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _) = (
             await asyncio.gather(
                 fmp.get_income_statement(state.ticker, period="quarter", limit=4),
                 fmp.get_balance_sheet(state.ticker, period="quarter", limit=4),
@@ -411,6 +489,7 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
                 fmp.get_company_profile(state.ticker),
                 fmp.get_dcf(state.ticker),
                 fmp.get_analyst_estimates(state.ticker, period="quarter", limit=4),
+                fmp.get_historical_price(state.ticker, one_year_ago, today_str),
             )
         )
         data_text = _fmt_fundamentals(
@@ -433,6 +512,9 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
             profile=prof,
             dcf=dcf if isinstance(dcf, dict) else None,
             estimates=estimates if isinstance(estimates, list) else [],
+        )
+        curated.daily_prices = _build_technical_data(
+            hist_prices if isinstance(hist_prices, list) else []
         )
         state.curated_financials = curated.to_dict()
 

@@ -150,6 +150,8 @@ class CuratedFinancials:
     fifty_two_week_high: float | None = None
     fifty_two_week_low: float | None = None
     volume_avg: float | None = None
+    # Technical — 1 year daily OHLCV + computed indicators (SMA, RSI)
+    daily_prices: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return {
@@ -180,6 +182,7 @@ class CuratedFinancials:
             "fifty_two_week_high": self.fifty_two_week_high,
             "fifty_two_week_low": self.fifty_two_week_low,
             "volume_avg": self.volume_avg,
+            "daily_prices": self.daily_prices,
         }
 
     @classmethod
@@ -212,6 +215,7 @@ class CuratedFinancials:
             fifty_two_week_high=d.get("fifty_two_week_high"),
             fifty_two_week_low=d.get("fifty_two_week_low"),
             volume_avg=d.get("volume_avg"),
+            daily_prices=d.get("daily_prices", []),
         )
 
 
