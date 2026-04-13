@@ -149,6 +149,31 @@ async def list_runs(
     return [_run_to_summary(run, theme_name=tn) for run, tn in rows]
 
 
+@router.get("/runs/data-gaps")
+async def get_data_gaps(
+    db: AsyncSession = Depends(get_db),
+    status: str | None = None,
+    theme_id: str | None = None,
+    ticker: str | None = None,
+):
+    """Aggregate data gaps across all runs, ranked by frequency."""
+    query = select(ResearchRun)
+    if status:
+        query = query.where(ResearchRun.status == status)
+    if theme_id:
+        query = query.where(ResearchRun.theme_id == theme_id)
+    if ticker:
+        query = query.where(func.lower(ResearchRun.ticker) == ticker.lower())
+
+    result = await db.execute(query)
+    runs_list = [
+        (run.ticker, run.state or {}) for run in result.scalars().all()
+    ]
+
+    from backend.app.services.data_gaps import aggregate_data_gaps
+    return aggregate_data_gaps(runs_list)
+
+
 @router.get("/runs/{run_id}")
 async def get_run(run_id: str, db: AsyncSession = Depends(get_db)):
     """Get full run state including phase outputs."""
