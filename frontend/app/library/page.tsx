@@ -114,7 +114,15 @@ function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
                 ↻ L{run.loop_count}
               </span>
             )}
+            {run.gap_count > 0 && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium">
+                {run.gap_count} gap{run.gap_count !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
+          {run.theme_name && (
+            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{run.theme_name}</p>
+          )}
 
           <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
             <span className="flex items-center gap-1.5">
