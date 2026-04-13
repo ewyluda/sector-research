@@ -1,0 +1,46 @@
+# Backlog
+
+Items identified during development, prioritized for future sessions.
+
+## High Priority
+
+### Earnings Transcripts / Analyst Q&A Integration
+**Context:** The FMP client already has `get_earnings_transcript()` implemented but it's never called in the pipeline. Management responses to investor questions during earnings calls are highly valuable for understanding capital allocation strategy, forward guidance quality, and management credibility.
+**Scope:** Backend pipeline change — fetch transcript in `node_deep_dive`, extract key Q&A sections, surface to frontend. Most relevant to Management & Governance and Business Quality categories.
+**Status:** Not started
+
+### Citation Formatting Improvements
+**Context:** Evidence text in the findings table was given basic italic + color styling, but the user wants richer formatting for citation sources throughout the dashboard — different color/shade and italics to visually distinguish sourced data from analysis.
+**Status:** Partially done (FindingsTable evidence styled), needs broader application
+
+## Medium Priority
+
+### FRED API for Macro & Regime Section
+**Context:** The Macro & Regime section is the thinnest on data — it only shows beta and sector. FRED data (interest rates, CPI, yield curve, sector indices) would transform it into one of the richest sections. User explicitly flagged this during the dashboard brainstorm.
+**Scope:** New API client (FRED), backend data fetching + storage, new chart components for the Macro section.
+**Status:** Not started
+
+### Additional FMP Endpoints to Explore
+**Context:** The FMP `/stable/` API has endpoints we don't use that could enrich analysis:
+- `get_key_metrics_ttm()` — already implemented, never called. Has PE ratio, profitability metrics.
+- `get_quote()` — already implemented, never called. Real-time price (5min TTL).
+- Options flow — FMP `/stable/` doesn't have it yet, stubbed in client.
+- Insider transactions, institutional holdings — not explored yet.
+**Status:** Needs research
+
+## Low Priority / Future
+
+### Cross-Category Correlation Views
+**Context:** Noted in the dashboard spec as a future enhancement. Overlay margin trends vs revenue growth, or financial health metrics vs price action.
+**Status:** Idea only
+
+### X Signal Velocity Sparkline
+**Context:** The Sentiment & Narrative qualitative card has a slot for a velocity sparkline from the X signals table (populated by the daily scheduler). The component accepts a `headerAddon` prop for this.
+**Status:** Frontend slot exists, needs data wiring
+
+## Completed
+
+- [x] Deep-dive financial dashboard redesign (2026-04-12)
+- [x] Historical price data + candlestick chart with SMA/RSI (2026-04-12)
+- [x] Quarterly FMP data resolution (2026-04-12)
+- [x] Curated financials backend extraction pipeline (2026-04-12)
