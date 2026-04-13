@@ -125,4 +125,4 @@ The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balan
 
 ## State-of-repo notes
 
-The git working tree has a large block of deleted files under `docs/superpowers/` and `skills/due-diligence/` — these were design-phase artifacts replaced by the actual implementation under `backend/` and `frontend/`. The README still references some of them but they no longer exist on disk. If you need the due-diligence methodology that was in `skills/due-diligence/`, recover it from `git show HEAD:...` rather than assuming those files are missing in error.
+Design-phase artifacts (`docs/superpowers/`, `skills/due-diligence/`, `TODO.md`) have been cleaned up. All plan/spec documents for completed features were removed. The `BACKLOG.md` is the canonical list of remaining work. If you need the due-diligence methodology or old plans, recover from git history (`git log --all --diff-filter=D -- docs/`).

@@ -154,6 +154,7 @@ X_BEARER_TOKEN=
 ANTHROPIC_API_KEY=
 DATABASE_URL=postgresql+asyncpg://...
 DATABASE_URL_SYNC=postgresql://...
+FRED_API_KEY=              # optional — macro data skipped if empty
 ```
 
 No auth system — personal local tool.

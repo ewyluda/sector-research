@@ -12,13 +12,7 @@ Items identified during development, prioritized for future sessions.
 
 ### ~~FRED API for Macro & Regime Section~~ (moved to Completed)
 
-### Additional FMP Endpoints to Explore
-**Context:** The FMP `/stable/` API has endpoints we don't use that could enrich analysis:
-- `get_key_metrics_ttm()` — already implemented, never called. Has PE ratio, profitability metrics.
-- `get_quote()` — already implemented, never called. Real-time price (5min TTL).
-- Options flow — FMP `/stable/` doesn't have it yet, stubbed in client.
-- Insider transactions, institutional holdings — not explored yet.
-**Status:** Needs research
+### ~~Additional FMP Endpoints~~ (moved to Completed)
 
 ## Low Priority / Future
 
@@ -39,3 +33,4 @@ Items identified during development, prioritized for future sessions.
 - [x] Earnings transcript / analyst Q&A integration — 6-pass analysis (2026-04-12)
 - [x] Citation formatting — teal sidebar style + CSS variable fix (2026-04-12)
 - [x] FRED API macro integration — 9 series, rates/CPI/GDP/M2/payrolls charts (2026-04-12)
+- [x] FMP data enrichment — key-metrics-ttm, financial-growth, 8Q history, expanded routing (2026-04-13)
