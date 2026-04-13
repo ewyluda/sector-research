@@ -31,10 +31,12 @@ async def lifespan(app: FastAPI):
     # Shared API clients
     app.state.fmp = FMPClient()
     app.state.x_client = XClient()
-    logger.info("FMP + X clients initialised")
+    from backend.app.clients.fred import FREDClient
+    app.state.fred = FREDClient()
+    logger.info("FMP + X + FRED clients initialised")
 
     # Pipeline service
-    app.state.pipeline = PipelineService(fmp=app.state.fmp)
+    app.state.pipeline = PipelineService(fmp=app.state.fmp, fred=app.state.fred)
     logger.info("PipelineService initialised")
 
     # Daily signal scheduler — 2 AM local time

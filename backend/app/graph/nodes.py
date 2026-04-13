@@ -21,6 +21,7 @@ import traceback
 from typing import Any
 
 from backend.app.clients.fmp import FMPClient
+from backend.app.clients.fred import FREDClient
 from backend.app.graph.llm import complete, SONNET, HAIKU
 from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput
 from backend.app.graph.output_parser import parse_structured_output
@@ -471,7 +472,7 @@ def _build_technical_data(prices: list[dict]) -> list[dict]:
     return result
 
 
-async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
+async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient | None = None) -> ResearchState:
     """Phase 3: run all 9 categories in parallel. Partial success is OK."""
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
     state.phase = "deep_dive"
@@ -536,6 +537,21 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
         else:
             logger.info("[%s] No transcripts available, skipping analysis", state.ticker)
             state.transcript_analysis = None
+
+        # Fetch FRED macro indicators
+        if fred and fred.available:
+            try:
+                macro_data, macro_citations = await fred.get_all_macro()
+                curated_dict = state.curated_financials or {}
+                curated_dict["macro_indicators"] = macro_data
+                state.curated_financials = curated_dict
+                for cit in macro_citations:
+                    state.add_citation(StateCitation.from_citation(cit))
+                logger.info("[%s] FRED macro data fetched (%d series)", state.ticker, len(macro_data))
+            except Exception as e:
+                logger.warning("[%s] FRED fetch failed, skipping macro data: %s", state.ticker, e)
+        else:
+            logger.info("[%s] FRED client not available, skipping macro data", state.ticker)
 
     except Exception as e:
         logger.warning("[%s] Data fetch failed, proceeding with partial data: %s", state.ticker, e)
