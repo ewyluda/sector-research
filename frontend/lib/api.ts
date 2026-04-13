@@ -324,6 +324,23 @@ export interface DailyPrice {
   rsi: number | null;
 }
 
+export interface MacroDataPoint {
+  date: string;
+  value: number;
+}
+
+export interface MacroIndicators {
+  fed_funds_rate: MacroDataPoint[];
+  treasury_10y: MacroDataPoint[];
+  treasury_2y: MacroDataPoint[];
+  yield_curve_spread: MacroDataPoint[];
+  cpi: MacroDataPoint[];
+  unemployment: MacroDataPoint[];
+  gdp_growth: MacroDataPoint[];
+  m2_money_supply: MacroDataPoint[];
+  nonfarm_payrolls: MacroDataPoint[];
+}
+
 export interface CuratedFinancials {
   ticker: string;
   company_name: string;
@@ -353,6 +370,7 @@ export interface CuratedFinancials {
   fifty_two_week_low: number | null;
   volume_avg: number | null;
   daily_prices: DailyPrice[];
+  macro_indicators: MacroIndicators | null;
 }
 
 export interface CategoryOutput {
