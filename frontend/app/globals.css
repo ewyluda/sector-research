@@ -17,6 +17,20 @@
   --success:      #437A22;
   --error:        #A12C7B;
   --code-bg:      #EFEFEC;
+
+  /* Aliased --color-* tokens (components reference these) */
+  --color-bg:              var(--bg);
+  --color-surface:         var(--surface);
+  --color-surface-alt:     var(--surface-alt);
+  --color-border:          var(--border);
+  --color-text-primary:    var(--text);
+  --color-text-muted:      var(--text-muted);
+  --color-text-faint:      var(--text-faint);
+  --color-primary:         var(--primary);
+  --color-accent:          var(--primary);
+  --color-citation:        rgba(1, 105, 111, 0.75);
+  --color-citation-bg:     rgba(234, 244, 244, 0.5);
+  --color-citation-border: var(--primary);
 }
 
 body {
