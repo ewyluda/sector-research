@@ -12,6 +12,7 @@ const ITEMS: SidebarItem[] = [
   { key: "financial_health", label: "Financial Health", tier: "data-rich" },
   { key: "growth_earnings", label: "Growth & Earnings", tier: "data-rich" },
   { key: "technical_market_structure", label: "Technical & Market", tier: "data-rich" },
+  { key: "cross_category", label: "Correlations", tier: "data-rich" },
   { key: "business_quality", label: "Business Quality", tier: "mixed" },
   { key: "macro_regime", label: "Macro & Regime", tier: "mixed" },
   { key: "risk_assessment", label: "Risk Assessment", tier: "mixed" },

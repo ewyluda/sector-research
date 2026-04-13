@@ -16,13 +16,9 @@ Items identified during development, prioritized for future sessions.
 
 ## Low Priority / Future
 
-### Cross-Category Correlation Views
-**Context:** Noted in the dashboard spec as a future enhancement. Overlay margin trends vs revenue growth, or financial health metrics vs price action.
-**Status:** Idea only
+### ~~Cross-Category Correlation Views~~ (moved to Completed)
 
-### X Signal Velocity Sparkline
-**Context:** The Sentiment & Narrative qualitative card has a slot for a velocity sparkline from the X signals table (populated by the daily scheduler). The component accepts a `headerAddon` prop for this.
-**Status:** Frontend slot exists, needs data wiring
+### ~~X Signal Velocity Sparkline~~ (moved to Completed)
 
 ## Completed
 
@@ -34,3 +30,5 @@ Items identified during development, prioritized for future sessions.
 - [x] Citation formatting — teal sidebar style + CSS variable fix (2026-04-12)
 - [x] FRED API macro integration — 9 series, rates/CPI/GDP/M2/payrolls charts (2026-04-12)
 - [x] FMP data enrichment — key-metrics-ttm, financial-growth, 8Q history, expanded routing (2026-04-13)
+- [x] Cross-category correlation views — revenue/FCF, margins, OCF/CapEx, cash/debt overlays (2026-04-13)
+- [x] X signal velocity sparkline — wired through report API to Sentiment & Narrative headerAddon (2026-04-13)
