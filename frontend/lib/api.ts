@@ -460,6 +460,7 @@ export type SSEEvent =
   | { type: "category_complete"; category: string; score: number; key_findings: string[]; structured?: DeepDiveCategoryStructured | null }
   | { type: "category_error"; category: string; reason: string }
   | { type: "token"; text: string }
+  | { type: "phase_complete"; phase: string; output: Record<string, unknown>; conviction_score: number }
   | { type: "interrupt"; phase: string; output: unknown; failed_categories: string[]; loop_count: number; loop_context: unknown; conviction_score: number }
   | { type: "complete"; status: string; conviction_score: number; thesis_status: string }
   | { type: "error"; phase: string; message: string }
