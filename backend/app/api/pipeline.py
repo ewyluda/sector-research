@@ -8,6 +8,7 @@ GET  /api/runs                    — List all runs (Research Library)
 GET  /api/runs/{run_id}/report    — Full report for completed run
 """
 
+import asyncio
 import logging
 from typing import Literal
 
@@ -118,7 +119,6 @@ async def start_run(
 
     # Load initial state and kick off quick_screen in background
     state = ResearchState.from_dict(run.state)
-    import asyncio
     asyncio.create_task(pipeline._run_phase(run.id, state, db))
 
     return _run_to_detail(run)
@@ -199,8 +199,26 @@ async def advance_run(
     """
     Human interrupt action: approve, flag with note, or stop.
     Advances the pipeline to the next phase.
+    On completed runs, approve triggers position monitor.
     """
     pipeline = request.app.state.pipeline
+
+    result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+    run = result.scalar_one_or_none()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    # If run is completed and action is approve, trigger position monitor
+    if run.status == "completed" and payload.action == "approve":
+        state = ResearchState.from_dict(run.state)
+        state.status = "in_progress"
+        state.phase = "position_monitor"
+        run.phase = "position_monitor"
+        run.status = "in_progress"
+        run.state = state.to_dict()
+        await db.commit()
+        asyncio.create_task(pipeline._run_phase(run.id, state, db))
+        return _run_to_detail(run)
 
     try:
         run = await pipeline.advance(
