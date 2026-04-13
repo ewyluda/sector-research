@@ -153,63 +153,81 @@ class PipelineService:
             "thesis_construction": "risk_stress_test",
             "risk_stress_test": (
                 "deep_dive" if (state.loop_context and state.loop_count <= 2)
-                else "position_monitor"
+                else "completed"
             ),
-            "position_monitor": "completed",
         }
         return phase_sequence.get(state.phase, "completed")
 
     async def _run_phase(
         self, run_id: str, state: ResearchState, db: AsyncSession
     ) -> None:
-        """Execute a single phase, stream output, and persist state."""
-        phase = state.phase
-        self._emit(run_id, {"type": "phase_start", "phase": phase,
-                             "label": PHASE_META.get(phase, {}).get("label", phase)})
+        """Execute phases in a loop, auto-advancing while status is in_progress."""
+        while state.status == "in_progress":
+            phase = state.phase
+            self._emit(run_id, {"type": "phase_start", "phase": phase,
+                                 "label": PHASE_META.get(phase, {}).get("label", phase)})
 
-        try:
-            if phase == "quick_screen":
-                state = await nodes.node_quick_screen(state, self._fmp)
-            elif phase == "deep_dive":
-                state = await self._run_deep_dive_with_streaming(state, run_id)
-            elif phase == "thesis_construction":
-                state = await nodes.node_thesis_construction(state)
-            elif phase == "risk_stress_test":
-                state = await nodes.node_risk_stress_test(state)
-            elif phase == "position_monitor":
-                state = await nodes.node_position_monitor(state)
+            try:
+                if phase == "quick_screen":
+                    state = await nodes.node_quick_screen(state, self._fmp)
+                elif phase == "deep_dive":
+                    state = await self._run_deep_dive_with_streaming(state, run_id)
+                elif phase == "thesis_construction":
+                    state = await nodes.node_thesis_construction(state)
+                elif phase == "risk_stress_test":
+                    state = await nodes.node_risk_stress_test(state)
+                elif phase == "position_monitor":
+                    state = await nodes.node_position_monitor(state)
 
-            # Persist state
-            async with db.begin():
-                result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
-                run = result.scalar_one_or_none()
-                if run:
-                    run.state = state.to_dict()
-                    run.phase = state.phase
-                    run.status = state.status
-                    run.loop_count = state.loop_count
+                # Persist state after phase execution
+                async with db.begin():
+                    result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+                    run = result.scalar_one_or_none()
+                    if run:
+                        run.state = state.to_dict()
+                        run.phase = state.phase
+                        run.status = state.status
+                        run.loop_count = state.loop_count
 
-            # Emit interrupt or completion event
-            if state.status == "awaiting_approval":
+                # Emit phase_complete event
                 output_key = PHASE_OUTPUT_KEYS.get(phase, phase)
                 phase_output = state.phase_outputs.get(output_key, {})
                 self._emit(run_id, {
-                    "type": "interrupt",
+                    "type": "phase_complete",
                     "phase": phase,
                     "output": phase_output,
-                    "failed_categories": state.failed_categories(),
-                    "loop_count": state.loop_count,
-                    "loop_context": state.loop_context,
                     "conviction_score": state.conviction_score,
                 })
-            elif state.status in ("watchlist", "completed"):
-                self._emit(run_id, {"type": "complete", "status": state.status,
-                                     "conviction_score": state.conviction_score,
-                                     "thesis_status": state.thesis_status})
 
-        except Exception as e:
-            logger.error("Phase %s failed for run %s: %s", phase, run_id, e)
-            self._emit(run_id, {"type": "error", "phase": phase, "message": str(e)})
+                # If still in_progress, advance to next phase
+                if state.status == "in_progress":
+                    next_phase = self._next_phase(state)
+                    if next_phase == "completed":
+                        state.status = "completed"
+                        state.phase = "completed"
+                    else:
+                        state.phase = next_phase
+
+                    # Persist the phase advance
+                    async with db.begin():
+                        result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+                        run = result.scalar_one_or_none()
+                        if run:
+                            run.state = state.to_dict()
+                            run.phase = state.phase
+                            run.status = state.status
+                            run.loop_count = state.loop_count
+
+            except Exception as e:
+                logger.error("Phase %s failed for run %s: %s", phase, run_id, e)
+                self._emit(run_id, {"type": "error", "phase": phase, "message": str(e)})
+                break
+
+        # After the loop: emit complete if we finished successfully
+        if state.status in ("completed", "watchlist", "pass"):
+            self._emit(run_id, {"type": "complete", "status": state.status,
+                                 "conviction_score": state.conviction_score,
+                                 "thesis_status": state.thesis_status})
 
     async def _run_deep_dive_with_streaming(
         self, state: ResearchState, run_id: str
