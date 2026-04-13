@@ -243,6 +243,58 @@ export interface DeepDiveCategoryStructured {
   data_gaps: string[];
 }
 
+// ── Transcript analysis types ─────────────────────────────────────────────────
+
+export interface TranscriptClaim {
+  quote: string;
+  speaker: string;
+  type: "guidance" | "market_share" | "customer" | "timeline" | "margin" | "other";
+  prompted: boolean;
+}
+
+export interface TranscriptTension {
+  question_summary: string;
+  tension_type: "deflected" | "reframed" | "evasive";
+  significance: "high" | "medium" | "low";
+  verbatim_excerpt: string;
+}
+
+export interface TranscriptValidation {
+  claim: string;
+  status: "validated" | "missed" | "unvalidated";
+  delta: string;
+  evidence: string;
+}
+
+export interface TranscriptTheme {
+  theme: string;
+  status: "consistent" | "evolved" | "drifted";
+  evidence: string;
+  risk_signal: boolean;
+}
+
+export interface TranscriptBOMEntry {
+  category: string;
+  pct_estimate: number | null;
+  vendors: string[];
+  confidence: "confirmed" | "inferred" | "speculative";
+}
+
+export interface TranscriptBOMItem {
+  program: string;
+  total_value: string;
+  bom: TranscriptBOMEntry[];
+}
+
+export interface TranscriptAnalysis {
+  pass1_claims: TranscriptClaim[] | string;
+  pass2_tiers: { claims_with_tiers: unknown[]; hedging_patterns: string[] } | string;
+  pass3_qa_tensions: TranscriptTension[] | string;
+  pass4_validation: { validations: TranscriptValidation[] } | string;
+  pass5_consistency: { themes: TranscriptTheme[] } | string;
+  pass6_bom: { commitments: TranscriptBOMItem[] } | null | string;
+}
+
 // ── Curated financial data for dashboard charts ───────────────────────────────
 
 export interface QuarterlyMetric {
@@ -336,7 +388,7 @@ export interface ReportResponse {
   loop_count: number;
   phases: {
     quick_screen: CategoryOutput;
-    deep_dive: { categories: Record<string, CategoryOutput>; curated_financials: CuratedFinancials | null };
+    deep_dive: { categories: Record<string, CategoryOutput>; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null };
     thesis: CategoryOutput & { structured?: ThesisStructured };
     risk: CategoryOutput & { structured?: RiskStressTestStructured };
     position: { content: string; citations: Citation[]; structured?: PositionMonitorStructured; parse_error?: string | null };
@@ -362,7 +414,7 @@ export interface ReportResponse {
 
 export type SSEEvent =
   | { type: "phase_start"; phase: string; label: string }
-  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown; curated_financials: CuratedFinancials | null }
+  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null }
   | { type: "category_complete"; category: string; score: number; key_findings: string[]; structured?: DeepDiveCategoryStructured | null }
   | { type: "category_error"; category: string; reason: string }
   | { type: "token"; text: string }
