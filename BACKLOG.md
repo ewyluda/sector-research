@@ -10,10 +10,7 @@ Items identified during development, prioritized for future sessions.
 
 ## Medium Priority
 
-### FRED API for Macro & Regime Section
-**Context:** The Macro & Regime section is the thinnest on data — it only shows beta and sector. FRED data (interest rates, CPI, yield curve, sector indices) would transform it into one of the richest sections. User explicitly flagged this during the dashboard brainstorm.
-**Scope:** New API client (FRED), backend data fetching + storage, new chart components for the Macro section.
-**Status:** Not started
+### ~~FRED API for Macro & Regime Section~~ (moved to Completed)
 
 ### Additional FMP Endpoints to Explore
 **Context:** The FMP `/stable/` API has endpoints we don't use that could enrich analysis:
@@ -41,3 +38,4 @@ Items identified during development, prioritized for future sessions.
 - [x] Curated financials backend extraction pipeline (2026-04-12)
 - [x] Earnings transcript / analyst Q&A integration — 6-pass analysis (2026-04-12)
 - [x] Citation formatting — teal sidebar style + CSS variable fix (2026-04-12)
+- [x] FRED API macro integration — 9 series, rates/CPI/GDP/M2/payrolls charts (2026-04-12)
