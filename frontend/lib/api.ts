@@ -240,6 +240,21 @@ export interface EstimateMetric {
   actual: number | null;
 }
 
+export interface DailyPrice {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  sma_9: number | null;
+  sma_20: number | null;
+  sma_50: number | null;
+  sma_100: number | null;
+  sma_200: number | null;
+  rsi: number | null;
+}
+
 export interface CuratedFinancials {
   ticker: string;
   company_name: string;
@@ -268,6 +283,7 @@ export interface CuratedFinancials {
   fifty_two_week_high: number | null;
   fifty_two_week_low: number | null;
   volume_avg: number | null;
+  daily_prices: DailyPrice[];
 }
 
 export interface CategoryOutput {
