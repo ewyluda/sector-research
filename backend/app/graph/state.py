@@ -265,6 +265,9 @@ class ResearchState:
     # Curated financial data for frontend dashboard charts
     curated_financials: dict | None = None
 
+    # Earnings transcript analysis (6-pass LLM output, stored as dict for JSON)
+    transcript_analysis: dict | None = None
+
     # Metadata
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

@@ -14,6 +14,7 @@ Phase assignments:
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import traceback
@@ -40,6 +41,12 @@ from backend.app.graph.state import (
 logger = logging.getLogger(__name__)
 
 CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
+
+TRANSCRIPT_ROUTING: dict[str, list[str]] = {
+    "Management & Governance": ["pass1_claims", "pass2_tiers", "pass3_qa_tensions", "pass4_validation", "pass5_consistency"],
+    "Business Quality": ["pass3_qa_tensions", "pass5_consistency"],
+    "Growth & Earnings": ["pass1_claims", "pass4_validation", "pass6_bom"],
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -208,6 +215,7 @@ async def _run_one_category(
     theme_id: str,
     data: str,
     loop_context: str,
+    transcript_context: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -219,6 +227,7 @@ async def _run_one_category(
                     theme=theme_id,
                     category=category,
                     data=data,
+                    transcript_data=transcript_context,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -481,7 +490,7 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
         one_year_ago = (today - timedelta(days=365)).isoformat()
         today_str = today.isoformat()
 
-        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _) = (
+        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _), (transcripts, transcript_cit) = (
             await asyncio.gather(
                 fmp.get_income_statement(state.ticker, period="quarter", limit=4),
                 fmp.get_balance_sheet(state.ticker, period="quarter", limit=4),
@@ -490,6 +499,7 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
                 fmp.get_dcf(state.ticker),
                 fmp.get_analyst_estimates(state.ticker, period="quarter", limit=4),
                 fmp.get_historical_price(state.ticker, one_year_ago, today_str),
+                fmp.get_earnings_transcript(state.ticker),
             )
         )
         data_text = _fmt_fundamentals(
@@ -518,18 +528,44 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
         )
         state.curated_financials = curated.to_dict()
 
+        # Run transcript analysis (6 passes)
+        if transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
+            logger.info("[%s] Running transcript analysis (%d transcripts)", state.ticker, len(transcripts))
+            state.transcript_analysis = await run_transcript_analysis(state.ticker, transcripts, fmp)
+            state.add_citation(StateCitation.from_citation(transcript_cit))
+        else:
+            logger.info("[%s] No transcripts available, skipping analysis", state.ticker)
+            state.transcript_analysis = None
+
     except Exception as e:
         logger.warning("[%s] Data fetch failed, proceeding with partial data: %s", state.ticker, e)
         data_text = f"Note: data fetch partially failed ({e}). Analyze based on available information."
         state.curated_financials = None
+        state.transcript_analysis = None
 
     loop_ctx_str = ""
     if state.loop_context:
         loop_ctx_str = f"\n\nNOTE: This is a loop-back run (attempt {state.loop_count}/2). Focus particularly on: {state.loop_context.get('reason', '')}"
 
+    # Build per-category transcript context
+    def _build_transcript_context(category: str) -> str:
+        if not state.transcript_analysis or isinstance(state.transcript_analysis, str):
+            return ""
+        passes = TRANSCRIPT_ROUTING.get(category)
+        if not passes:
+            return ""
+        sections = []
+        for pass_key in passes:
+            val = state.transcript_analysis.get(pass_key)
+            if val is not None and not isinstance(val, str):
+                sections.append(f"[Transcript: {pass_key}]\n{json.dumps(val, indent=2)}")
+        if not sections:
+            return ""
+        return "Earnings transcript analysis:\n" + "\n\n".join(sections)
+
     # Run all categories in parallel
     tasks = [
-        _run_one_category(cat, state.ticker, state.theme_id, data_text, loop_ctx_str)
+        _run_one_category(cat, state.ticker, state.theme_id, data_text, loop_ctx_str, _build_transcript_context(cat))
         for cat in categories_to_run
     ]
     results = await asyncio.gather(*tasks)
@@ -782,12 +818,23 @@ async def run_transcript_analysis(
     if not transcripts:
         return {"error": "No transcripts available"}
 
+    def _parse_pass(raw):
+        """Parse LLM response as JSON, falling back to raw string on failure."""
+        if isinstance(raw, Exception):
+            return str(raw)
+        if isinstance(raw, str):
+            try:
+                return json.loads(raw)
+            except (json.JSONDecodeError, ValueError):
+                return raw
+        return raw
+
     latest = transcripts[0] if transcripts else {}
-    transcript_text = latest.get("content", latest.get("transcript", "No transcript content"))[:6000]
+    transcript_text = latest.get("content", latest.get("transcript", "No transcript content"))[:28000]
 
     prior_transcripts = transcripts[1:4] if len(transcripts) > 1 else []
     all_transcripts_text = "\n\n---QUARTER BREAK---\n\n".join(
-        t.get("content", t.get("transcript", ""))[:2000] for t in transcripts[:4]
+        t.get("content", t.get("transcript", ""))[:11200] for t in transcripts[:4]
     )
 
     results = {}
@@ -799,27 +846,28 @@ async def run_transcript_analysis(
         complete(TRANSCRIPT_PASS2_SYSTEM, transcript_text, model=HAIKU, max_tokens=800),
         return_exceptions=True,
     )
-    results["pass1_claims"] = pass1 if not isinstance(pass1, Exception) else str(pass1)
-    results["pass2_tiers"] = pass2 if not isinstance(pass2, Exception) else str(pass2)
+    results["pass1_claims"] = _parse_pass(pass1)
+    results["pass2_tiers"] = _parse_pass(pass2)
 
     # Passes 3–6: Sonnet
     qa_section = transcript_text[transcript_text.lower().find("question"):] if "question" in transcript_text.lower() else transcript_text
+    qa_section = qa_section[:16800]
     pass3, pass4, pass5 = await asyncio.gather(
-        complete(TRANSCRIPT_PASS3_SYSTEM, qa_section[:3000], model=SONNET, max_tokens=1000),
+        complete(TRANSCRIPT_PASS3_SYSTEM, qa_section, model=SONNET, max_tokens=1000),
         complete(TRANSCRIPT_PASS4_SYSTEM, all_transcripts_text, model=SONNET, max_tokens=1200),
         complete(TRANSCRIPT_PASS5_SYSTEM, all_transcripts_text, model=SONNET, max_tokens=1000),
         return_exceptions=True,
     )
-    results["pass3_qa_tensions"] = pass3 if not isinstance(pass3, Exception) else str(pass3)
-    results["pass4_validation"] = pass4 if not isinstance(pass4, Exception) else str(pass4)
-    results["pass5_consistency"] = pass5 if not isinstance(pass5, Exception) else str(pass5)
+    results["pass3_qa_tensions"] = _parse_pass(pass3)
+    results["pass4_validation"] = _parse_pass(pass4)
+    results["pass5_consistency"] = _parse_pass(pass5)
 
     # Pass 6: BOM inference (only on management-flagged capex disclosures)
     capex_keywords = ["billion", "capex", "capital expenditure", "data center", "infrastructure", "invest"]
     has_capex = any(kw in transcript_text.lower() for kw in capex_keywords)
     if has_capex:
         pass6 = await complete(TRANSCRIPT_PASS6_SYSTEM, transcript_text[:4000], model=SONNET, max_tokens=1200)
-        results["pass6_bom"] = pass6
+        results["pass6_bom"] = _parse_pass(pass6)
     else:
         results["pass6_bom"] = None
 

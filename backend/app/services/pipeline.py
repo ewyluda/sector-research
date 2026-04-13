@@ -226,6 +226,7 @@ class PipelineService:
             "loop_count": state.loop_count,
             "loop_context": state.loop_context,
             "curated_financials": state.curated_financials,
+            "transcript_analysis": state.transcript_analysis,
         })
 
         # Emit per-category results
