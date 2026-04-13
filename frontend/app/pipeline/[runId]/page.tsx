@@ -15,6 +15,7 @@ import type {
   CategoryOutput,
   CuratedFinancials,
   DeepDiveCategoryStructured,
+  TranscriptAnalysis,
 } from "@/lib/api";
 import { QuickScreenCard } from "@/components/QuickScreenCard";
 import { ThesisCard } from "@/components/ThesisCard";
@@ -327,6 +328,7 @@ export default function PipelineRunnerPage() {
   const [categories, setCategories] = useState<Record<string, CategoryState>>({});
   const [inDeepDive, setInDeepDive] = useState(false);
   const [curatedFinancials, setCuratedFinancials] = useState<CuratedFinancials | null>(null);
+  const [transcriptAnalysis, setTranscriptAnalysis] = useState<TranscriptAnalysis | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [flags, setFlags] = useState<string[]>([]);
   const [convictionScore, setConvictionScore] = useState<number | null>(null);
@@ -434,6 +436,7 @@ export default function PipelineRunnerPage() {
         setInDeepDive(true);
         setCategories({});
         setCuratedFinancials(event.curated_financials ?? null);
+        setTranscriptAnalysis(event.transcript_analysis ?? null);
         break;
 
       case "category_complete":
@@ -653,6 +656,7 @@ export default function PipelineRunnerPage() {
                   .map(([k, v]) => [k, v.score!])
               )}
               isLive={true}
+              transcriptAnalysis={transcriptAnalysis}
             />
           ) : currentPhase === "quick_screen" && quickScreenStructured ? (
             <QuickScreenCard

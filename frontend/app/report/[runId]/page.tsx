@@ -250,6 +250,7 @@ export default function ReportPage() {
                 )
               }
               isLive={false}
+              transcriptAnalysis={report.phases.deep_dive?.transcript_analysis ?? null}
             />
           </SectionCard>
         )}
