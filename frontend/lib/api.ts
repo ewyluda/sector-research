@@ -121,13 +121,30 @@ export interface RunSummary {
   id: string;
   ticker: string;
   theme_id: string;
+  theme_name: string | null;
   phase: string;
   status: PhaseStatus;
   loop_count: number;
   conviction_score: number | null;
   thesis_status: ThesisStatus | null;
+  gap_count: number;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface DataGap {
+  gap_type: "hard_error" | "soft_gap";
+  category: string;
+  field: string | null;
+  description: string;
+  occurrences: number;
+  frequency: number;
+  example_tickers: string[];
+}
+
+export interface DataGapsResponse {
+  total_runs_scanned: number;
+  gaps: DataGap[];
 }
 
 // ── Phase-specific structured output (Quick Screen first) ─────────────────────
@@ -226,6 +243,118 @@ export interface DeepDiveCategoryStructured {
   data_gaps: string[];
 }
 
+// ── Transcript analysis types ─────────────────────────────────────────────────
+
+export interface TranscriptClaim {
+  quote: string;
+  speaker: string;
+  type: "guidance" | "market_share" | "customer" | "timeline" | "margin" | "other";
+  prompted: boolean;
+}
+
+export interface TranscriptTension {
+  question_summary: string;
+  tension_type: "deflected" | "reframed" | "evasive";
+  significance: "high" | "medium" | "low";
+  verbatim_excerpt: string;
+}
+
+export interface TranscriptValidation {
+  claim: string;
+  status: "validated" | "missed" | "unvalidated";
+  delta: string;
+  evidence: string;
+}
+
+export interface TranscriptTheme {
+  theme: string;
+  status: "consistent" | "evolved" | "drifted";
+  evidence: string;
+  risk_signal: boolean;
+}
+
+export interface TranscriptBOMEntry {
+  category: string;
+  pct_estimate: number | null;
+  vendors: string[];
+  confidence: "confirmed" | "inferred" | "speculative";
+}
+
+export interface TranscriptBOMItem {
+  program: string;
+  total_value: string;
+  bom: TranscriptBOMEntry[];
+}
+
+export interface TranscriptAnalysis {
+  pass1_claims: TranscriptClaim[] | string;
+  pass2_tiers: { claims_with_tiers: unknown[]; hedging_patterns: string[] } | string;
+  pass3_qa_tensions: TranscriptTension[] | string;
+  pass4_validation: { validations: TranscriptValidation[] } | string;
+  pass5_consistency: { themes: TranscriptTheme[] } | string;
+  pass6_bom: { commitments: TranscriptBOMItem[] } | null | string;
+}
+
+// ── Curated financial data for dashboard charts ───────────────────────────────
+
+export interface QuarterlyMetric {
+  period: string;
+  value: number;
+  yoy_growth: number | null;
+}
+
+export interface EstimateMetric {
+  period: string;
+  estimate: number;
+  actual: number | null;
+}
+
+export interface DailyPrice {
+  date: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  sma_9: number | null;
+  sma_20: number | null;
+  sma_50: number | null;
+  sma_100: number | null;
+  sma_200: number | null;
+  rsi: number | null;
+}
+
+export interface CuratedFinancials {
+  ticker: string;
+  company_name: string;
+  sector: string;
+  industry: string;
+  market_cap: number;
+  current_price: number;
+  quarterly_revenue: QuarterlyMetric[];
+  quarterly_eps: QuarterlyMetric[];
+  quarterly_gross_margin: QuarterlyMetric[];
+  quarterly_operating_margin: QuarterlyMetric[];
+  quarterly_net_margin: QuarterlyMetric[];
+  quarterly_cash: QuarterlyMetric[];
+  quarterly_total_debt: QuarterlyMetric[];
+  quarterly_shareholders_equity: QuarterlyMetric[];
+  quarterly_current_ratio: QuarterlyMetric[];
+  debt_to_equity: number;
+  quarterly_operating_cf: QuarterlyMetric[];
+  quarterly_free_cf: QuarterlyMetric[];
+  quarterly_capex: QuarterlyMetric[];
+  dcf_intrinsic_value: number | null;
+  dcf_gap_percent: number | null;
+  forward_revenue_estimates: EstimateMetric[];
+  forward_eps_estimates: EstimateMetric[];
+  beta: number | null;
+  fifty_two_week_high: number | null;
+  fifty_two_week_low: number | null;
+  volume_avg: number | null;
+  daily_prices: DailyPrice[];
+}
+
 export interface CategoryOutput {
   score: number;
   content: string;
@@ -259,7 +388,7 @@ export interface ReportResponse {
   loop_count: number;
   phases: {
     quick_screen: CategoryOutput;
-    deep_dive: Record<string, CategoryOutput>;
+    deep_dive: { categories: Record<string, CategoryOutput>; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null };
     thesis: CategoryOutput & { structured?: ThesisStructured };
     risk: CategoryOutput & { structured?: RiskStressTestStructured };
     position: { content: string; citations: Citation[]; structured?: PositionMonitorStructured; parse_error?: string | null };
@@ -285,7 +414,7 @@ export interface ReportResponse {
 
 export type SSEEvent =
   | { type: "phase_start"; phase: string; label: string }
-  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown }
+  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null }
   | { type: "category_complete"; category: string; score: number; key_findings: string[]; structured?: DeepDiveCategoryStructured | null }
   | { type: "category_error"; category: string; reason: string }
   | { type: "token"; text: string }
@@ -305,12 +434,21 @@ export const pipeline = {
 
   get: (runId: string) => apiFetch<RunDetail>(`/api/runs/${runId}`),
 
-  list: (opts?: { status?: string; theme_id?: string; limit?: number }) => {
+  list: (opts?: { status?: string; theme_id?: string; search?: string; limit?: number }) => {
     const params = new URLSearchParams();
     if (opts?.status)   params.set("status",   opts.status);
     if (opts?.theme_id) params.set("theme_id", opts.theme_id);
+    if (opts?.search)   params.set("search",   opts.search);
     if (opts?.limit)    params.set("limit",    String(opts.limit));
     return apiFetch<RunSummary[]>(`/api/runs?${params}`);
+  },
+
+  dataGaps: (opts?: { status?: string; theme_id?: string; ticker?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.status)   params.set("status",   opts.status);
+    if (opts?.theme_id) params.set("theme_id", opts.theme_id);
+    if (opts?.ticker)   params.set("ticker",   opts.ticker);
+    return apiFetch<DataGapsResponse>(`/api/runs/data-gaps?${params}`);
   },
 
   advance: (runId: string, action: AdvanceAction, feedback?: string) =>

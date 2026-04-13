@@ -73,6 +73,8 @@ quick_screen (Haiku)
 
 `ResearchState` is persisted as JSONB into `research_runs.state` at every phase transition. All serialization goes through `to_dict()` / `from_dict()`. `CategoryResult` and `CategoryError` use a `__type__` discriminator in their dict form so `get_deep_dive_results()` can round-trip them. Add any new state field to `ResearchState` **and** make sure it's JSON-safe — datetime fields are stored as ISO strings, not `datetime` objects.
 
+`CuratedFinancials` (in `graph/state.py`) holds a curated subset of FMP data for frontend dashboard charts. It's built once in `node_deep_dive` from the raw FMP fetch (quarterly income/balance/cashflow, profile, DCF, estimates, and 1-year daily OHLCV). Technical indicators (SMA 9/20/50/100/200, RSI 14) are computed in `_build_technical_data()` and stored in `daily_prices`. The report API returns it under `phases.deep_dive.curated_financials`. The `deep_dive_start` SSE event also carries it. Note: `phases.deep_dive` in the report API is `{ categories: Record<str, CategoryOutput>, curated_financials: CuratedFinancials | null }` — not a flat record.
+
 Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU = "claude-haiku-4-5-20251001"`. `complete()` and `stream_complete()` auto-enable prompt caching (`cache_control: ephemeral`) when the system prompt is >500 chars — keep reused system prompts long enough to benefit.
 
 ### Discovery engine
@@ -107,8 +109,10 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 
 - `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/library`, `/pipeline/new`, `/pipeline/[runId]`, `/report/[runId]`
 - `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
-- `components/` — small presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
+- `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
+- `components/deep-dive/` — 28-component module for the deep-dive financial dashboard: `DeepDiveDashboard` orchestrator, `DashboardSidebar` (scroll-tracked nav), `OverviewBanner` (radar + metrics + score bar), `sections/` (9 category-specific components in 3 tiers: data-rich, mixed, qualitative), `charts/` (Recharts bar/line/trend charts + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
 - Path alias: `@/*` → project root. Tailwind v4 via `@tailwindcss/postcss`.
+- Chart libraries: **Recharts** (bar, line, radar charts) and **lightweight-charts** (TradingView candlestick + RSI).
 
 ## State-of-repo notes
 

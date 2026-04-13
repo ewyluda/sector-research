@@ -18,7 +18,7 @@ Two core workflows:
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router) + React 19 + Tailwind v4 |
+| Frontend | Next.js 16 (App Router) + React 19 + Tailwind v4 + Recharts + lightweight-charts |
 | Backend | FastAPI + async SQLAlchemy |
 | Agent orchestration | LangGraph |
 | Database | PostgreSQL |
@@ -104,7 +104,7 @@ Every pipeline phase produces validated JSON output via Pydantic schemas, parsed
 | Phase | Schema | Dashboard |
 |---|---|---|
 | Quick Screen | `QuickScreenOutput` | Score ring, dimension table, thesis/risk callouts |
-| Deep Dive (×9) | `DeepDiveCategoryOutput` | Score rationale, key findings with evidence, analysis, data gaps |
+| Deep Dive (×9) | `DeepDiveCategoryOutput` | Scrollable financial dashboard: radar chart, headline metrics, score bar, per-category charts (Recharts bar/line/trend), 1Y candlestick chart with SMA/RSI (lightweight-charts), AI companion panels, sticky sidebar nav |
 | Thesis | `ThesisOutput` | Conviction ring, bull/bear columns, catalyst timeline |
 | Risk Stress-Test | `RiskStressTestOutput` | R/R ratio ring, risk register cards, loop-back footer |
 | Position Monitor | `PositionMonitorOutput` | Entry zone, sizing, stop loss, monitoring schedule, exit conditions |
@@ -169,3 +169,5 @@ No auth system — personal local tool.
 | `backend/app/graph/nodes.py` | Phase node implementations |
 | `backend/app/graph/prompts.py` | All LLM prompts |
 | `frontend/lib/api.ts` | Typed API client + all TypeScript interfaces |
+| `frontend/components/deep-dive/` | 28-component financial dashboard module (charts, sections, panels, skeletons) |
+| `BACKLOG.md` | Prioritized backlog of pending features and improvements |

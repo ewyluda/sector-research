@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { pipeline as api } from "@/lib/api";
-import type { RunSummary, ThesisStatus } from "@/lib/api";
+import { pipeline as api, themes as themesApi } from "@/lib/api";
+import type { RunSummary, ThesisStatus, Theme } from "@/lib/api";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -40,7 +40,7 @@ function fmtDate(iso: string | null): string {
 
 // ── Filter bar ─────────────────────────────────────────────────────────────────
 
-type FilterStatus = "all" | "completed" | "in_progress" | "awaiting_approval" | "watchlist";
+type FilterStatus = "all" | "completed" | "in_progress" | "awaiting_approval" | "watchlist" | "data_gaps";
 
 function FilterBar({
   active,
@@ -57,6 +57,7 @@ function FilterBar({
     { key: "awaiting_approval", label: "Awaiting" },
     { key: "in_progress",       label: "Running" },
     { key: "watchlist",         label: "Watchlist" },
+    { key: "data_gaps",         label: "Data Gaps" },
   ];
 
   return (
@@ -114,7 +115,15 @@ function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
                 ↻ L{run.loop_count}
               </span>
             )}
+            {run.gap_count > 0 && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium">
+                {run.gap_count} gap{run.gap_count !== 1 ? "s" : ""}
+              </span>
+            )}
           </div>
+          {run.theme_name && (
+            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{run.theme_name}</p>
+          )}
 
           <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
             <span className="flex items-center gap-1.5">
@@ -156,6 +165,102 @@ function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
   );
 }
 
+// ── Data Gaps view ───────────────────────────────────────────────────────────
+
+function DataGapsView({
+  data,
+  loading,
+  onTickerClick,
+}: {
+  data: import("@/lib/api").DataGapsResponse | null;
+  loading: boolean;
+  onTickerClick: (ticker: string) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="w-6 h-6 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!data || data.gaps.length === 0) {
+    return (
+      <div className="text-center py-24">
+        <p className="text-[var(--color-text-muted)] text-sm">No data gaps detected across runs.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-xs text-[var(--color-text-muted)] mb-4">
+        {data.gaps.length} gap type{data.gaps.length !== 1 ? "s" : ""} found across {data.total_runs_scanned} run{data.total_runs_scanned !== 1 ? "s" : ""}
+      </p>
+      <div className="space-y-2">
+        {data.gaps.map((gap, i) => (
+          <div
+            key={i}
+            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span
+                    className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                      gap.gap_type === "hard_error"
+                        ? "bg-red-500/10 text-red-400"
+                        : "bg-amber-500/10 text-amber-400"
+                    }`}
+                  >
+                    {gap.gap_type === "hard_error" ? "Error" : "Gap"}
+                  </span>
+                  <span className="text-xs text-[var(--color-text-muted)]">
+                    {gap.category.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <p className="text-sm text-[var(--color-text-primary)]">{gap.description}</p>
+                {gap.example_tickers.length > 0 && (
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="text-xs text-[var(--color-text-muted)]">e.g.</span>
+                    {gap.example_tickers.map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => onTickerClick(t)}
+                        className="px-1.5 py-0.5 rounded bg-[var(--color-accent)]/10 text-[var(--color-accent)]
+                                   text-xs font-mono font-medium hover:bg-[var(--color-accent)]/20 transition-colors"
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex-shrink-0 text-right">
+                <p className="text-lg font-mono font-semibold text-[var(--color-text-primary)]">
+                  {gap.occurrences}
+                </p>
+                <p className="text-xs text-[var(--color-text-muted)]">
+                  {Math.round(gap.frequency * 100)}% of runs
+                </p>
+              </div>
+            </div>
+            {/* Frequency bar */}
+            <div className="mt-3 h-1 rounded-full bg-[var(--color-border)] overflow-hidden">
+              <div
+                className={`h-full rounded-full ${
+                  gap.gap_type === "hard_error" ? "bg-red-400" : "bg-amber-400"
+                }`}
+                style={{ width: `${Math.round(gap.frequency * 100)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────────
 
 export default function LibraryPage() {
@@ -163,13 +268,43 @@ export default function LibraryPage() {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [themeId, setThemeId] = useState<string>("");
+  const [themeList, setThemeList] = useState<Theme[]>([]);
+  const [dataGaps, setDataGaps] = useState<import("@/lib/api").DataGapsResponse | null>(null);
+  const [gapsLoading, setGapsLoading] = useState(false);
 
   useEffect(() => {
-    const opts = filter !== "all" ? { status: filter } : undefined;
-    api.list(opts)
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    themesApi.list().then(setThemeList).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (filter === "data_gaps") return;
+    setLoading(true);
+    const opts: Record<string, string | number> = {};
+    if (filter !== "all") opts.status = filter;
+    if (themeId) opts.theme_id = themeId;
+    if (debouncedSearch.trim()) opts.search = debouncedSearch.trim();
+    api.list(opts as Parameters<typeof api.list>[0])
       .then(setRuns)
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, themeId, debouncedSearch]);
+
+  useEffect(() => {
+    if (filter !== "data_gaps") return;
+    setGapsLoading(true);
+    const opts: Record<string, string> = {};
+    if (themeId) opts.theme_id = themeId;
+    api.dataGaps(opts as Parameters<typeof api.dataGaps>[0])
+      .then(setDataGaps)
+      .finally(() => setGapsLoading(false));
+  }, [filter, themeId]);
 
   function navigate(run: RunSummary) {
     if (run.status === "completed" || run.status === "watchlist") {
@@ -202,13 +337,56 @@ export default function LibraryPage() {
           </button>
         </div>
 
+        {/* Search & theme filter */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative flex-1 max-w-xs">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by ticker..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]
+                         text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
+                         focus:outline-none focus:border-[var(--color-accent)]/50 transition-colors"
+            />
+          </div>
+          <select
+            value={themeId}
+            onChange={(e) => setThemeId(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]
+                       text-sm text-[var(--color-text-primary)]
+                       focus:outline-none focus:border-[var(--color-accent)]/50 transition-colors"
+          >
+            <option value="">All Themes</option>
+            {themeList.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Filter bar */}
         <div className="mb-5">
-          <FilterBar active={filter} onChange={setFilter} total={runs.length} />
+          <FilterBar
+            active={filter}
+            onChange={setFilter}
+            total={filter === "data_gaps" ? (dataGaps?.gaps.length ?? 0) : runs.length}
+          />
         </div>
 
         {/* Content */}
-        {loading ? (
+        {filter === "data_gaps" ? (
+          <DataGapsView
+            data={dataGaps}
+            loading={gapsLoading}
+            onTickerClick={(t) => {
+              setSearch(t);
+              setFilter("all");
+            }}
+          />
+        ) : loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-6 h-6 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" />
           </div>

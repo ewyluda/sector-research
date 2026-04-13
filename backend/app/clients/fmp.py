@@ -293,6 +293,24 @@ class FMPClient:
         )
         return result, citation
 
+    async def get_historical_price(
+        self, ticker: str, from_date: str, to_date: str
+    ) -> tuple[list[dict], Citation]:
+        """Daily OHLCV price history (1 year of data).
+
+        GET /stable/historical-price-eod/full?symbol=X&from=YYYY-MM-DD&to=YYYY-MM-DD
+        Returns list of {date, open, high, low, close, volume, ...} newest first.
+        """
+        params = {"symbol": ticker, "from": from_date, "to": to_date}
+        data = await self._request("historical-price-eod/full", params, ttl=TTL_FUNDAMENTAL)
+        citation = self._make_citation(
+            "historical-price-eod/full",
+            "Historical Price",
+            ticker,
+            params,
+        )
+        return data if isinstance(data, list) else [], citation
+
     async def get_key_metrics_ttm(self, ticker: str) -> tuple[dict, Citation]:
         """Trailing-twelve-month key metrics — source for PE ratio since it's
         no longer on the /stable/ profile or quote endpoints."""
