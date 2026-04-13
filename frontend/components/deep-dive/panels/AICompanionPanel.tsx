@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import type { DeepDiveCategoryStructured } from "@/lib/api";
+import type { DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { FindingsTable } from "./FindingsTable";
 
 interface AICompanionPanelProps {
   structured: DeepDiveCategoryStructured | null;
   categoryLabel: string;
   expandAnalysis?: boolean;
+  /** Fallback: raw CategoryOutput shown when structured is null */
+  fallback?: CategoryOutput | null;
 }
 
 function scoreColor(score: number): string {
@@ -16,11 +18,48 @@ function scoreColor(score: number): string {
   return "bg-red-500/15 text-red-400";
 }
 
-export function AICompanionPanel({ structured, categoryLabel, expandAnalysis = false }: AICompanionPanelProps) {
+export function AICompanionPanel({ structured, categoryLabel, expandAnalysis = false, fallback }: AICompanionPanelProps) {
   const [analysisOpen, setAnalysisOpen] = useState(expandAnalysis);
   const [gapsOpen, setGapsOpen] = useState(expandAnalysis);
 
-  if (!structured) return null;
+  // Fallback: show raw content when structured output isn't available
+  if (!structured) {
+    if (!fallback || (!fallback.content && !fallback.key_findings?.length)) return null;
+    return (
+      <div className="space-y-4">
+        {fallback.score != null && (
+          <div className="rounded-lg border-l-2 border-[var(--color-primary)] bg-[var(--color-primary)]/5 p-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-[var(--color-text-muted)]">{categoryLabel}</span>
+              <span className={`text-xs font-mono font-semibold px-1.5 py-0.5 rounded ${scoreColor(fallback.score)}`}>
+                {fallback.score}/100
+              </span>
+            </div>
+          </div>
+        )}
+        {fallback.key_findings?.length > 0 && (
+          <div>
+            <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+              Key Findings ({fallback.key_findings.length})
+            </h4>
+            <ul className="space-y-1">
+              {fallback.key_findings.map((f, i) => (
+                <li key={i} className="text-xs text-[var(--color-text-primary)] leading-snug">· {f}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {fallback.content && (
+          <div>
+            <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Analysis</h4>
+            <p className="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
+              {fallback.content}
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

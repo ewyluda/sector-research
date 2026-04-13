@@ -1,4 +1,4 @@
-import type { DeepDiveCategoryStructured } from "@/lib/api";
+import type { DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { AICompanionPanel } from "../panels/AICompanionPanel";
 import { PanelSkeleton } from "../skeleton/PanelSkeleton";
 
@@ -7,6 +7,7 @@ interface DataRichSectionProps {
   label: string;
   score: number | null;
   structured: DeepDiveCategoryStructured | null;
+  fallback?: CategoryOutput | null;
   isLive?: boolean;
   children: React.ReactNode;
 }
@@ -18,7 +19,7 @@ function scoreBadge(score: number | null): string {
   return "bg-red-500/15 text-red-400";
 }
 
-export function DataRichSection({ id, label, score, structured, isLive, children }: DataRichSectionProps) {
+export function DataRichSection({ id, label, score, structured, fallback, isLive, children }: DataRichSectionProps) {
   return (
     <section id={id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
       <div className="px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg)]/40 flex items-center justify-between">
@@ -31,7 +32,9 @@ export function DataRichSection({ id, label, score, structured, isLive, children
         <div className="space-y-4">{children}</div>
         <div>
           {structured ? (
-            <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={false} />
+            <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={false} fallback={fallback} />
+          ) : fallback ? (
+            <AICompanionPanel structured={null} categoryLabel={label} expandAnalysis={false} fallback={fallback} />
           ) : isLive ? (
             <PanelSkeleton />
           ) : null}

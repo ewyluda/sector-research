@@ -1,4 +1,4 @@
-import type { CuratedFinancials, DeepDiveCategoryStructured } from "@/lib/api";
+import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { MixedSection } from "./MixedSection";
 import { BetaGauge } from "../charts/BetaGauge";
 
@@ -6,12 +6,13 @@ interface MacroRegimeProps {
   financials: CuratedFinancials | null;
   structured: DeepDiveCategoryStructured | null;
   score: number | null;
+  fallback?: CategoryOutput | null;
   isLive?: boolean;
 }
 
-export function MacroRegime({ financials, structured, score, isLive }: MacroRegimeProps) {
+export function MacroRegime({ financials, structured, score, fallback, isLive }: MacroRegimeProps) {
   return (
-    <MixedSection id="macro_regime" label="Macro & Regime" score={score} structured={structured} isLive={isLive}>
+    <MixedSection id="macro_regime" label="Macro & Regime" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
         <>
           <div className="grid grid-cols-2 gap-2">

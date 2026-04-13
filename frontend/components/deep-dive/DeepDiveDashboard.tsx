@@ -62,18 +62,21 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           financials={financials}
           structured={getStructured(categories["financial_health"] ?? null)}
           score={getScore(categories["financial_health"] ?? null, scores, "financial_health")}
+          fallback={categories["financial_health"] ?? null}
           isLive={isLive}
         />
         <GrowthEarnings
           financials={financials}
           structured={getStructured(categories["growth_earnings"] ?? null)}
           score={getScore(categories["growth_earnings"] ?? null, scores, "growth_earnings")}
+          fallback={categories["growth_earnings"] ?? null}
           isLive={isLive}
         />
         <TechnicalMarket
           financials={financials}
           structured={getStructured(categories["technical_market_structure"] ?? null)}
           score={getScore(categories["technical_market_structure"] ?? null, scores, "technical_market_structure")}
+          fallback={categories["technical_market_structure"] ?? null}
           isLive={isLive}
         />
 
@@ -82,17 +85,20 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           financials={financials}
           structured={getStructured(categories["business_quality"] ?? null)}
           score={getScore(categories["business_quality"] ?? null, scores, "business_quality")}
+          fallback={categories["business_quality"] ?? null}
           isLive={isLive}
         />
         <MacroRegime
           financials={financials}
           structured={getStructured(categories["macro_regime"] ?? null)}
           score={getScore(categories["macro_regime"] ?? null, scores, "macro_regime")}
+          fallback={categories["macro_regime"] ?? null}
           isLive={isLive}
         />
         <RiskAssessment
           structured={getStructured(categories["risk_assessment"] ?? null)}
           score={getScore(categories["risk_assessment"] ?? null, scores, "risk_assessment")}
+          fallback={categories["risk_assessment"] ?? null}
           isLive={isLive}
         />
 
@@ -101,17 +107,20 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           <ManagementGovernance
             structured={getStructured(categories["management_governance"] ?? null)}
             score={getScore(categories["management_governance"] ?? null, scores, "management_governance")}
+            fallback={categories["management_governance"] ?? null}
             isLive={isLive}
           />
           <SentimentNarrative
             structured={getStructured(categories["sentiment_narrative"] ?? null)}
             score={getScore(categories["sentiment_narrative"] ?? null, scores, "sentiment_narrative")}
+            fallback={categories["sentiment_narrative"] ?? null}
             isLive={isLive}
           />
         </div>
         <FutureDurability
           structured={getStructured(categories["future_durability"] ?? null)}
           score={getScore(categories["future_durability"] ?? null, scores, "future_durability")}
+          fallback={categories["future_durability"] ?? null}
           isLive={isLive}
         />
       </div>

@@ -1,4 +1,4 @@
-import type { CuratedFinancials, DeepDiveCategoryStructured } from "@/lib/api";
+import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { StackedBarChart } from "../charts/StackedBarChart";
 import { TrendLineChart } from "../charts/TrendLineChart";
@@ -8,12 +8,13 @@ interface FinancialHealthProps {
   financials: CuratedFinancials | null;
   structured: DeepDiveCategoryStructured | null;
   score: number | null;
+  fallback?: CategoryOutput | null;
   isLive?: boolean;
 }
 
-export function FinancialHealth({ financials, structured, score, isLive }: FinancialHealthProps) {
+export function FinancialHealth({ financials, structured, score, fallback, isLive }: FinancialHealthProps) {
   return (
-    <DataRichSection id="financial_health" label="Financial Health" score={score} structured={structured} isLive={isLive}>
+    <DataRichSection id="financial_health" label="Financial Health" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
         <>
           <div>

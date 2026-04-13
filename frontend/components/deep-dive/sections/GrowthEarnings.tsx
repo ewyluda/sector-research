@@ -1,4 +1,4 @@
-import type { CuratedFinancials, DeepDiveCategoryStructured } from "@/lib/api";
+import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { GroupedBarChart } from "../charts/GroupedBarChart";
 import { TrendLineChart } from "../charts/TrendLineChart";
@@ -8,12 +8,13 @@ interface GrowthEarningsProps {
   financials: CuratedFinancials | null;
   structured: DeepDiveCategoryStructured | null;
   score: number | null;
+  fallback?: CategoryOutput | null;
   isLive?: boolean;
 }
 
-export function GrowthEarnings({ financials, structured, score, isLive }: GrowthEarningsProps) {
+export function GrowthEarnings({ financials, structured, score, fallback, isLive }: GrowthEarningsProps) {
   return (
-    <DataRichSection id="growth_earnings" label="Growth & Earnings" score={score} structured={structured} isLive={isLive}>
+    <DataRichSection id="growth_earnings" label="Growth & Earnings" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
         <>
           <div>
