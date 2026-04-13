@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { pipeline as api } from "@/lib/api";
-import type { RunSummary, ThesisStatus } from "@/lib/api";
+import { pipeline as api, themes as themesApi } from "@/lib/api";
+import type { RunSummary, ThesisStatus, Theme } from "@/lib/api";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -163,13 +163,30 @@ export default function LibraryPage() {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [filter, setFilter] = useState<FilterStatus>("all");
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [themeId, setThemeId] = useState<string>("");
+  const [themeList, setThemeList] = useState<Theme[]>([]);
 
   useEffect(() => {
-    const opts = filter !== "all" ? { status: filter } : undefined;
-    api.list(opts)
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    themesApi.list().then(setThemeList).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    const opts: Record<string, string | number> = {};
+    if (filter !== "all") opts.status = filter;
+    if (themeId) opts.theme_id = themeId;
+    if (debouncedSearch.trim()) opts.search = debouncedSearch.trim();
+    api.list(opts as Parameters<typeof api.list>[0])
       .then(setRuns)
       .finally(() => setLoading(false));
-  }, [filter]);
+  }, [filter, themeId, debouncedSearch]);
 
   function navigate(run: RunSummary) {
     if (run.status === "completed" || run.status === "watchlist") {
@@ -200,6 +217,36 @@ export default function LibraryPage() {
           >
             + New Run
           </button>
+        </div>
+
+        {/* Search & theme filter */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="relative flex-1 max-w-xs">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search by ticker..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]
+                         text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]
+                         focus:outline-none focus:border-[var(--color-accent)]/50 transition-colors"
+            />
+          </div>
+          <select
+            value={themeId}
+            onChange={(e) => setThemeId(e.target.value)}
+            className="px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]
+                       text-sm text-[var(--color-text-primary)]
+                       focus:outline-none focus:border-[var(--color-accent)]/50 transition-colors"
+          >
+            <option value="">All Themes</option>
+            {themeList.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
         </div>
 
         {/* Filter bar */}
