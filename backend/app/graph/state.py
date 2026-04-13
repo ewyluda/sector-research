@@ -152,6 +152,8 @@ class CuratedFinancials:
     volume_avg: float | None = None
     # Technical — 1 year daily OHLCV + computed indicators (SMA, RSI)
     daily_prices: list[dict] = field(default_factory=list)
+    # Macro economic indicators from FRED (9 series, each list of {date, value})
+    macro_indicators: dict | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -183,6 +185,7 @@ class CuratedFinancials:
             "fifty_two_week_low": self.fifty_two_week_low,
             "volume_avg": self.volume_avg,
             "daily_prices": self.daily_prices,
+            "macro_indicators": self.macro_indicators,
         }
 
     @classmethod
@@ -216,6 +219,7 @@ class CuratedFinancials:
             fifty_two_week_low=d.get("fifty_two_week_low"),
             volume_avg=d.get("volume_avg"),
             daily_prices=d.get("daily_prices", []),
+            macro_indicators=d.get("macro_indicators"),
         )
 
 
