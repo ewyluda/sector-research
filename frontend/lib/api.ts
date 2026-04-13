@@ -365,6 +365,20 @@ export interface CuratedFinancials {
   dcf_gap_percent: number | null;
   forward_revenue_estimates: EstimateMetric[];
   forward_eps_estimates: EstimateMetric[];
+  // Valuation ratios (from key-metrics-ttm)
+  pe_ratio: number | null;
+  ev_to_ebitda: number | null;
+  price_to_book: number | null;
+  price_to_fcf: number | null;
+  price_to_sales: number | null;
+  peg_ratio: number | null;
+  // Return metrics
+  roe: number | null;
+  roic: number | null;
+  roa: number | null;
+  interest_coverage: number | null;
+  dividend_yield: number | null;
+  // Technical
   beta: number | null;
   fifty_two_week_high: number | null;
   fifty_two_week_low: number | null;

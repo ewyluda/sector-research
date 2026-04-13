@@ -145,6 +145,21 @@ class CuratedFinancials:
     forward_revenue_estimates: list[EstimateMetric] = field(default_factory=list)
     forward_eps_estimates: list[EstimateMetric] = field(default_factory=list)
 
+    # Valuation ratios (from key-metrics-ttm)
+    pe_ratio: float | None = None
+    ev_to_ebitda: float | None = None
+    price_to_book: float | None = None
+    price_to_fcf: float | None = None
+    price_to_sales: float | None = None
+    peg_ratio: float | None = None
+
+    # Return metrics (from key-metrics-ttm)
+    roe: float | None = None
+    roic: float | None = None
+    roa: float | None = None
+    interest_coverage: float | None = None
+    dividend_yield: float | None = None
+
     # Technical
     beta: float | None = None
     fifty_two_week_high: float | None = None
@@ -180,6 +195,17 @@ class CuratedFinancials:
             "dcf_gap_percent": self.dcf_gap_percent,
             "forward_revenue_estimates": [m.to_dict() for m in self.forward_revenue_estimates],
             "forward_eps_estimates": [m.to_dict() for m in self.forward_eps_estimates],
+            "pe_ratio": self.pe_ratio,
+            "ev_to_ebitda": self.ev_to_ebitda,
+            "price_to_book": self.price_to_book,
+            "price_to_fcf": self.price_to_fcf,
+            "price_to_sales": self.price_to_sales,
+            "peg_ratio": self.peg_ratio,
+            "roe": self.roe,
+            "roic": self.roic,
+            "roa": self.roa,
+            "interest_coverage": self.interest_coverage,
+            "dividend_yield": self.dividend_yield,
             "beta": self.beta,
             "fifty_two_week_high": self.fifty_two_week_high,
             "fifty_two_week_low": self.fifty_two_week_low,
@@ -214,6 +240,17 @@ class CuratedFinancials:
             dcf_gap_percent=d.get("dcf_gap_percent"),
             forward_revenue_estimates=[EstimateMetric.from_dict(m) for m in d.get("forward_revenue_estimates", [])],
             forward_eps_estimates=[EstimateMetric.from_dict(m) for m in d.get("forward_eps_estimates", [])],
+            pe_ratio=d.get("pe_ratio"),
+            ev_to_ebitda=d.get("ev_to_ebitda"),
+            price_to_book=d.get("price_to_book"),
+            price_to_fcf=d.get("price_to_fcf"),
+            price_to_sales=d.get("price_to_sales"),
+            peg_ratio=d.get("peg_ratio"),
+            roe=d.get("roe"),
+            roic=d.get("roic"),
+            roa=d.get("roa"),
+            interest_coverage=d.get("interest_coverage"),
+            dividend_yield=d.get("dividend_yield"),
             beta=d.get("beta"),
             fifty_two_week_high=d.get("fifty_two_week_high"),
             fifty_two_week_low=d.get("fifty_two_week_low"),

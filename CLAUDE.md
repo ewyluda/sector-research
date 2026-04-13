@@ -73,7 +73,7 @@ quick_screen (Haiku)
 
 `ResearchState` is persisted as JSONB into `research_runs.state` at every phase transition. All serialization goes through `to_dict()` / `from_dict()`. `CategoryResult` and `CategoryError` use a `__type__` discriminator in their dict form so `get_deep_dive_results()` can round-trip them. Add any new state field to `ResearchState` **and** make sure it's JSON-safe — datetime fields are stored as ISO strings, not `datetime` objects.
 
-`CuratedFinancials` (in `graph/state.py`) holds a curated subset of FMP data for frontend dashboard charts. It's built once in `node_deep_dive` from the raw FMP fetch (quarterly income/balance/cashflow, profile, DCF, estimates, and 1-year daily OHLCV). Technical indicators (SMA 9/20/50/100/200, RSI 14) are computed in `_build_technical_data()` and stored in `daily_prices`. The report API returns it under `phases.deep_dive.curated_financials`. The `deep_dive_start` SSE event also carries it. Note: `phases.deep_dive` in the report API is `{ categories: Record<str, CategoryOutput>, curated_financials: CuratedFinancials | null }` — not a flat record.
+`CuratedFinancials` (in `graph/state.py`) holds a curated subset of FMP + FRED data for frontend dashboard charts. It's built once in `node_deep_dive` from the raw FMP fetch (8 quarters of income/balance/cashflow, profile, DCF, estimates, key-metrics-ttm, financial-growth, and 1-year daily OHLCV). Valuation ratios (PE, EV/EBITDA, P/B, P/FCF, P/S, PEG) and return metrics (ROE, ROIC, ROA, interest coverage, dividend yield) come from the `key-metrics-ttm` endpoint. Technical indicators (SMA 9/20/50/100/200, RSI 14) are computed in `_build_technical_data()` and stored in `daily_prices`. FRED macro indicators are attached after the main build. The report API returns it under `phases.deep_dive.curated_financials`. The `deep_dive_start` SSE event also carries it. Note: `phases.deep_dive` in the report API is `{ categories: Record<str, CategoryOutput>, curated_financials: CuratedFinancials | null }` — not a flat record.
 
 Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU = "claude-haiku-4-5-20251001"`. `complete()` and `stream_complete()` auto-enable prompt caching (`cache_control: ephemeral`) when the system prompt is >500 chars — keep reused system prompts long enough to benefit.
 
@@ -113,6 +113,15 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 - `components/deep-dive/` — 28-component module for the deep-dive financial dashboard: `DeepDiveDashboard` orchestrator, `DashboardSidebar` (scroll-tracked nav), `OverviewBanner` (radar + metrics + score bar), `sections/` (9 category-specific components in 3 tiers: data-rich, mixed, qualitative), `charts/` (Recharts bar/line/trend charts + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
 - Path alias: `@/*` → project root. Tailwind v4 via `@tailwindcss/postcss`.
 - Chart libraries: **Recharts** (bar, line, radar charts) and **lightweight-charts** (TradingView candlestick + RSI).
+
+### Deep-dive data routing
+
+`_fmt_fundamentals()` in `graph/nodes.py` builds the data payload every category receives. It includes: company profile, valuation ratios (PE, EV/EBITDA, P/B, P/FCF, P/S, PEG), return metrics (ROE, ROIC, ROA, interest coverage), 8 quarters of income statement trends with YoY growth, balance sheet with ST/LT debt structure, cash flow with SBC, DCF valuation, forward analyst estimates with earnings surprise, and historical growth rates. On top of that base payload, categories receive supplementary data via routing tables:
+
+- **Transcript routing** (`TRANSCRIPT_ROUTING` in `nodes.py`): Management & Governance (all 5 passes), Business Quality (pass3, pass5), Growth & Earnings (pass1, pass4, pass6), Sentiment & Narrative (pass3, pass5), Risk Assessment (pass1, pass4), Future Durability (pass1, pass5).
+- **Macro routing** (`MACRO_ROUTING`): Macro & Regime (all 9 FRED series), Risk Assessment (all 9), Future Durability (5 series), Financial Health (rates + yield curve).
+
+The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q).
 
 ## State-of-repo notes
 

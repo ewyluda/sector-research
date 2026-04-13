@@ -322,6 +322,17 @@ class FMPClient:
         )
         return result, citation
 
+    async def get_financial_growth(
+        self, ticker: str, period: str = "annual", limit: int = 5
+    ) -> tuple[list[dict], Citation]:
+        """Revenue / EPS / FCF growth rates over time."""
+        params = {"symbol": ticker, "period": period, "limit": limit}
+        data = await self._request("financial-growth", params, ttl=TTL_FUNDAMENTAL)
+        citation = self._make_citation(
+            "financial-growth", "Financial Growth", ticker, params
+        )
+        return data if isinstance(data, list) else [], citation
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def close(self) -> None:
