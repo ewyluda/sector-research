@@ -476,7 +476,12 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
 
     # Fetch fresh fundamentals for the data payload
     try:
-        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _) = (
+        from datetime import date, timedelta
+        today = date.today()
+        one_year_ago = (today - timedelta(days=365)).isoformat()
+        today_str = today.isoformat()
+
+        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _) = (
             await asyncio.gather(
                 fmp.get_income_statement(state.ticker, period="quarter", limit=4),
                 fmp.get_balance_sheet(state.ticker, period="quarter", limit=4),
@@ -484,6 +489,7 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
                 fmp.get_company_profile(state.ticker),
                 fmp.get_dcf(state.ticker),
                 fmp.get_analyst_estimates(state.ticker, period="quarter", limit=4),
+                fmp.get_historical_price(state.ticker, one_year_ago, today_str),
             )
         )
         data_text = _fmt_fundamentals(
@@ -506,6 +512,9 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
             profile=prof,
             dcf=dcf if isinstance(dcf, dict) else None,
             estimates=estimates if isinstance(estimates, list) else [],
+        )
+        curated.daily_prices = _build_technical_data(
+            hist_prices if isinstance(hist_prices, list) else []
         )
         state.curated_financials = curated.to_dict()
 
