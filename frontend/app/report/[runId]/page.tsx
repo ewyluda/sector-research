@@ -75,7 +75,7 @@ tags: [${tags.map((t) => `"${t}"`).join(", ")}]
     `# ${o.ticker} Research Report`,
     `\n${yaml}\n`,
     `## Quick Screen\n\n${report.phases.quick_screen?.content ?? "N/A"}`,
-    `## Deep Dive\n\n${Object.entries(report.phases.deep_dive ?? {})
+    `## Deep Dive\n\n${Object.entries(report.phases.deep_dive?.categories ?? {})
       .map(([k, v]) => `### ${CATEGORY_LABELS[k] ?? k}\n\nScore: **${v.score ?? "—"}**\n\n${v.content ?? ""}`)
       .join("\n\n")}`,
     `## Thesis\n\n${report.phases.thesis?.content ?? "N/A"}`,
@@ -128,7 +128,7 @@ export default function ReportPage() {
     );
   }
 
-  const ddCategories = Object.entries(report.phases.deep_dive ?? {});
+  const ddCategories = Object.entries(report.phases.deep_dive?.categories ?? {});
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] py-10 px-6">
