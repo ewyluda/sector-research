@@ -354,7 +354,7 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             "traceback": traceback.format_exc(),
         }
 
-    state.status = "awaiting_approval"
+    state.status = "in_progress"
     return state
 
 
@@ -791,7 +791,7 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient 
     logger.info("[%s] deep_dive complete: %d/%d succeeded, failed: %s",
                 state.ticker, succeeded, len(results), failed)
 
-    state.status = "awaiting_approval"
+    state.status = "in_progress"
     return state
 
 
@@ -859,7 +859,7 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
         logger.error("[%s] thesis_construction failed: %s", state.ticker, e)
         state.phase_outputs["thesis"] = {"__type__": "PhaseError", "reason": str(e)}
 
-    state.status = "awaiting_approval"
+    state.status = "in_progress"
     return state
 
 
@@ -932,17 +932,16 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
                 "reason": loop_reason,
                 "rr_ratio": rr_ratio,
             }
-            # Pause for human review — user sees the risk card with the
-            # loop-back recommendation and approves. _next_phase() routes
-            # back to deep_dive when loop_context is set.
-            state.status = "awaiting_approval"
+            # Auto-advance back to deep_dive; _next_phase() routes
+            # back when loop_context is set.
+            state.status = "in_progress"
             logger.info("[%s] Loop-back triggered (count %d): %s", state.ticker, state.loop_count, loop_cats)
         elif loop_required and state.loop_count >= 2:
             state.status = "watchlist"
             state.thesis_status = "BROKEN"
             logger.info("[%s] Loop cap reached — forcing WATCHLIST", state.ticker)
         else:
-            state.status = "awaiting_approval"
+            state.status = "completed"
             logger.info(
                 "[%s] risk_stress_test complete: RR %.1f:1 — approved (structured=%s)",
                 state.ticker, rr_ratio, structured is not None,
@@ -951,7 +950,7 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
     except Exception as e:
         logger.error("[%s] risk_stress_test failed: %s", state.ticker, e)
         state.phase_outputs["risk"] = {"__type__": "PhaseError", "reason": str(e)}
-        state.status = "awaiting_approval"
+        state.status = "completed"
 
     return state
 
