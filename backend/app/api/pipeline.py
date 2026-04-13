@@ -14,12 +14,14 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models.research_run import ResearchRun
 from backend.app.graph.state import ResearchState
+from backend.app.models.theme import Theme
+from backend.app.services.data_gaps import compute_data_gaps
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["pipeline"])
@@ -53,17 +55,19 @@ class RunSummary(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _run_to_summary(run: ResearchRun) -> dict:
+def _run_to_summary(run: ResearchRun, theme_name: str | None = None) -> dict:
     state = run.state or {}
     return {
         "id": run.id,
         "ticker": run.ticker,
         "theme_id": run.theme_id,
+        "theme_name": theme_name,
         "phase": run.phase,
         "status": run.status,
         "loop_count": run.loop_count,
         "conviction_score": state.get("conviction_score"),
         "thesis_status": state.get("thesis_status"),
+        "gap_count": len(compute_data_gaps(state)),
         "created_at": run.created_at.isoformat() if run.created_at else None,
         "updated_at": run.updated_at.isoformat() if run.updated_at else None,
     }
@@ -120,18 +124,29 @@ async def list_runs(
     db: AsyncSession = Depends(get_db),
     status: str | None = None,
     theme_id: str | None = None,
+    ticker: str | None = None,
+    search: str | None = None,
     limit: int = 50,
 ):
     """List all research runs for the Research Library."""
-    query = select(ResearchRun).order_by(desc(ResearchRun.created_at)).limit(limit)
+    query = (
+        select(ResearchRun, Theme.name.label("theme_name"))
+        .outerjoin(Theme, ResearchRun.theme_id == Theme.id)
+        .order_by(desc(ResearchRun.created_at))
+        .limit(limit)
+    )
     if status:
         query = query.where(ResearchRun.status == status)
     if theme_id:
         query = query.where(ResearchRun.theme_id == theme_id)
+    if ticker:
+        query = query.where(func.lower(ResearchRun.ticker) == ticker.lower())
+    elif search:
+        query = query.where(ResearchRun.ticker.ilike(f"%{search}%"))
 
     result = await db.execute(query)
-    runs = result.scalars().all()
-    return [_run_to_summary(r) for r in runs]
+    rows = result.all()
+    return [_run_to_summary(run, theme_name=tn) for run, tn in rows]
 
 
 @router.get("/runs/{run_id}")
