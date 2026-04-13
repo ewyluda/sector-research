@@ -34,8 +34,6 @@ export function QualitativeCard({ id, label, score, structured, fallback, isLive
       <div className="p-5">
         {structured ? (
           <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={true} fallback={fallback} />
-        ) : fallback ? (
-          <AICompanionPanel structured={null} categoryLabel={label} expandAnalysis={true} fallback={fallback} />
         ) : isLive ? (
           <PanelSkeleton />
         ) : null}

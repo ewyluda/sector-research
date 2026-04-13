@@ -405,12 +405,12 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
     try:
         (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _) = (
             await asyncio.gather(
-                fmp.get_income_statement(state.ticker, limit=4),
-                fmp.get_balance_sheet(state.ticker, limit=4),
-                fmp.get_cash_flow(state.ticker, limit=4),
+                fmp.get_income_statement(state.ticker, period="quarter", limit=4),
+                fmp.get_balance_sheet(state.ticker, period="quarter", limit=4),
+                fmp.get_cash_flow(state.ticker, period="quarter", limit=4),
                 fmp.get_company_profile(state.ticker),
                 fmp.get_dcf(state.ticker),
-                fmp.get_analyst_estimates(state.ticker, limit=4),
+                fmp.get_analyst_estimates(state.ticker, period="quarter", limit=4),
             )
         )
         data_text = _fmt_fundamentals(

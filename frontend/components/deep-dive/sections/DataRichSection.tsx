@@ -33,8 +33,6 @@ export function DataRichSection({ id, label, score, structured, fallback, isLive
         <div>
           {structured ? (
             <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={false} fallback={fallback} />
-          ) : fallback ? (
-            <AICompanionPanel structured={null} categoryLabel={label} expandAnalysis={false} fallback={fallback} />
           ) : isLive ? (
             <PanelSkeleton />
           ) : null}

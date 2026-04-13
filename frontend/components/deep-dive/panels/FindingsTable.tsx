@@ -13,7 +13,7 @@ export function FindingsTable({ findings }: { findings: DeepDiveFinding[] }) {
         {findings.map((f, i) => (
           <tr key={i} className="border-b border-[var(--color-border)] last:border-0">
             <td className="py-2 pr-3 text-[var(--color-text-primary)] leading-snug">{f.finding}</td>
-            <td className="py-2 text-[var(--color-text-muted)] leading-snug">{f.evidence}</td>
+            <td className="py-2 italic text-[var(--color-primary)]/70 leading-snug">{f.evidence}</td>
           </tr>
         ))}
       </tbody>

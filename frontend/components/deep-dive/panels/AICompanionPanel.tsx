@@ -50,12 +50,14 @@ export function AICompanionPanel({ structured, categoryLabel, expandAnalysis = f
           </div>
         )}
         {fallback.content && (
-          <div>
-            <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Analysis</h4>
-            <p className="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
+          <details>
+            <summary className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text-primary)]">
+              Full Analysis
+            </summary>
+            <p className="mt-2 text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
               {fallback.content}
             </p>
-          </div>
+          </details>
         )}
       </div>
     );

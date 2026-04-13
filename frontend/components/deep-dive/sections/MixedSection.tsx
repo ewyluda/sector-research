@@ -33,8 +33,6 @@ export function MixedSection({ id, label, score, structured, fallback, isLive, c
         <div>
           {structured ? (
             <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={true} fallback={fallback} />
-          ) : fallback ? (
-            <AICompanionPanel structured={null} categoryLabel={label} expandAnalysis={true} fallback={fallback} />
           ) : isLive ? (
             <PanelSkeleton />
           ) : null}
