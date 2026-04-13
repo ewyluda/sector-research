@@ -1,4 +1,4 @@
-import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured } from "@/lib/api";
+import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, TranscriptAnalysis } from "@/lib/api";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { OverviewBanner } from "./OverviewBanner";
 import { FinancialHealth } from "./sections/FinancialHealth";
@@ -16,6 +16,7 @@ export interface DeepDiveDashboardProps {
   categories: Record<string, CategoryOutput | null>;
   scores: Record<string, number>;
   isLive?: boolean;
+  transcriptAnalysis?: TranscriptAnalysis | null;
 }
 
 /** Map display-name keys → snake_case keys used by sidebar, radar, score bar */
@@ -48,7 +49,7 @@ function getScore(cat: CategoryOutput | null, scores: Record<string, number>, ke
   return scores[key] ?? cat?.score ?? null;
 }
 
-export function DeepDiveDashboard({ financials, categories: rawCategories, scores: rawScores, isLive }: DeepDiveDashboardProps) {
+export function DeepDiveDashboard({ financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis }: DeepDiveDashboardProps) {
   const scores = normalizeKeys(rawScores);
   const categories = normalizeKeys(rawCategories);
   return (
@@ -71,6 +72,7 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           score={getScore(categories["growth_earnings"] ?? null, scores, "growth_earnings")}
           fallback={categories["growth_earnings"] ?? null}
           isLive={isLive}
+          transcriptAnalysis={transcriptAnalysis ?? null}
         />
         <TechnicalMarket
           financials={financials}
@@ -87,6 +89,7 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           score={getScore(categories["business_quality"] ?? null, scores, "business_quality")}
           fallback={categories["business_quality"] ?? null}
           isLive={isLive}
+          transcriptAnalysis={transcriptAnalysis ?? null}
         />
         <MacroRegime
           financials={financials}
@@ -109,6 +112,7 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
             score={getScore(categories["management_governance"] ?? null, scores, "management_governance")}
             fallback={categories["management_governance"] ?? null}
             isLive={isLive}
+            transcriptAnalysis={transcriptAnalysis ?? null}
           />
           <SentimentNarrative
             structured={getStructured(categories["sentiment_narrative"] ?? null)}

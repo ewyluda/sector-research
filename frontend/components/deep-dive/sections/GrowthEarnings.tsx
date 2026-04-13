@@ -1,8 +1,9 @@
-import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
+import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { GroupedBarChart } from "../charts/GroupedBarChart";
 import { TrendLineChart } from "../charts/TrendLineChart";
 import { ChartSkeleton } from "../skeleton/ChartSkeleton";
+import { TranscriptInsights } from "../panels/TranscriptInsights";
 
 interface GrowthEarningsProps {
   financials: CuratedFinancials | null;
@@ -10,9 +11,12 @@ interface GrowthEarningsProps {
   score: number | null;
   fallback?: CategoryOutput | null;
   isLive?: boolean;
+  transcriptAnalysis: TranscriptAnalysis | null;
 }
 
-export function GrowthEarnings({ financials, structured, score, fallback, isLive }: GrowthEarningsProps) {
+const GE_PASSES = ["pass1_claims", "pass4_validation", "pass6_bom"];
+
+export function GrowthEarnings({ financials, structured, score, fallback, isLive, transcriptAnalysis }: GrowthEarningsProps) {
   return (
     <DataRichSection id="growth_earnings" label="Growth & Earnings" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -59,6 +63,11 @@ export function GrowthEarnings({ financials, structured, score, fallback, isLive
               </tbody>
             </table>
           </div>
+          {transcriptAnalysis ? (
+            <div>
+              <TranscriptInsights analysis={transcriptAnalysis} passes={GE_PASSES} />
+            </div>
+          ) : null}
         </>
       ) : isLive ? (
         <>

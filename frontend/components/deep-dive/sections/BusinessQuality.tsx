@@ -1,6 +1,7 @@
-import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
+import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis } from "@/lib/api";
 import { MixedSection } from "./MixedSection";
 import { TrendLineChart } from "../charts/TrendLineChart";
+import { TranscriptInsights } from "../panels/TranscriptInsights";
 
 interface BusinessQualityProps {
   financials: CuratedFinancials | null;
@@ -8,9 +9,12 @@ interface BusinessQualityProps {
   score: number | null;
   fallback?: CategoryOutput | null;
   isLive?: boolean;
+  transcriptAnalysis: TranscriptAnalysis | null;
 }
 
-export function BusinessQuality({ financials, structured, score, fallback, isLive }: BusinessQualityProps) {
+const BQ_PASSES = ["pass3_qa_tensions", "pass5_consistency"];
+
+export function BusinessQuality({ financials, structured, score, fallback, isLive, transcriptAnalysis }: BusinessQualityProps) {
   return (
     <MixedSection id="business_quality" label="Business Quality" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -38,6 +42,9 @@ export function BusinessQuality({ financials, structured, score, fallback, isLiv
             />
           </div>
         </>
+      ) : null}
+      {transcriptAnalysis ? (
+        <TranscriptInsights analysis={transcriptAnalysis} passes={BQ_PASSES} />
       ) : null}
     </MixedSection>
   );

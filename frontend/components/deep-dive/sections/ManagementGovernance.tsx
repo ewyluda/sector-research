@@ -1,15 +1,23 @@
-import type { DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
-import { QualitativeCard } from "./QualitativeCard";
+import type { DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis } from "@/lib/api";
+import { MixedSection } from "./MixedSection";
+import { TranscriptInsights } from "../panels/TranscriptInsights";
 
 interface ManagementGovernanceProps {
   structured: DeepDiveCategoryStructured | null;
   score: number | null;
   fallback?: CategoryOutput | null;
+  transcriptAnalysis: TranscriptAnalysis | null;
   isLive?: boolean;
 }
 
-export function ManagementGovernance({ structured, score, fallback, isLive }: ManagementGovernanceProps) {
+const MGMT_PASSES = ["pass1_claims", "pass2_tiers", "pass3_qa_tensions", "pass4_validation", "pass5_consistency"];
+
+export function ManagementGovernance({ structured, score, fallback, transcriptAnalysis, isLive }: ManagementGovernanceProps) {
   return (
-    <QualitativeCard id="management_governance" label="Management & Governance" score={score} structured={structured} fallback={fallback} isLive={isLive} />
+    <MixedSection id="management_governance" label="Management & Governance" score={score} structured={structured} fallback={fallback} isLive={isLive}>
+      {transcriptAnalysis ? (
+        <TranscriptInsights analysis={transcriptAnalysis} passes={MGMT_PASSES} />
+      ) : null}
+    </MixedSection>
   );
 }
