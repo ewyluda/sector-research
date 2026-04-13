@@ -121,13 +121,30 @@ export interface RunSummary {
   id: string;
   ticker: string;
   theme_id: string;
+  theme_name: string | null;
   phase: string;
   status: PhaseStatus;
   loop_count: number;
   conviction_score: number | null;
   thesis_status: ThesisStatus | null;
+  gap_count: number;
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface DataGap {
+  gap_type: "hard_error" | "soft_gap";
+  category: string;
+  field: string | null;
+  description: string;
+  occurrences: number;
+  frequency: number;
+  example_tickers: string[];
+}
+
+export interface DataGapsResponse {
+  total_runs_scanned: number;
+  gaps: DataGap[];
 }
 
 // ── Phase-specific structured output (Quick Screen first) ─────────────────────
@@ -365,12 +382,21 @@ export const pipeline = {
 
   get: (runId: string) => apiFetch<RunDetail>(`/api/runs/${runId}`),
 
-  list: (opts?: { status?: string; theme_id?: string; limit?: number }) => {
+  list: (opts?: { status?: string; theme_id?: string; search?: string; limit?: number }) => {
     const params = new URLSearchParams();
     if (opts?.status)   params.set("status",   opts.status);
     if (opts?.theme_id) params.set("theme_id", opts.theme_id);
+    if (opts?.search)   params.set("search",   opts.search);
     if (opts?.limit)    params.set("limit",    String(opts.limit));
     return apiFetch<RunSummary[]>(`/api/runs?${params}`);
+  },
+
+  dataGaps: (opts?: { status?: string; theme_id?: string; ticker?: string }) => {
+    const params = new URLSearchParams();
+    if (opts?.status)   params.set("status",   opts.status);
+    if (opts?.theme_id) params.set("theme_id", opts.theme_id);
+    if (opts?.ticker)   params.set("ticker",   opts.ticker);
+    return apiFetch<DataGapsResponse>(`/api/runs/data-gaps?${params}`);
   },
 
   advance: (runId: string, action: AdvanceAction, feedback?: string) =>
