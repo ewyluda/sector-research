@@ -369,7 +369,11 @@ export default function LibraryPage() {
 
         {/* Filter bar */}
         <div className="mb-5">
-          <FilterBar active={filter} onChange={setFilter} total={runs.length} />
+          <FilterBar
+            active={filter}
+            onChange={setFilter}
+            total={filter === "data_gaps" ? (dataGaps?.gaps.length ?? 0) : runs.length}
+          />
         </div>
 
         {/* Content */}

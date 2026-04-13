@@ -21,7 +21,7 @@ from backend.app.db import get_db
 from backend.app.models.research_run import ResearchRun
 from backend.app.graph.state import ResearchState
 from backend.app.models.theme import Theme
-from backend.app.services.data_gaps import compute_data_gaps
+from backend.app.services.data_gaps import compute_data_gaps, aggregate_data_gaps
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["pipeline"])
@@ -43,11 +43,15 @@ class RunSummary(BaseModel):
     id: str
     ticker: str
     theme_id: str
+    theme_name: str | None = None
     phase: str
     status: str
     loop_count: int
     conviction_score: int | None = None
     thesis_status: str | None = None
+    gap_count: int = 0
+    created_at: str | None = None
+    updated_at: str | None = None
 
     class Config:
         from_attributes = True
@@ -142,7 +146,8 @@ async def list_runs(
     if ticker:
         query = query.where(func.lower(ResearchRun.ticker) == ticker.lower())
     elif search:
-        query = query.where(ResearchRun.ticker.ilike(f"%{search}%"))
+        escaped = search.replace("%", r"\%").replace("_", r"\_")
+        query = query.where(ResearchRun.ticker.ilike(f"%{escaped}%", escape="\\"))
 
     result = await db.execute(query)
     rows = result.all()
@@ -170,7 +175,6 @@ async def get_data_gaps(
         (run.ticker, run.state or {}) for run in result.scalars().all()
     ]
 
-    from backend.app.services.data_gaps import aggregate_data_gaps
     return aggregate_data_gaps(runs_list)
 
 
