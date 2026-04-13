@@ -410,6 +410,15 @@ export interface RunDetail extends RunSummary {
   failed_categories: string[];
 }
 
+export interface XSignalVelocity {
+  ratio: number | null;
+  count_7d: number | null;
+  count_30d_approx: number | null;
+  direction: "accelerating" | "stable" | "decelerating" | null;
+  is_stale: boolean;
+  computed_at: string | null;
+}
+
 export interface ReportResponse {
   run_id: string;
   ticker: string;
@@ -418,6 +427,7 @@ export interface ReportResponse {
   conviction_score: number;
   thesis_status: ThesisStatus;
   loop_count: number;
+  x_signal_velocity?: XSignalVelocity | null;
   phases: {
     quick_screen: CategoryOutput;
     deep_dive: { categories: Record<string, CategoryOutput>; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null };

@@ -251,6 +251,7 @@ export default function ReportPage() {
               }
               isLive={false}
               transcriptAnalysis={report.phases.deep_dive?.transcript_analysis ?? null}
+              xSignalVelocity={report.x_signal_velocity}
             />
           </SectionCard>
         )}

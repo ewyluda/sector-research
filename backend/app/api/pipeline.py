@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models.research_run import ResearchRun
+from backend.app.models.signal import Signal
 from backend.app.graph.state import ResearchState
 from backend.app.models.theme import Theme
 from backend.app.services.data_gaps import compute_data_gaps, aggregate_data_gaps
@@ -256,6 +257,27 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
         output = phase_outputs.get(key, {})
         return output.get("content", "") if isinstance(output, dict) else ""
 
+    # Fetch X signal velocity for this ticker+theme
+    x_signal_velocity = None
+    sig_result = await db.execute(
+        select(Signal).where(
+            Signal.ticker == run.ticker,
+            Signal.theme_id == run.theme_id,
+            Signal.signal_type == "velocity",
+        )
+    )
+    sig = sig_result.scalar_one_or_none()
+    if sig:
+        val = sig.value or {}
+        x_signal_velocity = {
+            "ratio": val.get("ratio"),
+            "count_7d": val.get("count_7d"),
+            "count_30d_approx": val.get("count_30d_approx"),
+            "direction": val.get("direction"),
+            "is_stale": sig.is_stale,
+            "computed_at": sig.computed_at.isoformat() if sig.computed_at else None,
+        }
+
     return {
         "run_id": run_id,
         "ticker": run.ticker,
@@ -264,6 +286,7 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
         "conviction_score": state.get("conviction_score", 0),
         "thesis_status": state.get("thesis_status", "PENDING"),
         "loop_count": run.loop_count,
+        "x_signal_velocity": x_signal_velocity,
         "phases": {
             "quick_screen": phase_outputs.get("quick_screen", {}),
             "deep_dive": {

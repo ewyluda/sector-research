@@ -1,4 +1,4 @@
-import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, TranscriptAnalysis } from "@/lib/api";
+import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, TranscriptAnalysis, XSignalVelocity } from "@/lib/api";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { OverviewBanner } from "./OverviewBanner";
 import { FinancialHealth } from "./sections/FinancialHealth";
@@ -10,6 +10,7 @@ import { RiskAssessment } from "./sections/RiskAssessment";
 import { ManagementGovernance } from "./sections/ManagementGovernance";
 import { SentimentNarrative } from "./sections/SentimentNarrative";
 import { FutureDurability } from "./sections/FutureDurability";
+import { CrossCategoryCorrelation } from "./sections/CrossCategoryCorrelation";
 
 export interface DeepDiveDashboardProps {
   financials: CuratedFinancials | null;
@@ -17,6 +18,7 @@ export interface DeepDiveDashboardProps {
   scores: Record<string, number>;
   isLive?: boolean;
   transcriptAnalysis?: TranscriptAnalysis | null;
+  xSignalVelocity?: XSignalVelocity | null;
 }
 
 /** Map display-name keys → snake_case keys used by sidebar, radar, score bar */
@@ -49,7 +51,7 @@ function getScore(cat: CategoryOutput | null, scores: Record<string, number>, ke
   return scores[key] ?? cat?.score ?? null;
 }
 
-export function DeepDiveDashboard({ financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis }: DeepDiveDashboardProps) {
+export function DeepDiveDashboard({ financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis, xSignalVelocity }: DeepDiveDashboardProps) {
   const scores = normalizeKeys(rawScores);
   const categories = normalizeKeys(rawCategories);
   return (
@@ -81,6 +83,9 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           fallback={categories["technical_market_structure"] ?? null}
           isLive={isLive}
         />
+
+        {/* Cross-Category Correlations */}
+        <CrossCategoryCorrelation financials={financials} isLive={isLive} />
 
         {/* Mixed */}
         <BusinessQuality
@@ -119,6 +124,7 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
             score={getScore(categories["sentiment_narrative"] ?? null, scores, "sentiment_narrative")}
             fallback={categories["sentiment_narrative"] ?? null}
             isLive={isLive}
+            xSignalVelocity={xSignalVelocity}
           />
         </div>
         <FutureDurability
