@@ -13,11 +13,14 @@ import type {
   PositionMonitorStructured,
   Citation,
   CategoryOutput,
+  CuratedFinancials,
+  DeepDiveCategoryStructured,
 } from "@/lib/api";
 import { QuickScreenCard } from "@/components/QuickScreenCard";
 import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
+import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -53,6 +56,7 @@ interface CategoryState {
   status: CatStatus;
   score: number | null;
   key_findings: string[];
+  structured: DeepDiveCategoryStructured | null;
 }
 
 // ── Phase Rail ────────────────────────────────────────────────────────────────
@@ -322,6 +326,7 @@ export default function PipelineRunnerPage() {
   const [tokens, setTokens] = useState<string[]>([]);
   const [categories, setCategories] = useState<Record<string, CategoryState>>({});
   const [inDeepDive, setInDeepDive] = useState(false);
+  const [curatedFinancials, setCuratedFinancials] = useState<CuratedFinancials | null>(null);
   const [advancing, setAdvancing] = useState(false);
   const [flags, setFlags] = useState<string[]>([]);
   const [convictionScore, setConvictionScore] = useState<number | null>(null);
@@ -428,6 +433,7 @@ export default function PipelineRunnerPage() {
       case "deep_dive_start":
         setInDeepDive(true);
         setCategories({});
+        setCuratedFinancials(event.curated_financials ?? null);
         break;
 
       case "category_complete":
@@ -437,6 +443,7 @@ export default function PipelineRunnerPage() {
             status: "pass",
             score: event.score,
             key_findings: event.key_findings,
+            structured: event.structured ?? null,
           },
         }));
         break;
@@ -444,7 +451,7 @@ export default function PipelineRunnerPage() {
       case "category_error":
         setCategories((prev) => ({
           ...prev,
-          [event.category]: { status: "fail", score: null, key_findings: [] },
+          [event.category]: { status: "fail", score: null, key_findings: [], structured: null },
         }));
         break;
 
@@ -624,14 +631,29 @@ export default function PipelineRunnerPage() {
             </div>
           )}
 
-          {/* Deep dive category grid */}
+          {/* Deep dive dashboard */}
           {inDeepDive ? (
-            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-              <p className="text-xs font-medium text-[var(--text-faint)] uppercase tracking-wider mb-3">
-                Deep Dive — 9 Categories
-              </p>
-              <DeepDiveCategoryGrid categories={categories} />
-            </div>
+            <DeepDiveDashboard
+              financials={curatedFinancials}
+              categories={Object.fromEntries(
+                Object.entries(categories).map(([k, v]) => [
+                  k,
+                  v.status === "fail" ? null : {
+                    score: v.score ?? 0,
+                    content: "",
+                    key_findings: v.key_findings,
+                    citations: [],
+                    structured: v.structured ?? undefined,
+                  },
+                ])
+              )}
+              scores={Object.fromEntries(
+                Object.entries(categories)
+                  .filter(([, v]) => v.score != null)
+                  .map(([k, v]) => [k, v.score!])
+              )}
+              isLive={true}
+            />
           ) : currentPhase === "quick_screen" && quickScreenStructured ? (
             <QuickScreenCard
               structured={quickScreenStructured}

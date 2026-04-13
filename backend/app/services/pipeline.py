@@ -217,13 +217,16 @@ class PipelineService:
             state.loop_context.get("categories", [])
             if state.loop_context else None
         )
+        state = await nodes.node_deep_dive(state, self._fmp)
+
+        # Emit start event with curated financials (available after node runs)
         self._emit(run_id, {
             "type": "deep_dive_start",
             "categories": categories or ["all 9 categories"],
             "loop_count": state.loop_count,
             "loop_context": state.loop_context,
+            "curated_financials": state.curated_financials,
         })
-        state = await nodes.node_deep_dive(state, self._fmp)
 
         # Emit per-category results
         for cat, result in state.get_deep_dive_results().items():

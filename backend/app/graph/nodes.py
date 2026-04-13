@@ -255,6 +255,140 @@ async def _run_one_category(
         return CategoryError(category=category, reason=str(e), traceback=traceback.format_exc())
 
 
+def _build_curated_financials(
+    ticker: str,
+    income: list[dict],
+    balance: list[dict],
+    cashflow: list[dict],
+    profile: dict,
+    dcf: dict | None,
+    estimates: list[dict],
+) -> "CuratedFinancials":
+    """Extract a curated subset of FMP data for frontend dashboard charts."""
+    from backend.app.graph.state import CuratedFinancials, QuarterlyMetric, EstimateMetric
+
+    def safe_div(a: float, b: float) -> float | None:
+        return a / b if b else None
+
+    def pct(a: float, b: float) -> float | None:
+        return ((a - b) / abs(b)) * 100 if b else None
+
+    def make_quarterly(statements: list[dict], field_name: str) -> list[QuarterlyMetric]:
+        """Build QuarterlyMetric list from a series of FMP statements."""
+        metrics = []
+        for i, stmt in enumerate(statements):
+            val = stmt.get(field_name, 0) or 0
+            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            prev_val = statements[i + 1].get(field_name, 0) if i + 1 < len(statements) else None
+            yoy = pct(val, prev_val) if prev_val else None
+            metrics.append(QuarterlyMetric(period=period, value=float(val), yoy_growth=yoy))
+        return metrics
+
+    def make_margin(statements: list[dict], numerator: str, denominator: str = "revenue") -> list[QuarterlyMetric]:
+        """Build margin % metrics."""
+        metrics = []
+        for stmt in statements:
+            rev = stmt.get(denominator, 0) or 0
+            num = stmt.get(numerator, 0) or 0
+            margin = (num / rev * 100) if rev else 0
+            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            metrics.append(QuarterlyMetric(period=period, value=round(margin, 2), yoy_growth=None))
+        return metrics
+
+    # Profile data
+    prof = profile or {}
+    company_name = prof.get("companyName", ticker)
+    sector = prof.get("sector", "")
+    industry = prof.get("industry", "")
+    market_cap = float(prof.get("mktCap", 0) or prof.get("marketCap", 0) or 0)
+    current_price = float(prof.get("price", 0) or 0)
+    beta = prof.get("beta")
+    beta = float(beta) if beta is not None else None
+    vol_avg = prof.get("volAvg")
+    vol_avg = float(vol_avg) if vol_avg is not None else None
+    range_str = prof.get("range", "")
+    fifty_two_low, fifty_two_high = None, None
+    if range_str and "-" in range_str:
+        parts = range_str.split("-")
+        try:
+            fifty_two_low = float(parts[0].strip())
+            fifty_two_high = float(parts[1].strip())
+        except (ValueError, IndexError):
+            pass
+
+    # DCF
+    dcf_value = None
+    dcf_gap = None
+    if dcf and isinstance(dcf, dict):
+        dcf_value = dcf.get("dcf")
+        dcf_value = float(dcf_value) if dcf_value is not None else None
+        stock_price = dcf.get("Stock Price") or dcf.get("stockPrice") or current_price
+        if dcf_value and stock_price:
+            dcf_gap = round((dcf_value - float(stock_price)) / float(stock_price) * 100, 2)
+
+    # Balance sheet ratios
+    d_e = 0.0
+    if balance:
+        b0 = balance[0]
+        debt = float(b0.get("totalDebt", 0) or 0)
+        equity = float(b0.get("totalEquity", 0) or b0.get("totalStockholdersEquity", 0) or 0)
+        d_e = round(debt / equity, 2) if equity else 0.0
+
+    def make_current_ratio(bs: list[dict]) -> list[QuarterlyMetric]:
+        metrics = []
+        for stmt in bs:
+            ca = float(stmt.get("totalCurrentAssets", 0) or 0)
+            cl = float(stmt.get("totalCurrentLiabilities", 0) or 0)
+            cr = round(ca / cl, 2) if cl else 0
+            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            metrics.append(QuarterlyMetric(period=period, value=cr, yoy_growth=None))
+        return metrics
+
+    # Estimates
+    fwd_rev = []
+    fwd_eps = []
+    for est in (estimates or []):
+        period = est.get("date", "")[:7]
+        rev_est = est.get("estimatedRevenueAvg") or est.get("revenueAvg")
+        eps_est = est.get("estimatedEpsAvg") or est.get("epsAvg")
+        rev_act = est.get("actualRevenue")
+        eps_act = est.get("actualEps")
+        if rev_est is not None:
+            fwd_rev.append(EstimateMetric(period=period, estimate=float(rev_est), actual=float(rev_act) if rev_act is not None else None))
+        if eps_est is not None:
+            fwd_eps.append(EstimateMetric(period=period, estimate=float(eps_est), actual=float(eps_act) if eps_act is not None else None))
+
+    return CuratedFinancials(
+        ticker=ticker,
+        company_name=company_name,
+        sector=sector,
+        industry=industry,
+        market_cap=market_cap,
+        current_price=current_price,
+        quarterly_revenue=make_quarterly(income, "revenue"),
+        quarterly_eps=make_quarterly(income, "eps"),
+        quarterly_gross_margin=make_margin(income, "grossProfit"),
+        quarterly_operating_margin=make_margin(income, "operatingIncome"),
+        quarterly_net_margin=make_margin(income, "netIncome"),
+        quarterly_cash=make_quarterly(balance, "cashAndCashEquivalents"),
+        quarterly_total_debt=make_quarterly(balance, "totalDebt"),
+        quarterly_shareholders_equity=make_quarterly(balance, "totalEquity"),
+        quarterly_current_ratio=make_current_ratio(balance),
+        debt_to_equity=d_e,
+        quarterly_operating_cf=make_quarterly(cashflow, "operatingCashFlow"),
+        quarterly_free_cf=make_quarterly(cashflow, "freeCashFlow"),
+        quarterly_capex=make_quarterly(cashflow, "capitalExpenditure"),
+        dcf_intrinsic_value=dcf_value,
+        dcf_gap_percent=dcf_gap,
+        forward_revenue_estimates=fwd_rev,
+        forward_eps_estimates=fwd_eps,
+        beta=beta,
+        fifty_two_week_high=fifty_two_high,
+        fifty_two_week_low=fifty_two_low,
+        volume_avg=vol_avg,
+    )
+
+
 async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
     """Phase 3: run all 9 categories in parallel. Partial success is OK."""
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
@@ -271,12 +405,12 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
     try:
         (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _) = (
             await asyncio.gather(
-                fmp.get_income_statement(state.ticker, limit=4),
-                fmp.get_balance_sheet(state.ticker, limit=4),
-                fmp.get_cash_flow(state.ticker, limit=4),
+                fmp.get_income_statement(state.ticker, period="quarter", limit=4),
+                fmp.get_balance_sheet(state.ticker, period="quarter", limit=4),
+                fmp.get_cash_flow(state.ticker, period="quarter", limit=4),
                 fmp.get_company_profile(state.ticker),
                 fmp.get_dcf(state.ticker),
-                fmp.get_analyst_estimates(state.ticker, limit=4),
+                fmp.get_analyst_estimates(state.ticker, period="quarter", limit=4),
             )
         )
         data_text = _fmt_fundamentals(
@@ -289,9 +423,23 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
         if dcf and isinstance(dcf, dict):
             data_text += f"\n\nDCF Value: ${dcf.get('dcf', 'N/A')} | Stock Price: ${dcf.get('Stock Price', 'N/A')}"
 
+        # Build curated financials for frontend dashboard
+        prof = profile[0] if isinstance(profile, list) and profile else profile or {}
+        curated = _build_curated_financials(
+            ticker=state.ticker,
+            income=income if isinstance(income, list) else [],
+            balance=balance if isinstance(balance, list) else [],
+            cashflow=cashflow if isinstance(cashflow, list) else [],
+            profile=prof,
+            dcf=dcf if isinstance(dcf, dict) else None,
+            estimates=estimates if isinstance(estimates, list) else [],
+        )
+        state.curated_financials = curated.to_dict()
+
     except Exception as e:
         logger.warning("[%s] Data fetch failed, proceeding with partial data: %s", state.ticker, e)
         data_text = f"Note: data fetch partially failed ({e}). Analyze based on available information."
+        state.curated_financials = None
 
     loop_ctx_str = ""
     if state.loop_context:

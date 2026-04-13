@@ -226,6 +226,50 @@ export interface DeepDiveCategoryStructured {
   data_gaps: string[];
 }
 
+// ── Curated financial data for dashboard charts ───────────────────────────────
+
+export interface QuarterlyMetric {
+  period: string;
+  value: number;
+  yoy_growth: number | null;
+}
+
+export interface EstimateMetric {
+  period: string;
+  estimate: number;
+  actual: number | null;
+}
+
+export interface CuratedFinancials {
+  ticker: string;
+  company_name: string;
+  sector: string;
+  industry: string;
+  market_cap: number;
+  current_price: number;
+  quarterly_revenue: QuarterlyMetric[];
+  quarterly_eps: QuarterlyMetric[];
+  quarterly_gross_margin: QuarterlyMetric[];
+  quarterly_operating_margin: QuarterlyMetric[];
+  quarterly_net_margin: QuarterlyMetric[];
+  quarterly_cash: QuarterlyMetric[];
+  quarterly_total_debt: QuarterlyMetric[];
+  quarterly_shareholders_equity: QuarterlyMetric[];
+  quarterly_current_ratio: QuarterlyMetric[];
+  debt_to_equity: number;
+  quarterly_operating_cf: QuarterlyMetric[];
+  quarterly_free_cf: QuarterlyMetric[];
+  quarterly_capex: QuarterlyMetric[];
+  dcf_intrinsic_value: number | null;
+  dcf_gap_percent: number | null;
+  forward_revenue_estimates: EstimateMetric[];
+  forward_eps_estimates: EstimateMetric[];
+  beta: number | null;
+  fifty_two_week_high: number | null;
+  fifty_two_week_low: number | null;
+  volume_avg: number | null;
+}
+
 export interface CategoryOutput {
   score: number;
   content: string;
@@ -259,7 +303,7 @@ export interface ReportResponse {
   loop_count: number;
   phases: {
     quick_screen: CategoryOutput;
-    deep_dive: Record<string, CategoryOutput>;
+    deep_dive: { categories: Record<string, CategoryOutput>; curated_financials: CuratedFinancials | null };
     thesis: CategoryOutput & { structured?: ThesisStructured };
     risk: CategoryOutput & { structured?: RiskStressTestStructured };
     position: { content: string; citations: Citation[]; structured?: PositionMonitorStructured; parse_error?: string | null };
@@ -285,7 +329,7 @@ export interface ReportResponse {
 
 export type SSEEvent =
   | { type: "phase_start"; phase: string; label: string }
-  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown }
+  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown; curated_financials: CuratedFinancials | null }
   | { type: "category_complete"; category: string; score: number; key_findings: string[]; structured?: DeepDiveCategoryStructured | null }
   | { type: "category_error"; category: string; reason: string }
   | { type: "token"; text: string }
