@@ -866,7 +866,10 @@ async def run_transcript_analysis(
     capex_keywords = ["billion", "capex", "capital expenditure", "data center", "infrastructure", "invest"]
     has_capex = any(kw in transcript_text.lower() for kw in capex_keywords)
     if has_capex:
-        pass6 = await complete(TRANSCRIPT_PASS6_SYSTEM, transcript_text[:4000], model=SONNET, max_tokens=1200)
+        try:
+            pass6 = await complete(TRANSCRIPT_PASS6_SYSTEM, transcript_text[:4000], model=SONNET, max_tokens=1200)
+        except Exception as exc:
+            pass6 = exc
         results["pass6_bom"] = _parse_pass(pass6)
     else:
         results["pass6_bom"] = None
