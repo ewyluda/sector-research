@@ -10,6 +10,8 @@ import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveCategoryCard } from "@/components/DeepDiveCategoryCard";
+import type { CuratedFinancials } from "@/lib/api";
+import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -237,56 +239,18 @@ export default function ReportPage() {
         {/* Deep Dive */}
         {ddCategories.length > 0 && (
           <SectionCard title="Phase 3 · Deep Dive">
-            <div className="space-y-5">
-              {ddCategories.map(([key, cat]) => (
-                <div key={key} className="border-b border-[var(--color-border)] last:border-0 pb-5 last:pb-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-                      {CATEGORY_LABELS[key] ?? key}
-                    </h3>
-                    {cat.score != null && (
-                      <span
-                        className={`text-sm font-mono font-semibold px-2 py-0.5 rounded ${
-                          cat.__type__ === "CategoryError"
-                            ? "bg-red-500/10 text-red-400"
-                            : cat.score >= 70
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : cat.score >= 50
-                            ? "bg-amber-500/10 text-amber-400"
-                            : "bg-red-500/10 text-red-400"
-                        }`}
-                      >
-                        {cat.__type__ === "CategoryError" ? "ERR" : cat.score}
-                      </span>
-                    )}
-                  </div>
-                  {cat.__type__ === "CategoryError" ? (
-                    <p className="text-sm text-red-400">{cat.reason}</p>
-                  ) : (cat.structured as DeepDiveCategoryStructured | undefined) ? (
-                    <DeepDiveCategoryCard
-                      structured={cat.structured as DeepDiveCategoryStructured}
-                      categoryLabel={CATEGORY_LABELS[key] ?? key}
-                    />
-                  ) : (
-                    <>
-                      <p className="text-sm text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-                        {cat.content}
-                      </p>
-                      {cat.key_findings?.length > 0 && (
-                        <ul className="mt-2 space-y-0.5">
-                          {cat.key_findings.map((f, i) => (
-                            <li key={i} className="text-xs text-[var(--color-text-muted)]">
-                              · {f}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      <CitationList citations={cat.citations ?? []} />
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+            <DeepDiveDashboard
+              financials={report.phases.deep_dive?.curated_financials ?? null}
+              categories={report.phases.deep_dive?.categories ?? {}}
+              scores={
+                Object.fromEntries(
+                  Object.entries(report.phases.deep_dive?.categories ?? {})
+                    .filter(([, v]) => v.score != null && v.__type__ !== "CategoryError")
+                    .map(([k, v]) => [k, v.score])
+                )
+              }
+              isLive={false}
+            />
           </SectionCard>
         )}
 
