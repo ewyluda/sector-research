@@ -6,9 +6,7 @@ Items identified during development, prioritized for future sessions.
 
 ### ~~Earnings Transcripts / Analyst Q&A Integration~~ (moved to Completed)
 
-### Citation Formatting Improvements
-**Context:** Evidence text in the findings table was given basic italic + color styling, but the user wants richer formatting for citation sources throughout the dashboard — different color/shade and italics to visually distinguish sourced data from analysis.
-**Status:** Partially done (FindingsTable evidence styled), needs broader application
+### ~~Citation Formatting Improvements~~ (moved to Completed)
 
 ## Medium Priority
 
@@ -42,3 +40,4 @@ Items identified during development, prioritized for future sessions.
 - [x] Quarterly FMP data resolution (2026-04-12)
 - [x] Curated financials backend extraction pipeline (2026-04-12)
 - [x] Earnings transcript / analyst Q&A integration — 6-pass analysis (2026-04-12)
+- [x] Citation formatting — teal sidebar style + CSS variable fix (2026-04-12)
