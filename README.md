@@ -171,5 +171,4 @@ No auth system — personal local tool.
 | `backend/app/graph/nodes.py` | Phase node implementations |
 | `backend/app/graph/prompts.py` | All LLM prompts |
 | `frontend/lib/api.ts` | Typed API client + all TypeScript interfaces |
-| `frontend/components/deep-dive/` | 28-component financial dashboard module (charts, sections, panels, skeletons) |
-| `BACKLOG.md` | Prioritized backlog of pending features and improvements |
+| `frontend/components/deep-dive/` | 30-component financial dashboard module (charts, sections, panels, skeletons) |
