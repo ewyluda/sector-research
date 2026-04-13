@@ -223,8 +223,11 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
         "phases": {
             "quick_screen": phase_outputs.get("quick_screen", {}),
             "deep_dive": {
-                k: v for k, v in phase_outputs.items()
-                if k not in ("quick_screen", "thesis", "risk", "position")
+                "categories": {
+                    k: v for k, v in phase_outputs.items()
+                    if k not in ("quick_screen", "thesis", "risk", "position")
+                },
+                "curated_financials": state.get("curated_financials"),
             },
             "thesis": phase_outputs.get("thesis", {}),
             "risk": phase_outputs.get("risk", {}),
