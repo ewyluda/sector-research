@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     fmp_api_key: str
     x_bearer_token: str
     anthropic_api_key: str
+    fred_api_key: str = ""  # Optional — macro section skipped if empty
 
     # ── Database ──────────────────────────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/sector_research"

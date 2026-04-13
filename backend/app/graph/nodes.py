@@ -21,6 +21,7 @@ import traceback
 from typing import Any
 
 from backend.app.clients.fmp import FMPClient
+from backend.app.clients.fred import FREDClient
 from backend.app.graph.llm import complete, SONNET, HAIKU
 from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput
 from backend.app.graph.output_parser import parse_structured_output
@@ -46,6 +47,18 @@ TRANSCRIPT_ROUTING: dict[str, list[str]] = {
     "Management & Governance": ["pass1_claims", "pass2_tiers", "pass3_qa_tensions", "pass4_validation", "pass5_consistency"],
     "Business Quality": ["pass3_qa_tensions", "pass5_consistency"],
     "Growth & Earnings": ["pass1_claims", "pass4_validation", "pass6_bom"],
+    "Sentiment & Narrative": ["pass3_qa_tensions", "pass5_consistency"],
+    "Risk Assessment": ["pass1_claims", "pass4_validation"],
+    "Future Durability": ["pass1_claims", "pass5_consistency"],
+}
+
+_ALL_MACRO = ["fed_funds_rate", "treasury_10y", "treasury_2y", "yield_curve_spread", "cpi", "unemployment", "gdp_growth", "m2_money_supply", "nonfarm_payrolls"]
+
+MACRO_ROUTING: dict[str, list[str]] = {
+    "Macro & Regime": _ALL_MACRO,
+    "Risk Assessment": _ALL_MACRO,
+    "Future Durability": ["gdp_growth", "cpi", "m2_money_supply", "fed_funds_rate", "treasury_10y"],
+    "Financial Health": ["fed_funds_rate", "treasury_10y", "yield_curve_spread"],
 }
 
 
@@ -80,9 +93,37 @@ def _extract_key_findings(text: str) -> list[str]:
     return findings
 
 
-def _fmt_fundamentals(ticker: str, income: list, balance: list, cashflow: list, profile: dict) -> str:
-    """Format raw FMP data into a readable block for LLM prompts."""
-    parts = []
+def _fmt_fundamentals(
+    ticker: str,
+    income: list,
+    balance: list,
+    cashflow: list,
+    profile: dict,
+    *,
+    dcf: dict | None = None,
+    estimates: list | None = None,
+    key_metrics: dict | None = None,
+    fin_growth: list | None = None,
+) -> str:
+    """Format raw FMP data into a comprehensive block for LLM prompts.
+
+    Includes multi-quarter trends, valuation ratios, return metrics,
+    debt structure, forward estimates, and earnings surprises.
+    """
+    def _fv(val: Any, divisor: float = 1e9, suffix: str = "B") -> str:
+        """Format a financial value."""
+        if val is None or val == 0:
+            return "N/A"
+        return f"${val / divisor:.2f}{suffix}"
+
+    def _pct(a: float | None, b: float | None) -> str:
+        if a is None or b is None or b == 0:
+            return "N/A"
+        return f"{(a - b) / abs(b) * 100:+.1f}%"
+
+    parts: list[str] = []
+
+    # ── Company profile ──────────────────────────────────────────────────
     if profile and isinstance(profile, dict):
         parts.append(f"Company: {profile.get('companyName', ticker)}")
         parts.append(f"Sector: {profile.get('sector')} | Industry: {profile.get('industry')}")
@@ -90,31 +131,141 @@ def _fmt_fundamentals(ticker: str, income: list, balance: list, cashflow: list, 
         parts.append(f"Beta: {profile.get('beta', 'N/A')}")
         parts.append(f"Description: {str(profile.get('description', ''))[:300]}")
 
+    # ── Valuation ratios (from key_metrics_ttm) ──────────────────────────
+    if key_metrics and isinstance(key_metrics, dict):
+        parts.append("\nValuation Ratios (TTM):")
+        for label, field in [
+            ("P/E", "peRatioTTM"),
+            ("EV/EBITDA", "enterpriseValueOverEBITDATTM"),
+            ("P/B", "priceToBookRatioTTM"),
+            ("P/FCF", "priceToFreeCashFlowsRatioTTM"),
+            ("P/S", "priceToSalesRatioTTM"),
+            ("PEG", "pegRatioTTM"),
+            ("Dividend Yield", "dividendYieldTTM"),
+        ]:
+            v = key_metrics.get(field)
+            if v is not None:
+                if "Yield" in label:
+                    parts.append(f"  {label}: {float(v)*100:.2f}%")
+                else:
+                    parts.append(f"  {label}: {float(v):.2f}")
+
+        parts.append("\nReturn Metrics (TTM):")
+        for label, field in [
+            ("ROE", "roeTTM"),
+            ("ROIC", "roicTTM"),
+            ("ROA", "returnOnTangibleAssetsTTM"),
+        ]:
+            v = key_metrics.get(field)
+            if v is not None:
+                parts.append(f"  {label}: {float(v)*100:.1f}%")
+
+        ic = key_metrics.get("interestCoverageTTM")
+        if ic is not None:
+            parts.append(f"  Interest Coverage: {float(ic):.1f}x")
+
+    # ── Quarterly income trend (up to 8Q) ────────────────────────────────
     if income:
-        i = income[0]
-        prev_rev = income[1].get("revenue", 0) if len(income) > 1 else 0
-        curr_rev = i.get("revenue", 0)
-        growth = (curr_rev - prev_rev) / prev_rev if prev_rev else 0
-        parts.append(f"\nLatest Financials ({i.get('date', '')}):")
-        parts.append(f"  Revenue: ${curr_rev/1e9:.2f}B (YoY: {growth*100:.1f}%)")
-        parts.append(f"  Gross Profit: ${i.get('grossProfit', 0)/1e9:.2f}B")
-        parts.append(f"  Operating Income: ${i.get('operatingIncome', 0)/1e9:.2f}B")
-        parts.append(f"  Net Income: ${i.get('netIncome', 0)/1e9:.2f}B")
-        parts.append(f"  EPS: {i.get('eps', 'N/A')}")
+        parts.append(f"\nQuarterly Income Statement ({len(income)} quarters, newest first):")
+        for i, stmt in enumerate(income[:8]):
+            rev = stmt.get("revenue", 0) or 0
+            gp = stmt.get("grossProfit", 0) or 0
+            oi = stmt.get("operatingIncome", 0) or 0
+            ni = stmt.get("netIncome", 0) or 0
+            eps = stmt.get("eps", "N/A")
+            gm = f"{gp/rev*100:.1f}%" if rev else "N/A"
+            om = f"{oi/rev*100:.1f}%" if rev else "N/A"
+            nm = f"{ni/rev*100:.1f}%" if rev else "N/A"
+            # YoY growth (compare to same quarter one year ago = i+4)
+            yoy = ""
+            if i + 4 < len(income):
+                prev_rev = income[i + 4].get("revenue", 0) or 0
+                if prev_rev:
+                    yoy = f" (YoY: {(rev - prev_rev)/abs(prev_rev)*100:+.1f}%)"
+            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            parts.append(f"  {period}: Rev {_fv(rev)} {yoy} | GM {gm} | OM {om} | NM {nm} | EPS {eps}")
 
+    # ── Balance sheet with debt structure ────────────────────────────────
     if balance:
-        b = balance[0]
-        parts.append(f"\nBalance Sheet ({b.get('date', '')}):")
-        parts.append(f"  Cash: ${b.get('cashAndCashEquivalents', 0)/1e9:.2f}B")
-        parts.append(f"  Total Debt: ${b.get('totalDebt', 0)/1e9:.2f}B")
-        parts.append(f"  Total Equity: ${b.get('totalEquity', 0)/1e9:.2f}B")
+        parts.append(f"\nBalance Sheet ({len(balance)} quarters, newest first):")
+        for stmt in balance[:4]:
+            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            cash = stmt.get("cashAndCashEquivalents", 0) or 0
+            st_debt = stmt.get("shortTermDebt", 0) or 0
+            lt_debt = stmt.get("longTermDebt", 0) or 0
+            total_debt = stmt.get("totalDebt", 0) or 0
+            equity = stmt.get("totalEquity", 0) or stmt.get("totalStockholdersEquity", 0) or 0
+            ca = stmt.get("totalCurrentAssets", 0) or 0
+            cl = stmt.get("totalCurrentLiabilities", 0) or 0
+            cr = f"{ca/cl:.2f}" if cl else "N/A"
+            de = f"{total_debt/equity:.2f}" if equity else "N/A"
+            parts.append(f"  {period}: Cash {_fv(cash)} | ST Debt {_fv(st_debt)} | LT Debt {_fv(lt_debt)} | D/E {de} | Current Ratio {cr}")
 
+        # Interest expense from latest income statement
+        if income:
+            ie = income[0].get("interestExpense", 0) or 0
+            if ie:
+                parts.append(f"  Latest Interest Expense: {_fv(abs(ie))}")
+
+    # ── Cash flow trend ──────────────────────────────────────────────────
     if cashflow:
-        cf = cashflow[0]
-        parts.append(f"\nCash Flow ({cf.get('date', '')}):")
-        parts.append(f"  Operating CF: ${cf.get('operatingCashFlow', 0)/1e9:.2f}B")
-        parts.append(f"  Free Cash Flow: ${cf.get('freeCashFlow', 0)/1e9:.2f}B")
-        parts.append(f"  CapEx: ${cf.get('capitalExpenditure', 0)/1e9:.2f}B")
+        parts.append(f"\nCash Flow ({len(cashflow)} quarters, newest first):")
+        for stmt in cashflow[:4]:
+            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            ocf = stmt.get("operatingCashFlow", 0) or 0
+            fcf = stmt.get("freeCashFlow", 0) or 0
+            capex = stmt.get("capitalExpenditure", 0) or 0
+            sbc = stmt.get("stockBasedCompensation", 0) or 0
+            parts.append(f"  {period}: OCF {_fv(ocf)} | FCF {_fv(fcf)} | CapEx {_fv(capex)} | SBC {_fv(sbc)}")
+
+    # ── DCF valuation ────────────────────────────────────────────────────
+    if dcf and isinstance(dcf, dict):
+        dcf_val = dcf.get("dcf")
+        stock_price = dcf.get("Stock Price") or dcf.get("stockPrice")
+        if dcf_val:
+            gap = ""
+            if stock_price and float(stock_price) > 0:
+                gap_pct = (float(dcf_val) - float(stock_price)) / float(stock_price) * 100
+                gap = f" ({gap_pct:+.1f}% vs current)"
+            parts.append(f"\nDCF Intrinsic Value: ${dcf_val}{gap}")
+
+    # ── Forward estimates + earnings surprise ────────────────────────────
+    if estimates:
+        parts.append(f"\nAnalyst Estimates ({len(estimates)} quarters):")
+        for est in estimates[:4]:
+            period = est.get("date", "")[:7]
+            rev_est = est.get("estimatedRevenueAvg") or est.get("revenueAvg")
+            eps_est = est.get("estimatedEpsAvg") or est.get("epsAvg")
+            rev_act = est.get("actualRevenue")
+            eps_act = est.get("actualEps")
+            line = f"  {period}:"
+            if rev_est is not None:
+                line += f" Rev Est {_fv(rev_est)}"
+                if rev_act is not None:
+                    surprise = (float(rev_act) - float(rev_est)) / abs(float(rev_est)) * 100 if float(rev_est) else 0
+                    line += f" → Actual {_fv(rev_act)} ({surprise:+.1f}% surprise)"
+            if eps_est is not None:
+                line += f" | EPS Est ${float(eps_est):.2f}"
+                if eps_act is not None:
+                    line += f" → Actual ${float(eps_act):.2f} ({float(eps_act) - float(eps_est):+.2f})"
+            parts.append(line)
+
+    # ── Historical growth rates ──────────────────────────────────────────
+    if fin_growth:
+        parts.append(f"\nGrowth Rates ({len(fin_growth)} quarters):")
+        for g in fin_growth[:4]:
+            period = g.get("date", "")[:7]
+            rg = g.get("revenueGrowth")
+            eg = g.get("epsgrowth") or g.get("epsGrowth")
+            fcfg = g.get("freeCashFlowGrowth")
+            line = f"  {period}:"
+            if rg is not None:
+                line += f" Rev Growth {float(rg)*100:+.1f}%"
+            if eg is not None:
+                line += f" | EPS Growth {float(eg)*100:+.1f}%"
+            if fcfg is not None:
+                line += f" | FCF Growth {float(fcfg)*100:+.1f}%"
+            parts.append(line)
 
     return "\n".join(parts)
 
@@ -216,6 +367,7 @@ async def _run_one_category(
     data: str,
     loop_context: str,
     transcript_context: str = "",
+    macro_context: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -228,6 +380,7 @@ async def _run_one_category(
                     category=category,
                     data=data,
                     transcript_data=transcript_context,
+                    macro_data=macro_context,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -272,6 +425,7 @@ def _build_curated_financials(
     profile: dict,
     dcf: dict | None,
     estimates: list[dict],
+    key_metrics: dict | None = None,
 ) -> "CuratedFinancials":
     """Extract a curated subset of FMP data for frontend dashboard charts."""
     from backend.app.graph.state import CuratedFinancials, QuarterlyMetric, EstimateMetric
@@ -367,6 +521,15 @@ def _build_curated_financials(
         if eps_est is not None:
             fwd_eps.append(EstimateMetric(period=period, estimate=float(eps_est), actual=float(eps_act) if eps_act is not None else None))
 
+    # Key metrics (valuation + returns)
+    def _safe_float(d: dict | None, key: str) -> float | None:
+        if not d:
+            return None
+        v = d.get(key)
+        return float(v) if v is not None else None
+
+    km = key_metrics or {}
+
     return CuratedFinancials(
         ticker=ticker,
         company_name=company_name,
@@ -391,6 +554,17 @@ def _build_curated_financials(
         dcf_gap_percent=dcf_gap,
         forward_revenue_estimates=fwd_rev,
         forward_eps_estimates=fwd_eps,
+        pe_ratio=_safe_float(km, "peRatioTTM"),
+        ev_to_ebitda=_safe_float(km, "enterpriseValueOverEBITDATTM"),
+        price_to_book=_safe_float(km, "priceToBookRatioTTM"),
+        price_to_fcf=_safe_float(km, "priceToFreeCashFlowsRatioTTM"),
+        price_to_sales=_safe_float(km, "priceToSalesRatioTTM"),
+        peg_ratio=_safe_float(km, "pegRatioTTM"),
+        roe=_safe_float(km, "roeTTM"),
+        roic=_safe_float(km, "roicTTM"),
+        roa=_safe_float(km, "returnOnTangibleAssetsTTM"),
+        interest_coverage=_safe_float(km, "interestCoverageTTM"),
+        dividend_yield=_safe_float(km, "dividendYieldTTM"),
         beta=beta,
         fifty_two_week_high=fifty_two_high,
         fifty_two_week_low=fifty_two_low,
@@ -471,7 +645,7 @@ def _build_technical_data(prices: list[dict]) -> list[dict]:
     return result
 
 
-async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
+async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient | None = None) -> ResearchState:
     """Phase 3: run all 9 categories in parallel. Partial success is OK."""
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
     state.phase = "deep_dive"
@@ -490,16 +664,18 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
         one_year_ago = (today - timedelta(days=365)).isoformat()
         today_str = today.isoformat()
 
-        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _), (transcripts, transcript_cit) = (
+        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _), (transcripts, transcript_cit), (key_metrics, _), (fin_growth, _) = (
             await asyncio.gather(
-                fmp.get_income_statement(state.ticker, period="quarter", limit=4),
-                fmp.get_balance_sheet(state.ticker, period="quarter", limit=4),
-                fmp.get_cash_flow(state.ticker, period="quarter", limit=4),
+                fmp.get_income_statement(state.ticker, period="quarter", limit=8),
+                fmp.get_balance_sheet(state.ticker, period="quarter", limit=8),
+                fmp.get_cash_flow(state.ticker, period="quarter", limit=8),
                 fmp.get_company_profile(state.ticker),
                 fmp.get_dcf(state.ticker),
-                fmp.get_analyst_estimates(state.ticker, period="quarter", limit=4),
+                fmp.get_analyst_estimates(state.ticker, period="quarter", limit=8),
                 fmp.get_historical_price(state.ticker, one_year_ago, today_str),
                 fmp.get_earnings_transcript(state.ticker),
+                fmp.get_key_metrics_ttm(state.ticker),
+                fmp.get_financial_growth(state.ticker, period="quarter", limit=8),
             )
         )
         data_text = _fmt_fundamentals(
@@ -508,9 +684,11 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
             balance if isinstance(balance, list) else [],
             cashflow if isinstance(cashflow, list) else [],
             profile[0] if isinstance(profile, list) and profile else profile or {},
+            dcf=dcf if isinstance(dcf, dict) else None,
+            estimates=estimates if isinstance(estimates, list) else [],
+            key_metrics=key_metrics if isinstance(key_metrics, dict) else None,
+            fin_growth=fin_growth if isinstance(fin_growth, list) else [],
         )
-        if dcf and isinstance(dcf, dict):
-            data_text += f"\n\nDCF Value: ${dcf.get('dcf', 'N/A')} | Stock Price: ${dcf.get('Stock Price', 'N/A')}"
 
         # Build curated financials for frontend dashboard
         prof = profile[0] if isinstance(profile, list) and profile else profile or {}
@@ -522,6 +700,7 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
             profile=prof,
             dcf=dcf if isinstance(dcf, dict) else None,
             estimates=estimates if isinstance(estimates, list) else [],
+            key_metrics=key_metrics if isinstance(key_metrics, dict) else None,
         )
         curated.daily_prices = _build_technical_data(
             hist_prices if isinstance(hist_prices, list) else []
@@ -536,6 +715,21 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
         else:
             logger.info("[%s] No transcripts available, skipping analysis", state.ticker)
             state.transcript_analysis = None
+
+        # Fetch FRED macro indicators
+        if fred and fred.available:
+            try:
+                macro_data, macro_citations = await fred.get_all_macro()
+                curated_dict = state.curated_financials or {}
+                curated_dict["macro_indicators"] = macro_data
+                state.curated_financials = curated_dict
+                for cit in macro_citations:
+                    state.add_citation(StateCitation.from_citation(cit))
+                logger.info("[%s] FRED macro data fetched (%d series)", state.ticker, len(macro_data))
+            except Exception as e:
+                logger.warning("[%s] FRED fetch failed, skipping macro data: %s", state.ticker, e)
+        else:
+            logger.info("[%s] FRED client not available, skipping macro data", state.ticker)
 
     except Exception as e:
         logger.warning("[%s] Data fetch failed, proceeding with partial data: %s", state.ticker, e)
@@ -563,9 +757,28 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient) -> ResearchState:
             return ""
         return "Earnings transcript analysis:\n" + "\n\n".join(sections)
 
+    def _build_macro_context(category: str) -> str:
+        macro = (state.curated_financials or {}).get("macro_indicators")
+        if not macro or not isinstance(macro, dict):
+            return ""
+        series_keys = MACRO_ROUTING.get(category)
+        if not series_keys:
+            return ""
+        sections = []
+        for key in series_keys:
+            points = macro.get(key)
+            if points and isinstance(points, list) and len(points) > 0:
+                latest = points[-1]
+                recent = points[-6:] if len(points) >= 6 else points
+                trend_str = ", ".join(f"{p['date']}: {p['value']}" for p in recent)
+                sections.append(f"{key}: latest={latest['value']} ({latest['date']}), trend=[{trend_str}]")
+        if not sections:
+            return ""
+        return "Macro economic indicators (FRED):\n" + "\n".join(sections)
+
     # Run all categories in parallel
     tasks = [
-        _run_one_category(cat, state.ticker, state.theme_id, data_text, loop_ctx_str, _build_transcript_context(cat))
+        _run_one_category(cat, state.ticker, state.theme_id, data_text, loop_ctx_str, _build_transcript_context(cat), _build_macro_context(cat))
         for cat in categories_to_run
     ]
     results = await asyncio.gather(*tasks)

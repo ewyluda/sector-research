@@ -21,6 +21,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
+from backend.app.clients.fred import FREDClient
 from backend.app.graph import nodes
 from backend.app.graph.pipeline import make_graph
 from backend.app.graph.state import ResearchState
@@ -54,8 +55,9 @@ PHASE_OUTPUT_KEYS: dict[str, str] = {
 class PipelineService:
     """Manages research run lifecycle."""
 
-    def __init__(self, fmp: FMPClient) -> None:
+    def __init__(self, fmp: FMPClient, fred: FREDClient | None = None) -> None:
         self._fmp = fmp
+        self._fred = fred
         self._graph = make_graph(fmp)
         # Active SSE queues keyed by run_id
         self._streams: dict[str, asyncio.Queue] = {}
@@ -217,7 +219,7 @@ class PipelineService:
             state.loop_context.get("categories", [])
             if state.loop_context else None
         )
-        state = await nodes.node_deep_dive(state, self._fmp)
+        state = await nodes.node_deep_dive(state, self._fmp, self._fred)
 
         # Emit start event with curated financials (available after node runs)
         self._emit(run_id, {

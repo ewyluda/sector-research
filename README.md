@@ -24,7 +24,8 @@ Two core workflows:
 | Database | PostgreSQL |
 | LLM (heavy) | Claude Sonnet (`claude-sonnet-4-6`) |
 | LLM (light) | Claude Haiku (`claude-haiku-4-5-20251001`) |
-| Data: fundamentals | FMP API (ultimate tier) |
+| Data: fundamentals | FMP API (ultimate tier) — financials, key metrics TTM, growth rates, DCF, estimates, transcripts |
+| Data: macro | FRED API — 9 economic series (fed funds, treasuries, CPI, unemployment, GDP, M2, payrolls) |
 | Data: social signal | X API v2 |
 
 ---
@@ -47,7 +48,7 @@ Two core workflows:
 │         └────────┬─────────┘           │
 │          ┌───────▼───────┐             │
 │          │  Data Clients │             │
-│          │  FMP · X API  │             │
+│          │ FMP · X · FRED│             │
 │          └───────┬───────┘             │
 └──────────────────┼─────────────────────┘
                    │

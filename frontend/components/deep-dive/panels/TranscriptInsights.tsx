@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { TranscriptAnalysis, TranscriptClaim, TranscriptTension, TranscriptValidation, TranscriptTheme, TranscriptBOMItem } from "@/lib/api";
+import { CitationBlock } from "./CitationBlock";
 
 interface TranscriptInsightsProps {
   analysis: TranscriptAnalysis;
@@ -59,7 +60,7 @@ function QATensions({ tensions }: { tensions: TranscriptTension[] }) {
                 {t.significance}
               </span>
             </div>
-            <p className="text-[11px] italic text-[var(--color-citation)] mt-0.5">&quot;{t.verbatim_excerpt}&quot;</p>
+            <CitationBlock source="Earnings Transcript Q&A">&quot;{t.verbatim_excerpt}&quot;</CitationBlock>
           </div>
         </div>
       ))}
@@ -78,7 +79,9 @@ function GuidanceValidation({ validations }: { validations: TranscriptValidation
             <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium shrink-0 mt-0.5 ${badge.bg}`}>{badge.text}</span>
             <div className="min-w-0">
               <p className="text-xs text-[var(--color-text-primary)]">{v.claim}</p>
-              {v.delta && <p className="text-[11px] text-[var(--color-text-muted)]">Delta: {v.delta}</p>}
+              {(v.delta || v.evidence) && (
+                <CitationBlock>{v.delta ? `Delta: ${v.delta}` : ""}{v.delta && v.evidence ? " — " : ""}{v.evidence}</CitationBlock>
+              )}
             </div>
           </div>
         );
@@ -101,7 +104,7 @@ function NarrativeConsistency({ themes }: { themes: TranscriptTheme[] }) {
                 <span className="text-xs text-[var(--color-text-primary)]">{t.theme}</span>
                 {t.risk_signal && <span className="text-amber-400 text-[10px]">&#9888;</span>}
               </div>
-              <p className="text-[11px] italic text-[var(--color-text-muted)] mt-0.5">{t.evidence}</p>
+              <CitationBlock>{t.evidence}</CitationBlock>
             </div>
           </div>
         );
@@ -120,10 +123,9 @@ function ForwardClaims({ claims }: { claims: TranscriptClaim[] }) {
             {c.type}
           </span>
           <div className="min-w-0">
-            <p className="text-xs text-[var(--color-text-primary)]">&quot;{c.quote}&quot;</p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">
-              — {c.speaker} {c.prompted ? "(prompted)" : "(unprompted)"}
-            </p>
+            <CitationBlock source={`${c.speaker} ${c.prompted ? "(prompted)" : "(unprompted)"}`}>
+              &quot;{c.quote}&quot;
+            </CitationBlock>
           </div>
         </div>
       ))}
