@@ -345,6 +345,7 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             "[%s] quick_screen complete: %d/100 → %s (structured=%s)",
             state.ticker, score, recommendation, structured is not None,
         )
+        state.status = "in_progress"
 
     except Exception as e:
         logger.error("[%s] quick_screen failed: %s", state.ticker, e)
@@ -353,8 +354,8 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             "reason": str(e),
             "traceback": traceback.format_exc(),
         }
+        state.status = "error"
 
-    state.status = "in_progress"
     return state
 
 
@@ -879,12 +880,13 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
             "[%s] thesis complete: conviction %d/100 (structured=%s)",
             state.ticker, conviction, structured is not None,
         )
+        state.status = "in_progress"
 
     except Exception as e:
         logger.error("[%s] thesis_construction failed: %s", state.ticker, e)
         state.phase_outputs["thesis"] = {"__type__": "PhaseError", "reason": str(e)}
+        state.status = "error"
 
-    state.status = "in_progress"
     return state
 
 
@@ -975,7 +977,7 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
     except Exception as e:
         logger.error("[%s] risk_stress_test failed: %s", state.ticker, e)
         state.phase_outputs["risk"] = {"__type__": "PhaseError", "reason": str(e)}
-        state.status = "completed"
+        state.status = "error"
 
     return state
 
