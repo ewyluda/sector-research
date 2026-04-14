@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 interface SidebarItem {
   key: string;
   label: string;
-  tier: "data-rich" | "mixed" | "qualitative";
+  tier: "overview" | "data-rich" | "mixed" | "qualitative" | "synthesis";
 }
 
 const ITEMS: SidebarItem[] = [
+  { key: "report_header", label: "Overview", tier: "overview" },
   { key: "financial_health", label: "Financial Health", tier: "data-rich" },
   { key: "growth_earnings", label: "Growth & Earnings", tier: "data-rich" },
   { key: "technical_market_structure", label: "Technical & Market", tier: "data-rich" },
@@ -19,12 +20,16 @@ const ITEMS: SidebarItem[] = [
   { key: "management_governance", label: "Management", tier: "qualitative" },
   { key: "sentiment_narrative", label: "Sentiment", tier: "qualitative" },
   { key: "future_durability", label: "Future", tier: "qualitative" },
+  { key: "thesis_section", label: "Thesis", tier: "synthesis" },
+  { key: "risk_section", label: "Risk Stress-Test", tier: "synthesis" },
 ];
 
 const TIER_LABELS: Record<string, string> = {
+  overview: "OVERVIEW",
   "data-rich": "DATA-RICH",
   mixed: "MIXED",
   qualitative: "QUALITATIVE",
+  synthesis: "SYNTHESIS",
 };
 
 function scoreDot(score: number | null, status?: string): string {
