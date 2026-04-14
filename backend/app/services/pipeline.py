@@ -220,12 +220,28 @@ class PipelineService:
 
             except Exception as e:
                 logger.error("Phase %s failed for run %s: %s", phase, run_id, e)
+                state.status = "error"
+                try:
+                    async with db.begin():
+                        result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+                        run = result.scalar_one_or_none()
+                        if run:
+                            run.state = state.to_dict()
+                            run.phase = state.phase
+                            run.status = "error"
+                except Exception:
+                    logger.error("Failed to persist error state for run %s", run_id)
                 self._emit(run_id, {"type": "error", "phase": phase, "message": str(e)})
                 break
 
-        # After the loop: emit complete if we finished successfully
+        # After the loop: emit terminal event
         if state.status in ("completed", "watchlist", "pass"):
             self._emit(run_id, {"type": "complete", "status": state.status,
+                                 "conviction_score": state.conviction_score,
+                                 "thesis_status": state.thesis_status})
+        elif state.status == "error":
+            self._emit(run_id, {"type": "complete", "status": "error",
+                                 "phase": state.phase,
                                  "conviction_score": state.conviction_score,
                                  "thesis_status": state.thesis_status})
 
