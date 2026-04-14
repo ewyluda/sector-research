@@ -191,10 +191,11 @@ export default function PipelineRunnerPage() {
       setCurrentPhase(r.phase);
       setConvictionScore(r.conviction_score);
 
-      const isCompleted = r.status === "completed" || r.status === "watchlist";
+      const isCompleted = r.status === "completed" || r.status === "watchlist" || r.status === "error";
 
       if (isCompleted) {
         setIsLive(false);
+        setGeneratingPosition(false);
         await loadReportData(runId);
       } else {
         setIsLive(true);
@@ -388,6 +389,7 @@ export default function PipelineRunnerPage() {
 
       case "complete":
         setIsLive(false);
+        setGeneratingPosition(false);
         setConvictionScore(event.conviction_score);
         // Re-fetch full run + report data
         if (runId) {
@@ -418,8 +420,9 @@ export default function PipelineRunnerPage() {
         setCurrentPhase(r.phase);
         setConvictionScore(r.conviction_score);
 
-        if (r.status === "completed" || r.status === "watchlist") {
+        if (r.status === "completed" || r.status === "watchlist" || r.status === "error") {
           setIsLive(false);
+          setGeneratingPosition(false);
           loadReportData(runId);
         } else {
           // Seed structured data in case SSE missed events
@@ -437,11 +440,12 @@ export default function PipelineRunnerPage() {
     setGeneratingPosition(true);
     try {
       await api.advance(runId, "approve");
-      // Re-fetch to get position output
-      const r = await api.report(runId);
-      setPositionStructured((r.phases.position?.structured as unknown as PositionMonitorStructured) ?? null);
-      setReport(r);
-    } finally {
+      // Reconnect SSE to receive position_monitor events
+      setCurrentPhase("position_monitor");
+      setIsLive(true);
+      // The SSE "complete" handler will call loadReportData()
+      // and clear generatingPosition via the complete handler
+    } catch {
       setGeneratingPosition(false);
     }
   }

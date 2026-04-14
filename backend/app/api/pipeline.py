@@ -220,6 +220,13 @@ async def advance_run(
         asyncio.create_task(pipeline._run_phase(run.id, state, db))
         return _run_to_detail(run)
 
+    # Reject advance on non-advanceable states
+    if run.status in ("error", "in_progress"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot advance run in '{run.status}' state",
+        )
+
     try:
         run = await pipeline.advance(
             run_id=run_id,
