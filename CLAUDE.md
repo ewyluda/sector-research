@@ -58,18 +58,17 @@ Single `.env` at project root. `backend/app/config.py` reads it via `env_file=".
 
 ```
 quick_screen (Haiku)
-  → [interrupt]
   → deep_dive (Sonnet, 9 categories in parallel)
-  → [interrupt]
   → thesis_construction (Sonnet)
   → risk_stress_test (Sonnet)
        ├─ loop_required & loop_count ≤ 2 → back to deep_dive
-       └─ else → position_monitor (Haiku)
-  → [interrupt]
-  → END
+       └─ else → completed
+  → [optional: position_monitor (Haiku) — manually triggered]
 ```
 
-**Interrupts are not LangGraph `interrupt()` calls.** They're modeled as a status flag: a node sets `state.status = "awaiting_approval"`, the conditional edge returns `END`, and the graph compiles out. The API route `POST /api/runs/{run_id}/advance` rewrites the status, advances `state.phase`, and kicks off the next phase via `asyncio.create_task(pipeline_service._run_phase(...))`. If you add a new phase, update **both** `graph/pipeline.py` edges **and** `services/pipeline.py::_next_phase` — they're parallel sources of truth for routing.
+**No interrupt gates.** Phases 1-5 run continuously after `POST /api/runs` starts a run. Each node sets `state.status = "in_progress"` to advance, or `"completed"` / `"watchlist"` to stop. The `PipelineService._run_phase()` loops while status is `in_progress`, automatically chaining through phases. Position monitor (phase 6) is manually triggered via `POST /api/runs/{run_id}/advance` with action `"approve"` on a completed run. If you add a new phase, update **both** `graph/pipeline.py` edges **and** `services/pipeline.py::_next_phase` — they're parallel sources of truth for routing.
+
+**Prompt deduplication:** The thesis prompt receives quick screen context (verdict, thesis, key risk) and a concise deep dive summary (scores + top 2 findings per category) as "established findings" with instructions not to restate them. The risk prompt receives the thesis output with instructions to stress-test it, not re-derive the analysis.
 
 `ResearchState` is persisted as JSONB into `research_runs.state` at every phase transition. All serialization goes through `to_dict()` / `from_dict()`. `CategoryResult` and `CategoryError` use a `__type__` discriminator in their dict form so `get_deep_dive_results()` can round-trip them. Add any new state field to `ResearchState` **and** make sure it's JSON-safe — datetime fields are stored as ISO strings, not `datetime` objects.
 
@@ -107,10 +106,10 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 
 ### Frontend layout
 
-- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/library`, `/pipeline/new`, `/pipeline/[runId]`, `/report/[runId]`
+- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports). `/report/[runId]` redirects here.
 - `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
 - `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
-- `components/deep-dive/` — 28-component module for the deep-dive financial dashboard: `DeepDiveDashboard` orchestrator, `DashboardSidebar` (scroll-tracked nav), `OverviewBanner` (radar + metrics + score bar), `sections/` (9 category-specific components in 3 tiers: data-rich, mixed, qualitative), `charts/` (Recharts bar/line/trend charts + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
+- `components/deep-dive/` — 30+ component module for the financial dashboard: `DeepDiveDashboard` orchestrator, `DashboardSidebar` (scroll-tracked nav with overview/data-rich/mixed/qualitative/synthesis tiers), `ReportHeader` (company identity + verdict + metrics + radar), `OverviewBanner` (radar + metrics + score bar), `VelocitySparkline` (X signal badge), `sections/` (9 category sections + CrossCategoryCorrelation), `charts/` (Recharts bar/line/trend + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
 - Path alias: `@/*` → project root. Tailwind v4 via `@tailwindcss/postcss`.
 - Chart libraries: **Recharts** (bar, line, radar charts) and **lightweight-charts** (TradingView candlestick + RSI).
 
@@ -125,4 +124,4 @@ The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balan
 
 ## State-of-repo notes
 
-Design-phase artifacts (`docs/superpowers/`, `skills/due-diligence/`, `TODO.md`) have been cleaned up. All plan/spec documents for completed features were removed. The `BACKLOG.md` is the canonical list of remaining work. If you need the due-diligence methodology or old plans, recover from git history (`git log --all --diff-filter=D -- docs/`).
+Design-phase artifacts (`skills/due-diligence/`, `TODO.md`, `BACKLOG.md`) have been cleaned up. Active specs live in `docs/superpowers/specs/`. If you need old plans or the due-diligence methodology, recover from git history (`git log --all --diff-filter=D -- docs/`).
