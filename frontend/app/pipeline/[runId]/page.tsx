@@ -121,6 +121,14 @@ export default function PipelineRunnerPage() {
   const [riskStructured, setRiskStructured] = useState<RiskStressTestStructured | null>(null);
   const [positionStructured, setPositionStructured] = useState<PositionMonitorStructured | null>(null);
 
+  // Raw content fallback (when structured parsing fails)
+  const [thesisContent, setThesisContent] = useState<string | null>(null);
+  const [riskContent, setRiskContent] = useState<string | null>(null);
+  const [positionContent, setPositionContent] = useState<string | null>(null);
+  const [thesisParseError, setThesisParseError] = useState<string | null>(null);
+  const [riskParseError, setRiskParseError] = useState<string | null>(null);
+  const [positionParseError, setPositionParseError] = useState<string | null>(null);
+
   // Scores & metadata
   const [scores, setScores] = useState<Record<string, number>>({});
   const [convictionScore, setConvictionScore] = useState<number | null>(null);
@@ -163,13 +171,22 @@ export default function PipelineRunnerPage() {
       setCategories(catState);
 
       // Thesis
-      setThesisStructured((r.phases.thesis?.structured as unknown as ThesisStructured) ?? null);
+      const thesisPhase = r.phases.thesis;
+      setThesisStructured((thesisPhase?.structured as unknown as ThesisStructured) ?? null);
+      setThesisContent(thesisPhase?.content ?? null);
+      setThesisParseError(thesisPhase?.parse_error ?? null);
 
       // Risk
-      setRiskStructured((r.phases.risk?.structured as unknown as RiskStressTestStructured) ?? null);
+      const riskPhase = r.phases.risk;
+      setRiskStructured((riskPhase?.structured as unknown as RiskStressTestStructured) ?? null);
+      setRiskContent(riskPhase?.content ?? null);
+      setRiskParseError(riskPhase?.parse_error ?? null);
 
       // Position (optional)
-      setPositionStructured((r.phases.position?.structured as unknown as PositionMonitorStructured) ?? null);
+      const posPhase = r.phases.position;
+      setPositionStructured((posPhase?.structured as unknown as PositionMonitorStructured) ?? null);
+      setPositionContent(posPhase?.content ?? null);
+      setPositionParseError((posPhase as unknown as { parse_error?: string })?.parse_error ?? null);
 
       // Scores
       setScores(r.scores);
@@ -331,13 +348,21 @@ export default function PipelineRunnerPage() {
             }
             setScores((prev) => ({ ...prev, ...dimScores }));
           }
-        } else if ((event.phase === "thesis_construction" || event.phase === "thesis") && structured) {
-          setThesisStructured(structured as unknown as ThesisStructured);
-          if ((structured as unknown as ThesisStructured).conviction_score != null) {
-            setConvictionScore((structured as unknown as ThesisStructured).conviction_score);
+        } else if (event.phase === "thesis_construction" || event.phase === "thesis") {
+          if (structured) {
+            setThesisStructured(structured as unknown as ThesisStructured);
+            if ((structured as unknown as ThesisStructured).conviction_score != null) {
+              setConvictionScore((structured as unknown as ThesisStructured).conviction_score);
+            }
           }
-        } else if ((event.phase === "risk_stress_test" || event.phase === "risk") && structured) {
-          setRiskStructured(structured as unknown as RiskStressTestStructured);
+          setThesisContent((output.content as string) ?? null);
+          setThesisParseError((output.parse_error as string) ?? null);
+        } else if (event.phase === "risk_stress_test" || event.phase === "risk") {
+          if (structured) {
+            setRiskStructured(structured as unknown as RiskStressTestStructured);
+          }
+          setRiskContent((output.content as string) ?? null);
+          setRiskParseError((output.parse_error as string) ?? null);
         }
         break;
       }
@@ -512,6 +537,16 @@ export default function PipelineRunnerPage() {
           {/* Progress indicator for live runs */}
           {isLive && <LiveProgressBar currentPhase={currentPhase} />}
 
+          {/* Error banner for failed runs */}
+          {!isLive && run.status === "error" && (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+              <p className="text-sm font-semibold text-red-400">Pipeline Error</p>
+              <p className="text-xs text-red-300 mt-1">
+                The pipeline encountered an error during the {currentPhase.replace(/_/g, " ")} phase. Partial results are shown below.
+              </p>
+            </div>
+          )}
+
           {/* Report Header — shows when quick screen data or financials available */}
           {(quickScreenStructured || curatedFinancials) && (
             <ReportHeader
@@ -536,39 +571,69 @@ export default function PipelineRunnerPage() {
             />
           )}
 
-          {/* Thesis — shows when thesis structured output available */}
-          {thesisStructured && (
+          {/* Thesis */}
+          {(thesisStructured || thesisContent) && (
             <section id="thesis_section">
-              <ThesisCard
-                structured={thesisStructured}
-                citations={citations}
-                ticker={ticker}
-                thesisStatus={thesisStatus}
-              />
+              {thesisStructured ? (
+                <ThesisCard
+                  structured={thesisStructured}
+                  citations={citations}
+                  ticker={ticker}
+                  thesisStatus={thesisStatus}
+                />
+              ) : (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Thesis Construction</h2>
+                  {thesisParseError && (
+                    <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({thesisParseError})</p>
+                  )}
+                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{thesisContent}</p>
+                </div>
+              )}
             </section>
           )}
 
-          {/* Risk — shows when risk structured output available */}
-          {riskStructured && (
+          {/* Risk */}
+          {(riskStructured || riskContent) && (
             <section id="risk_section">
-              <RiskCard
-                structured={riskStructured}
-                citations={report?.phases.risk?.citations ?? citations}
-                ticker={ticker}
-                loopCount={loopCount}
-              />
+              {riskStructured ? (
+                <RiskCard
+                  structured={riskStructured}
+                  citations={report?.phases.risk?.citations ?? citations}
+                  ticker={ticker}
+                  loopCount={loopCount}
+                />
+              ) : (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Risk Stress-Test</h2>
+                  {riskParseError && (
+                    <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({riskParseError})</p>
+                  )}
+                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{riskContent}</p>
+                </div>
+              )}
             </section>
           )}
 
-          {/* Position — shows if available */}
-          {positionStructured && (
+          {/* Position */}
+          {(positionStructured || positionContent) && (
             <section id="position_section">
-              <PositionCard
-                structured={positionStructured}
-                citations={report?.phases.position?.citations ?? citations}
-                ticker={ticker}
-                convictionScore={convictionScore}
-              />
+              {positionStructured ? (
+                <PositionCard
+                  structured={positionStructured}
+                  citations={report?.phases.position?.citations ?? citations}
+                  ticker={ticker}
+                  convictionScore={convictionScore}
+                />
+              ) : (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Position Plan</h2>
+                  {positionParseError && (
+                    <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({positionParseError})</p>
+                  )}
+                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{positionContent}</p>
+                </div>
+              )}
             </section>
           )}
 
