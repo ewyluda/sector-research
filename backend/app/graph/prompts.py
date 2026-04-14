@@ -201,21 +201,31 @@ Your thesis must be:
 - Be calibrated. A conviction of 70 means genuinely good, not great. 85+ means exceptional with clear catalysts.
 - Bull and bear points must have specific evidence, not generic statements.
 - Catalysts must have concrete timeframes, not vague "eventually".
-- Every claim must trace to a category analysis from the deep dive results below."""
+- Every claim must trace to a category analysis from the deep dive results below.
+- Do NOT restate observations already documented in the established findings. Reference categories by name (e.g. "as shown in Financial Health"). Only introduce new observations if the data reveals something the category analyses missed."""
 
 THESIS_USER = """Ticker: {ticker}
 Theme: {theme}
 
-Deep dive category results:
+## Established findings (reference these — do NOT restate)
+
+Quick Screen: {quick_screen_verdict} ({quick_screen_score}/100)
+Quick Screen Thesis: "{quick_screen_thesis}"
+Quick Screen Key Risk: "{quick_screen_risk}"
+
+## Deep dive category results (scores and key findings)
+{category_summary}
+
+## Full category analyses (for evidence only — do not repeat)
 {category_results}
 
-Failed categories (treat as gaps):
+Failed categories (treat as data gaps):
 {failed_categories}
 
 Loop context (if re-run):
 {loop_context}
 
-Construct the investment thesis. Output the JSON verdict described above."""
+Synthesize these findings into an investment thesis. Reference categories by name. Output the JSON described above."""
 
 
 # ── Risk Stress-Test (Sonnet) ─────────────────────────────────────────────────
@@ -260,13 +270,14 @@ RISK_USER = """Ticker: {ticker}
 Theme: {theme}
 Loop count: {loop_count}/2
 
-Thesis:
+## Thesis to stress-test (do NOT re-derive the underlying analysis)
+
 {thesis}
 
-Category scores:
+## Category scores for context
 {scores}
 
-Stress-test this thesis. Output the JSON risk register described above."""
+Stress-test this thesis — find the scenarios where it breaks. Do NOT restate the thesis or re-analyze the underlying data. Output the JSON risk register described above."""
 
 
 # ── Position Monitor (Haiku) ──────────────────────────────────────────────────

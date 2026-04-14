@@ -271,7 +271,7 @@ class ResearchState:
 
     # Pipeline position
     phase: str = "quick_screen"
-    status: str = "in_progress"  # in_progress | awaiting_approval | completed | watchlist | pass
+    status: str = "in_progress"  # in_progress | completed | watchlist | pass | error
 
     # Accumulated outputs keyed by phase/category name
     # Values are dicts (CategoryResult.to_dict() or CategoryError.to_dict())

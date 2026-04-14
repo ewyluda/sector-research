@@ -345,6 +345,7 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             "[%s] quick_screen complete: %d/100 → %s (structured=%s)",
             state.ticker, score, recommendation, structured is not None,
         )
+        state.status = "in_progress"
 
     except Exception as e:
         logger.error("[%s] quick_screen failed: %s", state.ticker, e)
@@ -353,8 +354,8 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             "reason": str(e),
             "traceback": traceback.format_exc(),
         }
+        state.status = "error"
 
-    state.status = "awaiting_approval"
     return state
 
 
@@ -791,7 +792,7 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient 
     logger.info("[%s] deep_dive complete: %d/%d succeeded, failed: %s",
                 state.ticker, succeeded, len(results), failed)
 
-    state.status = "awaiting_approval"
+    state.status = "in_progress"
     return state
 
 
@@ -804,12 +805,32 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
 
     # Format category results
     results = state.get_deep_dive_results()
+
+    # Build concise summary (scores + top 2 findings per category)
+    summary_lines = []
     results_text = ""
     for cat, result in results.items():
         if isinstance(result, CategoryResult):
+            top_findings = "; ".join(result.key_findings[:2]) if result.key_findings else "No key findings"
+            summary_lines.append(f"- {cat}: {result.score}/100 — {top_findings}")
             results_text += f"\n\n## {cat} (Score: {result.score}/100)\n{result.content[:800]}"
         else:
+            summary_lines.append(f"- {cat}: FAILED — {result.reason}")
             results_text += f"\n\n## {cat}\n[FAILED: {result.reason}]"
+
+    category_summary = "\n".join(summary_lines)
+
+    # Extract quick screen context
+    qs_output = state.phase_outputs.get("quick_screen", {})
+    qs_structured = qs_output.get("structured") if isinstance(qs_output, dict) else None
+    qs_verdict = "N/A"
+    qs_score = qs_output.get("score", "N/A") if isinstance(qs_output, dict) else "N/A"
+    qs_thesis = "N/A"
+    qs_risk = "N/A"
+    if qs_structured and isinstance(qs_structured, dict):
+        qs_verdict = qs_structured.get("recommendation", "N/A")
+        qs_thesis = qs_structured.get("thesis", "N/A")
+        qs_risk = qs_structured.get("key_risk", "N/A")
 
     failed = state.failed_categories()
     loop_ctx = str(state.loop_context) if state.loop_context else "None"
@@ -820,6 +841,11 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
             user=THESIS_USER.format(
                 ticker=state.ticker,
                 theme=state.theme_id,
+                quick_screen_verdict=qs_verdict,
+                quick_screen_score=qs_score,
+                quick_screen_thesis=qs_thesis,
+                quick_screen_risk=qs_risk,
+                category_summary=category_summary,
                 category_results=results_text,
                 failed_categories=", ".join(failed) if failed else "None",
                 loop_context=loop_ctx,
@@ -854,12 +880,13 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
             "[%s] thesis complete: conviction %d/100 (structured=%s)",
             state.ticker, conviction, structured is not None,
         )
+        state.status = "in_progress"
 
     except Exception as e:
         logger.error("[%s] thesis_construction failed: %s", state.ticker, e)
         state.phase_outputs["thesis"] = {"__type__": "PhaseError", "reason": str(e)}
+        state.status = "error"
 
-    state.status = "awaiting_approval"
     return state
 
 
@@ -932,17 +959,16 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
                 "reason": loop_reason,
                 "rr_ratio": rr_ratio,
             }
-            # Pause for human review — user sees the risk card with the
-            # loop-back recommendation and approves. _next_phase() routes
-            # back to deep_dive when loop_context is set.
-            state.status = "awaiting_approval"
+            # Auto-advance back to deep_dive; _next_phase() routes
+            # back when loop_context is set.
+            state.status = "in_progress"
             logger.info("[%s] Loop-back triggered (count %d): %s", state.ticker, state.loop_count, loop_cats)
         elif loop_required and state.loop_count >= 2:
             state.status = "watchlist"
             state.thesis_status = "BROKEN"
             logger.info("[%s] Loop cap reached — forcing WATCHLIST", state.ticker)
         else:
-            state.status = "awaiting_approval"
+            state.status = "completed"
             logger.info(
                 "[%s] risk_stress_test complete: RR %.1f:1 — approved (structured=%s)",
                 state.ticker, rr_ratio, structured is not None,
@@ -951,7 +977,7 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
     except Exception as e:
         logger.error("[%s] risk_stress_test failed: %s", state.ticker, e)
         state.phase_outputs["risk"] = {"__type__": "PhaseError", "reason": str(e)}
-        state.status = "awaiting_approval"
+        state.status = "error"
 
     return state
 

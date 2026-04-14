@@ -5,8 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { pipeline as api } from "@/lib/api";
 import type {
   RunDetail,
+  ReportResponse,
   SSEEvent,
-  AdvanceAction,
   QuickScreenStructured,
   ThesisStructured,
   RiskStressTestStructured,
@@ -16,40 +16,32 @@ import type {
   CuratedFinancials,
   DeepDiveCategoryStructured,
   TranscriptAnalysis,
+  XSignalVelocity,
 } from "@/lib/api";
-import { QuickScreenCard } from "@/components/QuickScreenCard";
 import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
+import { DashboardSidebar } from "@/components/deep-dive/DashboardSidebar";
+import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-// Backend phases (backend/app/graph/pipeline.py): quick_screen → deep_dive →
-// thesis_construction → risk_stress_test → position_monitor. Transcript
-// analysis is a sub-operation INSIDE deep_dive (nodes.run_transcript_analysis),
-// not its own top-level phase — do not add it back to this rail.
-const PHASE_RAIL = [
-  { key: "quick_screen",         label: "Quick Screen",        num: 1 },
-  { key: "deep_dive",            label: "Deep Dive",           num: 2 },
-  { key: "thesis_construction",  label: "Thesis",              num: 3 },
-  { key: "risk_stress_test",     label: "Risk Stress-Test",    num: 4 },
-  { key: "position_monitor",     label: "Position",            num: 5 },
+const PHASE_ORDER = [
+  "quick_screen",
+  "deep_dive",
+  "thesis_construction",
+  "risk_stress_test",
+  "position_monitor",
 ] as const;
 
-// Keys must match backend DEEP_DIVE_CATEGORIES in prompts.py exactly —
-// the SSE category_complete events use these display names as keys.
-const DEEP_DIVE_CATEGORIES = [
-  "Business Quality",
-  "Financial Health",
-  "Growth & Earnings",
-  "Management & Governance",
-  "Technical & Market Structure",
-  "Macro & Regime",
-  "Sentiment & Narrative",
-  "Risk Assessment",
-  "Future Durability",
-] as const;
+const PHASE_LABELS: Record<string, string> = {
+  quick_screen: "Quick Screen",
+  deep_dive: "Deep Dive",
+  thesis_construction: "Thesis Construction",
+  risk_stress_test: "Risk Stress-Test",
+  position_monitor: "Position Monitor",
+};
 
 type CatStatus = "pending" | "running" | "pass" | "fail";
 
@@ -60,257 +52,49 @@ interface CategoryState {
   structured: DeepDiveCategoryStructured | null;
 }
 
-// ── Phase Rail ────────────────────────────────────────────────────────────────
+// ── Live Progress Bar (inline) ────────────────────────────────────────────────
 
-function PhaseRail({
-  currentPhase,
-  runStatus,
-  loopCount,
-  ticker,
-}: {
-  currentPhase: string;
-  runStatus: string;
-  loopCount: number;
-  ticker: string;
-}) {
-  const isComplete = runStatus === "completed" || runStatus === "watchlist";
+function LiveProgressBar({ currentPhase }: { currentPhase: string }) {
+  const idx = PHASE_ORDER.indexOf(currentPhase as (typeof PHASE_ORDER)[number]);
+  const pct = idx >= 0 ? Math.round(((idx + 0.5) / PHASE_ORDER.length) * 100) : 10;
 
   return (
-    <aside className="w-56 flex-shrink-0 flex flex-col gap-1 pt-1">
-      <div className="mb-4">
-        <p className="text-xs text-[var(--text-faint)] uppercase tracking-wider font-medium mb-0.5">
-          Research Run
-        </p>
-        <p className="text-xl font-mono font-semibold text-[var(--text)] tracking-wide">
-          {ticker}
-        </p>
-        {loopCount > 0 && (
-          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-xs font-medium">
-            ↻ Loop {loopCount}/2
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="w-3 h-3 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
+          <span className="text-sm font-medium text-[var(--color-text-primary)]">
+            Running: {PHASE_LABELS[currentPhase] ?? currentPhase.replace(/_/g, " ")}
           </span>
-        )}
+        </div>
+        <span className="text-xs text-[var(--color-text-muted)] font-mono">{pct}%</span>
       </div>
-
-      <div className="flex flex-col gap-0.5">
-        {PHASE_RAIL.map((phase) => {
-          const isDone =
-            isComplete ||
-            PHASE_RAIL.findIndex((p) => p.key === phase.key) <
-            PHASE_RAIL.findIndex((p) => p.key === currentPhase);
-          const isActive = phase.key === currentPhase && !isComplete;
-
+      <div className="h-1.5 rounded-full bg-[var(--color-surface-alt)] overflow-hidden">
+        <div
+          className="h-full rounded-full bg-[var(--color-primary)] transition-all duration-700"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex justify-between mt-2">
+        {PHASE_ORDER.map((p, i) => {
+          const isDone = i < idx;
+          const isActive = i === idx;
           return (
-            <div
-              key={phase.key}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+            <span
+              key={p}
+              className={`text-[10px] font-medium ${
                 isActive
-                  ? "bg-[var(--primary)]/10 text-[var(--primary)]"
+                  ? "text-[var(--color-primary)]"
                   : isDone
-                  ? "text-[var(--text-muted)]"
-                  : "text-[var(--text-faint)]"
+                  ? "text-emerald-400"
+                  : "text-[var(--color-text-faint)]"
               }`}
             >
-              {/* Step circle */}
-              <span
-                className={`w-6 h-6 flex-shrink-0 flex items-center justify-center rounded-full text-xs font-semibold border ${
-                  isActive
-                    ? "border-[var(--primary)] bg-[var(--primary)]/20 text-[var(--primary)]"
-                    : isDone
-                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                    : "border-[var(--border)] bg-transparent text-[var(--text-faint)]"
-                }`}
-              >
-                {isDone ? "✓" : phase.num}
-              </span>
-              <span className="text-sm font-medium leading-tight">{phase.label}</span>
-            </div>
+              {isDone ? "\u2713" : ""} {PHASE_LABELS[p]?.split(" ")[0] ?? p}
+            </span>
           );
         })}
       </div>
-
-      {isComplete && (
-        <div
-          className={`mt-4 px-3 py-2 rounded-lg text-xs font-semibold text-center ${
-            runStatus === "completed"
-              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-              : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-          }`}
-        >
-          {runStatus === "completed" ? "✓ Complete" : "⊖ Watchlist"}
-        </div>
-      )}
-    </aside>
-  );
-}
-
-// ── Category Grid ─────────────────────────────────────────────────────────────
-
-function DeepDiveCategoryGrid({
-  categories,
-}: {
-  categories: Record<string, CategoryState>;
-}) {
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      {DEEP_DIVE_CATEGORIES.map((cat) => {
-        const state = categories[cat] ?? { status: "pending", score: null, key_findings: [] };
-        const statusColors: Record<CatStatus, string> = {
-          pending: "border-[var(--border)] bg-[var(--surface)] text-[var(--text-faint)]",
-          running: "border-[var(--primary)]/40 bg-[var(--primary)]/5 text-[var(--primary)]",
-          pass:    "border-emerald-500/30 bg-emerald-500/8 text-emerald-400",
-          fail:    "border-red-500/30 bg-red-500/8 text-red-400",
-        };
-        const statusDot: Record<CatStatus, string> = {
-          pending: "bg-[var(--text-faint)]",
-          running: "bg-[var(--primary)] animate-pulse",
-          pass:    "bg-emerald-400",
-          fail:    "bg-red-400",
-        };
-
-        return (
-          <div
-            key={cat}
-            className={`rounded-lg border p-3 transition-all ${statusColors[state.status]}`}
-          >
-            <div className="flex items-center justify-between gap-1 mb-1">
-              <span className="text-xs font-medium leading-tight">
-                {cat}
-              </span>
-              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statusDot[state.status]}`} />
-            </div>
-            {state.score !== null && (
-              <p className="text-lg font-semibold font-mono">{state.score}</p>
-            )}
-            {state.key_findings[0] && (
-              <p className="text-xs opacity-70 mt-1 leading-snug line-clamp-2">
-                {state.key_findings[0]}
-              </p>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── Action Bar ────────────────────────────────────────────────────────────────
-
-function ActionBar({
-  phase,
-  awaitingApproval,
-  onAction,
-  disabled,
-}: {
-  phase: string;
-  awaitingApproval: boolean;
-  onAction: (action: AdvanceAction, feedback?: string) => void;
-  disabled: boolean;
-}) {
-  const [flagOpen, setFlagOpen] = useState(false);
-  const [flagNote, setFlagNote] = useState("");
-
-  if (!awaitingApproval) {
-    return (
-      <div className="flex items-center gap-3 py-4 px-1">
-        <div className="flex-1 h-px bg-[var(--border)]" />
-        <span className="text-xs text-[var(--text-faint)]">
-          Running {phase.replace(/_/g, " ")}…
-        </span>
-        <span className="w-3 h-3 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        <div className="flex-1 h-px bg-[var(--border)]" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="border-t border-[var(--border)] pt-4 mt-2">
-      <p className="text-xs text-[var(--text-faint)] uppercase tracking-wider font-medium mb-3">
-        Phase complete — review and advance
-      </p>
-
-      {flagOpen ? (
-        <div className="space-y-2">
-          <textarea
-            value={flagNote}
-            onChange={(e) => setFlagNote(e.target.value)}
-            placeholder="Add a note about your concern (required to flag)…"
-            rows={2}
-            className="w-full px-3 py-2 rounded-lg bg-[var(--surface)] border border-[var(--border)]
-                       text-sm text-[var(--text)] placeholder-[var(--text-faint)]
-                       focus:outline-none focus:border-amber-500/50 resize-none"
-          />
-          <div className="flex gap-2">
-            <button
-              onClick={() => { onAction("flag", flagNote); setFlagOpen(false); setFlagNote(""); }}
-              disabled={!flagNote.trim() || disabled}
-              className="flex-1 py-2 rounded-lg bg-amber-500/15 text-amber-400 text-sm font-semibold
-                         border border-amber-500/25 hover:bg-amber-500/25 disabled:opacity-40 transition-colors"
-            >
-              Flag & Continue
-            </button>
-            <button
-              onClick={() => { setFlagOpen(false); setFlagNote(""); }}
-              className="px-4 py-2 rounded-lg bg-[var(--surface)] text-[var(--text-faint)]
-                         text-sm border border-[var(--border)] hover:text-[var(--text)] transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex gap-2">
-          <button
-            onClick={() => onAction("approve")}
-            disabled={disabled}
-            className="flex-1 py-2.5 rounded-lg bg-[var(--primary)] text-white text-sm font-semibold
-                       hover:bg-[var(--primary-dk)] active:scale-[0.98] disabled:opacity-40 transition-all"
-          >
-            Approve & Continue →
-          </button>
-          <button
-            onClick={() => setFlagOpen(true)}
-            disabled={disabled}
-            className="px-4 py-2.5 rounded-lg bg-amber-500/10 text-amber-400 text-sm font-semibold
-                       border border-amber-500/20 hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
-          >
-            Flag
-          </button>
-          <button
-            onClick={() => onAction("stop")}
-            disabled={disabled}
-            className="px-4 py-2.5 rounded-lg bg-[var(--surface)] text-[var(--text-muted)] text-sm
-                       border border-[var(--border)] hover:text-red-400 hover:border-red-400/30 disabled:opacity-40 transition-colors"
-          >
-            Stop
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Streaming output panel ─────────────────────────────────────────────────────
-
-function StreamPanel({ tokens }: { tokens: string[] }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (ref.current) {
-      ref.current.scrollTop = ref.current.scrollHeight;
-    }
-  }, [tokens]);
-
-  return (
-    <div
-      ref={ref}
-      className="flex-1 overflow-y-auto rounded-lg bg-[var(--surface)] border border-[var(--border)]
-                 p-4 font-mono text-xs text-[var(--text-muted)] leading-relaxed min-h-[200px]"
-    >
-      {tokens.length === 0 ? (
-        <span className="text-[var(--text-faint)]">Waiting for output…</span>
-      ) : (
-        tokens.join("")
-      )}
     </div>
   );
 }
@@ -321,89 +105,173 @@ export default function PipelineRunnerPage() {
   const { runId } = useParams<{ runId: string }>();
   const router = useRouter();
 
+  // Core state
   const [run, setRun] = useState<RunDetail | null>(null);
+  const [report, setReport] = useState<ReportResponse | null>(null);
   const [currentPhase, setCurrentPhase] = useState("quick_screen");
-  const [awaitingApproval, setAwaitingApproval] = useState(false);
-  const [tokens, setTokens] = useState<string[]>([]);
-  const [categories, setCategories] = useState<Record<string, CategoryState>>({});
-  const [inDeepDive, setInDeepDive] = useState(false);
+  const [isLive, setIsLive] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  // Phase data
+  const [quickScreenStructured, setQuickScreenStructured] = useState<QuickScreenStructured | null>(null);
   const [curatedFinancials, setCuratedFinancials] = useState<CuratedFinancials | null>(null);
   const [transcriptAnalysis, setTranscriptAnalysis] = useState<TranscriptAnalysis | null>(null);
-  const [advancing, setAdvancing] = useState(false);
-  const [flags, setFlags] = useState<string[]>([]);
+  const [categories, setCategories] = useState<Record<string, CategoryState>>({});
+  const [thesisStructured, setThesisStructured] = useState<ThesisStructured | null>(null);
+  const [riskStructured, setRiskStructured] = useState<RiskStressTestStructured | null>(null);
+  const [positionStructured, setPositionStructured] = useState<PositionMonitorStructured | null>(null);
+
+  // Raw content fallback (when structured parsing fails)
+  const [thesisContent, setThesisContent] = useState<string | null>(null);
+  const [riskContent, setRiskContent] = useState<string | null>(null);
+  const [positionContent, setPositionContent] = useState<string | null>(null);
+  const [thesisParseError, setThesisParseError] = useState<string | null>(null);
+  const [riskParseError, setRiskParseError] = useState<string | null>(null);
+  const [positionParseError, setPositionParseError] = useState<string | null>(null);
+
+  // Scores & metadata
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [convictionScore, setConvictionScore] = useState<number | null>(null);
+  const [xSignalVelocity, setXSignalVelocity] = useState<XSignalVelocity | null>(null);
+  const [citations, setCitations] = useState<Citation[]>([]);
+  const [generatingPosition, setGeneratingPosition] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
 
-  // Initial fetch
-  useEffect(() => {
-    if (!runId) return;
-    api.get(runId).then((r) => {
-      setRun(r);
-      setCurrentPhase(r.phase);
-      setFlags(r.flags);
-      setConvictionScore(r.conviction_score);
-      if (r.status === "awaiting_approval") setAwaitingApproval(true);
+  // ── Load completed report data ──────────────────────────────────────────────
 
-      // Seed the output panel from persisted state. Non-streaming phases
-      // (quick_screen, risk_stress_test, position_monitor) store their content
-      // only in phase_outputs. Without this seed the StreamPanel shows
-      // "Waiting for output…" forever.
-      //
-      // Phase names don't always match storage keys — nodes use short keys
-      // ("thesis", "risk", "position") while the pipeline uses full names.
-      // Apply the same mapping as the SSE interrupt handler.
-      const outputKeyMap: Record<string, string> = {
-        thesis_construction: "thesis",
-        risk_stress_test: "risk",
-        position_monitor: "position",
-      };
-      const outputKey = outputKeyMap[r.phase] ?? r.phase;
-      const output = r.phase_outputs?.[outputKey];
-      if (output && typeof output === "object" && "content" in output) {
-        const content = (output as { content?: unknown }).content;
-        if (typeof content === "string" && content.length > 0) {
-          setTokens([content]);
+  const loadReportData = useCallback(async (id: string) => {
+    try {
+      const r = await api.report(id);
+      setReport(r);
+
+      // Quick screen
+      const qsOutput = r.phases.quick_screen;
+      setQuickScreenStructured((qsOutput?.structured as QuickScreenStructured) ?? null);
+
+      // Curated financials
+      setCuratedFinancials(r.phases.deep_dive?.curated_financials ?? null);
+      setTranscriptAnalysis(r.phases.deep_dive?.transcript_analysis ?? null);
+
+      // Categories from deep dive
+      const cats = r.phases.deep_dive?.categories ?? {};
+      const catState: Record<string, CategoryState> = {};
+      for (const [key, val] of Object.entries(cats)) {
+        if (val.__type__ === "CategoryError") {
+          catState[key] = { status: "fail", score: null, key_findings: [], structured: null };
+        } else {
+          catState[key] = {
+            status: "pass",
+            score: val.score ?? null,
+            key_findings: val.key_findings ?? [],
+            structured: (val.structured as DeepDiveCategoryStructured) ?? null,
+          };
         }
       }
-    });
-  }, [runId]);
+      setCategories(catState);
 
-  // Poll fallback — if SSE misses an event (stream disconnect, race
-  // condition), periodically re-fetch run state so the UI catches up.
-  // Polls every 5s while the run is in_progress, stops once settled.
-  useEffect(() => {
-    if (!runId || awaitingApproval) return;
-    const id = setInterval(() => {
-      api.get(runId).then((r) => {
-        if (r.status === "awaiting_approval" || r.status === "completed" || r.status === "watchlist") {
-          setRun(r);
-          setCurrentPhase(r.phase);
-          setConvictionScore(r.conviction_score);
-          if (r.status === "awaiting_approval") setAwaitingApproval(true);
-          // Seed tokens for the StreamPanel fallback (non-structured path)
-          const keyMap: Record<string, string> = {
-            thesis_construction: "thesis",
-            risk_stress_test: "risk",
-            position_monitor: "position",
-          };
-          const key = keyMap[r.phase] ?? r.phase;
-          const out = r.phase_outputs?.[key];
-          if (out && typeof out === "object" && "content" in out) {
-            const content = (out as { content?: unknown }).content;
-            if (typeof content === "string" && content.length > 0) {
-              setTokens((prev) => (prev.length > 0 ? prev : [content]));
-            }
-          }
-        }
-      }).catch(() => {});
-    }, 5000);
-    return () => clearInterval(id);
-  }, [runId, awaitingApproval]);
+      // Thesis
+      const thesisPhase = r.phases.thesis;
+      setThesisStructured((thesisPhase?.structured as unknown as ThesisStructured) ?? null);
+      setThesisContent(thesisPhase?.content ?? null);
+      setThesisParseError(thesisPhase?.parse_error ?? null);
 
-  // SSE connection
+      // Risk
+      const riskPhase = r.phases.risk;
+      setRiskStructured((riskPhase?.structured as unknown as RiskStressTestStructured) ?? null);
+      setRiskContent(riskPhase?.content ?? null);
+      setRiskParseError(riskPhase?.parse_error ?? null);
+
+      // Position (optional)
+      const posPhase = r.phases.position;
+      setPositionStructured((posPhase?.structured as unknown as PositionMonitorStructured) ?? null);
+      setPositionContent(posPhase?.content ?? null);
+      setPositionParseError((posPhase as unknown as { parse_error?: string })?.parse_error ?? null);
+
+      // Scores
+      setScores(r.scores);
+      setConvictionScore(r.conviction_score);
+      setCitations(r.citations);
+      setXSignalVelocity(r.x_signal_velocity ?? null);
+    } catch {
+      // Report endpoint may 404 for in-progress runs — that's fine
+    }
+  }, []);
+
+  // ── Initial fetch ───────────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!runId) return;
+
+    api.get(runId).then(async (r) => {
+      setRun(r);
+      setCurrentPhase(r.phase);
+      setConvictionScore(r.conviction_score);
+
+      const isCompleted = r.status === "completed" || r.status === "watchlist" || r.status === "error";
+
+      if (isCompleted) {
+        setIsLive(false);
+        setGeneratingPosition(false);
+        await loadReportData(runId);
+      } else {
+        setIsLive(true);
+        // Seed structured data from phase_outputs if available
+        seedFromRunDetail(r);
+      }
+    }).finally(() => setLoading(false));
+  }, [runId, loadReportData]);
+
+  // ── Seed structured data from RunDetail for reconnection ────────────────────
+
+  function seedFromRunDetail(r: RunDetail) {
+    const outputKeyMap: Record<string, string> = {
+      thesis_construction: "thesis",
+      risk_stress_test: "risk",
+      position_monitor: "position",
+    };
+
+    // Quick screen
+    const qsOut = r.phase_outputs?.quick_screen as CategoryOutput | undefined;
+    if (qsOut?.structured) {
+      setQuickScreenStructured(qsOut.structured as QuickScreenStructured);
+    }
+
+    // Thesis
+    const thesisKey = outputKeyMap.thesis_construction;
+    const thesisOut = r.phase_outputs?.[thesisKey] as CategoryOutput | undefined;
+    if (thesisOut?.structured) {
+      setThesisStructured(thesisOut.structured as unknown as ThesisStructured);
+    }
+
+    // Risk
+    const riskKey = outputKeyMap.risk_stress_test;
+    const riskOut = r.phase_outputs?.[riskKey] as CategoryOutput | undefined;
+    if (riskOut?.structured) {
+      setRiskStructured(riskOut.structured as unknown as RiskStressTestStructured);
+    }
+
+    // Position
+    const posKey = outputKeyMap.position_monitor;
+    const posOut = r.phase_outputs?.[posKey] as CategoryOutput | undefined;
+    if (posOut?.structured) {
+      setPositionStructured(posOut.structured as unknown as PositionMonitorStructured);
+    }
+
+    // Scores from run
+    if (r.scores && Object.keys(r.scores).length > 0) {
+      setScores(r.scores);
+    }
+
+    if (r.citations && r.citations.length > 0) {
+      setCitations(r.citations);
+    }
+  }
+
+  // ── SSE connection ──────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!runId || !isLive) return;
 
     const url = api.streamUrl(runId);
     const es = new EventSource(url);
@@ -413,7 +281,9 @@ export default function PipelineRunnerPage() {
       try {
         const event: SSEEvent = JSON.parse(e.data);
         handleSSEEvent(event);
-      } catch {}
+      } catch {
+        // Ignore parse errors
+      }
     };
 
     return () => {
@@ -421,22 +291,19 @@ export default function PipelineRunnerPage() {
       esRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId]);
+  }, [runId, isLive]);
 
   const handleSSEEvent = useCallback((event: SSEEvent) => {
     switch (event.type) {
       case "phase_start":
         setCurrentPhase(event.phase);
-        setAwaitingApproval(false);
-        setTokens([]);
-        setInDeepDive(false);
         break;
 
       case "deep_dive_start":
-        setInDeepDive(true);
-        setCategories({});
         setCuratedFinancials(event.curated_financials ?? null);
         setTranscriptAnalysis(event.transcript_analysis ?? null);
+        // Mark all categories as running
+        setCategories({});
         break;
 
       case "category_complete":
@@ -449,6 +316,10 @@ export default function PipelineRunnerPage() {
             structured: event.structured ?? null,
           },
         }));
+        // Update scores
+        if (event.score != null) {
+          setScores((prev) => ({ ...prev, [event.category]: event.score }));
+        }
         break;
 
       case "category_error":
@@ -458,259 +329,341 @@ export default function PipelineRunnerPage() {
         }));
         break;
 
-      case "token":
-        setTokens((prev) => [...prev, event.text]);
-        break;
-
-      case "interrupt":
+      case "phase_complete": {
         setCurrentPhase(event.phase);
-        setAwaitingApproval(true);
+        setConvictionScore(event.conviction_score);
+        const output = event.output as Record<string, unknown> | null;
+        if (!output) break;
+
+        const structured = output.structured as Record<string, unknown> | undefined;
+
+        if (event.phase === "quick_screen" && structured) {
+          setQuickScreenStructured(structured as unknown as QuickScreenStructured);
+          // Update scores from quick screen dimensions
+          const dims = (structured as unknown as QuickScreenStructured).dimensions;
+          if (dims) {
+            const dimScores: Record<string, number> = {};
+            for (const d of dims) {
+              dimScores[d.name] = d.score;
+            }
+            setScores((prev) => ({ ...prev, ...dimScores }));
+          }
+        } else if (event.phase === "thesis_construction" || event.phase === "thesis") {
+          if (structured) {
+            setThesisStructured(structured as unknown as ThesisStructured);
+            if ((structured as unknown as ThesisStructured).conviction_score != null) {
+              setConvictionScore((structured as unknown as ThesisStructured).conviction_score);
+            }
+          }
+          setThesisContent((output.content as string) ?? null);
+          setThesisParseError((output.parse_error as string) ?? null);
+        } else if (event.phase === "risk_stress_test" || event.phase === "risk") {
+          if (structured) {
+            setRiskStructured(structured as unknown as RiskStressTestStructured);
+          }
+          setRiskContent((output.content as string) ?? null);
+          setRiskParseError((output.parse_error as string) ?? null);
+        }
+        break;
+      }
+
+      case "interrupt": {
+        setCurrentPhase(event.phase);
         setConvictionScore(event.conviction_score);
 
-        // Merge the full phase output into local run state so structured
-        // dashboards render immediately during live sessions.
-        //
-        // IMPORTANT: phase names don't always match their storage keys in
-        // phase_outputs. The nodes use short keys ("thesis", "risk",
-        // "position") but the pipeline uses full phase names. This map
-        // mirrors PHASE_OUTPUT_KEYS in backend/app/services/pipeline.py.
-        {
-          const outputKeyMap: Record<string, string> = {
-            thesis_construction: "thesis",
-            risk_stress_test: "risk",
-            position_monitor: "position",
-          };
-          const outputKey = outputKeyMap[event.phase] ?? event.phase;
-          setRun((prev) => {
-            if (!prev || !event.output || typeof event.output !== "object") {
-              return prev;
-            }
-            return {
-              ...prev,
-              phase_outputs: {
-                ...prev.phase_outputs,
-                [outputKey]: event.output as CategoryOutput,
-              },
-            };
-          });
-        }
+        const outputKeyMap: Record<string, string> = {
+          thesis_construction: "thesis",
+          risk_stress_test: "risk",
+          position_monitor: "position",
+        };
+        const outputKey = outputKeyMap[event.phase] ?? event.phase;
 
-        // Existing token-seeding fallback — only used when StreamPanel renders
-        // (old runs, parse failures, or non-Quick-Screen phases).
-        {
-          const out = event.output as { content?: unknown } | null | undefined;
-          const content = out && typeof out === "object" ? out.content : null;
-          if (typeof content === "string" && content.length > 0) {
-            setTokens((prev) => (prev.length > 0 ? prev : [content]));
+        // Merge the full phase output into local run state
+        setRun((prev) => {
+          if (!prev || !event.output || typeof event.output !== "object") return prev;
+          return {
+            ...prev,
+            phase_outputs: {
+              ...prev.phase_outputs,
+              [outputKey]: event.output as CategoryOutput,
+            },
+          };
+        });
+
+        // Extract structured data from interrupt output
+        const out = event.output as Record<string, unknown> | null;
+        if (out && typeof out === "object") {
+          const str = out.structured as Record<string, unknown> | undefined;
+          if (str) {
+            if (event.phase === "quick_screen") {
+              setQuickScreenStructured(str as unknown as QuickScreenStructured);
+            } else if (event.phase === "thesis_construction") {
+              setThesisStructured(str as unknown as ThesisStructured);
+              if ((str as unknown as ThesisStructured).conviction_score != null) {
+                setConvictionScore((str as unknown as ThesisStructured).conviction_score);
+              }
+            } else if (event.phase === "risk_stress_test") {
+              setRiskStructured(str as unknown as RiskStressTestStructured);
+            } else if (event.phase === "position_monitor") {
+              setPositionStructured(str as unknown as PositionMonitorStructured);
+            }
           }
         }
         break;
+      }
 
       case "complete":
-        setAwaitingApproval(false);
+        setIsLive(false);
+        setGeneratingPosition(false);
         setConvictionScore(event.conviction_score);
-        // Refresh run state
-        api.get(runId!).then(setRun);
+        // Re-fetch full run + report data
+        if (runId) {
+          api.get(runId).then((r) => {
+            setRun(r);
+            loadReportData(runId);
+          });
+        }
         break;
 
       case "error":
-        setAwaitingApproval(true); // allow user to stop
+        // Keep isLive true so user sees something went wrong
+        break;
+
+      case "token":
+      case "heartbeat":
         break;
     }
-  }, [runId]);
+  }, [runId, loadReportData]);
 
-  async function handleAction(action: AdvanceAction, feedback?: string) {
-    if (!runId || advancing) return;
-    setAdvancing(true);
+  // ── Polling fallback ────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!runId || !isLive) return;
+    const id = setInterval(() => {
+      api.get(runId).then((r) => {
+        setRun(r);
+        setCurrentPhase(r.phase);
+        setConvictionScore(r.conviction_score);
+
+        if (r.status === "completed" || r.status === "watchlist" || r.status === "error") {
+          setIsLive(false);
+          setGeneratingPosition(false);
+          loadReportData(runId);
+        } else {
+          // Seed structured data in case SSE missed events
+          seedFromRunDetail(r);
+        }
+      }).catch(() => {});
+    }, 5000);
+    return () => clearInterval(id);
+  }, [runId, isLive, loadReportData]);
+
+  // ── Generate Position ───────────────────────────────────────────────────────
+
+  async function handleGeneratePosition() {
+    if (!runId || generatingPosition) return;
+    setGeneratingPosition(true);
     try {
-      const updated = await api.advance(runId, action, feedback);
-      setRun(updated);
-      setCurrentPhase(updated.phase);
-      setFlags(updated.flags);
-      if (action === "stop") {
-        // Stay on page, run is watchlisted
-        setAwaitingApproval(false);
-      } else {
-        setAwaitingApproval(false);
-        setTokens([]);
-        setInDeepDive(false);
-      }
-    } finally {
-      setAdvancing(false);
+      await api.advance(runId, "approve");
+      // Reconnect SSE to receive position_monitor events
+      setCurrentPhase("position_monitor");
+      setIsLive(true);
+      // The SSE "complete" handler will call loadReportData()
+      // and clear generatingPosition via the complete handler
+    } catch {
+      setGeneratingPosition(false);
     }
   }
 
-  const isComplete =
-    run?.status === "completed" || run?.status === "watchlist";
+  // ── Derive sidebar scores + statuses ────────────────────────────────────────
 
-  // Derive the Quick Screen structured output from run state, with a safe
-  // cast — CategoryOutput already declares the optional `structured` field.
-  const quickScreenOutput = run?.phase_outputs?.quick_screen as
-    | CategoryOutput
-    | undefined;
-  const quickScreenStructured: QuickScreenStructured | null =
-    (quickScreenOutput?.structured as QuickScreenStructured | undefined) ?? null;
-  // Prefer per-phase citations if the backend populated them; otherwise fall
-  // back to the run-level accumulator (during Quick Screen, the accumulator
-  // only contains Quick Screen sources anyway).
-  const quickScreenCitations: Citation[] =
-    quickScreenOutput?.citations ?? run?.citations ?? [];
+  const sidebarStatuses: Record<string, string> = {};
+  if (isLive) {
+    for (const [key, val] of Object.entries(categories)) {
+      if (val.status === "running") sidebarStatuses[key] = "running";
+      else if (val.status === "fail") sidebarStatuses[key] = "error";
+    }
+  }
 
-  // Thesis Construction structured output
-  const thesisOutput = run?.phase_outputs?.thesis as
-    | CategoryOutput
-    | undefined;
-  const thesisStructured: ThesisStructured | null =
-    (thesisOutput?.structured as unknown as ThesisStructured | null) ?? null;
-  const thesisCitations: Citation[] =
-    thesisOutput?.citations ?? run?.citations ?? [];
+  // Build dashboard categories in the format DeepDiveDashboard expects
+  const dashboardCategories: Record<string, CategoryOutput | null> = {};
+  for (const [k, v] of Object.entries(categories)) {
+    if (v.status === "fail") {
+      dashboardCategories[k] = null;
+    } else {
+      dashboardCategories[k] = {
+        score: v.score ?? 0,
+        content: "",
+        key_findings: v.key_findings,
+        citations: [],
+        structured: v.structured ?? undefined,
+      };
+    }
+  }
 
-  // Risk Stress-Test structured output
-  const riskOutput = run?.phase_outputs?.risk as
-    | CategoryOutput
-    | undefined;
-  const riskStructured: RiskStressTestStructured | null =
-    (riskOutput?.structured as unknown as RiskStressTestStructured | null) ?? null;
-  const riskCitations: Citation[] =
-    riskOutput?.citations ?? run?.citations ?? [];
+  // ── Loading state ───────────────────────────────────────────────────────────
 
-  // Position Monitor structured output
-  const positionOutput = run?.phase_outputs?.position as
-    | (CategoryOutput & { structured?: PositionMonitorStructured })
-    | undefined;
-  const positionStructured: PositionMonitorStructured | null =
-    (positionOutput?.structured as unknown as PositionMonitorStructured | null) ?? null;
-  const positionCitations: Citation[] =
-    positionOutput?.citations ?? run?.citations ?? [];
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-6 h-6 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
+          <span className="text-sm text-[var(--color-text-muted)]">Loading research run...</span>
+        </div>
+      </main>
+    );
+  }
+
+  if (!run) {
+    return (
+      <main className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+        <p className="text-[var(--color-text-muted)]">Run not found.</p>
+      </main>
+    );
+  }
+
+  const ticker = run.ticker ?? "";
+  const thesisStatus = run.thesis_status ?? report?.thesis_status ?? "PENDING";
+  const loopCount = run.loop_count ?? report?.loop_count ?? 0;
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] p-6">
-      <div className="max-w-6xl mx-auto flex gap-8">
-        {/* Left rail */}
-        <PhaseRail
-          currentPhase={currentPhase}
-          runStatus={run?.status ?? "in_progress"}
-          loopCount={run?.loop_count ?? 0}
-          ticker={run?.ticker ?? "—"}
-        />
+    <main className="min-h-screen bg-[var(--color-bg)] p-6">
+      <div className="max-w-7xl mx-auto flex gap-6">
+        {/* Sidebar navigation */}
+        <DashboardSidebar scores={scores} statuses={isLive ? sidebarStatuses : undefined} />
 
-        {/* Main panel */}
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
-          {/* Header row */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-[var(--text)] tracking-tight">
-                {PHASE_RAIL.find((p) => p.key === currentPhase)?.label ?? currentPhase.replace(/_/g, " ")}
-              </h1>
-              {run && (
-                <p className="text-sm text-[var(--text-faint)] mt-0.5">
-                  Run ID: <span className="font-mono text-xs">{runId}</span>
-                </p>
-              )}
-            </div>
-            {convictionScore !== null && (
-              <div className="text-right">
-                <p className="text-xs text-[var(--text-faint)] uppercase tracking-wider">
-                  Conviction
-                </p>
-                <p className="text-2xl font-semibold font-mono text-[var(--primary)]">
-                  {convictionScore}
-                </p>
-              </div>
-            )}
-          </div>
+        {/* Main content */}
+        <div className="flex-1 min-w-0 space-y-6">
+          {/* Progress indicator for live runs */}
+          {isLive && <LiveProgressBar currentPhase={currentPhase} />}
 
-          {/* Flags */}
-          {flags.length > 0 && (
-            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 space-y-1">
-              <p className="text-xs font-medium text-amber-400 uppercase tracking-wider">
-                Flagged notes
+          {/* Error banner for failed runs */}
+          {!isLive && run.status === "error" && (
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+              <p className="text-sm font-semibold text-red-400">Pipeline Error</p>
+              <p className="text-xs text-red-300 mt-1">
+                The pipeline encountered an error during the {currentPhase.replace(/_/g, " ")} phase. Partial results are shown below.
               </p>
-              {flags.map((f, i) => (
-                <p key={i} className="text-xs text-[var(--text-muted)]">
-                  · {f}
-                </p>
-              ))}
             </div>
           )}
 
-          {/* Deep dive dashboard */}
-          {inDeepDive ? (
+          {/* Report Header — shows when quick screen data or financials available */}
+          {(quickScreenStructured || curatedFinancials) && (
+            <ReportHeader
+              financials={curatedFinancials}
+              quickScreen={quickScreenStructured}
+              scores={scores}
+              convictionScore={convictionScore}
+              ticker={ticker}
+              isLive={isLive}
+            />
+          )}
+
+          {/* Deep Dive Dashboard — shows when financials or categories available */}
+          {(curatedFinancials || Object.keys(categories).length > 0) && (
             <DeepDiveDashboard
               financials={curatedFinancials}
-              categories={Object.fromEntries(
-                Object.entries(categories).map(([k, v]) => [
-                  k,
-                  v.status === "fail" ? null : {
-                    score: v.score ?? 0,
-                    content: "",
-                    key_findings: v.key_findings,
-                    citations: [],
-                    structured: v.structured ?? undefined,
-                  },
-                ])
-              )}
-              scores={Object.fromEntries(
-                Object.entries(categories)
-                  .filter(([, v]) => v.score != null)
-                  .map(([k, v]) => [k, v.score!])
-              )}
-              isLive={true}
+              categories={dashboardCategories}
+              scores={scores}
+              isLive={isLive}
               transcriptAnalysis={transcriptAnalysis}
+              xSignalVelocity={xSignalVelocity ?? undefined}
             />
-          ) : currentPhase === "quick_screen" && quickScreenStructured ? (
-            <QuickScreenCard
-              structured={quickScreenStructured}
-              citations={quickScreenCitations}
-              ticker={run?.ticker ?? ""}
-            />
-          ) : currentPhase === "thesis_construction" && thesisStructured ? (
-            <ThesisCard
-              structured={thesisStructured}
-              citations={thesisCitations}
-              ticker={run?.ticker ?? ""}
-              thesisStatus={run?.thesis_status ?? "PENDING"}
-            />
-          ) : currentPhase === "risk_stress_test" && riskStructured ? (
-            <RiskCard
-              structured={riskStructured}
-              citations={riskCitations}
-              ticker={run?.ticker ?? ""}
-              loopCount={run?.loop_count ?? 0}
-            />
-          ) : currentPhase === "position_monitor" && positionStructured ? (
-            <PositionCard
-              structured={positionStructured}
-              citations={positionCitations}
-              ticker={run?.ticker ?? ""}
-              convictionScore={convictionScore}
-            />
-          ) : (
-            <StreamPanel tokens={tokens} />
           )}
 
-          {/* Action bar */}
-          <ActionBar
-            phase={currentPhase}
-            awaitingApproval={awaitingApproval && !isComplete}
-            onAction={handleAction}
-            disabled={advancing}
-          />
+          {/* Thesis */}
+          {(thesisStructured || thesisContent) && (
+            <section id="thesis_section">
+              {thesisStructured ? (
+                <ThesisCard
+                  structured={thesisStructured}
+                  citations={citations}
+                  ticker={ticker}
+                  thesisStatus={thesisStatus}
+                />
+              ) : (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Thesis Construction</h2>
+                  {thesisParseError && (
+                    <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({thesisParseError})</p>
+                  )}
+                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{thesisContent}</p>
+                </div>
+              )}
+            </section>
+          )}
 
-          {/* View full report CTA */}
-          {isComplete && (
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => router.push(`/report/${runId}`)}
-                className="flex-1 py-3 rounded-lg bg-[var(--primary)] text-white text-sm font-semibold
-                           hover:bg-[var(--primary-dk)] active:scale-[0.98] transition-all"
-              >
-                View Full Report →
-              </button>
+          {/* Risk */}
+          {(riskStructured || riskContent) && (
+            <section id="risk_section">
+              {riskStructured ? (
+                <RiskCard
+                  structured={riskStructured}
+                  citations={report?.phases.risk?.citations ?? citations}
+                  ticker={ticker}
+                  loopCount={loopCount}
+                />
+              ) : (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Risk Stress-Test</h2>
+                  {riskParseError && (
+                    <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({riskParseError})</p>
+                  )}
+                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{riskContent}</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Position */}
+          {(positionStructured || positionContent) && (
+            <section id="position_section">
+              {positionStructured ? (
+                <PositionCard
+                  structured={positionStructured}
+                  citations={report?.phases.position?.citations ?? citations}
+                  ticker={ticker}
+                  convictionScore={convictionScore}
+                />
+              ) : (
+                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Position Plan</h2>
+                  {positionParseError && (
+                    <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({positionParseError})</p>
+                  )}
+                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{positionContent}</p>
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* Generate Position button — shows when completed but no position */}
+          {!isLive && (run.status === "completed" || run.status === "watchlist") && !positionStructured && (
+            <button
+              onClick={handleGeneratePosition}
+              disabled={generatingPosition}
+              className="w-full py-3 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold
+                         hover:bg-[var(--color-primary)]/90 active:scale-[0.98] disabled:opacity-50 transition-all
+                         flex items-center justify-center gap-2"
+            >
+              {generatingPosition ? (
+                <>
+                  <span className="w-4 h-4 rounded-full border-2 border-white/40 border-t-white animate-spin" />
+                  Generating Position Plan...
+                </>
+              ) : (
+                "Generate Position Plan \u2192"
+              )}
+            </button>
+          )}
+
+          {/* Back to library */}
+          {!isLive && (
+            <div className="flex gap-3 pb-10">
               <button
                 onClick={() => router.push("/library")}
-                className="px-5 py-3 rounded-lg bg-[var(--surface)] text-[var(--text-muted)] text-sm
-                           border border-[var(--border)] hover:text-[var(--text)] transition-colors"
+                className="flex-1 py-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]
+                           text-sm font-semibold text-[var(--color-text-primary)] hover:border-[var(--color-primary)]/50 transition-colors"
               >
                 Back to Library
               </button>
