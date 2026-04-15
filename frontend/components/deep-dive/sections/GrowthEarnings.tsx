@@ -1,9 +1,11 @@
-import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis } from "@/lib/api";
+import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis, EdgarFacts } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { GroupedBarChart } from "../charts/GroupedBarChart";
 import { TrendLineChart } from "../charts/TrendLineChart";
+import { RPOTrend } from "../charts/RPOTrend";
 import { ChartSkeleton } from "../skeleton/ChartSkeleton";
 import { TranscriptInsights } from "../panels/TranscriptInsights";
+import { formatUSD } from "@/lib/format";
 
 interface GrowthEarningsProps {
   financials: CuratedFinancials | null;
@@ -12,11 +14,12 @@ interface GrowthEarningsProps {
   fallback?: CategoryOutput | null;
   isLive?: boolean;
   transcriptAnalysis: TranscriptAnalysis | null;
+  edgarFacts?: EdgarFacts;
 }
 
 const GE_PASSES = ["pass1_claims", "pass4_validation", "pass6_bom"];
 
-export function GrowthEarnings({ financials, structured, score, fallback, isLive, transcriptAnalysis }: GrowthEarningsProps) {
+export function GrowthEarnings({ financials, structured, score, fallback, isLive, transcriptAnalysis, edgarFacts }: GrowthEarningsProps) {
   return (
     <DataRichSection id="growth_earnings" label="Growth & Earnings" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -25,6 +28,14 @@ export function GrowthEarnings({ financials, structured, score, fallback, isLive
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Revenue</h4>
             <GroupedBarChart metrics={financials.quarterly_revenue} label="Revenue" />
           </div>
+          {edgarFacts && (
+            <div>
+              <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                RPO Trend <span className="text-[9px] text-[var(--color-text-muted)] normal-case">(SEC XBRL)</span>
+              </h4>
+              <RPOTrend edgarFacts={edgarFacts} />
+            </div>
+          )}
           <div>
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Margin Trends</h4>
             <TrendLineChart
@@ -52,7 +63,7 @@ export function GrowthEarnings({ financials, structured, score, fallback, isLive
                     <tr key={rev.period} className="border-b border-[var(--color-border)] last:border-0">
                       <td className="py-1.5 text-[var(--color-text-primary)]">{rev.period}</td>
                       <td className="py-1.5 text-right font-mono text-[var(--color-text-primary)]">
-                        ${(rev.estimate / 1e9).toFixed(1)}B
+                        {formatUSD(rev.estimate)}
                       </td>
                       <td className="py-1.5 text-right font-mono text-[var(--color-text-primary)]">
                         {eps ? `$${eps.estimate.toFixed(2)}` : "—"}

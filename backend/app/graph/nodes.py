@@ -61,6 +61,36 @@ MACRO_ROUTING: dict[str, list[str]] = {
     "Financial Health": ["fed_funds_rate", "treasury_10y", "yield_curve_spread"],
 }
 
+# EDGAR XBRL concept routing — which concepts each deep-dive category should see.
+# When a routed concept has no facts in xbrl_facts, the helper explicitly notes
+# "not disclosed in XBRL" so the LLM distinguishes unrouted from unavailable.
+_DEBT_MATURITY_CONCEPTS = [
+    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths",
+    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearTwo",
+    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearThree",
+    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFour",
+    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFive",
+    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalAfterYearFive",
+]
+_RPO_CONCEPTS = [
+    "us-gaap:RevenueRemainingPerformanceObligation",
+    "us-gaap:RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage",
+]
+_CONCENTRATION_CONCEPTS = ["us-gaap:ConcentrationRiskPercentage1"]
+_CREDIT_CONCEPTS = [
+    "us-gaap:WeightedAverageInterestRate",
+    "us-gaap:LongTermDebt",
+    "us-gaap:LineOfCreditFacilityCurrentBorrowingCapacity",
+]
+
+EDGAR_ROUTING: dict[str, list[str]] = {
+    "Growth & Earnings": _RPO_CONCEPTS,
+    "Future Durability": _RPO_CONCEPTS,
+    "Financial Health": _DEBT_MATURITY_CONCEPTS + _CREDIT_CONCEPTS,
+    "Risk Assessment": _DEBT_MATURITY_CONCEPTS + _CONCENTRATION_CONCEPTS + _CREDIT_CONCEPTS,
+    "Business Quality": _CONCENTRATION_CONCEPTS,
+}
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -104,6 +134,12 @@ def _fmt_fundamentals(
     estimates: list | None = None,
     key_metrics: dict | None = None,
     fin_growth: list | None = None,
+    grade_consensus: dict | None = None,
+    price_target: dict | None = None,
+    ratings_snap: dict | None = None,
+    grades_recent: list | None = None,
+    grades_hist: list | None = None,
+    insider_tx: list | None = None,
 ) -> str:
     """Format raw FMP data into a comprehensive block for LLM prompts.
 
@@ -267,6 +303,101 @@ def _fmt_fundamentals(
                 line += f" | FCF Growth {float(fcfg)*100:+.1f}%"
             parts.append(line)
 
+    # ── Analyst consensus + price target ───────────────────────────────────
+    if grade_consensus or price_target or ratings_snap:
+        parts.append("\nAnalyst Consensus & Ratings:")
+        if isinstance(grade_consensus, dict) and grade_consensus:
+            sb = grade_consensus.get("strongBuy") or 0
+            b = grade_consensus.get("buy") or 0
+            h = grade_consensus.get("hold") or 0
+            s = grade_consensus.get("sell") or 0
+            ss = grade_consensus.get("strongSell") or 0
+            total = sb + b + h + s + ss
+            label = grade_consensus.get("consensus") or "N/A"
+            parts.append(
+                f"  Consensus: {label} (StrongBuy {sb} / Buy {b} / Hold {h} / Sell {s} / StrongSell {ss}; {total} analysts)"
+            )
+        if isinstance(price_target, dict) and price_target:
+            tc = price_target.get("targetConsensus")
+            th = price_target.get("targetHigh")
+            tl = price_target.get("targetLow")
+            tm = price_target.get("targetMedian")
+            current = profile.get("price") if isinstance(profile, dict) else None
+            line = "  Price Target:"
+            if tc is not None:
+                line += f" avg ${float(tc):.2f}"
+            if tm is not None:
+                line += f" | median ${float(tm):.2f}"
+            if th is not None and tl is not None:
+                line += f" | range ${float(tl):.2f}–${float(th):.2f}"
+            if current and tc:
+                upside = (float(tc) - float(current)) / float(current) * 100
+                line += f" | implied {upside:+.1f}% vs current ${float(current):.2f}"
+            parts.append(line)
+        if isinstance(ratings_snap, dict) and ratings_snap:
+            rating = ratings_snap.get("rating")
+            score = ratings_snap.get("overallScore")
+            if rating or score is not None:
+                parts.append(f"  FMP Rating: {rating or 'N/A'} (overall score {score}/5)")
+
+    # ── Recent analyst rating changes (upgrade / downgrade events) ─────────
+    if isinstance(grades_recent, list) and grades_recent:
+        parts.append(f"\nRecent Analyst Actions ({len(grades_recent[:8])} most recent):")
+        for g in grades_recent[:8]:
+            date_ = g.get("date", "")[:10]
+            firm = g.get("gradingCompany") or "Unknown"
+            prev = g.get("previousGrade") or "—"
+            new = g.get("newGrade") or "—"
+            action = g.get("action") or ""
+            parts.append(f"  {date_} {firm}: {prev} → {new} ({action})")
+
+    # ── Analyst consensus count trend (last few months) ────────────────────
+    if isinstance(grades_hist, list) and grades_hist:
+        parts.append("\nAnalyst Consensus Trend (monthly):")
+        for row in grades_hist[:4]:
+            date_ = row.get("date", "")[:7]
+            sb = row.get("analystRatingsStrongBuy") or 0
+            b = row.get("analystRatingsBuy") or 0
+            h = row.get("analystRatingsHold") or 0
+            s = row.get("analystRatingsSell") or 0
+            ss = row.get("analystRatingsStrongSell") or 0
+            parts.append(f"  {date_}: SB {sb} / B {b} / H {h} / S {s} / SS {ss}")
+
+    # ── Insider transactions (Form 4s with non-zero transactions only) ─────
+    if isinstance(insider_tx, list) and insider_tx:
+        # Filter to market-priced transactions — zero-price rows are usually
+        # option grants or gifts and don't indicate conviction.
+        meaningful = [
+            t for t in insider_tx
+            if float(t.get("securitiesTransacted") or 0) > 0
+            and float(t.get("price") or 0) > 0
+        ]
+        if meaningful:
+            # Aggregate buys vs sells (A = acquisition, D = disposition) for a quick summary
+            buys = sum(
+                float(t.get("securitiesTransacted") or 0) * float(t.get("price") or 0)
+                for t in meaningful if (t.get("acquisitionOrDisposition") or "").upper() == "A"
+            )
+            sells = sum(
+                float(t.get("securitiesTransacted") or 0) * float(t.get("price") or 0)
+                for t in meaningful if (t.get("acquisitionOrDisposition") or "").upper() == "D"
+            )
+            parts.append(f"\nInsider Transactions (last {len(meaningful)} Form 4 filings):")
+            parts.append(
+                f"  Aggregate: ${buys/1e6:.2f}M buys vs ${sells/1e6:.2f}M sells (net ${(buys-sells)/1e6:+.2f}M)"
+            )
+            for t in meaningful[:6]:
+                fdate = (t.get("filingDate") or "")[:10]
+                name = t.get("reportingName") or "Unknown"
+                role = t.get("typeOfOwner") or ""
+                shares = float(t.get("securitiesTransacted") or 0)
+                price = float(t.get("price") or 0)
+                direction = "BUY" if (t.get("acquisitionOrDisposition") or "").upper() == "A" else "SELL"
+                value = shares * price
+                parts.append(
+                    f"  {fdate} {name} ({role}): {direction} {shares:,.0f} sh @ ${price:.2f} = ${value/1e6:.2f}M"
+                )
+
     return "\n".join(parts)
 
 
@@ -369,6 +500,9 @@ async def _run_one_category(
     loop_context: str,
     transcript_context: str = "",
     macro_context: str = "",
+    technical_context: str = "",
+    sentiment_context: str = "",
+    edgar_context: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -382,6 +516,9 @@ async def _run_one_category(
                     data=data,
                     transcript_data=transcript_context,
                     macro_data=macro_context,
+                    technical_data=technical_context,
+                    sentiment_data=sentiment_context,
+                    edgar_data=edgar_context,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -646,8 +783,24 @@ def _build_technical_data(prices: list[dict]) -> list[dict]:
     return result
 
 
-async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient | None = None) -> ResearchState:
-    """Phase 3: run all 9 categories in parallel. Partial success is OK."""
+async def node_deep_dive(
+    state: ResearchState,
+    fmp: FMPClient,
+    fred: FREDClient | None = None,
+    signals: dict | None = None,
+    edgar_facts: dict | None = None,
+) -> ResearchState:
+    """Phase 3: run all 9 categories in parallel. Partial success is OK.
+
+    `signals` is an optional dict of {signal_type: value} pre-fetched by the
+    caller (typically PipelineService) from the signals table, used to route
+    X sentiment/velocity data into the Sentiment & Narrative prompt.
+
+    `edgar_facts` is an optional {concept: [fact_dict, ...]} dict of XBRL
+    facts pre-fetched by the caller from the xbrl_facts table, used to
+    route filings data (RPO, debt maturity, customer concentration) into
+    the relevant category prompts.
+    """
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
     state.phase = "deep_dive"
 
@@ -679,6 +832,31 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient 
                 fmp.get_financial_growth(state.ticker, period="quarter", limit=8),
             )
         )
+
+        # Tier 2 secondary fetch: analyst ratings + price targets + insider Form 4s.
+        # Each call degrades independently via return_exceptions — a single 404
+        # or rate-limit doesn't collapse the whole set.
+        def _unwrap(result, default):
+            if isinstance(result, BaseException):
+                return default
+            return result[0]  # each FMP method returns (data, citation)
+
+        secondary = await asyncio.gather(
+            fmp.get_analyst_grades_consensus(state.ticker),
+            fmp.get_price_target_consensus(state.ticker),
+            fmp.get_ratings_snapshot(state.ticker),
+            fmp.get_analyst_grades(state.ticker, limit=10),
+            fmp.get_analyst_grades_historical(state.ticker, limit=6),
+            fmp.get_insider_trading(state.ticker, limit=20),
+            return_exceptions=True,
+        )
+        grade_consensus = _unwrap(secondary[0], {}) or {}
+        price_target = _unwrap(secondary[1], {}) or {}
+        ratings_snap = _unwrap(secondary[2], {}) or {}
+        grades_recent = _unwrap(secondary[3], []) or []
+        grades_hist = _unwrap(secondary[4], []) or []
+        insider_tx = _unwrap(secondary[5], []) or []
+
         data_text = _fmt_fundamentals(
             state.ticker,
             income if isinstance(income, list) else [],
@@ -689,6 +867,12 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient 
             estimates=estimates if isinstance(estimates, list) else [],
             key_metrics=key_metrics if isinstance(key_metrics, dict) else None,
             fin_growth=fin_growth if isinstance(fin_growth, list) else [],
+            grade_consensus=grade_consensus if isinstance(grade_consensus, dict) else {},
+            price_target=price_target if isinstance(price_target, dict) else {},
+            ratings_snap=ratings_snap if isinstance(ratings_snap, dict) else {},
+            grades_recent=grades_recent if isinstance(grades_recent, list) else [],
+            grades_hist=grades_hist if isinstance(grades_hist, list) else [],
+            insider_tx=insider_tx if isinstance(insider_tx, list) else [],
         )
 
         # Build curated financials for frontend dashboard
@@ -777,9 +961,105 @@ async def node_deep_dive(state: ResearchState, fmp: FMPClient, fred: FREDClient 
             return ""
         return "Macro economic indicators (FRED):\n" + "\n".join(sections)
 
+    def _build_technical_context(category: str) -> str:
+        if category != "Technical & Market Structure":
+            return ""
+        prices = (state.curated_financials or {}).get("daily_prices")
+        if not prices or not isinstance(prices, list) or len(prices) == 0:
+            return ""
+        # Latest 20 sessions, newest last (chronological already)
+        recent = prices[-20:]
+        lines = ["date | close | volume | sma_9 | sma_20 | sma_50 | sma_200 | rsi"]
+        for p in recent:
+            lines.append(
+                f"{p.get('date')} | {p.get('close')} | {p.get('volume')} | "
+                f"{p.get('sma_9')} | {p.get('sma_20')} | {p.get('sma_50')} | "
+                f"{p.get('sma_200')} | {p.get('rsi')}"
+            )
+        latest = prices[-1]
+        summary = (
+            f"Latest close: {latest.get('close')} | "
+            f"RSI(14): {latest.get('rsi')} | "
+            f"SMA50: {latest.get('sma_50')} | SMA200: {latest.get('sma_200')}"
+        )
+        return (
+            "Technical indicators (computed from 1Y daily OHLCV):\n"
+            f"{summary}\n\nLast 20 sessions:\n" + "\n".join(lines)
+        )
+
+    def _build_sentiment_context(category: str) -> str:
+        if category != "Sentiment & Narrative":
+            return ""
+        if not signals:
+            return ""
+        parts = ["X social signal (Tier 2, directional only):"]
+        vel = signals.get("velocity")
+        if isinstance(vel, dict):
+            parts.append(
+                f"Velocity: ratio={vel.get('ratio')} direction={vel.get('direction')} "
+                f"count_7d={vel.get('count_7d')} count_30d_approx={vel.get('count_30d_approx')}"
+            )
+        narr = signals.get("narrative")
+        if isinstance(narr, dict):
+            parts.append(f"Narrative: post_count={narr.get('post_count')} summary={narr.get('summary') or 'N/A'}")
+        disc = signals.get("discovery")
+        if isinstance(disc, dict):
+            parts.append(
+                f"Discovery: score={disc.get('score')} co_mentions_7d={disc.get('co_mentions_7d')} "
+                f"total_theme_mentions_7d={disc.get('total_theme_mentions_7d')}"
+            )
+        if len(parts) == 1:
+            return ""
+        return "\n".join(parts)
+
+    def _fmt_fact_value(value: float, unit: str) -> str:
+        if unit.upper() == "USD":
+            if abs(value) >= 1e9:
+                return f"${value/1e9:.2f}B"
+            if abs(value) >= 1e6:
+                return f"${value/1e6:.2f}M"
+            return f"${value:,.0f}"
+        if unit.lower() == "pure":
+            return f"{value*100:.2f}%" if abs(value) <= 1 else f"{value:.2f}"
+        return f"{value:,.0f} {unit}"
+
+    def _build_edgar_context(category: str) -> str:
+        concepts = EDGAR_ROUTING.get(category)
+        if not concepts:
+            return ""
+        present_lines: list[str] = []
+        missing: list[str] = []
+        facts = edgar_facts or {}
+        for concept in concepts:
+            entries = facts.get(concept)
+            short = concept.split(":", 1)[-1]
+            if not entries:
+                missing.append(short)
+                continue
+            # Most recent first, show up to 4
+            for e in entries[:4]:
+                present_lines.append(
+                    f"  {short} [{e.get('fiscal_year')} {e.get('fiscal_period') or ''}] "
+                    f"{e.get('period_start')} → {e.get('period_end')}: "
+                    f"{_fmt_fact_value(e['value'], e.get('unit') or '')}"
+                )
+        if not present_lines and not missing:
+            return ""
+        sections = ["SEC EDGAR XBRL facts (Tier 1, authoritative from 10-K/10-Q filings):"]
+        if present_lines:
+            sections.append("\n".join(present_lines))
+        if missing:
+            sections.append("Not disclosed in XBRL: " + ", ".join(missing))
+        return "\n".join(sections)
+
     # Run all categories in parallel
     tasks = [
-        _run_one_category(cat, state.ticker, state.theme_id, data_text, loop_ctx_str, _build_transcript_context(cat), _build_macro_context(cat))
+        _run_one_category(
+            cat, state.ticker, state.theme_id, data_text, loop_ctx_str,
+            _build_transcript_context(cat), _build_macro_context(cat),
+            _build_technical_context(cat), _build_sentiment_context(cat),
+            _build_edgar_context(cat),
+        )
         for cat in categories_to_run
     ]
     results = await asyncio.gather(*tasks)

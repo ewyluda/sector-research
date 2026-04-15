@@ -282,6 +282,27 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
         output = phase_outputs.get(key, {})
         return output.get("content", "") if isinstance(output, dict) else ""
 
+    # Fetch EDGAR XBRL facts for this ticker (Tier 3 v1 data)
+    from backend.app.models.filing import XBRLFact
+    edgar_result = await db.execute(
+        select(XBRLFact)
+        .where(XBRLFact.ticker == run.ticker.upper())
+        .order_by(XBRLFact.period_end.desc())
+    )
+    edgar_facts: dict[str, list[dict]] = {}
+    for row in edgar_result.scalars().all():
+        bucket = edgar_facts.setdefault(row.concept, [])
+        if len(bucket) >= 12:
+            continue
+        bucket.append({
+            "value": float(row.value),
+            "unit": row.unit,
+            "period_start": row.period_start.isoformat(),
+            "period_end": row.period_end.isoformat(),
+            "fiscal_year": row.fiscal_year,
+            "fiscal_period": row.fiscal_period,
+        })
+
     # Fetch X signal velocity for this ticker+theme
     x_signal_velocity = None
     sig_result = await db.execute(
@@ -321,6 +342,7 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
                 },
                 "curated_financials": state.get("curated_financials"),
                 "transcript_analysis": state.get("transcript_analysis"),
+                "edgar_facts": edgar_facts,
             },
             "thesis": phase_outputs.get("thesis", {}),
             "risk": phase_outputs.get("risk", {}),

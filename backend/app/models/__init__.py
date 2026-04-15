@@ -1,5 +1,6 @@
 from backend.app.models.base import Base
 from backend.app.models.citation import Citation, CitationRecord
+from backend.app.models.filing import Filing, XBRLFact
 from backend.app.models.theme import Theme
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
@@ -10,6 +11,8 @@ __all__ = [
     "Base",
     "Citation",
     "CitationRecord",
+    "Filing",
+    "XBRLFact",
     "Theme",
     "ResearchRun",
     "Signal",

@@ -333,6 +333,82 @@ class FMPClient:
         )
         return data if isinstance(data, list) else [], citation
 
+    # ── Analyst ratings + targets ─────────────────────────────────────────────
+
+    async def get_analyst_grades(
+        self, ticker: str, limit: int = 10
+    ) -> tuple[list[dict], Citation]:
+        """Recent individual analyst rating changes (upgrade / downgrade events).
+
+        Each row: gradingCompany, previousGrade, newGrade, previousAction/newAction, date.
+        """
+        params = {"symbol": ticker, "limit": limit}
+        data = await self._request("grades", params, ttl=TTL_FUNDAMENTAL)
+        citation = self._make_citation("grades", "Analyst Grades", ticker, params)
+        return data if isinstance(data, list) else [], citation
+
+    async def get_analyst_grades_historical(
+        self, ticker: str, limit: int = 6
+    ) -> tuple[list[dict], Citation]:
+        """Monthly analyst consensus count trend (strongBuy / buy / hold / sell / strongSell)."""
+        params = {"symbol": ticker, "limit": limit}
+        data = await self._request("grades-historical", params, ttl=TTL_FUNDAMENTAL)
+        citation = self._make_citation(
+            "grades-historical", "Analyst Grades History", ticker, params
+        )
+        return data if isinstance(data, list) else [], citation
+
+    async def get_analyst_grades_consensus(
+        self, ticker: str
+    ) -> tuple[dict, Citation]:
+        """Latest analyst consensus counts + overall consensus label."""
+        params = {"symbol": ticker}
+        data = await self._request("grades-consensus", params, ttl=TTL_FUNDAMENTAL)
+        result = data[0] if isinstance(data, list) and data else {}
+        citation = self._make_citation(
+            "grades-consensus", "Analyst Consensus", ticker, params
+        )
+        return result, citation
+
+    async def get_price_target_consensus(
+        self, ticker: str
+    ) -> tuple[dict, Citation]:
+        """Analyst price target consensus: high / low / median / average."""
+        params = {"symbol": ticker}
+        data = await self._request("price-target-consensus", params, ttl=TTL_FUNDAMENTAL)
+        result = data[0] if isinstance(data, list) and data else {}
+        citation = self._make_citation(
+            "price-target-consensus", "Price Target Consensus", ticker, params
+        )
+        return result, citation
+
+    async def get_ratings_snapshot(self, ticker: str) -> tuple[dict, Citation]:
+        """FMP proprietary rating snapshot (A+ … F) with sub-scores."""
+        params = {"symbol": ticker}
+        data = await self._request("ratings-snapshot", params, ttl=TTL_FUNDAMENTAL)
+        result = data[0] if isinstance(data, list) and data else {}
+        citation = self._make_citation(
+            "ratings-snapshot", "Ratings Snapshot", ticker, params
+        )
+        return result, citation
+
+    # ── Insider trading (Form 4) ──────────────────────────────────────────────
+
+    async def get_insider_trading(
+        self, ticker: str, limit: int = 20
+    ) -> tuple[list[dict], Citation]:
+        """Recent Form 4 insider transactions filtered by symbol.
+
+        Uses `insider-trading/search` — the `/insider-trading/latest` endpoint
+        ignores the symbol filter and returns global latest filings.
+        """
+        params = {"symbol": ticker, "limit": limit}
+        data = await self._request("insider-trading/search", params, ttl=TTL_FUNDAMENTAL)
+        citation = self._make_citation(
+            "insider-trading/search", "Insider Transactions", ticker, params
+        )
+        return data if isinstance(data, list) else [], citation
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def close(self) -> None:

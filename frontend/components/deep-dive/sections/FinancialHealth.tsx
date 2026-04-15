@@ -1,7 +1,8 @@
-import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
+import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, EdgarFacts } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { StackedBarChart } from "../charts/StackedBarChart";
 import { TrendLineChart } from "../charts/TrendLineChart";
+import { DebtMaturityLadder } from "../charts/DebtMaturityLadder";
 import { ChartSkeleton } from "../skeleton/ChartSkeleton";
 
 interface FinancialHealthProps {
@@ -10,9 +11,10 @@ interface FinancialHealthProps {
   score: number | null;
   fallback?: CategoryOutput | null;
   isLive?: boolean;
+  edgarFacts?: EdgarFacts;
 }
 
-export function FinancialHealth({ financials, structured, score, fallback, isLive }: FinancialHealthProps) {
+export function FinancialHealth({ financials, structured, score, fallback, isLive, edgarFacts }: FinancialHealthProps) {
   return (
     <DataRichSection id="financial_health" label="Financial Health" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -21,6 +23,14 @@ export function FinancialHealth({ financials, structured, score, fallback, isLiv
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Balance Sheet Composition</h4>
             <StackedBarChart cash={financials.quarterly_cash} debt={financials.quarterly_total_debt} equity={financials.quarterly_shareholders_equity} />
           </div>
+          {edgarFacts && (
+            <div>
+              <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                Debt Maturity Schedule <span className="text-[9px] text-[var(--color-text-muted)] normal-case">(SEC XBRL)</span>
+              </h4>
+              <DebtMaturityLadder edgarFacts={edgarFacts} />
+            </div>
+          )}
           <div>
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Current Ratio</h4>
             <TrendLineChart

@@ -32,11 +32,15 @@ async def lifespan(app: FastAPI):
     app.state.fmp = FMPClient()
     app.state.x_client = XClient()
     from backend.app.clients.fred import FREDClient
+    from backend.app.clients.edgar import EdgarClient
     app.state.fred = FREDClient()
-    logger.info("FMP + X + FRED clients initialised")
+    app.state.edgar = EdgarClient()
+    logger.info("FMP + X + FRED + EDGAR clients initialised")
 
     # Pipeline service
-    app.state.pipeline = PipelineService(fmp=app.state.fmp, fred=app.state.fred)
+    app.state.pipeline = PipelineService(
+        fmp=app.state.fmp, fred=app.state.fred, edgar=app.state.edgar,
+    )
     logger.info("PipelineService initialised")
 
     # Daily signal scheduler — 2 AM local time
@@ -59,6 +63,7 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown(wait=False)
     await app.state.fmp.close()
     await app.state.x_client.close()
+    await app.state.edgar.close()
     logger.info("Shutdown complete")
 
 
