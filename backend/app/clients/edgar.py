@@ -68,6 +68,14 @@ class EdgarClient:
         resp.raise_for_status()
         return resp.json()
 
+    async def _get_text(self, url: str) -> str:
+        await self._throttle()
+        resp = await self._http.get(url)
+        if resp.status_code == 404:
+            raise EdgarClientError(f"EDGAR 404: {url}")
+        resp.raise_for_status()
+        return resp.text
+
     async def get_ticker_to_cik(self, ticker: str) -> tuple[str | None, Citation]:
         """Resolve a ticker to a zero-padded 10-digit CIK string.
 
@@ -136,6 +144,44 @@ class EdgarClient:
             tier=1,
         )
         return data, citation
+
+    async def get_filing_index(self, cik: str, accession_number: str) -> tuple[dict, Citation]:
+        """Fetch the filing directory index as JSON.
+
+        Response shape:
+          {"directory": {"item": [{"name": "aapl-20240928.htm",
+                                   "type": "10-K", "size": "...", "last-modified": "..."},
+                                  ...]}}
+
+        `cik` can be zero-padded or not; `accession_number` can be dashed or not.
+        """
+        cik_trimmed = str(int(cik))  # strip leading zeros for Archives URL
+        accession_clean = accession_number.replace("-", "")
+        url = f"{BASE_SEC_URL}/Archives/edgar/data/{cik_trimmed}/{accession_clean}/index.json"
+        data = await self._get(url)
+        citation = Citation(
+            value=accession_number,
+            metric="filing_index",
+            source_name="SEC EDGAR Archives",
+            source_url=url,
+            tier=1,
+        )
+        return data, citation
+
+    async def fetch_document(self, url: str) -> tuple[str, Citation]:
+        """Fetch a raw filing document (HTML, plain text, or inline-XBRL HTML).
+
+        Returns (document_text, citation).
+        """
+        text = await self._get_text(url)
+        citation = Citation(
+            value=url.rsplit("/", 1)[-1],
+            metric="filing_document",
+            source_name="SEC EDGAR",
+            source_url=url,
+            tier=1,
+        )
+        return text, citation
 
     async def close(self) -> None:
         await self._http.aclose()
