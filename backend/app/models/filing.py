@@ -104,7 +104,71 @@ class FilingSection(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
     )
 
+    # Timestamp of the most recent Haiku relationship-extraction pass.
+    # Null = never attempted; non-null = attempted (even if zero relationships
+    # were found). Lets the extractor skip already-attempted sections without
+    # storing sentinel relationship rows.
+    relationships_extracted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     __table_args__ = (
         UniqueConstraint("filing_id", "section_key", name="uq_filing_sections_filing_section"),
         Index("ix_filing_sections_ticker_section", "ticker", "section_key"),
+    )
+
+
+class Relationship(Base):
+    """Business relationship extracted from a filing section by Haiku.
+
+    One row per (filing_id, section_key, counterparty_name, relationship_type).
+    Stored alongside filings/xbrl_facts so relationships accumulate across
+    tickers and time — not tied to any single research run.
+    """
+
+    __tablename__ = "relationships"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    filing_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("filings.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # Ticker of the filer (anchor company). Counterparty resolution to a
+    # canonical CIK happens in Phase C.
+    ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    section_key: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    # Free-text name as it appears in the filing. Resolution to a canonical
+    # CIK is deferred to Phase C (counterparty_aliases table).
+    counterparty_name: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
+    # customer, supplier, partner, competitor, licensor, licensee,
+    # distributor, reseller, joint_venture, other
+    relationship_type: Mapped[str] = mapped_column(String(32), nullable=False)
+
+    # Optional percentage (e.g. "20% of revenue"). Null when not disclosed.
+    magnitude_pct: Mapped[float | None] = mapped_column(Numeric, nullable=True)
+    # True when the filing describes a concentration without naming the
+    # counterparty ("a single customer represented 15% of revenue").
+    unnamed: Mapped[bool] = mapped_column(default=False, nullable=False)
+
+    # The sentence(s) the extractor based the relationship on — for audit.
+    verbatim_quote: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Set to True when a reciprocal relationship exists in another filing
+    # (e.g. AAPL → TSMC supplier AND TSMC → AAPL customer). Updated in
+    # Phase D during bilateral reconciliation.
+    confirmed_bilateral: Mapped[bool] = mapped_column(default=False, nullable=False)
+
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "filing_id", "section_key", "counterparty_name", "relationship_type",
+            name="uq_relationships_filing_section_counterparty_type",
+        ),
+        Index("ix_relationships_ticker_type", "ticker", "relationship_type"),
+        Index("ix_relationships_counterparty_name", "counterparty_name"),
     )

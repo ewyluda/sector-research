@@ -13,7 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
 from backend.app.db import get_db
-from backend.app.models.filing import Filing, FilingSection
+from backend.app.models.filing import Filing, FilingSection, Relationship
+from backend.app.services.edgar_relationships import (
+    extract_batch_relationships,
+    extract_ticker_relationships,
+)
 from backend.app.services.edgar_sections_ingest import (
     ingest_batch_sections,
     ingest_ticker_sections,
@@ -138,6 +142,81 @@ async def list_filings_for_ticker(
                 )
                 for s in sections_by_filing.get(f.id, [])
             ],
+        ))
+    return out
+
+
+@router.post("/filings/extract-relationships/{ticker}")
+async def extract_relationships_for_ticker(
+    ticker: str,
+    force: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Run Haiku relationship extraction on every ingested section for the ticker.
+
+    Idempotent: (filing_id, section_key) pairs with existing extractions are
+    skipped. Pass `?force=true` to delete and re-run.
+    """
+    summary = await extract_ticker_relationships(ticker, db=db, force=force)
+    await db.commit()
+    return summary
+
+
+@router.post("/filings/extract-relationships/batch")
+async def extract_relationships_batch(
+    body: IngestBatchRequest,
+    force: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    if not body.tickers:
+        raise HTTPException(status_code=400, detail="tickers list is empty")
+    results = await extract_batch_relationships(body.tickers, db=db, force=force)
+    await db.commit()
+    return results
+
+
+class RelationshipRecord(BaseModel):
+    id: str
+    accession_number: str
+    form_type: str
+    filing_date: str
+    section_key: str
+    counterparty_name: str
+    relationship_type: str
+    magnitude_pct: float | None
+    unnamed: bool
+    verbatim_quote: str | None
+    confirmed_bilateral: bool
+    extracted_at: str
+
+
+@router.get("/filings/{ticker}/relationships")
+async def list_relationships_for_ticker(
+    ticker: str,
+    db: AsyncSession = Depends(get_db),
+) -> list[RelationshipRecord]:
+    """Return all extracted relationships for a ticker, joined with filing metadata."""
+    rows = await db.execute(
+        select(Relationship, Filing)
+        .join(Filing, Filing.id == Relationship.filing_id)
+        .where(Filing.ticker == ticker.upper())
+        .order_by(Filing.filing_date.desc(), Relationship.counterparty_name)
+    )
+    out: list[RelationshipRecord] = []
+    for rel, filing in rows.all():
+        out.append(RelationshipRecord(
+            id=rel.id,
+            accession_number=filing.accession_number,
+            form_type=filing.form_type,
+            filing_date=filing.filing_date.isoformat(),
+            section_key=rel.section_key,
+            counterparty_name=rel.counterparty_name,
+            relationship_type=rel.relationship_type,
+            magnitude_pct=float(rel.magnitude_pct) if rel.magnitude_pct is not None else None,
+            unnamed=rel.unnamed,
+            verbatim_quote=rel.verbatim_quote,
+            confirmed_bilateral=rel.confirmed_bilateral,
+            extracted_at=rel.extracted_at.isoformat(),
         ))
     return out
 

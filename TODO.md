@@ -4,11 +4,15 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## In progress
 
-- **Tier 3 v2 — Phase B: relationship extraction (inline Haiku)**
-  - New `relationships` table — see spec for schema. Unique on `(filing_id, section_key, counterparty_name, relationship_type)`.
-  - One Haiku call per section with structured output — `counterparty_name`, `relationship_type`, `magnitude_pct`, `unnamed` flag, `verbatim_quote`, `source_section`.
-  - Runs inline during deep-dive (confirmed 2026-04-14). Cached by `(accession_number, section_key)` — re-runs only on new filing ingest.
-  - Fan-out: every ticker in quick_screen `competitive_landscape` + every discovery-ranked ticker. Lazy — first touch extracts; subsequent runs are free.
+- **Tier 3 v2 — Phase C: name → ticker resolution**
+  - New `counterparty_aliases(alias_name, canonical_cik, source)` table.
+  - Normalizer (strip "Inc.", "Corporation", etc.) + RapidFuzz `token_set_ratio` matching.
+  - `GET /api/relationships/unresolved` — curation queue sorted by frequency.
+  - `POST /api/relationships/alias` — writes resolution and backfills matching rows.
+
+- **Tier 3 v2 — Phase B follow-ups**
+  - Fan-out orchestration — run relationship extraction across every ticker in a theme's seed list / discovery universe, respecting per-call idempotency.
+  - Deep-dive prompt routing — feed extracted relationships into Business Quality / Risk Assessment prompts once Phase C resolves names to tickers.
 
 ## Backlog / polish
 
@@ -49,6 +53,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Done (recent)
 
+- Tier 3 v2 Phase B (relationship extraction, on-demand): new `relationships` table + `FilingSection.relationships_extracted_at` tombstone column for idempotency (including zero-relationship sections). Haiku extractor with Pydantic structured output over 15K-char excerpts from `item_1_business`, `item_1a_risk_factors`, `item_7_mda`, `item_2_mda_10q`. On-demand endpoints `POST /api/filings/extract-relationships/{ticker}` (with `?force=true` re-run) + `GET /api/filings/{ticker}/relationships`. Verified end-to-end on ORCL: 5 relationships (Ampere joint-venture 29%, SoftBank partner, AWS/Azure/GCP competitors) with verbatim quotes
 - Tier 3 v2 Phase A (heading-trim polish): Item 7 MD&A in 10-Ks now anchors to line-start (MULTILINE) so cross-references like "…see Item 7 Management's Discussion…" no longer out-compete the real heading by body length. Regex tolerates HTML-unwrap "O\s*F" word splits. Added boundary markers for 10-K Items 1B/1C/2/3/4/5/6. Verified on ORCL: Item 7 went from 2K chars of cross-ref fragment → 74K of real MD&A starting with "We begin Management's Discussion…"
 - Tier 3 v2 Phase A (prompt routing): `FILING_EXCERPT_ROUTING` map + `_build_filing_excerpt_context` in `node_deep_dive`; filing sections fetched per-ticker in `PipelineService._fetch_filing_sections` and threaded through as kwarg. Section excerpts truncated to 5K chars at prompt-build time. Verified end-to-end on ORCL: Business Quality / Risk Assessment / Growth & Earnings / Management & Governance / Future Durability each receive the relevant 10-K / 10-Q / DEF 14A excerpt; `Financial Health` correctly gets none
 - Tier 3 v2 Phase A (frontend): `/filings` page grouped by thesis → ticker → section with modal reader and on-demand "Ingest latest" button
