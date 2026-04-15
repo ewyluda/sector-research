@@ -29,8 +29,8 @@ from backend.app.graph.state import ResearchState
 from backend.app.db import async_session
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
-from backend.app.services import edgar_ingest
-from backend.app.graph.nodes import EDGAR_ROUTING
+from backend.app.services import edgar_ingest, edgar_sections_ingest
+from backend.app.graph.nodes import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
 
@@ -256,6 +256,29 @@ class PipelineService:
                                  "conviction_score": state.conviction_score,
                                  "thesis_status": state.thesis_status})
 
+    async def _fetch_filing_sections(self, ticker: str) -> dict:
+        """Return {section_key: {...}} for the most recent ingested sections.
+
+        Read-only. Phase A ingest is not triggered here — sections land in the
+        DB via manual POST /api/filings/ingest/{ticker}. If nothing has been
+        ingested yet for this ticker, returns {} and the deep-dive prompts
+        render without filing excerpts.
+
+        Uses a dedicated session so intra-phase SQL doesn't autobegin a
+        transaction on the phase-level session (see `_fetch_edgar_facts`).
+        """
+        all_keys: set[str] = set()
+        for keys in FILING_EXCERPT_ROUTING.values():
+            all_keys.update(keys)
+        async with async_session() as s:
+            try:
+                return await edgar_sections_ingest.get_latest_sections_by_keys(
+                    ticker, all_keys, s
+                )
+            except Exception as e:
+                logger.warning("[%s] Filing-section fetch failed: %s", ticker, e)
+                return {}
+
     async def _fetch_edgar_facts(self, ticker: str) -> tuple[dict, list]:
         """Ingest (best-effort) + return ({concept: [fact,...]}, citations).
 
@@ -321,13 +344,14 @@ class PipelineService:
         # transaction and collide with that block. Use fresh sessions.
         signals = await self._fetch_signals(state.ticker, state.theme_id)
         edgar_facts, edgar_citations = await self._fetch_edgar_facts(state.ticker)
+        filing_sections = await self._fetch_filing_sections(state.ticker)
         # Persist SEC source citations so they appear in the Library citation
         # panel alongside FMP / FRED / X.
         from backend.app.graph.state import StateCitation
         for cit in edgar_citations:
             state.add_citation(StateCitation.from_citation(cit))
         state = await nodes.node_deep_dive(
-            state, self._fmp, self._fred, signals, edgar_facts,
+            state, self._fmp, self._fred, signals, edgar_facts, filing_sections,
         )
 
         # Emit start event with curated financials (available after node runs)

@@ -91,6 +91,23 @@ EDGAR_ROUTING: dict[str, list[str]] = {
     "Business Quality": _CONCENTRATION_CONCEPTS,
 }
 
+# Filing narrative section routing. Each category receives verbatim excerpts
+# from the most recently ingested 10-K / 10-Q / DEF 14A for the ticker.
+# Section text is stored in filing_sections by the Phase A ingest pipeline.
+# Truncated to FILING_EXCERPT_BUDGET_CHARS at prompt build time.
+FILING_EXCERPT_ROUTING: dict[str, list[str]] = {
+    "Business Quality": ["item_1_business"],
+    "Risk Assessment": ["item_1a_risk_factors"],
+    "Growth & Earnings": ["item_7_mda", "item_2_mda_10q"],
+    "Future Durability": ["item_7_mda", "item_1_business"],
+    "Management & Governance": ["def14a_governance"],
+}
+
+# Per-section character budget when routing excerpts into a prompt.
+# ~5K chars ≈ 1.2K tokens, so a category seeing two sections burns ~2.4K
+# input tokens of filings context on top of its fundamentals payload.
+FILING_EXCERPT_BUDGET_CHARS = 5000
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -503,6 +520,7 @@ async def _run_one_category(
     technical_context: str = "",
     sentiment_context: str = "",
     edgar_context: str = "",
+    filing_excerpts_context: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -519,6 +537,7 @@ async def _run_one_category(
                     technical_data=technical_context,
                     sentiment_data=sentiment_context,
                     edgar_data=edgar_context,
+                    filing_excerpts=filing_excerpts_context,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -789,6 +808,7 @@ async def node_deep_dive(
     fred: FREDClient | None = None,
     signals: dict | None = None,
     edgar_facts: dict | None = None,
+    filing_sections: dict | None = None,
 ) -> ResearchState:
     """Phase 3: run all 9 categories in parallel. Partial success is OK.
 
@@ -800,6 +820,12 @@ async def node_deep_dive(
     facts pre-fetched by the caller from the xbrl_facts table, used to
     route filings data (RPO, debt maturity, customer concentration) into
     the relevant category prompts.
+
+    `filing_sections` is an optional {section_key: {text, heading, form_type,
+    filing_date, accession_number}} dict pre-fetched from filing_sections
+    (Phase A narrative sections). When present, excerpts are routed into
+    Business Quality, Risk Assessment, Growth & Earnings, Management &
+    Governance, and Future Durability per FILING_EXCERPT_ROUTING.
     """
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
     state.phase = "deep_dive"
@@ -1052,6 +1078,34 @@ async def node_deep_dive(
             sections.append("Not disclosed in XBRL: " + ", ".join(missing))
         return "\n".join(sections)
 
+    def _build_filing_excerpt_context(category: str) -> str:
+        section_keys = FILING_EXCERPT_ROUTING.get(category)
+        if not section_keys:
+            return ""
+        sections = filing_sections or {}
+        blocks: list[str] = []
+        for key in section_keys:
+            payload = sections.get(key)
+            if not payload:
+                continue
+            text = (payload.get("text") or "")[:FILING_EXCERPT_BUDGET_CHARS]
+            if not text:
+                continue
+            truncated = len(payload.get("text") or "") > FILING_EXCERPT_BUDGET_CHARS
+            header = (
+                f"[{payload.get('form_type', '?')} · {payload.get('filing_date', '?')} · "
+                f"{payload.get('heading') or key}]"
+            )
+            if truncated:
+                header += f" (truncated to {FILING_EXCERPT_BUDGET_CHARS} chars)"
+            blocks.append(f"{header}\n{text}")
+        if not blocks:
+            return ""
+        return (
+            "SEC filing excerpts (Tier 1, verbatim narrative from latest 10-K / 10-Q / DEF 14A):\n"
+            + "\n\n".join(blocks)
+        )
+
     # Run all categories in parallel
     tasks = [
         _run_one_category(
@@ -1059,6 +1113,7 @@ async def node_deep_dive(
             _build_transcript_context(cat), _build_macro_context(cat),
             _build_technical_context(cat), _build_sentiment_context(cat),
             _build_edgar_context(cat),
+            _build_filing_excerpt_context(cat),
         )
         for cat in categories_to_run
     ]

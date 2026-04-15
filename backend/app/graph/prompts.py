@@ -97,6 +97,8 @@ Available data:
 
 {edgar_data}
 
+{filing_excerpts}
+
 {loop_context}
 
 Produce a rigorous {category} analysis. Output the JSON described above."""
