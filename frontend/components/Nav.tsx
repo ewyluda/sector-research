@@ -6,6 +6,7 @@ import clsx from "clsx";
 
 const links = [
   { href: "/",              label: "Themes"   },
+  { href: "/filings",       label: "Filings"  },
   { href: "/library",       label: "Library"  },
   { href: "/pipeline/new",  label: "+ New Run" },
 ];

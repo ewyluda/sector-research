@@ -96,6 +96,72 @@ export const themes = {
     apiFetch<void>(`/api/themes/${id}`, { method: "DELETE" }),
 };
 
+// ── Filings (SEC EDGAR narrative section extracts) ────────────────────────────
+
+export interface FilingSectionSummary {
+  section_key: string;
+  heading: string | null;
+  char_count: number;
+  extraction_method: string;
+}
+
+export interface FilingRecord {
+  id: string;
+  accession_number: string;
+  ticker: string;
+  form_type: string;
+  filing_date: string;
+  period_of_report: string | null;
+  primary_document_url: string | null;
+  sections: FilingSectionSummary[];
+}
+
+export interface FilingSectionText {
+  section_key: string;
+  heading: string | null;
+  text: string;
+  char_count: number;
+  extraction_method: string;
+  extracted_at: string;
+}
+
+export interface FilingIngestFormResult {
+  accession_number: string | null;
+  filing_date: string | null;
+  sections_added: number;
+  sections_skipped_existing: number;
+  error: string | null;
+}
+
+export interface FilingIngestSummary {
+  ticker: string;
+  cik: string | null;
+  filings_processed: number;
+  sections_added: number;
+  sections_skipped_existing: number;
+  per_form: Record<string, FilingIngestFormResult>;
+  errors: string[];
+}
+
+export const filings = {
+  list: (ticker: string) =>
+    apiFetch<FilingRecord[]>(`/api/filings/${encodeURIComponent(ticker)}`),
+  getSection: (ticker: string, accession: string, sectionKey: string) =>
+    apiFetch<FilingSectionText>(
+      `/api/filings/${encodeURIComponent(ticker)}/${encodeURIComponent(accession)}/sections/${encodeURIComponent(sectionKey)}`
+    ),
+  ingestTicker: (ticker: string) =>
+    apiFetch<FilingIngestSummary>(
+      `/api/filings/ingest/${encodeURIComponent(ticker)}`,
+      { method: "POST" }
+    ),
+  ingestBatch: (tickers: string[]) =>
+    apiFetch<FilingIngestSummary[]>(`/api/filings/ingest/batch`, {
+      method: "POST",
+      body: JSON.stringify({ tickers }),
+    }),
+};
+
 // ── Discovery endpoints ───────────────────────────────────────────────────────
 
 export const discovery = {
