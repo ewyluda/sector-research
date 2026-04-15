@@ -2,6 +2,7 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 import type { QuarterlyMetric } from "@/lib/api";
+import { formatUSD } from "@/lib/format";
 
 interface GroupedBarChartProps {
   metrics: QuarterlyMetric[];
@@ -10,7 +11,7 @@ interface GroupedBarChartProps {
 }
 
 export function GroupedBarChart({ metrics, label = "Revenue", formatValue }: GroupedBarChartProps) {
-  const fmt = formatValue ?? ((v: number) => `$${(v / 1e9).toFixed(1)}B`);
+  const fmt = formatValue ?? formatUSD;
   const data = [...metrics].reverse().map((m) => ({
     period: m.period,
     value: m.value,

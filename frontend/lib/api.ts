@@ -341,6 +341,19 @@ export interface MacroIndicators {
   nonfarm_payrolls: MacroDataPoint[];
 }
 
+export interface EdgarFact {
+  value: number;
+  unit: string;
+  period_start?: string;
+  period_end: string;
+  fiscal_year: number | null;
+  fiscal_period: string | null;
+}
+
+// Keyed by XBRL concept, e.g. "us-gaap:RevenueRemainingPerformanceObligation".
+// Values are most-recent-first, up to 12 entries per concept (report endpoint cap).
+export type EdgarFacts = Record<string, EdgarFact[]>;
+
 export interface CuratedFinancials {
   ticker: string;
   company_name: string;
@@ -430,7 +443,7 @@ export interface ReportResponse {
   x_signal_velocity?: XSignalVelocity | null;
   phases: {
     quick_screen: CategoryOutput;
-    deep_dive: { categories: Record<string, CategoryOutput>; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null };
+    deep_dive: { categories: Record<string, CategoryOutput>; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null; edgar_facts: EdgarFacts };
     thesis: CategoryOutput & { structured?: ThesisStructured };
     risk: CategoryOutput & { structured?: RiskStressTestStructured };
     position: { content: string; citations: Citation[]; structured?: PositionMonitorStructured; parse_error?: string | null };
@@ -456,7 +469,7 @@ export interface ReportResponse {
 
 export type SSEEvent =
   | { type: "phase_start"; phase: string; label: string }
-  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null }
+  | { type: "deep_dive_start"; categories: string[]; loop_count: number; loop_context: unknown; curated_financials: CuratedFinancials | null; transcript_analysis: TranscriptAnalysis | null; edgar_facts: EdgarFacts }
   | { type: "category_complete"; category: string; score: number; key_findings: string[]; structured?: DeepDiveCategoryStructured | null }
   | { type: "category_error"; category: string; reason: string }
   | { type: "token"; text: string }

@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     x_bearer_token: str
     anthropic_api_key: str
     fred_api_key: str = ""  # Optional — macro section skipped if empty
+    # SEC EDGAR requires a User-Agent with contact email per fair-use policy.
+    sec_user_agent: str = "sector-research (contact@example.com)"
 
     # ── Database ──────────────────────────────────────────────────────────────
     database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/sector_research"

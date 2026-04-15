@@ -17,6 +17,7 @@ import type {
   DeepDiveCategoryStructured,
   TranscriptAnalysis,
   XSignalVelocity,
+  EdgarFacts,
 } from "@/lib/api";
 import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
@@ -116,6 +117,7 @@ export default function PipelineRunnerPage() {
   const [quickScreenStructured, setQuickScreenStructured] = useState<QuickScreenStructured | null>(null);
   const [curatedFinancials, setCuratedFinancials] = useState<CuratedFinancials | null>(null);
   const [transcriptAnalysis, setTranscriptAnalysis] = useState<TranscriptAnalysis | null>(null);
+  const [edgarFacts, setEdgarFacts] = useState<EdgarFacts>({});
   const [categories, setCategories] = useState<Record<string, CategoryState>>({});
   const [thesisStructured, setThesisStructured] = useState<ThesisStructured | null>(null);
   const [riskStructured, setRiskStructured] = useState<RiskStressTestStructured | null>(null);
@@ -149,9 +151,10 @@ export default function PipelineRunnerPage() {
       const qsOutput = r.phases.quick_screen;
       setQuickScreenStructured((qsOutput?.structured as QuickScreenStructured) ?? null);
 
-      // Curated financials
+      // Curated financials + EDGAR XBRL facts
       setCuratedFinancials(r.phases.deep_dive?.curated_financials ?? null);
       setTranscriptAnalysis(r.phases.deep_dive?.transcript_analysis ?? null);
+      setEdgarFacts(r.phases.deep_dive?.edgar_facts ?? {});
 
       // Categories from deep dive
       const cats = r.phases.deep_dive?.categories ?? {};
@@ -302,6 +305,7 @@ export default function PipelineRunnerPage() {
       case "deep_dive_start":
         setCuratedFinancials(event.curated_financials ?? null);
         setTranscriptAnalysis(event.transcript_analysis ?? null);
+        setEdgarFacts(event.edgar_facts ?? {});
         // Mark all categories as running
         setCategories({});
         break;
@@ -568,6 +572,7 @@ export default function PipelineRunnerPage() {
               isLive={isLive}
               transcriptAnalysis={transcriptAnalysis}
               xSignalVelocity={xSignalVelocity ?? undefined}
+              edgarFacts={edgarFacts}
             />
           )}
 

@@ -83,12 +83,6 @@ function buildPairs(f: CuratedFinancials): CorrelationPair[] {
   return pairs;
 }
 
-function formatValue(v: number): string {
-  if (Math.abs(v) >= 1e9) return `$${(v / 1e9).toFixed(1)}B`;
-  if (Math.abs(v) >= 1e6) return `$${(v / 1e6).toFixed(0)}M`;
-  return `$${v.toFixed(0)}`;
-}
-
 export function CrossCategoryCorrelation({ financials, isLive }: CrossCategoryCorrelationProps) {
   if (!financials) {
     if (isLive) return <section id="cross_category"><ChartSkeleton /></section>;

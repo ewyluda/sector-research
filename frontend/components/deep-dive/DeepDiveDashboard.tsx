@@ -1,4 +1,4 @@
-import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, TranscriptAnalysis, XSignalVelocity } from "@/lib/api";
+import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, TranscriptAnalysis, XSignalVelocity, EdgarFacts } from "@/lib/api";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { OverviewBanner } from "./OverviewBanner";
 import { FinancialHealth } from "./sections/FinancialHealth";
@@ -19,6 +19,7 @@ export interface DeepDiveDashboardProps {
   isLive?: boolean;
   transcriptAnalysis?: TranscriptAnalysis | null;
   xSignalVelocity?: XSignalVelocity | null;
+  edgarFacts?: EdgarFacts;
 }
 
 /** Map display-name keys → snake_case keys used by sidebar, radar, score bar */
@@ -51,7 +52,7 @@ function getScore(cat: CategoryOutput | null, scores: Record<string, number>, ke
   return scores[key] ?? cat?.score ?? null;
 }
 
-export function DeepDiveDashboard({ financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis, xSignalVelocity }: DeepDiveDashboardProps) {
+export function DeepDiveDashboard({ financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis, xSignalVelocity, edgarFacts }: DeepDiveDashboardProps) {
   const scores = normalizeKeys(rawScores);
   const categories = normalizeKeys(rawCategories);
   return (
@@ -67,6 +68,7 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           score={getScore(categories["financial_health"] ?? null, scores, "financial_health")}
           fallback={categories["financial_health"] ?? null}
           isLive={isLive}
+          edgarFacts={edgarFacts}
         />
         <GrowthEarnings
           financials={financials}
@@ -75,6 +77,7 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           fallback={categories["growth_earnings"] ?? null}
           isLive={isLive}
           transcriptAnalysis={transcriptAnalysis ?? null}
+          edgarFacts={edgarFacts}
         />
         <TechnicalMarket
           financials={financials}

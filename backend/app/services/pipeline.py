@@ -20,12 +20,17 @@ from typing import AsyncGenerator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.clients.edgar import EdgarClient
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
 from backend.app.graph import nodes
 from backend.app.graph.pipeline import make_graph
 from backend.app.graph.state import ResearchState
+from backend.app.db import async_session
 from backend.app.models.research_run import ResearchRun
+from backend.app.models.signal import Signal
+from backend.app.services import edgar_ingest
+from backend.app.graph.nodes import EDGAR_ROUTING
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +60,15 @@ PHASE_OUTPUT_KEYS: dict[str, str] = {
 class PipelineService:
     """Manages research run lifecycle."""
 
-    def __init__(self, fmp: FMPClient, fred: FREDClient | None = None) -> None:
+    def __init__(
+        self,
+        fmp: FMPClient,
+        fred: FREDClient | None = None,
+        edgar: EdgarClient | None = None,
+    ) -> None:
         self._fmp = fmp
         self._fred = fred
+        self._edgar = edgar
         self._graph = make_graph(fmp)
         # Active SSE queues keyed by run_id
         self._streams: dict[str, asyncio.Queue] = {}
@@ -171,7 +182,7 @@ class PipelineService:
                 if phase == "quick_screen":
                     state = await nodes.node_quick_screen(state, self._fmp)
                 elif phase == "deep_dive":
-                    state = await self._run_deep_dive_with_streaming(state, run_id)
+                    state = await self._run_deep_dive_with_streaming(state, run_id, db)
                 elif phase == "thesis_construction":
                     state = await nodes.node_thesis_construction(state)
                 elif phase == "risk_stress_test":
@@ -245,15 +256,79 @@ class PipelineService:
                                  "conviction_score": state.conviction_score,
                                  "thesis_status": state.thesis_status})
 
+    async def _fetch_edgar_facts(self, ticker: str) -> tuple[dict, list]:
+        """Ingest (best-effort) + return ({concept: [fact,...]}, citations).
+
+        Uses a dedicated session so intra-phase SQL doesn't autobegin a
+        transaction on the phase-level `db` session (which would collide with
+        the `async with db.begin():` persist block in `_run_phase`).
+
+        Citations identify the SEC endpoints used so the caller can persist
+        them onto ResearchState and surface them in the Library citation panel.
+        If the EDGAR client is unavailable or ingestion fails, returns ({}, []).
+        """
+        if self._edgar is None:
+            return {}, []
+
+        citations: list = []
+        async with async_session() as s:
+            # Ingest is best-effort — log and continue on any failure so EDGAR
+            # outages don't break the pipeline.
+            try:
+                _summary, citations = await edgar_ingest.ingest_ticker_facts(ticker, s, self._edgar)
+                await s.commit()
+            except Exception as e:
+                await s.rollback()
+                logger.warning("[%s] EDGAR ingest failed: %s", ticker, e)
+
+            all_concepts: set[str] = set()
+            for cs in EDGAR_ROUTING.values():
+                all_concepts.update(cs)
+            try:
+                facts = await edgar_ingest.get_recent_facts_by_concept(ticker, all_concepts, s)
+                return facts, citations
+            except Exception as e:
+                logger.warning("[%s] EDGAR fact fetch failed: %s", ticker, e)
+                return {}, citations
+
+    async def _fetch_signals(self, ticker: str, theme_id: str) -> dict:
+        """Return latest {signal_type: value} dict for a ticker+theme.
+
+        Uses a dedicated session (see `_fetch_edgar_facts` for why). Empty
+        dict when no signals exist (e.g., daily refresh hasn't run yet).
+        """
+        async with async_session() as s:
+            result = await s.execute(
+                select(Signal).where(
+                    Signal.ticker == ticker,
+                    Signal.theme_id == theme_id,
+                )
+            )
+            rows = result.scalars().all()
+            return {row.signal_type: row.value for row in rows}
+
     async def _run_deep_dive_with_streaming(
-        self, state: ResearchState, run_id: str
+        self, state: ResearchState, run_id: str, db: AsyncSession
     ) -> ResearchState:
         """Deep dive with per-category progress events."""
         categories = (
             state.loop_context.get("categories", [])
             if state.loop_context else None
         )
-        state = await nodes.node_deep_dive(state, self._fmp, self._fred)
+        # Intra-phase SQL must NOT run on `db` — that session is reserved
+        # for the post-phase `async with db.begin():` persist block in
+        # _run_phase. Executing SQL on `db` here would autobegin a
+        # transaction and collide with that block. Use fresh sessions.
+        signals = await self._fetch_signals(state.ticker, state.theme_id)
+        edgar_facts, edgar_citations = await self._fetch_edgar_facts(state.ticker)
+        # Persist SEC source citations so they appear in the Library citation
+        # panel alongside FMP / FRED / X.
+        from backend.app.graph.state import StateCitation
+        for cit in edgar_citations:
+            state.add_citation(StateCitation.from_citation(cit))
+        state = await nodes.node_deep_dive(
+            state, self._fmp, self._fred, signals, edgar_facts,
+        )
 
         # Emit start event with curated financials (available after node runs)
         self._emit(run_id, {
@@ -263,6 +338,7 @@ class PipelineService:
             "loop_context": state.loop_context,
             "curated_financials": state.curated_financials,
             "transcript_analysis": state.transcript_analysis,
+            "edgar_facts": edgar_facts,
         })
 
         # Emit per-category results

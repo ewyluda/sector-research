@@ -75,6 +75,7 @@ export function MacroRegime({ financials, structured, score, fallback, isLive }:
                       ...(macro.treasury_2y.length > 0 ? [{ data: toQM(macro.treasury_2y), name: "2Y", color: "#a78bfa" }] : []),
                     ]}
                     yAxisSuffix="%"
+                    tightDomain
                   />
                 </div>
               )}
@@ -106,6 +107,7 @@ export function MacroRegime({ financials, structured, score, fallback, isLive }:
                       <TrendLineChart
                         lines={[{ data: toQM(macro.nonfarm_payrolls), name: "Nonfarm Payrolls", color: "#60a5fa" }]}
                         yAxisSuffix=""
+                        tightDomain
                       />
                     </div>
                   )}
@@ -120,6 +122,7 @@ export function MacroRegime({ financials, structured, score, fallback, isLive }:
                     <TrendLineChart
                       lines={[{ data: toQM(macro.cpi), name: "CPI", color: "#f87171" }]}
                       yAxisSuffix=""
+                      tightDomain
                     />
                   )}
                   {macro.m2_money_supply.length > 0 && (
@@ -127,6 +130,7 @@ export function MacroRegime({ financials, structured, score, fallback, isLive }:
                       <TrendLineChart
                         lines={[{ data: toQM(macro.m2_money_supply), name: "M2 Supply", color: "#a78bfa" }]}
                         yAxisSuffix=""
+                        tightDomain
                       />
                     </div>
                   )}
