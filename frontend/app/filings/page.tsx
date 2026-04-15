@@ -10,6 +10,7 @@
 import { themes as themesApi } from "@/lib/api";
 import type { Theme } from "@/lib/api";
 import ThemeFilingsPanel from "@/components/filings/ThemeFilingsPanel";
+import CurationPanel from "@/components/filings/CurationPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,8 @@ export default async function FilingsPage() {
           </p>
         </div>
       )}
+
+      <CurationPanel />
 
       <div className="space-y-10">
         {themesWithTickers.map((t) => (

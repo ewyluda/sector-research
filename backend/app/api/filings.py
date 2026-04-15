@@ -13,7 +13,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
 from backend.app.db import get_db
-from backend.app.models.filing import Filing, FilingSection, Relationship
+from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship
+from backend.app.services.counterparty_resolver import (
+    list_unresolved_counterparties,
+    resolve_batch,
+    resolve_ticker_relationships,
+    upsert_manual_alias,
+)
 from backend.app.services.edgar_relationships import (
     extract_batch_relationships,
     extract_ticker_relationships,
@@ -187,6 +193,8 @@ class RelationshipRecord(BaseModel):
     unnamed: bool
     verbatim_quote: str | None
     confirmed_bilateral: bool
+    resolved_to_cik: str | None
+    resolved_to_ticker: str | None
     extracted_at: str
 
 
@@ -216,6 +224,8 @@ async def list_relationships_for_ticker(
             unnamed=rel.unnamed,
             verbatim_quote=rel.verbatim_quote,
             confirmed_bilateral=rel.confirmed_bilateral,
+            resolved_to_cik=rel.resolved_to_cik,
+            resolved_to_ticker=rel.resolved_to_ticker,
             extracted_at=rel.extracted_at.isoformat(),
         ))
     return out
@@ -250,3 +260,97 @@ async def get_filing_section(
         extraction_method=section.extraction_method,
         extracted_at=section.extracted_at.isoformat(),
     )
+
+
+# ── Counterparty resolution (Phase C) ────────────────────────────────────────
+
+
+class ResolutionCandidateResponse(BaseModel):
+    cik: str
+    ticker: str | None
+    canonical_name: str
+    score: float
+    source: str
+
+
+class UnresolvedCounterpartyResponse(BaseModel):
+    counterparty_name: str
+    alias_normalized: str
+    occurrence_count: int
+    tickers: list[str]
+    candidates: list[ResolutionCandidateResponse]
+
+
+class ManualAliasRequest(BaseModel):
+    alias_name: str
+    canonical_cik: str
+    canonical_ticker: str | None = None
+    canonical_name: str
+    created_by: str | None = None
+
+
+@router.post("/relationships/resolve/{ticker}")
+async def resolve_ticker(
+    ticker: str, db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Resolve unresolved counterparties for a ticker via alias reuse,
+    exact match, and ≥95 fuzzy match against EDGAR's company universe."""
+    summary = await resolve_ticker_relationships(ticker, db=db)
+    await db.commit()
+    return summary
+
+
+@router.post("/relationships/resolve/batch")
+async def resolve_tickers(
+    body: IngestBatchRequest, db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    if not body.tickers:
+        raise HTTPException(status_code=400, detail="tickers list is empty")
+    results = await resolve_batch(body.tickers, db=db)
+    await db.commit()
+    return results
+
+
+@router.get("/relationships/unresolved")
+async def list_unresolved(
+    limit: int = 50, db: AsyncSession = Depends(get_db),
+) -> list[UnresolvedCounterpartyResponse]:
+    """Counterparty curation queue. Sorted by occurrence count desc."""
+    rows = await list_unresolved_counterparties(db, limit=limit)
+    return [
+        UnresolvedCounterpartyResponse(
+            counterparty_name=r.counterparty_name,
+            alias_normalized=r.alias_normalized,
+            occurrence_count=r.occurrence_count,
+            tickers=r.tickers,
+            candidates=[
+                ResolutionCandidateResponse(
+                    cik=c.cik, ticker=c.ticker, canonical_name=c.canonical_name,
+                    score=c.score, source=c.source,
+                )
+                for c in r.candidates
+            ],
+        )
+        for r in rows
+    ]
+
+
+@router.post("/relationships/alias")
+async def create_manual_alias(
+    body: ManualAliasRequest, db: AsyncSession = Depends(get_db),
+) -> dict:
+    """User-driven resolution. Writes a curator_manual alias and
+    backfills resolved_to_cik/ticker on every matching Relationship row."""
+    try:
+        result = await upsert_manual_alias(
+            db,
+            alias_name=body.alias_name,
+            canonical_cik=body.canonical_cik,
+            canonical_ticker=body.canonical_ticker,
+            canonical_name=body.canonical_name,
+            created_by=body.created_by,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    await db.commit()
+    return result

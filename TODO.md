@@ -4,15 +4,14 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## In progress
 
-- **Tier 3 v2 — Phase C: name → ticker resolution**
-  - New `counterparty_aliases(alias_name, canonical_cik, source)` table.
-  - Normalizer (strip "Inc.", "Corporation", etc.) + RapidFuzz `token_set_ratio` matching.
-  - `GET /api/relationships/unresolved` — curation queue sorted by frequency.
-  - `POST /api/relationships/alias` — writes resolution and backfills matching rows.
+- **Tier 3 v2 — Phase D: graph API + Supply Chain card + bilateral reconciliation**
+  - `GET /api/relationships/{ticker}?depth=1&direction=both` — returns `{nodes, edges}` with weights and `confirmed_bilateral` flag.
+  - New "Supply Chain" card in the deep-dive dashboard — 1-hop named customers + suppliers, linked to their own research page if tracked. Separate bucket for "disclosed but unnamed" concentrations.
+  - Bilateral reconciliation: when a new row lands, check for a reciprocal row and flip `confirmed_bilateral=true` on both.
 
-- **Tier 3 v2 — Phase B follow-ups**
-  - Fan-out orchestration — run relationship extraction across every ticker in a theme's seed list / discovery universe, respecting per-call idempotency.
-  - Deep-dive prompt routing — feed extracted relationships into Business Quality / Risk Assessment prompts once Phase C resolves names to tickers.
+- **Tier 3 v2 — Phase B/C follow-ups**
+  - Fan-out orchestration — run extract + resolve across every ticker in a theme's seed list / discovery universe, respecting per-call idempotency.
+  - Deep-dive prompt routing — feed resolved relationships into Business Quality / Risk Assessment prompts so the LLM can reference supply-chain context.
 
 ## Backlog / polish
 
@@ -53,6 +52,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Done (recent)
 
+- Tier 3 v2 Phase C (counterparty resolution): new `counterparty_aliases` table + `resolved_to_cik` / `resolved_to_ticker` columns on `relationships`. Normalizer strips corporate suffixes (Inc/Corp/LLC/Holdings/Group/etc) and punctuation. RapidFuzz token_set_ratio against EDGAR's ~10k-entity company_tickers.json — auto-resolves at ≥95, surfaces 80-94 for manual curation. On-demand endpoints `POST /api/relationships/resolve/{ticker}` + `GET /api/relationships/unresolved` + `POST /api/relationships/alias`. Write-through: creating an alias backfills every matching Relationship row. Frontend curation panel on `/filings` shows pending counterparties with top-5 candidates and one-click "Use this" resolution. Verified on ORCL: Microsoft Azure auto-resolved to MSFT, AWS manually resolved to AMZN, AMPR/GOOG/SoftBank correctly surfaced to queue
 - Tier 3 v2 Phase B (relationship extraction, on-demand): new `relationships` table + `FilingSection.relationships_extracted_at` tombstone column for idempotency (including zero-relationship sections). Haiku extractor with Pydantic structured output over 15K-char excerpts from `item_1_business`, `item_1a_risk_factors`, `item_7_mda`, `item_2_mda_10q`. On-demand endpoints `POST /api/filings/extract-relationships/{ticker}` (with `?force=true` re-run) + `GET /api/filings/{ticker}/relationships`. Verified end-to-end on ORCL: 5 relationships (Ampere joint-venture 29%, SoftBank partner, AWS/Azure/GCP competitors) with verbatim quotes
 - Tier 3 v2 Phase A (heading-trim polish): Item 7 MD&A in 10-Ks now anchors to line-start (MULTILINE) so cross-references like "…see Item 7 Management's Discussion…" no longer out-compete the real heading by body length. Regex tolerates HTML-unwrap "O\s*F" word splits. Added boundary markers for 10-K Items 1B/1C/2/3/4/5/6. Verified on ORCL: Item 7 went from 2K chars of cross-ref fragment → 74K of real MD&A starting with "We begin Management's Discussion…"
 - Tier 3 v2 Phase A (prompt routing): `FILING_EXCERPT_ROUTING` map + `_build_filing_excerpt_context` in `node_deep_dive`; filing sections fetched per-ticker in `PipelineService._fetch_filing_sections` and threaded through as kwarg. Section excerpts truncated to 5K chars at prompt-build time. Verified end-to-end on ORCL: Business Quality / Risk Assessment / Growth & Earnings / Management & Governance / Future Durability each receive the relevant 10-K / 10-Q / DEF 14A excerpt; `Financial Health` correctly gets none
