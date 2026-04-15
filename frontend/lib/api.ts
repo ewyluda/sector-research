@@ -162,6 +162,88 @@ export const filings = {
     }),
 };
 
+// ── Relationships + Counterparty Resolution (Phase B + C) ─────────────────────
+
+export interface RelationshipRecord {
+  id: string;
+  accession_number: string;
+  form_type: string;
+  filing_date: string;
+  section_key: string;
+  counterparty_name: string;
+  relationship_type: string;
+  magnitude_pct: number | null;
+  unnamed: boolean;
+  verbatim_quote: string | null;
+  confirmed_bilateral: boolean;
+  resolved_to_cik: string | null;
+  resolved_to_ticker: string | null;
+  extracted_at: string;
+}
+
+export interface ResolutionCandidate {
+  cik: string;
+  ticker: string | null;
+  canonical_name: string;
+  score: number;
+  source: string;
+}
+
+export interface UnresolvedCounterparty {
+  counterparty_name: string;
+  alias_normalized: string;
+  occurrence_count: number;
+  tickers: string[];
+  candidates: ResolutionCandidate[];
+}
+
+export interface ManualAliasRequest {
+  alias_name: string;
+  canonical_cik: string;
+  canonical_ticker: string | null;
+  canonical_name: string;
+  created_by?: string | null;
+}
+
+export interface ResolveSummary {
+  ticker: string;
+  rows_considered: number;
+  already_resolved: number;
+  resolved_via_alias: number;
+  resolved_via_exact: number;
+  resolved_via_fuzzy: number;
+  unresolved_surfaced_to_queue: number;
+  unnamed_skipped: number;
+  relationships_updated: number;
+  aliases_created: number;
+}
+
+export const relationships = {
+  listForTicker: (ticker: string) =>
+    apiFetch<RelationshipRecord[]>(
+      `/api/filings/${encodeURIComponent(ticker)}/relationships`
+    ),
+  extractTicker: (ticker: string, force = false) =>
+    apiFetch<unknown>(
+      `/api/filings/extract-relationships/${encodeURIComponent(ticker)}${force ? "?force=true" : ""}`,
+      { method: "POST" }
+    ),
+  resolveTicker: (ticker: string) =>
+    apiFetch<ResolveSummary>(
+      `/api/relationships/resolve/${encodeURIComponent(ticker)}`,
+      { method: "POST" }
+    ),
+  listUnresolved: (limit = 50) =>
+    apiFetch<UnresolvedCounterparty[]>(
+      `/api/relationships/unresolved?limit=${limit}`
+    ),
+  createAlias: (body: ManualAliasRequest) =>
+    apiFetch<{ alias_id: string; relationships_updated: number }>(
+      `/api/relationships/alias`,
+      { method: "POST", body: JSON.stringify(body) }
+    ),
+};
+
 // ── Discovery endpoints ───────────────────────────────────────────────────────
 
 export const discovery = {

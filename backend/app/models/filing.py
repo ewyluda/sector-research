@@ -11,7 +11,7 @@ bloating run state.
 from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -160,6 +160,12 @@ class Relationship(Base):
     # Phase D during bilateral reconciliation.
     confirmed_bilateral: Mapped[bool] = mapped_column(default=False, nullable=False)
 
+    # Phase C write-through resolution. Populated when the counterparty_name
+    # has been resolved to a canonical entity via counterparty_aliases. Null
+    # until resolved (or unresolvable).
+    resolved_to_cik: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    resolved_to_ticker: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+
     extracted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
     )
@@ -171,4 +177,49 @@ class Relationship(Base):
         ),
         Index("ix_relationships_ticker_type", "ticker", "relationship_type"),
         Index("ix_relationships_counterparty_name", "counterparty_name"),
+    )
+
+
+class CounterpartyAlias(Base):
+    """Phase C resolution: map a free-text counterparty mention to a
+    canonical company (identified by CIK + optional ticker).
+
+    The alias store grows monotonically — each resolution decision is
+    persisted and re-used for future extractions. Manual curator overrides
+    always beat fuzzy auto-matches for the same alias_normalized key.
+    """
+
+    __tablename__ = "counterparty_aliases"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+
+    # The name as it appeared in the filing (unmodified — for reference).
+    alias_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    # Canonical key used for lookup: lowercased + stripped of "Inc.",
+    # "Corporation", punctuation, etc. Unique so a given normalized form
+    # maps to at most one canonical company.
+    alias_normalized: Mapped[str] = mapped_column(String(256), nullable=False, unique=True, index=True)
+
+    canonical_cik: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    # Denormalized for quick UI reads. Null if the CIK doesn't have a
+    # public ticker in EDGAR (e.g. private subsidiaries that still file).
+    canonical_ticker: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    canonical_name: Mapped[str] = mapped_column(String(256), nullable=False)
+
+    # "exact_match" — normalized alias == normalized canonical name
+    # "fuzzy_auto" — RapidFuzz score ≥ 95
+    # "curator_manual" — user manually resolved via the curation queue
+    source: Mapped[str] = mapped_column(String(24), nullable=False)
+    confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+    )
+    # Identifier for the manual curator — nullable for auto-resolved rows.
+    created_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        Index("ix_counterparty_aliases_canonical_cik", "canonical_cik"),
     )
