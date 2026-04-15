@@ -223,6 +223,44 @@ async def ingest_ticker_sections(
     return summary
 
 
+async def get_latest_sections_by_keys(
+    ticker: str, section_keys: Iterable[str], db: AsyncSession
+) -> dict[str, dict]:
+    """Return {section_key: {text, heading, form_type, filing_date, accession_number}}
+    for the most recently filed copy of each requested section_key.
+
+    Only considers sections whose parent filing is the most recent of its
+    form type for that ticker (a ticker that has two 10-Ks in the DB will
+    prefer the newer one). Empty dict if the ticker has no ingested sections.
+    """
+    keys = [k for k in section_keys if k]
+    if not keys:
+        return {}
+
+    result = await db.execute(
+        select(FilingSection, Filing)
+        .join(Filing, Filing.id == FilingSection.filing_id)
+        .where(
+            Filing.ticker == ticker.upper(),
+            FilingSection.section_key.in_(keys),
+        )
+        .order_by(FilingSection.section_key, Filing.filing_date.desc())
+    )
+    out: dict[str, dict] = {}
+    for section, filing in result.all():
+        if section.section_key in out:
+            continue  # already have the most recent for this key
+        out[section.section_key] = {
+            "text": section.text,
+            "heading": section.heading,
+            "char_count": section.char_count,
+            "form_type": filing.form_type,
+            "filing_date": filing.filing_date.isoformat(),
+            "accession_number": filing.accession_number,
+        }
+    return out
+
+
 async def ingest_batch_sections(
     tickers: Iterable[str], db: AsyncSession, edgar: EdgarClient
 ) -> list[dict]:

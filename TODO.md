@@ -4,14 +4,15 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## In progress
 
-- **Tier 3 v2 — Phase A (frontend): filings page grouped by thesis**
-  - New Next.js page listing ingested filings by thesis → ticker → section.
-  - UI for reading full section text (fetch via `GET /api/filings/{ticker}/{accession}/sections/{section_key}`).
-  - Manual "Ingest filings" button per ticker that posts to `/api/filings/ingest/{ticker}`.
-  - Follow-up PR. Backend shipped in feat/edgar-html-section-extraction.
+- **Tier 3 v2 — Phase B: relationship extraction (inline Haiku)**
+  - New `relationships` table — see spec for schema. Unique on `(filing_id, section_key, counterparty_name, relationship_type)`.
+  - One Haiku call per section with structured output — `counterparty_name`, `relationship_type`, `magnitude_pct`, `unnamed` flag, `verbatim_quote`, `source_section`.
+  - Runs inline during deep-dive (confirmed 2026-04-14). Cached by `(accession_number, section_key)` — re-runs only on new filing ingest.
+  - Fan-out: every ticker in quick_screen `competitive_landscape` + every discovery-ranked ticker. Lazy — first touch extracts; subsequent runs are free.
 
-- **Tier 3 v2 — Phase A (prompt routing, deferred)**
-  - Once the page exists and Phase B lands, route excerpts into deep-dive prompts via a new `{filing_excerpts}` slot. Budget ~4–5K chars per section. Feed into Business Quality, Risk Assessment, Growth & Earnings, Management & Governance.
+## Backlog / polish
+
+- **MD&A extraction cuts heading too early** — Item 7 body starts with "and Analysis of Financial Condition…" because the regex match ends at "Item 7. Management's Discussion". Minor, LLM handles it. Fix: consume the full heading phrase before starting the body.
 
 ## Next up (sequenced)
 
@@ -48,6 +49,8 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Done (recent)
 
+- Tier 3 v2 Phase A (prompt routing): `FILING_EXCERPT_ROUTING` map + `_build_filing_excerpt_context` in `node_deep_dive`; filing sections fetched per-ticker in `PipelineService._fetch_filing_sections` and threaded through as kwarg. Section excerpts truncated to 5K chars at prompt-build time. Verified end-to-end on ORCL: Business Quality / Risk Assessment / Growth & Earnings / Management & Governance / Future Durability each receive the relevant 10-K / 10-Q / DEF 14A excerpt; `Financial Health` correctly gets none
+- Tier 3 v2 Phase A (frontend): `/filings` page grouped by thesis → ticker → section with modal reader and on-demand "Ingest latest" button
 - Tier 3 v2 Phase A (backend): `filing_sections` table + migration; `FilingSection` ORM; `EdgarClient.get_filing_index` + `fetch_document`; BS4 extractor with hybrid boundary-marker regex (capped sections, no bleed); on-demand ingest orchestrator (latest 10-K, 10-Q, DEF 14A per ticker, idempotent); `POST /api/filings/ingest/{ticker}`, `POST /api/filings/ingest/batch`, `GET /api/filings/{ticker}`, `GET /api/filings/{ticker}/{accession}/sections/{section_key}`. Verified end-to-end against AAPL + ORCL
 - Tier 1: key-case bug in data_gaps, silent-failure detection, technical/sentiment prompt routing
 - Tier 3 v1: EDGAR XBRL ingest — `filings` + `xbrl_facts` tables, whitelist of RPO / debt-maturity / concentration / credit concepts, ticker → CIK → companyfacts → persist
