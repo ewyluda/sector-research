@@ -15,6 +15,7 @@ from backend.app.api.health import router as health_router
 from backend.app.api.themes import router as themes_router
 from backend.app.api.discovery import router as discovery_router
 from backend.app.api.pipeline import router as pipeline_router
+from backend.app.api.filings import router as filings_router
 from backend.app.services.pipeline import PipelineService
 
 settings = get_settings()
@@ -94,3 +95,4 @@ app.include_router(health_router)
 app.include_router(themes_router, prefix="/api")
 app.include_router(discovery_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
+app.include_router(filings_router, prefix="/api")

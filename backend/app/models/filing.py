@@ -11,7 +11,7 @@ bloating run state.
 from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Numeric, String
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -67,4 +67,44 @@ class XBRLFact(Base):
     __table_args__ = (
         Index("ix_xbrl_facts_ticker_concept", "ticker", "concept"),
         Index("ix_xbrl_facts_concept_period", "concept", "period_end"),
+    )
+
+
+class FilingSection(Base):
+    """Extracted narrative section from a 10-K / 10-Q / DEF 14A filing.
+
+    One row per (filing_id, section_key). Full text is stored; prompt builders
+    are responsible for truncating to per-category budgets.
+    """
+
+    __tablename__ = "filing_sections"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    filing_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("filings.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+
+    # Canonical key identifying the section type.
+    # e.g. item_1_business, item_1a_risk_factors, item_7_mda, item_2_mda_10q,
+    # def14a_governance
+    section_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    heading: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    # "anchor" if section was located via <a href="#item1"> TOC links,
+    # "regex" if located via normalized-text regex fallback.
+    extraction_method: Mapped[str] = mapped_column(String(16), nullable=False)
+
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+    )
+
+    __table_args__ = (
+        UniqueConstraint("filing_id", "section_key", name="uq_filing_sections_filing_section"),
+        Index("ix_filing_sections_ticker_section", "ticker", "section_key"),
     )

@@ -12,6 +12,10 @@ alembic==1.15.2
 # HTTP client
 httpx==0.28.1
 
+# HTML parsing (SEC EDGAR filing section extraction)
+beautifulsoup4==4.14.3
+lxml==6.0.4
+
 # Scheduler
 apscheduler==3.11.0
 
