@@ -12,7 +12,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Backlog / polish
 
-- **MD&A extraction cuts heading too early** — Item 7 body starts with "and Analysis of Financial Condition…" because the regex match ends at "Item 7. Management's Discussion". Minor, LLM handles it. Fix: consume the full heading phrase before starting the body.
+- **Item 1A regex misses mid-word `\n` splits** — ORCL 10-K has "Risk" rendered as "R\nisk" because of an XBRL/markup boundary inside the word, so `\bITEM 1A RISK FACTORS\b` doesn't match the real heading and the algorithm falls back to cross-references. Add `R\s*I\s*S\s*K` / `F\s*A\s*C\s*T\s*O\s*R\s*S` tolerance like we did for `O\s*F` in MD&A patterns.
 
 ## Next up (sequenced)
 
@@ -49,6 +49,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Done (recent)
 
+- Tier 3 v2 Phase A (heading-trim polish): Item 7 MD&A in 10-Ks now anchors to line-start (MULTILINE) so cross-references like "…see Item 7 Management's Discussion…" no longer out-compete the real heading by body length. Regex tolerates HTML-unwrap "O\s*F" word splits. Added boundary markers for 10-K Items 1B/1C/2/3/4/5/6. Verified on ORCL: Item 7 went from 2K chars of cross-ref fragment → 74K of real MD&A starting with "We begin Management's Discussion…"
 - Tier 3 v2 Phase A (prompt routing): `FILING_EXCERPT_ROUTING` map + `_build_filing_excerpt_context` in `node_deep_dive`; filing sections fetched per-ticker in `PipelineService._fetch_filing_sections` and threaded through as kwarg. Section excerpts truncated to 5K chars at prompt-build time. Verified end-to-end on ORCL: Business Quality / Risk Assessment / Growth & Earnings / Management & Governance / Future Durability each receive the relevant 10-K / 10-Q / DEF 14A excerpt; `Financial Health` correctly gets none
 - Tier 3 v2 Phase A (frontend): `/filings` page grouped by thesis → ticker → section with modal reader and on-demand "Ingest latest" button
 - Tier 3 v2 Phase A (backend): `filing_sections` table + migration; `FilingSection` ORM; `EdgarClient.get_filing_index` + `fetch_document`; BS4 extractor with hybrid boundary-marker regex (capped sections, no bleed); on-demand ingest orchestrator (latest 10-K, 10-Q, DEF 14A per ticker, idempotent); `POST /api/filings/ingest/{ticker}`, `POST /api/filings/ingest/batch`, `GET /api/filings/{ticker}`, `GET /api/filings/{ticker}/{accession}/sections/{section_key}`. Verified end-to-end against AAPL + ORCL

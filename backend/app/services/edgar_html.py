@@ -46,12 +46,33 @@ class ExtractedSection:
 _BOUNDARY_PREFIX = "_boundary_"
 
 _SECTION_DEFS_10K: list[tuple[str, list[str]]] = [
-    ("item_1_business", [r"\bITEM\s*1\.?\s*BUSINESS\b"]),
+    # Anchor item_1_business to line start — cross-references like "see Item 1
+    # Business" appear throughout other sections and will otherwise cap
+    # later section bodies (e.g. Item 7 MD&A) too early.
+    ("item_1_business", [r"^\s*ITEM\s*1\.?\s*BUSINESS\b"]),
     ("item_1a_risk_factors", [r"\bITEM\s*1A\.?\s*RISK\s+FACTORS\b"]),
-    # Boundary so item_1a doesn't bleed past Item 1B.
+    # Boundaries between Item 1A and Item 7. Each of these caps any
+    # cross-reference to a later section embedded in an earlier body —
+    # crucial for picking the real Item 7 heading over cross-references
+    # inside Item 1A Risk Factors.
     (_BOUNDARY_PREFIX + "item_1b", [r"\bITEM\s*1B\.?\s*UNRESOLVED"]),
+    (_BOUNDARY_PREFIX + "item_1c", [r"\bITEM\s*1C\.?\s*CYBERSECURITY\b"]),
     (_BOUNDARY_PREFIX + "item_2", [r"\bITEM\s*2\.?\s*PROPERTIES\b"]),
-    ("item_7_mda", [r"\bITEM\s*7\.?\s*MANAGEMENT['\u2019]?S\s+DISCUSSION"]),
+    (_BOUNDARY_PREFIX + "item_3", [r"\bITEM\s*3\.?\s*LEGAL\s+PROCEEDINGS\b"]),
+    (_BOUNDARY_PREFIX + "item_4", [r"\bITEM\s*4\.?\s*MINE\s+SAFETY"]),
+    (_BOUNDARY_PREFIX + "item_5", [
+        r"\bITEM\s*5\.?\s*MARKET\s+FOR\s+REGISTRANT['\u2019]?S",
+    ]),
+    (_BOUNDARY_PREFIX + "item_6", [r"\bITEM\s*6\.?\s*\[?\s*(?:RESERVED|SELECTED)"]),
+    # MD&A patterns anchor to line start (re.MULTILINE) so that the many
+    # cross-references to "Item 7 Management's Discussion…" embedded in
+    # earlier sections (TOC, Item 1, Item 1A) don't out-compete the real
+    # heading by body-length. "O\s*F" tolerates HTML-unwrap splits like
+    # "Analysis o\nf Financial" seen in Oracle's 10-K.
+    ("item_7_mda", [
+        r"^\s*ITEM\s*7\.?\s*MANAGEMENT['\u2019]?S\s+DISCUSSION\s+AND\s+ANALYSIS"
+        r"(?:\s+O\s*F\s+FINANCIAL\s+CONDITION\s+AND\s+RESULTS\s+O\s*F\s+OPERATIONS)?"
+    ]),
     # Boundaries so item_7 doesn't bleed into 7A / 8 / 9 / signatures.
     (_BOUNDARY_PREFIX + "item_7a", [r"\bITEM\s*7A\.?\s*QUANTITATIVE"]),
     (_BOUNDARY_PREFIX + "item_8", [r"\bITEM\s*8\.?\s*FINANCIAL\s+STATEMENTS"]),
@@ -59,7 +80,11 @@ _SECTION_DEFS_10K: list[tuple[str, list[str]]] = [
 ]
 
 _SECTION_DEFS_10Q: list[tuple[str, list[str]]] = [
-    ("item_2_mda_10q", [r"\bITEM\s*2\.?\s*MANAGEMENT['\u2019]?S\s+DISCUSSION"]),
+    # Anchor to line start so cross-references don't out-compete the real heading.
+    ("item_2_mda_10q", [
+        r"^\s*ITEM\s*2\.?\s*MANAGEMENT['\u2019]?S\s+DISCUSSION\s+AND\s+ANALYSIS"
+        r"(?:\s+O\s*F\s+FINANCIAL\s+CONDITION\s+AND\s+RESULTS\s+O\s*F\s+OPERATIONS)?"
+    ]),
     (_BOUNDARY_PREFIX + "item_3_10q", [r"\bITEM\s*3\.?\s*QUANTITATIVE"]),
     (_BOUNDARY_PREFIX + "item_4_10q", [r"\bITEM\s*4\.?\s*CONTROLS\s+AND\s+PROCEDURES"]),
     ("item_1a_risk_factors", [r"\bITEM\s*1A\.?\s*RISK\s+FACTORS\b"]),
@@ -110,6 +135,11 @@ def _normalize_text(s: str) -> str:
     s = re.sub(r"[ \t]+", " ", s)
     s = re.sub(r" *\n *", "\n", s)
     s = re.sub(r"\n{3,}", "\n\n", s)
+    # Some 10-Ks collapse the structural header onto the same line as the
+    # item heading (e.g. "PART IItem 1. Business"). Inject a line break
+    # between the roman-numeral part label and a following ITEM so the
+    # heading regex can anchor at line start.
+    s = re.sub(r"(PART\s+[IVX]+)(Item\b)", r"\1\n\2", s, flags=re.IGNORECASE)
     return s.strip()
 
 
@@ -145,7 +175,7 @@ def extract_sections(html: str, form_type: str) -> list[ExtractedSection]:
     all_matches: list[tuple[int, int, str, str]] = []
     for section_key, patterns in defs:
         for pat in patterns:
-            for m in re.finditer(pat, full_text, re.IGNORECASE):
+            for m in re.finditer(pat, full_text, re.IGNORECASE | re.MULTILINE):
                 all_matches.append((m.start(), m.end(), section_key, m.group(0)))
 
     if not all_matches:
