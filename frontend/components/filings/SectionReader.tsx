@@ -48,6 +48,9 @@ export default function SectionReader({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={heading ?? sectionKey}
       className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-6 overflow-y-auto"
       onClick={onClose}
     >
