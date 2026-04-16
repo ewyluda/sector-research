@@ -23,7 +23,7 @@ import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
-import { DashboardSidebar } from "@/components/deep-dive/DashboardSidebar";
+import { SectionNav } from "@/components/deep-dive/SectionNav";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -479,16 +479,6 @@ export default function PipelineRunnerPage() {
     }
   }
 
-  // ── Derive sidebar scores + statuses ────────────────────────────────────────
-
-  const sidebarStatuses: Record<string, string> = {};
-  if (isLive) {
-    for (const [key, val] of Object.entries(categories)) {
-      if (val.status === "running") sidebarStatuses[key] = "running";
-      else if (val.status === "fail") sidebarStatuses[key] = "error";
-    }
-  }
-
   // Build dashboard categories in the format DeepDiveDashboard expects
   const dashboardCategories: Record<string, CategoryOutput | null> = {};
   for (const [k, v] of Object.entries(categories)) {
@@ -532,12 +522,7 @@ export default function PipelineRunnerPage() {
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] p-6">
-      <div className="max-w-7xl mx-auto flex gap-6">
-        {/* Sidebar navigation */}
-        <DashboardSidebar scores={scores} statuses={isLive ? sidebarStatuses : undefined} />
-
-        {/* Main content */}
-        <div className="flex-1 min-w-0 space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
           {run && (
             <nav className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]" aria-label="Breadcrumb">
               <a href="/library" className="hover:text-[var(--color-text-primary)] transition-colors">Library</a>
@@ -685,7 +670,6 @@ export default function PipelineRunnerPage() {
               </button>
             </div>
           )}
-        </div>
       </div>
     </main>
   );
