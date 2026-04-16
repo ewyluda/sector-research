@@ -28,6 +28,11 @@ from backend.app.services.edgar_sections_ingest import (
     ingest_batch_sections,
     ingest_ticker_sections,
 )
+from backend.app.services.supply_chain import (
+    get_graph,
+    reconcile_bilaterals,
+    summarize_for_card,
+)
 
 router = APIRouter(tags=["filings"])
 
@@ -354,3 +359,91 @@ async def create_manual_alias(
         raise HTTPException(status_code=400, detail=str(e))
     await db.commit()
     return result
+
+
+# ── Supply-chain graph (Phase D) ──────────────────────────────────────────────
+
+
+class GraphNodeResponse(BaseModel):
+    id: str
+    ticker: str | None
+    cik: str | None
+    name: str
+    is_root: bool
+    tracked: bool
+    unnamed: bool
+
+
+class GraphEdgeResponse(BaseModel):
+    from_id: str
+    to_id: str
+    relationship_type: str
+    direction: str
+    magnitude_pct: float | None
+    unnamed: bool
+    confirmed_bilateral: bool
+    verbatim_quote: str | None
+    source_ticker: str
+    accession_number: str
+    filing_date: str
+    section_key: str
+
+
+class SupplyChainGraphResponse(BaseModel):
+    root_ticker: str
+    nodes: list[GraphNodeResponse]
+    edges: list[GraphEdgeResponse]
+    # Pre-bucketed view that the dashboard card can render directly.
+    summary: dict
+
+
+@router.get("/relationships/graph/{ticker}")
+async def get_ticker_graph(
+    ticker: str,
+    direction: str = "both",
+    db: AsyncSession = Depends(get_db),
+) -> SupplyChainGraphResponse:
+    """Return a 1-hop supply-chain graph centered on the ticker.
+
+    `direction` = out | in | both.
+      - out: the ticker's filings name these counterparties
+      - in:  other tickers name this ticker as a counterparty
+      - both: union
+    """
+    if direction not in ("out", "in", "both"):
+        raise HTTPException(
+            status_code=400, detail="direction must be one of: out, in, both",
+        )
+    graph = await get_graph(ticker, direction=direction, db=db)  # type: ignore[arg-type]
+    summary = summarize_for_card(graph)
+    return SupplyChainGraphResponse(
+        root_ticker=graph.root_ticker,
+        nodes=[
+            GraphNodeResponse(
+                id=n.id, ticker=n.ticker, cik=n.cik, name=n.name,
+                is_root=n.is_root, tracked=n.tracked, unnamed=n.unnamed,
+            ) for n in graph.nodes
+        ],
+        edges=[
+            GraphEdgeResponse(
+                from_id=e.from_id, to_id=e.to_id,
+                relationship_type=e.relationship_type, direction=e.direction,
+                magnitude_pct=e.magnitude_pct, unnamed=e.unnamed,
+                confirmed_bilateral=e.confirmed_bilateral,
+                verbatim_quote=e.verbatim_quote, source_ticker=e.source_ticker,
+                accession_number=e.accession_number,
+                filing_date=e.filing_date, section_key=e.section_key,
+            ) for e in graph.edges
+        ],
+        summary=summary,
+    )
+
+
+@router.post("/relationships/reconcile")
+async def reconcile_all_bilaterals(db: AsyncSession = Depends(get_db)) -> dict:
+    """Scan every resolved relationship for a reciprocal pair and flip
+    `confirmed_bilateral=true` on both sides. Idempotent — already-flipped
+    rows are no-ops."""
+    summary = await reconcile_bilaterals(db)
+    await db.commit()
+    return summary

@@ -566,6 +566,7 @@ export default function PipelineRunnerPage() {
           {/* Deep Dive Dashboard — shows when financials or categories available */}
           {(curatedFinancials || Object.keys(categories).length > 0) && (
             <DeepDiveDashboard
+              ticker={ticker}
               financials={curatedFinancials}
               categories={dashboardCategories}
               scores={scores}

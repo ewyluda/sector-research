@@ -2,6 +2,7 @@ import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, Tra
 import { DashboardSidebar } from "./DashboardSidebar";
 import { OverviewBanner } from "./OverviewBanner";
 import { FinancialHealth } from "./sections/FinancialHealth";
+import { SupplyChainEcosystem } from "./sections/SupplyChainEcosystem";
 import { GrowthEarnings } from "./sections/GrowthEarnings";
 import { TechnicalMarket } from "./sections/TechnicalMarket";
 import { BusinessQuality } from "./sections/BusinessQuality";
@@ -13,6 +14,7 @@ import { FutureDurability } from "./sections/FutureDurability";
 import { CrossCategoryCorrelation } from "./sections/CrossCategoryCorrelation";
 
 export interface DeepDiveDashboardProps {
+  ticker: string;
   financials: CuratedFinancials | null;
   categories: Record<string, CategoryOutput | null>;
   scores: Record<string, number>;
@@ -52,7 +54,7 @@ function getScore(cat: CategoryOutput | null, scores: Record<string, number>, ke
   return scores[key] ?? cat?.score ?? null;
 }
 
-export function DeepDiveDashboard({ financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis, xSignalVelocity, edgarFacts }: DeepDiveDashboardProps) {
+export function DeepDiveDashboard({ ticker, financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis, xSignalVelocity, edgarFacts }: DeepDiveDashboardProps) {
   const scores = normalizeKeys(rawScores);
   const categories = normalizeKeys(rawCategories);
   return (
@@ -99,6 +101,9 @@ export function DeepDiveDashboard({ financials, categories: rawCategories, score
           isLive={isLive}
           transcriptAnalysis={transcriptAnalysis ?? null}
         />
+
+        {/* Supply Chain & Ecosystem — 1-hop relationship graph */}
+        <SupplyChainEcosystem ticker={ticker} />
         <MacroRegime
           financials={financials}
           structured={getStructured(categories["macro_regime"] ?? null)}
