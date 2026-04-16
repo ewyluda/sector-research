@@ -89,7 +89,10 @@ function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
       className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]
                  hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/3
                  cursor-pointer transition-all p-5"
