@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Metadata text tiers — use instead of text-[10px]/text-[11px] */
+.text-meta-xs { font-size: 10px; line-height: 1.4; }
+.text-meta-sm { font-size: 11px; line-height: 1.4; }
+/* text-xs (12px) is already provided by Tailwind */
+
 /* Respect reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
