@@ -538,6 +538,16 @@ export default function PipelineRunnerPage() {
 
         {/* Main content */}
         <div className="flex-1 min-w-0 space-y-6">
+          {run && (
+            <nav className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]" aria-label="Breadcrumb">
+              <a href="/library" className="hover:text-[var(--color-text-primary)] transition-colors">Library</a>
+              <span className="text-[var(--color-text-faint)]">/</span>
+              <span className="text-[var(--color-text-primary)] font-medium">{run.ticker}</span>
+              <span className="text-[var(--color-text-faint)]">/</span>
+              <span>Deep Dive</span>
+            </nav>
+          )}
+
           {/* Progress indicator for live runs */}
           {isLive && <LiveProgressBar currentPhase={currentPhase} />}
 
