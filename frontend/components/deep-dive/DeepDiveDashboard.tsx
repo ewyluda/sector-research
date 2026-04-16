@@ -1,5 +1,4 @@
 import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, TranscriptAnalysis, XSignalVelocity, EdgarFacts } from "@/lib/api";
-import { DashboardSidebar } from "./DashboardSidebar";
 import { OverviewBanner } from "./OverviewBanner";
 import { FinancialHealth } from "./sections/FinancialHealth";
 import { SupplyChainEcosystem } from "./sections/SupplyChainEcosystem";
@@ -12,7 +11,7 @@ import { ManagementGovernance } from "./sections/ManagementGovernance";
 import { SentimentNarrative } from "./sections/SentimentNarrative";
 import { FutureDurability } from "./sections/FutureDurability";
 import { CrossCategoryCorrelation } from "./sections/CrossCategoryCorrelation";
-import { MobileSectionNav } from "./MobileSectionNav";
+import { SectionNav } from "./SectionNav";
 
 export interface DeepDiveDashboardProps {
   ticker: string;
@@ -60,9 +59,8 @@ export function DeepDiveDashboard({ ticker, financials, categories: rawCategorie
   const categories = normalizeKeys(rawCategories);
   return (
   <>
-    <div className="flex gap-6">
-      <DashboardSidebar scores={scores} />
-      <div className="flex-1 space-y-6 min-w-0">
+    <SectionNav />
+    <div className="space-y-6">
         <OverviewBanner financials={financials} scores={scores} />
 
         {/* Data-Rich */}
@@ -143,9 +141,7 @@ export function DeepDiveDashboard({ ticker, financials, categories: rawCategorie
           fallback={categories["future_durability"] ?? null}
           isLive={isLive}
         />
-      </div>
     </div>
-    <MobileSectionNav />
   </>
   );
 }
