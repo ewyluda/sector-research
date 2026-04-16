@@ -15,6 +15,8 @@ export default function Nav() {
   const path = usePathname();
 
   return (
+    <>
+    <a href="#main-content" className="skip-link">Skip to main content</a>
     <header className="border-b border-[var(--border)] bg-[var(--surface)] sticky top-0 z-40">
       <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between">
         {/* Wordmark */}
@@ -44,5 +46,6 @@ export default function Nav() {
         </nav>
       </div>
     </header>
+    </>
   );
 }

@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
         <Nav />
-        <main className="max-w-[1400px] mx-auto px-6 py-8">
+        <main id="main-content" className="max-w-[1400px] mx-auto px-6 py-8">
           {children}
         </main>
       </body>
