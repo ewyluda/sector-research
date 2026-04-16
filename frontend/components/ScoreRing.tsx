@@ -23,7 +23,7 @@ export default function ScoreRing({ score, size = 44, label }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-0.5 tabular-nums">
-      <svg width={size} height={size}>
+      <svg width={size} height={size} role="img" aria-label={`Score: ${Math.round(score)} out of 100${label ? `, ${label}` : ""}`}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={3} />
         <circle
           cx={size / 2}
