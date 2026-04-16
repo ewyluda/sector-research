@@ -22,7 +22,7 @@ export default function ScoreRing({ score, size = 44, label }: Props) {
   const color = scoreColor(score);
 
   return (
-    <div className="flex flex-col items-center gap-0.5">
+    <div className="flex flex-col items-center gap-0.5 tabular-nums">
       <svg width={size} height={size}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={3} />
         <circle

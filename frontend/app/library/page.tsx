@@ -144,7 +144,7 @@ function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
         <div className="flex-shrink-0 text-right">
           {run.conviction_score !== null ? (
             <>
-              <p className="text-2xl font-mono font-semibold text-[var(--color-accent)]">
+              <p className="text-2xl font-mono font-semibold text-[var(--color-accent)] tabular-nums">
                 {run.conviction_score}
               </p>
               <p className="text-xs text-[var(--color-text-muted)]">conviction</p>
