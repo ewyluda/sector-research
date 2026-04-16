@@ -242,7 +242,75 @@ export const relationships = {
       `/api/relationships/alias`,
       { method: "POST", body: JSON.stringify(body) }
     ),
+  getGraph: (ticker: string, direction: "out" | "in" | "both" = "both") =>
+    apiFetch<SupplyChainGraph>(
+      `/api/relationships/graph/${encodeURIComponent(ticker)}?direction=${direction}`
+    ),
+  reconcile: () =>
+    apiFetch<{ pairs_reconciled: number; rows_flipped: number }>(
+      `/api/relationships/reconcile`,
+      { method: "POST" }
+    ),
 };
+
+// ── Supply-chain graph (Phase D) ─────────────────────────────────────────────
+
+export interface SupplyChainGraphNode {
+  id: string;
+  ticker: string | null;
+  cik: string | null;
+  name: string;
+  is_root: boolean;
+  tracked: boolean;
+  unnamed: boolean;
+}
+
+export interface SupplyChainGraphEdge {
+  from_id: string;
+  to_id: string;
+  relationship_type: string;
+  direction: "out" | "in";
+  magnitude_pct: number | null;
+  unnamed: boolean;
+  confirmed_bilateral: boolean;
+  verbatim_quote: string | null;
+  source_ticker: string;
+  accession_number: string;
+  filing_date: string;
+  section_key: string;
+}
+
+export interface SupplyChainEntry {
+  from_id: string;
+  to_id: string;
+  direction: "out" | "in";
+  magnitude_pct: number | null;
+  confirmed_bilateral: boolean;
+  verbatim_quote: string | null;
+  source_ticker: string;
+  accession_number: string;
+  filing_date: string;
+  section_key: string;
+  unnamed: boolean;
+  counterparty_name?: string;
+  counterparty_ticker?: string | null;
+  counterparty_cik?: string | null;
+  counterparty_tracked?: boolean;
+}
+
+export interface SupplyChainGraph {
+  root_ticker: string;
+  nodes: SupplyChainGraphNode[];
+  edges: SupplyChainGraphEdge[];
+  summary: Record<
+    string,
+    {
+      out_named: SupplyChainEntry[];
+      out_unnamed: SupplyChainEntry[];
+      in_named: SupplyChainEntry[];
+    }
+  >;
+}
 
 // ── Discovery endpoints ───────────────────────────────────────────────────────
 
