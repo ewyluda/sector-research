@@ -62,10 +62,10 @@ export function TrendLineChart({ lines, yAxisSuffix = "%", referenceLine, tightD
     isMoney ? formatUSD(v) : `${formatNumber(v, 1)}${yAxisSuffix}`;
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={260}>
       <LineChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-        <XAxis dataKey="period" tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} />
-        <YAxis tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} tickFormatter={(v) => tickFmt(v)} width={isMoney ? 60 : 48} domain={yDomain} />
+        <XAxis dataKey="period" tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} />
+        <YAxis tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} tickFormatter={(v) => tickFmt(v)} width={isMoney ? 60 : 48} domain={yDomain} />
         <Tooltip
           contentStyle={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 11 }}
           formatter={(value) => [tooltipFmt(value as number)]}

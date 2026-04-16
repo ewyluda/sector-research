@@ -19,10 +19,10 @@ export function GroupedBarChart({ metrics, label = "Revenue", formatValue }: Gro
   }));
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 20, right: 5, bottom: 5, left: 5 }}>
-        <XAxis dataKey="period" tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} />
-        <YAxis tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} tickFormatter={(v) => fmt(v)} width={55} />
+        <XAxis dataKey="period" tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} />
+        <YAxis tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} tickFormatter={(v) => fmt(v)} width={55} />
         <Tooltip
           contentStyle={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 11 }}
           formatter={(value) => [fmt(value as number), label]}

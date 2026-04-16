@@ -19,10 +19,10 @@ export function StackedBarChart({ cash, debt, equity }: StackedBarChartProps) {
   })).reverse();
 
   return (
-    <ResponsiveContainer width="100%" height={220}>
+    <ResponsiveContainer width="100%" height={260}>
       <BarChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
-        <XAxis dataKey="period" tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} />
-        <YAxis tick={{ fontSize: 10, fill: "var(--color-text-muted)" }} tickFormatter={(v) => formatUSD(v)} width={60} />
+        <XAxis dataKey="period" tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} />
+        <YAxis tick={{ fontSize: 12, fill: "var(--color-text-muted)" }} tickFormatter={(v) => formatUSD(v)} width={60} />
         <Tooltip
           contentStyle={{ backgroundColor: "var(--color-surface)", border: "1px solid var(--color-border)", borderRadius: 8, fontSize: 11 }}
           formatter={(value) => [formatUSD(value as number)]}
