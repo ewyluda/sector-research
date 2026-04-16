@@ -12,6 +12,15 @@ interface GroupedBarChartProps {
 
 export function GroupedBarChart({ metrics, label = "Revenue", formatValue }: GroupedBarChartProps) {
   const fmt = formatValue ?? formatUSD;
+
+  if (!metrics || metrics.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[260px] rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-alt)]/30">
+        <p className="text-xs text-[var(--color-text-faint)]">No data available for this period</p>
+      </div>
+    );
+  }
+
   const data = [...metrics].reverse().map((m) => ({
     period: m.period,
     value: m.value,

@@ -33,6 +33,14 @@ export function TrendLineChart({ lines, yAxisSuffix = "%", referenceLine, tightD
     .map(([period, vals]) => ({ period, ...vals }) as Record<string, string | number>)
     .reverse();
 
+  if (data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-[260px] rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface-alt)]/30">
+        <p className="text-xs text-[var(--color-text-faint)]">No data available for this period</p>
+      </div>
+    );
+  }
+
   // Compute tight domain: pad 2% around [min, max] so trends are visible
   let yDomain: [number | string, number | string] | undefined;
   if (tightDomain && data.length > 0) {
