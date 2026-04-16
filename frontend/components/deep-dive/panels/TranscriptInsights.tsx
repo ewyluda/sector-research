@@ -15,7 +15,7 @@ function CollapsibleSection({ title, badge, defaultOpen, children }: { title: st
     <div className="border border-[var(--color-border)] rounded-lg overflow-hidden">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-3 py-2 bg-[var(--color-bg)]/40 hover:bg-[var(--color-bg)]/60 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 bg-[var(--color-bg)]/40 hover:bg-[var(--color-bg)]/60 transition-colors cursor-pointer"
       >
         <div className="flex items-center gap-2">
           <span className="text-[10px] text-[var(--color-text-muted)]">{open ? "▾" : "▸"}</span>

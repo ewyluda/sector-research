@@ -31,7 +31,7 @@ function CompanyRow({
     <button
       onClick={onClick}
       className={clsx(
-        "w-full text-left px-4 py-3 border-b border-[var(--border)] transition-colors",
+        "w-full text-left px-4 py-3 border-b border-[var(--border)] transition-colors cursor-pointer",
         selected
           ? "bg-[var(--accent-bg)] border-l-2 border-l-[var(--primary)]"
           : "hover:bg-[var(--surface-alt)]"
@@ -316,7 +316,7 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
                   key={key}
                   onClick={() => setFilter(key)}
                   className={clsx(
-                    "text-[11px] px-2.5 py-1 rounded-full border transition-colors",
+                    "text-[11px] px-2.5 py-1 rounded-full border transition-colors cursor-pointer",
                     filter === key
                       ? "bg-[var(--primary)] text-white border-[var(--primary)]"
                       : "text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--primary)]/50"

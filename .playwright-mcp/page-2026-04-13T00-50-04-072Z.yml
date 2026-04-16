@@ -1,0 +1,17 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Sector Research" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: Sector Research
+      - navigation [ref=e7]:
+        - link "Themes" [ref=e8] [cursor=pointer]:
+          - /url: /
+        - link "Library" [ref=e9] [cursor=pointer]:
+          - /url: /library
+        - link "+ New Run" [ref=e10] [cursor=pointer]:
+          - /url: /pipeline/new
+  - main [ref=e11]:
+    - main [ref=e12]:
+      - paragraph [ref=e13]: Report not found.
+  - alert [ref=e14]

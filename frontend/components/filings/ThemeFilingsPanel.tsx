@@ -13,7 +13,7 @@ export default function ThemeFilingsPanel({ theme }: { theme: Theme }) {
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full bg-[var(--teal-dark)] px-5 py-3 flex items-center justify-between hover:brightness-110 transition"
+        className="w-full bg-[var(--teal-dark)] px-5 py-3 flex items-center justify-between hover:brightness-110 transition cursor-pointer"
       >
         <div className="text-left">
           <h2 className="text-white font-semibold text-sm">{theme.name}</h2>

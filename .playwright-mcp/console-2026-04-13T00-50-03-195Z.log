@@ -1,0 +1,6 @@
+[     710ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[     773ms] [LOG] [HMR] connected @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431
+[     842ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8000/api/runs/089c07b6-f58a-468c-90e5-aab9cdc9a7ab/report:0
+[     869ms] Error: API 404: {"detail":"Run not found"}
+    at apiFetch (http://localhost:3000/_next/static/chunks/_11.5eet._.js:34:15)
+[     892ms] [LOG] [Fast Refresh] rebuilding @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_115brz8._.js:2431

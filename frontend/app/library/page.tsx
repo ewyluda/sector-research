@@ -66,7 +66,7 @@ function FilterBar({
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
             active === key
               ? "bg-[var(--color-accent)] text-white"
               : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
