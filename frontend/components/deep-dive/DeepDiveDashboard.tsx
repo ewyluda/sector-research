@@ -12,6 +12,7 @@ import { ManagementGovernance } from "./sections/ManagementGovernance";
 import { SentimentNarrative } from "./sections/SentimentNarrative";
 import { FutureDurability } from "./sections/FutureDurability";
 import { CrossCategoryCorrelation } from "./sections/CrossCategoryCorrelation";
+import { MobileSectionNav } from "./MobileSectionNav";
 
 export interface DeepDiveDashboardProps {
   ticker: string;
@@ -58,6 +59,7 @@ export function DeepDiveDashboard({ ticker, financials, categories: rawCategorie
   const scores = normalizeKeys(rawScores);
   const categories = normalizeKeys(rawCategories);
   return (
+  <>
     <div className="flex gap-6">
       <DashboardSidebar scores={scores} />
       <div className="flex-1 space-y-6 min-w-0">
@@ -143,5 +145,7 @@ export function DeepDiveDashboard({ ticker, financials, categories: rawCategorie
         />
       </div>
     </div>
+    <MobileSectionNav />
+  </>
   );
 }
