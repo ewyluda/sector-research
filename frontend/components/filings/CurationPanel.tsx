@@ -85,7 +85,7 @@ export default function CurationPanel() {
           {loading && (
             <div className="text-xs text-[var(--text-faint)]">Loading…</div>
           )}
-          {error && <div className="text-xs text-red-600">{error}</div>}
+          {error && <div className="text-xs text-[var(--error-text)]">{error}</div>}
           {!loading && items && items.length === 0 && (
             <div className="text-xs text-[var(--text-faint)]">
               Nothing to resolve. Run extraction on more tickers to fill the

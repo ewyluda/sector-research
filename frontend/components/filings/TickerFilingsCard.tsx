@@ -110,7 +110,7 @@ export default function TickerFilingsCard({ ticker }: { ticker: string }) {
           <div className="text-[11px] text-[var(--text-muted)]">{ingestMsg}</div>
         )}
         {error && (
-          <div className="text-[11px] text-red-600">{error}</div>
+          <div className="text-[11px] text-[var(--error-text)]">{error}</div>
         )}
 
         {hasFilings && (

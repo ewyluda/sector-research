@@ -25,13 +25,13 @@ function ThemeCard({ theme }: { theme: Theme }) {
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-white font-semibold text-sm leading-snug">{theme.name}</h2>
           {hasParent && (
-            <span className="shrink-0 text-[10px] text-[#9de0e6] border border-[#9de0e6]/40 rounded-full px-2 py-0.5">
+            <span className="shrink-0 text-[10px] text-[var(--teal-light)] border border-[var(--teal-light)]/40 rounded-full px-2 py-0.5">
               sub-theme
             </span>
           )}
         </div>
         {theme.description && (
-          <p className="text-[#BCE2E7] text-xs mt-1 line-clamp-2">{theme.description}</p>
+          <p className="text-[var(--teal-lighter)] text-xs mt-1 line-clamp-2">{theme.description}</p>
         )}
       </div>
 
@@ -114,7 +114,7 @@ export default async function ThemeDashboard() {
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]">
           {error}
         </div>
       )}

@@ -18,6 +18,21 @@
   --error:        #A12C7B;
   --code-bg:      #EFEFEC;
 
+  /* Score tier colors */
+  --score-strong:  #437A22;   /* >= 70 — emerald */
+  --score-neutral: #01696F;   /* >= 45 — teal */
+  --score-caution: #964219;   /* >= 25 — rust */
+  --score-weak:    #A12C7B;   /* < 25  — magenta */
+
+  /* Teal-on-dark text (card headers on --teal-dark bg) */
+  --teal-light:    #9de0e6;
+  --teal-lighter:  #BCE2E7;
+
+  /* Error state (inline banners) */
+  --error-bg:      #FEF2F2;
+  --error-border:  #E8C4D8;
+  --error-text:    #A12C7B;
+
   /* Aliased --color-* tokens (components reference these) */
   --color-bg:              var(--bg);
   --color-surface:         var(--surface);
@@ -31,6 +46,14 @@
   --color-citation:        rgba(1, 105, 111, 0.75);
   --color-citation-bg:     rgba(234, 244, 244, 0.5);
   --color-citation-border: var(--primary);
+  --color-score-strong:  var(--score-strong);
+  --color-score-neutral: var(--score-neutral);
+  --color-score-caution: var(--score-caution);
+  --color-score-weak:    var(--score-weak);
+  --color-error:         var(--error);
+  --color-error-bg:      var(--error-bg);
+  --color-error-border:  var(--error-border);
+  --color-error-text:    var(--error-text);
 }
 
 body {

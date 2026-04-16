@@ -108,7 +108,7 @@ function NewPipelineForm() {
           </div>
 
           {error && (
-            <p className="text-sm text-red-400 bg-red-400/10 border border-red-400/20 rounded-lg px-4 py-3">
+            <p className="text-sm text-[var(--error-text)] bg-[var(--error-bg)] border border-[var(--error-border)] rounded-lg px-4 py-3">
               {error}
             </p>
           )}

@@ -18,12 +18,12 @@ export default function ThemeFilingsPanel({ theme }: { theme: Theme }) {
         <div className="text-left">
           <h2 className="text-white font-semibold text-sm">{theme.name}</h2>
           {theme.description && (
-            <p className="text-[#BCE2E7] text-xs mt-0.5 line-clamp-1">
+            <p className="text-[var(--teal-lighter)] text-xs mt-0.5 line-clamp-1">
               {theme.description}
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-[#9de0e6]">
+        <div className="flex items-center gap-3 text-[11px] text-[var(--teal-light)]">
           <span>
             {tickers.length} ticker{tickers.length !== 1 ? "s" : ""}
           </span>

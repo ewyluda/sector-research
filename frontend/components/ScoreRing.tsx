@@ -9,10 +9,10 @@ interface Props {
 }
 
 function scoreColor(score: number) {
-  if (score >= 70) return "#437A22";
-  if (score >= 45) return "#01696F";
-  if (score >= 25) return "#964219";
-  return "#A12C7B";
+  if (score >= 70) return "var(--score-strong)";
+  if (score >= 45) return "var(--score-neutral)";
+  if (score >= 25) return "var(--score-caution)";
+  return "var(--score-weak)";
 }
 
 export default function ScoreRing({ score, size = 44, label }: Props) {
@@ -24,7 +24,7 @@ export default function ScoreRing({ score, size = 44, label }: Props) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <svg width={size} height={size}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#D4D1CA" strokeWidth={3} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={3} />
         <circle
           cx={size / 2}
           cy={size / 2}

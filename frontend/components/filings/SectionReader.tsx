@@ -76,7 +76,7 @@ export default function SectionReader({
 
         <div className="p-5">
           {error && (
-            <div className="text-sm text-red-600">{error}</div>
+            <div className="text-sm text-[var(--error-text)]">{error}</div>
           )}
           {!error && !data && (
             <div className="text-sm text-[var(--text-faint)]">Loading…</div>
