@@ -62,7 +62,7 @@ export function SupplyChainEcosystem({ ticker }: Props) {
 
   if (loading) {
     return (
-      <section className="rounded-lg border border-[var(--color-border)] p-4">
+      <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4">
         <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)] mb-2">
           Supply Chain & Ecosystem
         </h3>
@@ -73,18 +73,18 @@ export function SupplyChainEcosystem({ ticker }: Props) {
 
   if (error) {
     return (
-      <section className="rounded-lg border border-[var(--color-border)] p-4">
+      <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4">
         <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)] mb-2">
           Supply Chain & Ecosystem
         </h3>
-        <p className="text-[11px] text-red-600">{error}</p>
+        <p className="text-[11px] text-[var(--error-text)]">{error}</p>
       </section>
     );
   }
 
   if (!graph || graph.edges.length === 0) {
     return (
-      <section className="rounded-lg border border-[var(--color-border)] p-4">
+      <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4">
         <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)] mb-2">
           Supply Chain & Ecosystem
         </h3>
@@ -101,7 +101,7 @@ export function SupplyChainEcosystem({ ticker }: Props) {
   const totalIn = graph.edges.filter((e) => e.direction === "in").length;
 
   return (
-    <section className="rounded-lg border border-[var(--color-border)] p-4 space-y-3">
+    <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
           Supply Chain & Ecosystem

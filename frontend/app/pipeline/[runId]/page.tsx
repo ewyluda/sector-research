@@ -23,7 +23,6 @@ import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
-import { SectionNav } from "@/components/deep-dive/SectionNav";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -538,9 +537,9 @@ export default function PipelineRunnerPage() {
 
           {/* Error banner for failed runs */}
           {!isLive && run.status === "error" && (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
-              <p className="text-sm font-semibold text-red-400">Pipeline Error</p>
-              <p className="text-xs text-red-300 mt-1">
+            <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] p-4">
+              <p className="text-sm font-semibold text-[var(--error-text)]">Pipeline Error</p>
+              <p className="text-xs text-[var(--error-text)]/70 mt-1">
                 The pipeline encountered an error during the {currentPhase.replace(/_/g, " ")} phase. Partial results are shown below.
               </p>
             </div>

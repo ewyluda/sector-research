@@ -55,7 +55,7 @@ export function SectionNav() {
     <>
       <div ref={sentinelRef} className="h-0" />
       <nav
-        className={`sticky top-0 z-30 transition-shadow ${
+        className={`sticky top-14 z-30 transition-shadow ${
           stuck
             ? "bg-[var(--color-bg)]/95 backdrop-blur shadow-md border-b border-[var(--color-border)]"
             : "bg-transparent"

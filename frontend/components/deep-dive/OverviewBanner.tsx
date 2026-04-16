@@ -14,7 +14,7 @@ export function OverviewBanner({ financials, scores }: OverviewBannerProps) {
     : null;
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
+    <div id="overview" className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
           Deep Dive Analysis
