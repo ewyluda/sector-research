@@ -18,6 +18,8 @@ interface TrendLineChartProps {
   tightDomain?: boolean;
 }
 
+const LINE_DASH = ["", "6 3", "2 3"];
+
 export function TrendLineChart({ lines, yAxisSuffix = "%", referenceLine, tightDomain }: TrendLineChartProps) {
   const periodSet = new Map<string, Record<string, number>>();
   for (const line of lines) {
@@ -74,8 +76,16 @@ export function TrendLineChart({ lines, yAxisSuffix = "%", referenceLine, tightD
         {referenceLine !== undefined && (
           <ReferenceLine y={referenceLine} stroke="var(--color-text-faint)" strokeDasharray="4 4" />
         )}
-        {lines.map((line) => (
-          <Line key={line.name} type="monotone" dataKey={line.name} stroke={line.color} strokeWidth={2} dot={{ r: 3 }} />
+        {lines.map((line, idx) => (
+          <Line
+            key={line.name}
+            type="monotone"
+            dataKey={line.name}
+            stroke={line.color}
+            strokeWidth={2}
+            strokeDasharray={idx > 0 ? LINE_DASH[idx % LINE_DASH.length] : undefined}
+            dot={{ r: 3 }}
+          />
         ))}
       </LineChart>
     </ResponsiveContainer>
