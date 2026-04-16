@@ -61,7 +61,7 @@ export default function SectionReader({
         <div className="sticky top-0 bg-[var(--surface)] border-b border-[var(--border)] px-5 py-3 flex items-center justify-between rounded-t-xl">
           <div>
             <div className="text-[11px] text-[var(--text-faint)] font-mono">
-              ${ticker.toUpperCase()} · {accession}
+              {ticker.toUpperCase()} · {accession}
             </div>
             <h3 className="text-sm font-semibold text-[var(--text)]">
               {heading ?? sectionKey}

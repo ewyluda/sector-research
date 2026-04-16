@@ -56,7 +56,7 @@ function ThemeCard({ theme }: { theme: Theme }) {
                     key={t}
                     className="text-[11px] font-mono font-medium text-[var(--primary-dk)] bg-[var(--accent-bg)] px-1.5 py-0.5 rounded"
                   >
-                    ${t}
+                    {t}
                   </span>
                 ))}
               {seedCount > 6 && (
