@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with human-in-the-loop interrupts and citations on every data point). No auth — local-only tool.
 
+Three-pane split: **Discovery** (ranked companies per theme), **Pipeline** (6-phase due diligence), and **Filings** (SEC EDGAR filing extraction, relationship graph, and counterparty resolution).
+
 Two deployables in a flat layout:
 
 - `backend/` — FastAPI + async SQLAlchemy + LangGraph + PostgreSQL (Python 3, venv in `backend/venv/`)
@@ -47,6 +49,8 @@ npm run lint       # eslint (flat config in eslint.config.mjs)
 Frontend talks to the backend via `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). CORS on the backend allows `http://localhost:3000` by default.
 
 ## Environment
+
+`SEC_USER_AGENT` is used by the EDGAR client — SEC requires a descriptive User-Agent string with a contact email (e.g. `"SectorResearch/1.0 ericwyluda@gmail.com"`). Set it in `config.py` settings.
 
 Single `.env` at project root. `backend/app/config.py` reads it via `env_file="../../.env"` (relative to `backend/app/`), so the backend is hard-coded to that path — don't move the file. Required: `FMP_API_KEY`, `X_BEARER_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL` (asyncpg URL), `DATABASE_URL_SYNC` (used by Alembic).
 
@@ -100,16 +104,55 @@ Two kinds of async work run under the FastAPI process:
 - **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task holds the DB session passed from the request; if you change session lifecycle, verify the background task still has a live session.
 - **Daily signal refresh** — `AsyncIOScheduler` cron job registered in `app/main.py::lifespan`, calls `services.signal_scheduler.run_daily_refresh`.
 
+### SEC EDGAR filing pipeline (read this before touching `backend/app/services/edgar*` or `supply_chain.py`)
+
+Four-phase pipeline for extracting and consuming SEC filing narrative. All on-demand — no automatic trigger during pipeline runs.
+
+**Phase A — Filing section extraction** (`services/edgar_sections_ingest.py` + `services/edgar_html.py`):
+- `POST /api/filings/ingest/{ticker}` pulls the latest 10-K, 10-Q, and DEF 14A from EDGAR, extracts Item 1 Business, Item 1A Risk Factors, Item 7 MD&A (10-K) / Item 2 MD&A (10-Q), and DEF 14A Governance via BeautifulSoup.
+- Strips inline XBRL (`ix:hidden` dropped, `ix:nonFraction`/`ix:nonNumeric` unwrapped to displayed value). Heading regex anchored to line-start (MULTILINE) for MD&A and Item 1 Business to avoid matching in-body cross-references.
+- Full text stored in `filing_sections` table; prompt builders truncate to 5K chars per section via `FILING_EXCERPT_BUDGET_CHARS`.
+- Idempotent on `(filing_id, section_key)`.
+
+**Phase A — Prompt integration** (`FILING_EXCERPT_ROUTING` in `graph/nodes.py`):
+- Deep-dive categories receive verbatim filing excerpts via `{filing_excerpts}` slot in `DEEP_DIVE_USER`: Business Quality ← Item 1, Risk Assessment ← Item 1A, Growth & Earnings ← Item 7 + Item 2, Management & Governance ← DEF 14A governance, Future Durability ← Item 7 + Item 1.
+- Filing sections are fetched per-ticker in `PipelineService._fetch_filing_sections()` using a dedicated session (same pattern as `_fetch_edgar_facts`).
+
+**Phase B — Relationship extraction** (`services/edgar_relationships.py`):
+- `POST /api/filings/extract-relationships/{ticker}` runs one Haiku call per extractable section (Item 1, 1A, 7/2). Each section truncated to 15K chars.
+- Pydantic structured output (`ExtractionResult` with `ExtractedRelationship` list) via `assistant_prefill='{"relationships":'`. Extracts counterparty_name, relationship_type, magnitude_pct, unnamed flag, verbatim_quote.
+- Relationship types: `customer`, `supplier`, `partner`, `competitor`, `licensor`, `licensee`, `distributor`, `reseller`, `joint_venture`, `other`.
+- Persisted in `relationships` table. Idempotent via `filing_sections.relationships_extracted_at` tombstone column — zero-relationship sections are marked too.
+
+**Phase C — Counterparty resolution** (`services/counterparty_resolver.py`):
+- `POST /api/relationships/resolve/{ticker}` normalizes counterparty names (strips Inc/Corp/LLC/Holdings/Group/etc, punctuation, lowercases) and matches against EDGAR's `company_tickers.json` (~10K entities).
+- Exact match → auto-resolve. RapidFuzz `token_set_ratio` ≥ 95 → auto-resolve. 80-94 → curation queue. Below 80 → queue only.
+- Aliases persisted in `counterparty_aliases` table (unique on `alias_normalized`). Write-through populates `relationships.resolved_to_cik` / `resolved_to_ticker` on every matching row.
+- `GET /api/relationships/unresolved` → curation queue. `POST /api/relationships/alias` → manual override.
+
+**Phase D — Supply-chain graph** (`services/supply_chain.py`):
+- `GET /api/relationships/graph/{ticker}?direction=out|in|both` returns `{root_ticker, nodes[], edges[], summary}`. 1-hop depth. Nodes identified by CIK (resolved) or normalized name (unresolved). `tracked` flag from theme seed_tickers.
+- `POST /api/relationships/reconcile` flips `confirmed_bilateral=true` on reciprocal pairs (customer↔supplier, partner↔partner, competitor↔competitor, licensor↔licensee, distributor↔reseller, joint_venture↔joint_venture).
+- Frontend: `SupplyChainEcosystem` card in the deep-dive dashboard (after Business Quality). Groups counterparties by type, shows verbatim quotes, bilateral badges, tracker-links.
+
+Database tables (all in `models/filing.py`):
+- `filings` — one row per accession_number (10-K, 10-Q, DEF 14A, etc.)
+- `xbrl_facts` — XBRL numeric facts (RPO, debt maturity, concentration, credit)
+- `filing_sections` — extracted narrative text per section per filing
+- `relationships` — LLM-extracted counterparty relationships
+- `counterparty_aliases` — normalized name → canonical CIK/ticker resolution
+
 ### Import conventions
 
 Backend uses **absolute imports rooted at project root**: `from backend.app.config import get_settings`. That's why uvicorn must be launched from project root. `backend/migrations/env.py` also imports from `backend.app.*`, so Alembic commands need project root on `PYTHONPATH` (running `alembic` from inside `backend/` works if you've activated the venv and `pip install -e .`'d — otherwise use `PYTHONPATH=.. alembic ...`).
 
 ### Frontend layout
 
-- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports). `/report/[runId]` redirects here.
+- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports). `/report/[runId]` redirects here.
 - `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
 - `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
-- `components/deep-dive/` — 30+ component module for the financial dashboard: `DeepDiveDashboard` orchestrator, `DashboardSidebar` (scroll-tracked nav with overview/data-rich/mixed/qualitative/synthesis tiers), `ReportHeader` (company identity + verdict + metrics + radar), `OverviewBanner` (radar + metrics + score bar), `VelocitySparkline` (X signal badge), `sections/` (9 category sections + CrossCategoryCorrelation), `charts/` (Recharts bar/line/trend + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
+- `components/filings/` — `ThemeFilingsPanel`, `TickerFilingsCard`, `SectionReader` (modal), `CurationPanel` (counterparty resolution queue)
+- `components/deep-dive/` — 30+ component module for the financial dashboard: `DeepDiveDashboard` orchestrator (receives `ticker` prop for supply-chain card), `DashboardSidebar` (scroll-tracked nav with overview/data-rich/mixed/qualitative/synthesis tiers), `ReportHeader` (company identity + verdict + metrics + radar), `OverviewBanner` (radar + metrics + score bar), `VelocitySparkline` (X signal badge), `sections/` (9 category sections + CrossCategoryCorrelation + `SupplyChainEcosystem`), `charts/` (Recharts bar/line/trend + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
 - Path alias: `@/*` → project root. Tailwind v4 via `@tailwindcss/postcss`.
 - Chart libraries: **Recharts** (bar, line, radar charts) and **lightweight-charts** (TradingView candlestick + RSI).
 
@@ -120,7 +163,10 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 - **Transcript routing** (`TRANSCRIPT_ROUTING` in `nodes.py`): Management & Governance (all 5 passes), Business Quality (pass3, pass5), Growth & Earnings (pass1, pass4, pass6), Sentiment & Narrative (pass3, pass5), Risk Assessment (pass1, pass4), Future Durability (pass1, pass5).
 - **Macro routing** (`MACRO_ROUTING`): Macro & Regime (all 9 FRED series), Risk Assessment (all 9), Future Durability (5 series), Financial Health (rates + yield curve).
 
-The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q).
+- **Filing excerpt routing** (`FILING_EXCERPT_ROUTING` in `nodes.py`): Business Quality (Item 1), Risk Assessment (Item 1A), Growth & Earnings (Item 7 + Item 2), Future Durability (Item 7 + Item 1), Management & Governance (DEF 14A). Truncated to `FILING_EXCERPT_BUDGET_CHARS` (5000) per section.
+- **EDGAR XBRL routing** (`EDGAR_ROUTING`): Growth & Earnings (RPO), Future Durability (RPO), Financial Health (debt maturity + credit), Risk Assessment (debt maturity + concentration + credit), Business Quality (concentration).
+
+The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q). It also pulls ingested filing sections (if any) via `PipelineService._fetch_filing_sections()` and XBRL facts via `_fetch_edgar_facts()`.
 
 ## State-of-repo notes
 

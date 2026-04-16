@@ -6,11 +6,13 @@ A personal stock research application combining structured equity data with soci
 
 ## What It Does
 
-Two core workflows:
+Three core workflows:
 
 **Discovery** — Open a curated investment theme (e.g., "AI Power Infrastructure") and see every company in that space ranked by signal strength. FMP screener data and X mention velocity surface unknown players alongside known ones. Combined signal score = 40% X velocity + 40% FMP fundamental quality + 20% discovery score.
 
 **Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. AI automation on each phase, human-in-the-loop validation at three interrupt gates, citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
+
+**Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a supply-chain graph card in the deep-dive dashboard and a curation queue for manual resolution.
 
 ---
 
@@ -24,9 +26,12 @@ Two core workflows:
 | Database | PostgreSQL |
 | LLM (heavy) | Claude Sonnet (`claude-sonnet-4-6`) |
 | LLM (light) | Claude Haiku (`claude-haiku-4-5-20251001`) |
-| Data: fundamentals | FMP API (ultimate tier) — financials, key metrics TTM, growth rates, DCF, estimates, transcripts |
+| Data: fundamentals | FMP API (ultimate tier) — financials, key metrics TTM, growth rates, DCF, estimates, transcripts, analyst grades, insider trading |
 | Data: macro | FRED API — 9 economic series (fed funds, treasuries, CPI, unemployment, GDP, M2, payrolls) |
+| Data: SEC filings | SEC EDGAR — 10-K / 10-Q / DEF 14A narrative sections, XBRL company facts |
 | Data: social signal | X API v2 |
+| Fuzzy matching | RapidFuzz — counterparty name → ticker resolution |
+| HTML parsing | BeautifulSoup + lxml — inline XBRL stripping + section extraction |
 
 ---
 
@@ -35,7 +40,7 @@ Two core workflows:
 ```
 ┌─────────────────────────────────────────┐
 │            Next.js 16 Frontend          │
-│  Theme Dashboard │ Pipeline Runner │ Library │
+│  Theme Dashboard │ Filings │ Pipeline │ Library │
 └────────────────────┬────────────────────┘
                      │ HTTP / SSE streaming
 ┌────────────────────▼────────────────────┐
@@ -48,7 +53,7 @@ Two core workflows:
 │         └────────┬─────────┘           │
 │          ┌───────▼───────┐             │
 │          │  Data Clients │             │
-│          │ FMP · X · FRED│             │
+│          │FMP·X·FRED·EDGAR│            │
 │          └───────┬───────┘             │
 └──────────────────┼─────────────────────┘
                    │
@@ -56,6 +61,8 @@ Two core workflows:
 │              PostgreSQL                 │
 │  themes · research_runs · citations     │
 │  signals · watchlist                    │
+│  filings · xbrl_facts · filing_sections │
+│  relationships · counterparty_aliases   │
 └─────────────────────────────────────────┘
 ```
 
@@ -97,6 +104,42 @@ END
 ```
 
 Phases 1–2 use Claude Haiku. Phases 3–5 use Claude Sonnet. Phase 6 uses Claude Haiku. Every data point carries a `Citation` — source name, URL, tier (1 = authoritative, 2 = qualitative), and retrieval timestamp.
+
+---
+
+## SEC EDGAR Filings Pipeline
+
+Separate on-demand pipeline for extracting business intelligence from SEC filings. All endpoints manual-trigger, no automatic inline execution during pipeline runs.
+
+```
+POST /api/filings/ingest/{ticker}
+  ↓  Fetches latest 10-K, 10-Q, DEF 14A from EDGAR
+  ↓  Extracts narrative sections (Item 1, 1A, 7, DEF 14A governance)
+  ↓  Strips inline XBRL, persists to filing_sections
+
+POST /api/filings/extract-relationships/{ticker}
+  ↓  One Haiku call per section (~15K chars each)
+  ↓  Extracts: counterparty_name, relationship_type, magnitude_pct, verbatim_quote
+  ↓  Persists to relationships table (idempotent per section)
+
+POST /api/relationships/resolve/{ticker}
+  ↓  Normalizes names (strips Inc/Corp/LLC/Holdings etc.)
+  ↓  Exact match → auto-resolve
+  ↓  RapidFuzz ≥ 95 → auto-resolve
+  ↓  80-94 → curation queue
+  ↓  Persists to counterparty_aliases, backfills relationships
+
+GET /api/relationships/graph/{ticker}?direction=both
+  ↓  Returns {nodes, edges, summary} for the supply-chain card
+
+POST /api/relationships/reconcile
+  ↓  Finds reciprocal pairs (customer↔supplier, etc.)
+  ↓  Flips confirmed_bilateral on both sides
+```
+
+The Supply Chain & Ecosystem card in the deep-dive dashboard renders the graph data — counterparties grouped by type with verbatim SEC quotes, bilateral confirmation badges, and tracker-links for companies in your discovery universe.
+
+---
 
 ### Structured Phase Outputs
 
@@ -167,8 +210,15 @@ No auth system — personal local tool.
 |---|---|
 | `CLAUDE.md` | Claude Code guidance for this repo |
 | `backend/app/models/phase_schemas.py` | All Pydantic schemas for structured phase outputs |
+| `backend/app/models/filing.py` | Filing, FilingSection, Relationship, CounterpartyAlias ORM models |
 | `backend/app/graph/pipeline.py` | LangGraph StateGraph definition |
-| `backend/app/graph/nodes.py` | Phase node implementations |
+| `backend/app/graph/nodes.py` | Phase node implementations + data routing tables |
 | `backend/app/graph/prompts.py` | All LLM prompts |
+| `backend/app/clients/edgar.py` | SEC EDGAR client (CIK lookup, company facts, filing fetch) |
+| `backend/app/services/edgar_html.py` | BS4 section extractor (heading regex, XBRL stripping) |
+| `backend/app/services/edgar_relationships.py` | Haiku relationship extraction service |
+| `backend/app/services/counterparty_resolver.py` | Normalizer + RapidFuzz matcher + alias management |
+| `backend/app/services/supply_chain.py` | Graph traversal + bilateral reconciliation |
 | `frontend/lib/api.ts` | Typed API client + all TypeScript interfaces |
-| `frontend/components/deep-dive/` | 30-component financial dashboard module (charts, sections, panels, skeletons) |
+| `frontend/components/deep-dive/` | 30+ component financial dashboard (charts, sections, panels, skeletons) |
+| `frontend/components/filings/` | Filing ingest, section reader, curation panel |
