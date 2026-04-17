@@ -74,9 +74,18 @@ export default function CurationPanel() {
             candidate or keep researching.
           </p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
-          {items && <span>{items.length} pending</span>}
-          <span aria-hidden>{expanded ? "▾" : "▸"}</span>
+        <div className="shrink-0 flex items-center gap-3 text-[11px] text-[var(--text-muted)]">
+          {items && <span className="whitespace-nowrap">{items.length} pending</span>}
+          <svg
+            className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`}
+            aria-hidden="true"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
         </div>
       </button>
 
