@@ -88,7 +88,6 @@ export function CandlestickChart({ data, height = 450 }: CandlestickChartProps) 
       const series = mainChart.addSeries(LineSeries, {
         color: sma.color,
         lineWidth: sma.width,
-        title: sma.title,
         priceLineVisible: false,
         lastValueVisible: false,
       });
@@ -175,17 +174,20 @@ export function CandlestickChart({ data, height = 450 }: CandlestickChartProps) 
 
   return (
     <div>
-      <div ref={mainRef} />
-      <div ref={rsiRef} />
-      {/* SMA Legend */}
-      <div className="flex flex-wrap gap-3 mt-2">
-        {SMA_CONFIG.map((sma) => (
-          <div key={sma.key} className="flex items-center gap-1">
-            <span className="w-3 h-0.5 rounded" style={{ backgroundColor: sma.color }} />
-            <span className="text-[9px] text-[var(--color-text-muted)]">{sma.title}</span>
-          </div>
-        ))}
+      <div className="relative">
+        <div ref={mainRef} />
+        <div
+          className="pointer-events-none absolute left-2 top-2 z-10 flex flex-col gap-0.5 rounded bg-[var(--color-surface)]/75 px-2 py-1 backdrop-blur-sm"
+        >
+          {SMA_CONFIG.map((sma) => (
+            <div key={sma.key} className="flex items-center gap-1.5">
+              <span className="h-0.5 w-3 rounded" style={{ backgroundColor: sma.color }} />
+              <span className="text-[10px] leading-none text-[var(--color-text-muted)]">{sma.title}</span>
+            </div>
+          ))}
+        </div>
       </div>
+      <div ref={rsiRef} />
     </div>
   );
 }
