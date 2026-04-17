@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { filings } from "@/lib/api";
 import type { FilingRecord, FilingIngestSummary } from "@/lib/api";
 import SectionReader from "./SectionReader";
@@ -9,6 +9,10 @@ interface OpenSection {
   accession: string;
   sectionKey: string;
   heading: string | null;
+}
+
+export interface TickerFilingsCardHandle {
+  ingest: () => Promise<void>;
 }
 
 const SECTION_LABEL: Record<string, string> = {
@@ -28,13 +32,15 @@ function fmtDate(iso: string): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
-export default function TickerFilingsCard({ ticker }: { ticker: string }) {
+const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }>(function TickerFilingsCard({ ticker }, ref) {
   const [records, setRecords] = useState<FilingRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [ingesting, setIngesting] = useState(false);
   const [ingestMsg, setIngestMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<OpenSection | null>(null);
+
+  useImperativeHandle(ref, () => ({ ingest: () => onIngest() }));
 
   async function load() {
     setLoading(true);
@@ -155,9 +161,9 @@ export default function TickerFilingsCard({ ticker }: { ticker: string }) {
           </div>
         )}
 
-        {!loading && !hasFilings && (
-          <div className="text-[11px] text-[var(--text-faint)] italic">
-            Click "Ingest latest" to fetch the latest 10-K, 10-Q, and DEF 14A.
+        {!loading && !hasFilings && !ingesting && (
+          <div className="text-[11px] text-[var(--text-faint)]">
+            Ready to ingest the latest 10-K, 10-Q, and DEF 14A.
           </div>
         )}
       </div>
@@ -173,4 +179,6 @@ export default function TickerFilingsCard({ ticker }: { ticker: string }) {
       )}
     </>
   );
-}
+});
+
+export default TickerFilingsCard;
