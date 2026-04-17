@@ -23,12 +23,35 @@ function NewPipelineForm() {
     () => searchParams?.get("theme") ?? ""
   );
   const [themeList, setThemeList] = useState<Theme[]>([]);
+  const [recentTickers, setRecentTickers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     themes.list().then(setThemeList).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    // Last 20 runs → dedupe tickers → show up to 6 as quick-fill chips.
+    pipeline
+      .list({ limit: 20 })
+      .then((runs) => {
+        const seen = new Set<string>();
+        const tickers: string[] = [];
+        for (const run of runs) {
+          const t = run.ticker?.toUpperCase();
+          if (t && !seen.has(t)) {
+            seen.add(t);
+            tickers.push(t);
+            if (tickers.length >= 6) break;
+          }
+        }
+        setRecentTickers(tickers);
+      })
+      .catch(() => {});
+  }, []);
+
+  const selectedTheme = themeList.find((t) => t.id === themeId) ?? null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,7 +76,7 @@ function NewPipelineForm() {
             New Research Run
           </h1>
           <p className="mt-1 text-sm text-[var(--text-faint)]">
-            Run the full 6-phase due diligence pipeline on any ticker
+            Runs 4 due-diligence phases automatically, then waits for approval before sizing.
           </p>
         </div>
 
@@ -80,6 +103,25 @@ function NewPipelineForm() {
                          focus:outline-none focus:border-[var(--primary)] focus:ring-1 focus:ring-[var(--primary)]
                          transition-colors"
             />
+            {recentTickers.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                <span className="text-[10px] uppercase tracking-wider text-[var(--text-faint)] mr-1">Recent:</span>
+                {recentTickers.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTicker(t)}
+                    className={`font-mono text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
+                      ticker === t
+                        ? "bg-[var(--primary)]/15 text-[var(--primary)] border-[var(--primary)]/30"
+                        : "bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--primary)]/40 hover:text-[var(--text)]"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Theme select */}
@@ -105,6 +147,11 @@ function NewPipelineForm() {
                 <option key={t.id} value={t.id}>{t.name}</option>
               ))}
             </select>
+            {selectedTheme?.description && (
+              <p className="text-[11px] text-[var(--text-faint)] mt-1.5 leading-relaxed line-clamp-2">
+                {selectedTheme.description}
+              </p>
+            )}
           </div>
 
           {error && (
@@ -120,12 +167,11 @@ function NewPipelineForm() {
             </p>
             <div className="space-y-2">
               {[
-                ["1", "Quick Screen", "GO/WATCHLIST/PASS decision from FMP fundamentals"],
-                ["2", "Deep Dive", "9 categories in parallel (incl. transcript forensics)"],
-                ["3", "Thesis Construction", "Bull/bear synthesis + variant perception"],
-                ["4", "Risk Stress-Test", "Tail scenarios + invalidation triggers"],
-                ["5", "Position Monitor", "Entry zones + sizing + monitoring cadence"],
-              ].map(([num, label, sub]) => (
+                { num: "1", label: "Quick Screen", sub: "GO/WATCHLIST/PASS decision from FMP fundamentals" },
+                { num: "2", label: "Deep Dive", sub: "9 categories in parallel (incl. transcript forensics)" },
+                { num: "3", label: "Thesis Construction", sub: "Bull/bear synthesis + variant perception" },
+                { num: "4", label: "Risk Stress-Test", sub: "Tail scenarios + invalidation triggers" },
+              ].map(({ num, label, sub }) => (
                 <div key={num} className="flex items-start gap-3">
                   <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-[var(--primary)]/15
                                    text-[var(--primary)] text-xs font-semibold flex items-center justify-center">
@@ -137,6 +183,19 @@ function NewPipelineForm() {
                   </div>
                 </div>
               ))}
+              <div className="flex items-start gap-3 pt-2 border-t border-[var(--border)]/60 mt-2">
+                <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-[var(--surface-alt)]
+                                 text-[var(--text-faint)] text-xs font-semibold flex items-center justify-center">
+                  5
+                </span>
+                <div>
+                  <span className="text-sm font-medium text-[var(--text-muted)]">Position Monitor</span>
+                  <span className="ml-2 text-[10px] font-medium uppercase tracking-wider text-[var(--text-faint)]">
+                    Manual
+                  </span>
+                  <span className="text-xs text-[var(--text-faint)] ml-2">Entry zones + sizing, triggered after review</span>
+                </div>
+              </div>
             </div>
           </div>
 

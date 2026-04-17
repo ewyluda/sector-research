@@ -42,14 +42,18 @@ function fmtDate(iso: string | null): string {
 
 type FilterStatus = "all" | "completed" | "in_progress" | "awaiting_approval" | "watchlist" | "data_gaps";
 
+type StatusCounts = Partial<Record<FilterStatus, number>>;
+
 function FilterBar({
   active,
   onChange,
   total,
+  counts,
 }: {
   active: FilterStatus;
   onChange: (f: FilterStatus) => void;
   total: number;
+  counts: StatusCounts;
 }) {
   const filters: { key: FilterStatus; label: string }[] = [
     { key: "all",               label: "All" },
@@ -61,20 +65,31 @@ function FilterBar({
   ];
 
   return (
-    <div className="flex items-center gap-2">
-      {filters.map(({ key, label }) => (
-        <button
-          key={key}
-          onClick={() => onChange(key)}
-          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
-            active === key
-              ? "bg-[var(--color-accent)] text-white"
-              : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
-          }`}
-        >
-          {label}
-        </button>
-      ))}
+    <div className="flex items-center flex-wrap gap-2">
+      {filters.map(({ key, label }) => {
+        const count = counts[key];
+        const isActive = active === key;
+        return (
+          <button
+            key={key}
+            onClick={() => onChange(key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+              isActive
+                ? "bg-[var(--color-accent)] text-white"
+                : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
+            }`}
+          >
+            <span>{label}</span>
+            {count != null && (
+              <span className={`text-[10px] tabular-nums font-mono ${
+                isActive ? "text-white/80" : "text-[var(--color-text-muted)]"
+              }`}>
+                {count}
+              </span>
+            )}
+          </button>
+        );
+      })}
       <span className="ml-auto text-xs text-[var(--color-text-muted)]">
         {total} run{total !== 1 ? "s" : ""}
       </span>
@@ -114,12 +129,18 @@ function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
               </span>
             )}
             {run.loop_count > 0 && (
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium">
+              <span
+                title={`Risk stress-test triggered ${run.loop_count} deep-dive retry loop${run.loop_count !== 1 ? "s" : ""}`}
+                className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium cursor-help"
+              >
                 ↻ L{run.loop_count}
               </span>
             )}
             {run.gap_count > 0 && (
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium">
+              <span
+                title={`${run.gap_count} data gap${run.gap_count !== 1 ? "s" : ""} (missing or low-confidence findings) across the 9 deep-dive categories`}
+                className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium cursor-help"
+              >
                 {run.gap_count} gap{run.gap_count !== 1 ? "s" : ""}
               </span>
             )}
@@ -140,9 +161,16 @@ function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
           </div>
         </div>
 
-        {/* Right: conviction score */}
+        {/* Right: conviction score — only show "pending" while in_progress
+            (conviction is null/zero before thesis_construction). awaiting_approval
+            runs already have the thesis-computed score. */}
         <div className="flex-shrink-0 text-right">
-          {run.conviction_score !== null ? (
+          {run.status === "in_progress" ? (
+            <>
+              <p className="text-2xl font-mono font-semibold text-[var(--color-text-faint)] tabular-nums">—</p>
+              <p className="text-xs text-[var(--color-text-muted)]">pending</p>
+            </>
+          ) : run.conviction_score !== null ? (
             <>
               <p className="text-2xl font-mono font-semibold text-[var(--color-accent)] tabular-nums">
                 {run.conviction_score}
@@ -277,6 +305,7 @@ export default function LibraryPage() {
   const [themeList, setThemeList] = useState<Theme[]>([]);
   const [dataGaps, setDataGaps] = useState<import("@/lib/api").DataGapsResponse | null>(null);
   const [gapsLoading, setGapsLoading] = useState(false);
+  const [counts, setCounts] = useState<StatusCounts>({});
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -299,6 +328,25 @@ export default function LibraryPage() {
       .finally(() => setLoading(false));
   }, [filter, themeId, debouncedSearch]);
 
+  // Separate, uncfiltered fetch keyed only on theme so each filter chip can
+  // show its own count without re-fetching on every filter / search change.
+  useEffect(() => {
+    const opts: Record<string, string | number> = { limit: 500 };
+    if (themeId) opts.theme_id = themeId;
+    api.list(opts as Parameters<typeof api.list>[0])
+      .then((all) => {
+        const next: StatusCounts = { all: all.length };
+        for (const r of all) {
+          if (r.status === "completed") next.completed = (next.completed ?? 0) + 1;
+          else if (r.status === "awaiting_approval") next.awaiting_approval = (next.awaiting_approval ?? 0) + 1;
+          else if (r.status === "in_progress") next.in_progress = (next.in_progress ?? 0) + 1;
+          else if (r.status === "watchlist") next.watchlist = (next.watchlist ?? 0) + 1;
+        }
+        setCounts(next);
+      })
+      .catch(() => setCounts({}));
+  }, [themeId]);
+
   useEffect(() => {
     if (filter !== "data_gaps") return;
     setGapsLoading(true);
@@ -310,11 +358,8 @@ export default function LibraryPage() {
   }, [filter, themeId]);
 
   function navigate(run: RunSummary) {
-    if (run.status === "completed" || run.status === "watchlist") {
-      router.push(`/report/${run.id}`);
-    } else {
-      router.push(`/pipeline/${run.id}`);
-    }
+    // /report/[runId] just redirects to /pipeline/[runId] — skip the hop.
+    router.push(`/pipeline/${run.id}`);
   }
 
   return (
@@ -376,6 +421,7 @@ export default function LibraryPage() {
             active={filter}
             onChange={setFilter}
             total={filter === "data_gaps" ? (dataGaps?.gaps.length ?? 0) : runs.length}
+            counts={counts}
           />
         </div>
 
