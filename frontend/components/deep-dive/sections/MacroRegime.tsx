@@ -12,9 +12,16 @@ interface MacroRegimeProps {
   isLive?: boolean;
 }
 
-/** Convert MacroDataPoint[] to QuarterlyMetric[] for chart compatibility. */
+/**
+ * Convert MacroDataPoint[] to QuarterlyMetric[] for chart compatibility.
+ * FRED returns points oldest-first; TrendLineChart reverses its input (because
+ * FMP quarterly data arrives newest-first), so we pre-reverse macro series to
+ * land on chronological oldest→newest order after both transforms.
+ */
 function toQM(points: MacroDataPoint[]): QuarterlyMetric[] {
-  return points.map((p) => ({ period: p.date, value: p.value, yoy_growth: null }));
+  return [...points]
+    .reverse()
+    .map((p) => ({ period: p.date, value: p.value, yoy_growth: null }));
 }
 
 function latest(points: MacroDataPoint[] | undefined): string {

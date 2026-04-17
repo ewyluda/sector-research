@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import type { DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { AICompanionPanel } from "../panels/AICompanionPanel";
 import { PanelSkeleton } from "../skeleton/PanelSkeleton";
+import { usePersistedCollapse } from "../usePersistedCollapse";
+import { scoreBadge } from "../scoreColors";
 
 interface MixedSectionProps {
   id: string;
@@ -15,15 +16,8 @@ interface MixedSectionProps {
   children: React.ReactNode;
 }
 
-function scoreBadge(score: number | null): string {
-  if (score == null) return "bg-[var(--color-surface-alt)] text-[var(--color-text-faint)]";
-  if (score >= 70) return "bg-emerald-500/15 text-emerald-400";
-  if (score >= 50) return "bg-amber-500/15 text-amber-400";
-  return "bg-red-500/15 text-red-400";
-}
-
 export function MixedSection({ id, label, score, structured, fallback, isLive, children }: MixedSectionProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = usePersistedCollapse(id);
   return (
     <section id={id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
       <div
@@ -47,15 +41,20 @@ export function MixedSection({ id, label, score, structured, fallback, isLive, c
         </div>
       </div>
       {!collapsed && (
-        <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4 p-5">
-          <div className="space-y-4">{children}</div>
-          <div>
-            {structured ? (
-              <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={true} fallback={fallback} />
-            ) : isLive ? (
-              <PanelSkeleton />
-            ) : null}
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-[2fr_3fr] gap-4">
+            <div className="space-y-4">{children}</div>
+            <div>
+              {structured ? (
+                <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={true} fallback={fallback} section="summary" />
+              ) : isLive ? (
+                <PanelSkeleton />
+              ) : null}
+            </div>
           </div>
+          {structured && (structured.analysis || structured.data_gaps.length > 0) && (
+            <AICompanionPanel structured={structured} categoryLabel={label} expandAnalysis={true} section="analysis" />
+          )}
         </div>
       )}
     </section>

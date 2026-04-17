@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import type { DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { AICompanionPanel } from "../panels/AICompanionPanel";
 import { PanelSkeleton } from "../skeleton/PanelSkeleton";
+import { usePersistedCollapse } from "../usePersistedCollapse";
+import { scoreBadge } from "../scoreColors";
 
 interface QualitativeCardProps {
   id: string;
@@ -15,15 +16,8 @@ interface QualitativeCardProps {
   headerAddon?: React.ReactNode;
 }
 
-function scoreBadge(score: number | null): string {
-  if (score == null) return "bg-[var(--color-surface-alt)] text-[var(--color-text-faint)]";
-  if (score >= 70) return "bg-emerald-500/15 text-emerald-400";
-  if (score >= 50) return "bg-amber-500/15 text-amber-400";
-  return "bg-red-500/15 text-red-400";
-}
-
 export function QualitativeCard({ id, label, score, structured, fallback, isLive, headerAddon }: QualitativeCardProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = usePersistedCollapse(id);
   return (
     <section id={id} className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
       <div
