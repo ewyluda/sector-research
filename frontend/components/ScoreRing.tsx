@@ -10,28 +10,30 @@ interface Props {
 
 function scoreColor(score: number) {
   if (score >= 70) return "var(--score-strong)";
-  if (score >= 45) return "var(--score-neutral)";
-  if (score >= 25) return "var(--score-caution)";
+  if (score >= 55) return "var(--score-neutral)";
+  if (score >= 40) return "var(--score-caution)";
   return "var(--score-weak)";
 }
 
 export default function ScoreRing({ score, size = 44, label }: Props) {
-  const r = (size - 6) / 2;
+  const stroke = Math.max(3, Math.round(size / 18));
+  const r = (size - stroke * 2) / 2;
   const circ = 2 * Math.PI * r;
   const dash = (score / 100) * circ;
   const color = scoreColor(score);
+  const fontSize = Math.max(10, Math.round(size * 0.32));
 
   return (
-    <div className="flex flex-col items-center gap-0.5 tabular-nums">
+    <div className="flex flex-col items-center gap-1 tabular-nums">
       <svg width={size} height={size} role="img" aria-label={`Score: ${Math.round(score)} out of 100${label ? `, ${label}` : ""}`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={3} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--border)" strokeWidth={stroke} />
         <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
           stroke={color}
-          strokeWidth={3}
+          strokeWidth={stroke}
           strokeDasharray={`${dash} ${circ - dash}`}
           strokeLinecap="round"
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -41,15 +43,15 @@ export default function ScoreRing({ score, size = 44, label }: Props) {
           y="50%"
           dominantBaseline="middle"
           textAnchor="middle"
-          fontSize={size < 40 ? 10 : 12}
-          fontWeight="600"
+          fontSize={fontSize}
+          fontWeight="700"
           fill={color}
         >
           {Math.round(score)}
         </text>
       </svg>
       {label && (
-        <span className="text-[10px] text-[var(--text-faint)]">{label}</span>
+        <span className="text-[10px] text-[var(--text-faint)] uppercase tracking-wider">{label}</span>
       )}
     </div>
   );

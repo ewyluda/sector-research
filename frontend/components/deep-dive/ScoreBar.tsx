@@ -1,3 +1,5 @@
+import { scoreSegment } from "./scoreColors";
+
 const CATEGORIES = [
   { key: "business_quality", short: "BizQ", full: "Business Quality" },
   { key: "financial_health", short: "Fin", full: "Financial Health" },
@@ -10,13 +12,6 @@ const CATEGORIES = [
   { key: "future_durability", short: "Fut", full: "Future Durability" },
 ];
 
-function segmentColor(score: number | null): string {
-  if (score == null) return "bg-[var(--color-surface-alt)] text-[var(--color-text-faint)] animate-pulse";
-  if (score >= 70) return "bg-emerald-500/20 text-emerald-400";
-  if (score >= 50) return "bg-amber-500/20 text-amber-400";
-  return "bg-red-500/20 text-red-400";
-}
-
 interface ScoreBarProps {
   scores: Record<string, number>;
 }
@@ -27,7 +22,7 @@ export function ScoreBar({ scores }: ScoreBarProps) {
       {CATEGORIES.map(({ key, short, full }) => {
         const score = scores[key] ?? null;
         return (
-          <div key={key} className={`flex-1 py-1.5 text-center ${segmentColor(score)}`} title={`${full}: ${score ?? "N/A"}/100`}>
+          <div key={key} className={`flex-1 py-1.5 text-center ${scoreSegment(score)}`} title={`${full}: ${score ?? "N/A"}/100`}>
             <p className="text-[8px] font-medium uppercase">{short}</p>
             <p className="text-[10px] font-mono font-semibold">{score ?? "—"}</p>
           </div>

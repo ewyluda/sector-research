@@ -31,9 +31,9 @@ export function DebtMaturityLadder({ edgarFacts }: DebtMaturityLadderProps) {
   const hasAnyData = data.some((d) => d.hasData);
   if (!hasAnyData) {
     return (
-      <div className="text-[11px] text-[var(--color-text-muted)] px-2 py-6 text-center">
-        Debt maturity schedule not disclosed in SEC XBRL filings.
-      </div>
+      <p className="text-[11px] text-[var(--color-text-faint)] italic px-1 py-1">
+        Not disclosed in SEC XBRL filings.
+      </p>
     );
   }
 

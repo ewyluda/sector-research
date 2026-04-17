@@ -232,24 +232,25 @@ const PASS_RENDERERS: Record<string, { title: string; render: (analysis: Transcr
 };
 
 export function TranscriptInsights({ analysis, passes }: TranscriptInsightsProps) {
-  const sections = passes
-    .map((key) => ({ key, ...PASS_RENDERERS[key] }))
-    .filter((s) => s.render != null);
+  const sections: Array<{ key: string; title: string; content: React.ReactNode }> = [];
+  for (const key of passes) {
+    const entry = PASS_RENDERERS[key];
+    if (!entry) continue;
+    const content = entry.render(analysis);
+    if (content == null) continue;
+    sections.push({ key, title: entry.title, content });
+  }
 
   if (sections.length === 0) return null;
 
   return (
     <div className="space-y-2">
       <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Earnings Transcript</h4>
-      {sections.map(({ key, title, render }) => {
-        const content = render(analysis);
-        if (content === null) return null;
-        return (
-          <CollapsibleSection key={key} title={title} defaultOpen={key === "pass3_qa_tensions"}>
-            {content}
-          </CollapsibleSection>
-        );
-      })}
+      {sections.map(({ key, title, content }) => (
+        <CollapsibleSection key={key} title={title} defaultOpen={key === "pass3_qa_tensions"}>
+          {content}
+        </CollapsibleSection>
+      ))}
     </div>
   );
 }

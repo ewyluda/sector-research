@@ -46,7 +46,7 @@ export function HeadlineMetrics({ financials }: HeadlineMetricsProps) {
     : "—";
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
       <MetricCard
         label="Revenue"
         value={latestRev ? fmt(latestRev.value, "currency") : "—"}

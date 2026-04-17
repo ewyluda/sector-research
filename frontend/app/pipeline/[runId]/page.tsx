@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { pipeline as api } from "@/lib/api";
 import type {
   RunDetail,
@@ -24,6 +25,7 @@ import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
+import { CommandPalette } from "@/components/deep-dive/CommandPalette";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -43,6 +45,25 @@ const PHASE_LABELS: Record<string, string> = {
   position_monitor: "Position Monitor",
 };
 
+/** Rough per-phase durations (seconds), calibrated from observed runs.
+ *  Used for ETA display and to smooth the progress bar between discrete phase
+ *  transitions. Not authoritative — phase completion events still drive the
+ *  actual phase indicator. */
+const PHASE_ETA_SECONDS: Record<string, number> = {
+  quick_screen: 30,
+  deep_dive: 120,
+  thesis_construction: 45,
+  risk_stress_test: 45,
+  position_monitor: 30,
+};
+
+function formatDuration(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 type CatStatus = "pending" | "running" | "pass" | "fail";
 
 interface CategoryState {
@@ -54,20 +75,44 @@ interface CategoryState {
 
 // ── Live Progress Bar (inline) ────────────────────────────────────────────────
 
-function LiveProgressBar({ currentPhase }: { currentPhase: string }) {
+function LiveProgressBar({ currentPhase, startedAt }: { currentPhase: string; startedAt?: string | null }) {
   const idx = PHASE_ORDER.indexOf(currentPhase as (typeof PHASE_ORDER)[number]);
-  const pct = idx >= 0 ? Math.round(((idx + 0.5) / PHASE_ORDER.length) * 100) : 10;
+  const phasePct = idx >= 0 ? ((idx + 0.5) / PHASE_ORDER.length) * 100 : 10;
+
+  const totalEstSec = useMemo(
+    () => PHASE_ORDER.reduce((sum, p) => sum + (PHASE_ETA_SECONDS[p] ?? 30), 0),
+    []
+  );
+
+  // Tick once a second while the run is live so elapsed time updates smoothly.
+  const [nowTs, setNowTs] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const elapsedSec = startedAt ? Math.max(0, (nowTs - new Date(startedAt).getTime()) / 1000) : null;
+  const timePct = elapsedSec != null ? Math.min(95, (elapsedSec / totalEstSec) * 100) : null;
+  // Use the larger of phase-index-based and time-based progress so the bar
+  // still advances between phase transitions but never rewinds when a phase
+  // boundary triggers ahead of schedule.
+  const pct = Math.round(timePct != null ? Math.max(phasePct, timePct) : phasePct);
 
   return (
     <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
-          <span className="text-sm font-medium text-[var(--color-text-primary)]">
+      <div className="flex items-center justify-between mb-2 gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="w-3 h-3 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin shrink-0" />
+          <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
             Running: {PHASE_LABELS[currentPhase] ?? currentPhase.replace(/_/g, " ")}
           </span>
         </div>
-        <span className="text-xs text-[var(--color-text-muted)] font-mono">{pct}%</span>
+        <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)] font-mono shrink-0">
+          {elapsedSec != null && (
+            <span title="Elapsed time">{formatDuration(elapsedSec)} / ~{formatDuration(totalEstSec)}</span>
+          )}
+          <span>{pct}%</span>
+        </div>
       </div>
       <div className="h-1.5 rounded-full bg-[var(--color-surface-alt)] overflow-hidden">
         <div
@@ -521,19 +566,47 @@ export default function PipelineRunnerPage() {
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] p-6">
+      <CommandPalette />
       <div className="max-w-7xl mx-auto space-y-6">
           {run && (
-            <nav className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]" aria-label="Breadcrumb">
-              <a href="/library" className="hover:text-[var(--color-text-primary)] transition-colors">Library</a>
-              <span className="text-[var(--color-text-faint)]">/</span>
-              <span className="text-[var(--color-text-primary)] font-medium">{run.ticker}</span>
-              <span className="text-[var(--color-text-faint)]">/</span>
-              <span>Deep Dive</span>
-            </nav>
+            <div className="flex items-center justify-between gap-3">
+              <nav className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]" aria-label="Breadcrumb">
+                <Link href="/library" className="hover:text-[var(--color-text-primary)] transition-colors">Library</Link>
+                <span className="text-[var(--color-text-faint)]">/</span>
+                <span className="text-[var(--color-text-primary)] font-medium">{run.ticker}</span>
+                <span className="text-[var(--color-text-faint)]">/</span>
+                <span>Deep Dive</span>
+              </nav>
+              <div data-print-hide="true" className="flex items-center gap-1">
+                <button
+                  onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-alt)] transition-colors cursor-pointer"
+                  title="Jump to section (Cmd-K)"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  Jump
+                  <kbd className="hidden sm:inline font-mono text-[10px] text-[var(--color-text-faint)] border border-[var(--color-border)] rounded px-1 ml-0.5">⌘K</kbd>
+                </button>
+                {!isLive && (
+                  <button
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-alt)] transition-colors cursor-pointer"
+                    title="Print or save as PDF"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                    Print / PDF
+                  </button>
+                )}
+              </div>
+            </div>
           )}
 
           {/* Progress indicator for live runs */}
-          {isLive && <LiveProgressBar currentPhase={currentPhase} />}
+          {isLive && <LiveProgressBar currentPhase={currentPhase} startedAt={run?.created_at} />}
 
           {/* Error banner for failed runs */}
           {!isLive && run.status === "error" && (
@@ -550,7 +623,6 @@ export default function PipelineRunnerPage() {
             <ReportHeader
               financials={curatedFinancials}
               quickScreen={quickScreenStructured}
-              scores={scores}
               convictionScore={convictionScore}
               ticker={ticker}
               isLive={isLive}
@@ -640,6 +712,7 @@ export default function PipelineRunnerPage() {
           {/* Generate Position button — shows when completed but no position */}
           {!isLive && (run.status === "completed" || run.status === "watchlist") && !positionStructured && (
             <button
+              data-print-hide="true"
               onClick={handleGeneratePosition}
               disabled={generatingPosition}
               className="w-full py-3 rounded-lg bg-[var(--color-primary)] text-white text-sm font-semibold
@@ -659,7 +732,7 @@ export default function PipelineRunnerPage() {
 
           {/* Back to library */}
           {!isLive && (
-            <div className="flex gap-3 pb-10">
+            <div data-print-hide="true" className="flex gap-3 pb-10">
               <button
                 onClick={() => router.push("/library")}
                 className="flex-1 py-3 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]

@@ -1,13 +1,9 @@
 import type { CuratedFinancials, QuickScreenStructured } from "@/lib/api";
-import { HeadlineMetrics } from "./HeadlineMetrics";
-import { ScoreRadar } from "./ScoreRadar";
-import { ScoreBar } from "./ScoreBar";
 import ScoreRing from "@/components/ScoreRing";
 
 interface ReportHeaderProps {
   financials: CuratedFinancials | null;
   quickScreen: QuickScreenStructured | null;
-  scores: Record<string, number>;
   convictionScore: number | null;
   ticker: string;
   isLive?: boolean;
@@ -18,6 +14,13 @@ function fmtMarketCap(value: number): string {
   if (value >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
   if (value >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
   return `$${value.toFixed(0)}`;
+}
+
+function convictionTier(score: number): string {
+  if (score >= 75) return "High Conviction";
+  if (score >= 55) return "Moderate";
+  if (score >= 35) return "Low";
+  return "Very Low";
 }
 
 function VerdictBadge({ recommendation }: { recommendation: "GO" | "WATCHLIST" | "PASS" }) {
@@ -34,9 +37,7 @@ function VerdictBadge({ recommendation }: { recommendation: "GO" | "WATCHLIST" |
   );
 }
 
-export function ReportHeader({ financials, quickScreen, scores, convictionScore, ticker, isLive }: ReportHeaderProps) {
-  const hasScores = Object.keys(scores).length > 0;
-
+export function ReportHeader({ financials, quickScreen, convictionScore, ticker, isLive }: ReportHeaderProps) {
   return (
     <section id="report_header" className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
       {/* Top row: identity + conviction ring */}
@@ -62,45 +63,33 @@ export function ReportHeader({ financials, quickScreen, scores, convictionScore,
             )}
           </div>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex flex-col items-center gap-1">
           {convictionScore != null ? (
-            <ScoreRing score={convictionScore} size={72} label="Conviction" />
+            <>
+              <ScoreRing score={convictionScore} size={92} label="Conviction" />
+              <span className="text-[10px] font-medium text-[var(--color-text-muted)] whitespace-nowrap">
+                {convictionTier(convictionScore)}
+              </span>
+            </>
           ) : isLive ? (
-            <div className="flex flex-col items-center gap-0.5">
-              <div className="w-[72px] h-[72px] rounded-full bg-[var(--color-surface-alt)] animate-pulse" />
-              <span className="text-[10px] text-[var(--color-text-muted)]">Conviction</span>
-            </div>
+            <>
+              <div className="w-[92px] h-[92px] rounded-full bg-[var(--color-surface-alt)] animate-pulse" />
+              <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Conviction</span>
+            </>
           ) : null}
         </div>
       </div>
 
-      {/* Headline metrics strip */}
-      {financials && (
-        <div className="p-5 border-b border-[var(--color-border)]">
-          <HeadlineMetrics financials={financials} />
-        </div>
-      )}
-
       {/* Thesis / Key Risk callouts */}
       {quickScreen?.thesis && quickScreen?.key_risk && (
-        <div className="grid grid-cols-2 border-b border-[var(--color-border)]">
-          <div className="p-5 border-r border-[var(--color-border)]">
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          <div className="p-5 border-b md:border-b-0 md:border-r border-[var(--color-border)]">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-400 mb-1">Thesis</p>
             <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">{quickScreen.thesis}</p>
           </div>
           <div className="p-5">
             <p className="text-[10px] font-semibold uppercase tracking-wider text-red-400 mb-1">Key Risk</p>
             <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">{quickScreen.key_risk}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Score radar + score bar */}
-      {hasScores && (
-        <div className="p-5">
-          <div className="grid lg:grid-cols-[1fr_2fr] gap-4 items-center">
-            <ScoreRadar scores={scores} />
-            <ScoreBar scores={scores} />
           </div>
         </div>
       )}
