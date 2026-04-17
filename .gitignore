@@ -30,3 +30,9 @@ node_modules/
 
 # Specs and plans
 docs/
+
+# Playwright MCP session output (screenshots, console logs)
+.playwright-mcp/
+
+# Ad-hoc dev/debug screenshots at the project root
+/*.png
