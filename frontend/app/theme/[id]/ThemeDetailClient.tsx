@@ -174,7 +174,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
               </p>
             </div>
             <Link
-              href={`/report/${card.last_run_id}`}
+              href={`/pipeline/${card.last_run_id}`}
               className="text-xs text-[var(--primary)] hover:underline"
             >
               View report →
@@ -283,8 +283,8 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
   return (
     <div className="space-y-4">
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+        <div className="min-w-0">
           <Link href="/" className="text-xs text-[var(--text-faint)] hover:text-[var(--text-muted)]">
             ← Themes
           </Link>
@@ -294,19 +294,19 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
           )}
         </div>
 
-        {/* Signal status */}
+        {/* Signal status — stacks below header on small screens, floats right on md+ */}
         {isStale && (
-          <div className="flex items-center gap-2 text-xs text-[var(--warning)] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          <div className="shrink-0 self-start inline-flex items-center gap-2 text-xs text-[var(--warning)] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
             Signal data stale — last updated &gt;36h ago
           </div>
         )}
       </div>
 
-      {/* Two-panel layout */}
-      <div className="flex gap-4 h-[calc(100vh-180px)] min-h-[600px]">
+      {/* Two-panel layout — stacks vertically below lg breakpoint */}
+      <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-180px)] lg:min-h-[600px]">
         {/* LEFT: Company list */}
-        <div className="w-[340px] shrink-0 flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden">
+        <div className="w-full lg:w-[340px] lg:shrink-0 flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden max-h-[70vh] lg:max-h-none">
           {/* Filters + sort */}
           <div className="px-3 py-2.5 border-b border-[var(--border)] space-y-2">
             {/* Filter chips */}
