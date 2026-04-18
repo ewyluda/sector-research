@@ -86,7 +86,7 @@ export default async function ThemeDashboard() {
 
   try {
     allThemes = await themes.list();
-  } catch (e) {
+  } catch {
     error = "Could not connect to backend. Is the FastAPI server running?";
   }
 

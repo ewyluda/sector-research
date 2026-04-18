@@ -318,6 +318,7 @@ export default function LibraryPage() {
 
   useEffect(() => {
     if (filter === "data_gaps") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const opts: Record<string, string | number> = {};
     if (filter !== "all") opts.status = filter;
@@ -349,6 +350,7 @@ export default function LibraryPage() {
 
   useEffect(() => {
     if (filter !== "data_gaps") return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGapsLoading(true);
     const opts: Record<string, string> = {};
     if (themeId) opts.theme_id = themeId;
