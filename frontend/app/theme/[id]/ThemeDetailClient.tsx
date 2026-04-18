@@ -240,7 +240,9 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
   const [sortBy, setSortBy] = useState<SortKey>("combined_score");
   const [filter, setFilter] = useState<FilterKey>("all");
 
-  const companies = initialData?.companies ?? [];
+  // Stable reference so the downstream useMemo doesn't re-run on every
+  // render when the fallback empty array is the value in play.
+  const companies = useMemo(() => initialData?.companies ?? [], [initialData]);
 
   const filtered = useMemo(() => {
     let list = [...companies];

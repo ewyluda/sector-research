@@ -42,6 +42,10 @@ export function SupplyChainEcosystem({ ticker }: Props) {
 
   useEffect(() => {
     let cancelled = false;
+    // Fetch-on-mount pattern: reset the loading + error UI before kicking
+    // off the request. Safe because the render is a no-op unless these
+    // values differ from defaults on the first mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
     relationships
@@ -201,7 +205,7 @@ function EdgeRow({ entry }: { entry: SupplyChainEntry }) {
       </div>
       {entry.verbatim_quote && (
         <p className="text-[10px] text-[var(--color-text-muted)] mt-1 italic line-clamp-2">
-          "{entry.verbatim_quote}"
+          &ldquo;{entry.verbatim_quote}&rdquo;
         </p>
       )}
     </div>
@@ -223,7 +227,7 @@ function UnnamedBucket({
       {entries.map((e, i) => (
         <div key={i} className="text-[10px] text-[var(--color-text-muted)]">
           {e.magnitude_pct != null ? `${e.magnitude_pct}% concentration — ` : ""}
-          <span className="italic">"{e.verbatim_quote ?? "(no quote)"}"</span>
+          <span className="italic">&ldquo;{e.verbatim_quote ?? "(no quote)"}&rdquo;</span>
         </div>
       ))}
     </div>
