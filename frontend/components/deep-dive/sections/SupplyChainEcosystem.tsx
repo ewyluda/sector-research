@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { relationships } from "@/lib/api";
 import type { SupplyChainEntry, SupplyChainGraph } from "@/lib/api";
+import { usePersistedCollapse } from "../usePersistedCollapse";
 
 const TYPE_LABEL: Record<string, string> = {
   customer: "Customers",
@@ -35,10 +36,56 @@ interface Props {
   ticker: string;
 }
 
+function SectionShell({
+  children,
+  stat,
+  collapsed,
+  onToggle,
+}: {
+  children: React.ReactNode;
+  stat?: React.ReactNode;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <section
+      id="supply_chain"
+      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden"
+    >
+      <div
+        className="px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg)]/40 flex items-center justify-between cursor-pointer select-none"
+        onClick={onToggle}
+      >
+        <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
+          Supply Chain & Ecosystem
+        </h3>
+        <div className="flex items-center gap-2">
+          {stat && (
+            <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+              {stat}
+            </span>
+          )}
+          <svg
+            className={`w-4 h-4 text-[var(--color-text-muted)] transition-transform ${collapsed ? "" : "rotate-180"}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+      {!collapsed && <div className="p-5 space-y-3">{children}</div>}
+    </section>
+  );
+}
+
 export function SupplyChainEcosystem({ ticker }: Props) {
   const [graph, setGraph] = useState<SupplyChainGraph | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = usePersistedCollapse("supply_chain");
 
   useEffect(() => {
     let cancelled = false;
@@ -64,39 +111,38 @@ export function SupplyChainEcosystem({ ticker }: Props) {
     };
   }, [ticker]);
 
+  const toggle = () => setCollapsed((c) => !c);
+
   if (loading) {
     return (
-      <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4">
-        <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)] mb-2">
-          Supply Chain & Ecosystem
-        </h3>
+      <SectionShell collapsed={collapsed} onToggle={toggle}>
         <p className="text-[11px] text-[var(--color-text-muted)]">Loading…</p>
-      </section>
+      </SectionShell>
     );
   }
 
   if (error) {
     return (
-      <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4">
-        <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)] mb-2">
-          Supply Chain & Ecosystem
-        </h3>
+      <SectionShell collapsed={collapsed} onToggle={toggle}>
         <p className="text-[11px] text-[var(--error-text)]">{error}</p>
-      </section>
+      </SectionShell>
     );
   }
 
   if (!graph || graph.edges.length === 0) {
     return (
-      <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4">
-        <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)] mb-2">
-          Supply Chain & Ecosystem
-        </h3>
-        <p className="text-[11px] text-[var(--color-text-muted)]">
-          No extracted relationships yet. Ingest filings and run extraction
-          via the Filings page to populate this card.
+      <SectionShell collapsed={collapsed} onToggle={toggle}>
+        <p className="text-[11px] text-[var(--color-text-muted)] leading-relaxed">
+          No extracted relationships yet.{" "}
+          <Link
+            href="/filings"
+            className="text-[var(--color-primary)] hover:underline font-medium"
+          >
+            Open the Filings page
+          </Link>
+          {" "}to ingest {ticker} filings and run relationship extraction.
         </p>
-      </section>
+      </SectionShell>
     );
   }
 
@@ -105,16 +151,11 @@ export function SupplyChainEcosystem({ ticker }: Props) {
   const totalIn = graph.edges.filter((e) => e.direction === "in").length;
 
   return (
-    <section id="supply_chain" className="rounded-lg border border-[var(--color-border)] p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase text-[var(--color-text-muted)]">
-          Supply Chain & Ecosystem
-        </h3>
-        <div className="text-[10px] text-[var(--color-text-muted)]">
-          {totalOut} disclosed · {totalIn} reciprocal
-        </div>
-      </div>
-
+    <SectionShell
+      collapsed={collapsed}
+      onToggle={toggle}
+      stat={`${totalOut} disclosed · ${totalIn} reciprocal`}
+    >
       <div className="space-y-3">
         {typesPresent.map((type) => {
           const bucket = graph.summary[type];
@@ -152,7 +193,7 @@ export function SupplyChainEcosystem({ ticker }: Props) {
           );
         })}
       </div>
-    </section>
+    </SectionShell>
   );
 }
 
