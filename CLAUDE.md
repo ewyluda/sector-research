@@ -177,4 +177,4 @@ The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balan
 
 ## State-of-repo notes
 
-Design-phase artifacts (`skills/due-diligence/`, `TODO.md`, `BACKLOG.md`) have been cleaned up. Active specs live in `docs/superpowers/specs/`. If you need old plans or the due-diligence methodology, recover from git history (`git log --all --diff-filter=D -- docs/`).
+`TODO.md` at the repo root is the live rolling tracker for in-progress work, backlog, and a "Done (recent)" log — read it before starting anything substantive so you know what's already shipped. The `skills/due-diligence/` + `BACKLOG.md` design-phase artifacts are gone; active specs live in `docs/superpowers/specs/` (which is itself `.gitignore`d, so it's local-only). If you need old plans or the due-diligence methodology, recover from git history (`git log --all --diff-filter=D -- docs/`).
