@@ -44,6 +44,11 @@ async def lifespan(app: FastAPI):
     )
     logger.info("PipelineService initialised")
 
+    # Fan-out service (relationship extraction orchestrator)
+    from backend.app.services.fanout import FanoutService
+    app.state.fanout = FanoutService(edgar=app.state.edgar)
+    logger.info("FanoutService initialised")
+
     # Daily signal scheduler — 2 AM local time
     scheduler = AsyncIOScheduler()
     scheduler.add_job(

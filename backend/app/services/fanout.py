@@ -85,10 +85,14 @@ class FanoutStatus:
 
 
 class FanoutService:
-    """In-memory fan-out orchestrator. Singleton-per-process."""
+    """In-memory fan-out orchestrator. Instantiated once in main.py
+    lifespan and stored on app.state.fanout — same pattern as
+    PipelineService. `edgar` is the process-wide shared EdgarClient,
+    so the service does NOT own its lifecycle (no close on exit)."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, edgar: EdgarClient) -> None:
         self._statuses: dict[str, FanoutStatus] = {}
+        self._edgar = edgar
 
     @staticmethod
     def _new_id() -> str:
@@ -117,11 +121,16 @@ class FanoutService:
         *,
         force: bool,
     ) -> None:
-        edgar = EdgarClient()
+        # `completed_tickers` increments whether or not each stage
+        # succeeded — the name means "processed, moved past", not "all
+        # stages green." Per-ticker failures surface in `errors[]`.
+        # CancelledError (BaseException subclass) bypasses `except
+        # Exception` below and propagates via the `finally` block, which
+        # is the intended shutdown behaviour.
         try:
             for ticker in tickers:
                 status.current_ticker = ticker
-                await self._run_one_ticker(ticker, edgar, status, force=force)
+                await self._run_one_ticker(ticker, self._edgar, status, force=force)
                 status.completed_tickers += 1
             status.status = "completed"
         except Exception as exc:  # orchestrator-level crash only
@@ -135,7 +144,6 @@ class FanoutService:
                 )
             )
         finally:
-            await edgar.close()
             status.current_ticker = None
             status.current_stage = None
             status.finished_at = datetime.now(timezone.utc)
@@ -192,12 +200,3 @@ class FanoutService:
             )
 
 
-# Module-level singleton wired in at router setup.
-_service: FanoutService | None = None
-
-
-def get_service() -> FanoutService:
-    global _service
-    if _service is None:
-        _service = FanoutService()
-    return _service
