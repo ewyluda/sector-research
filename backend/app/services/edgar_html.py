@@ -50,7 +50,7 @@ _SECTION_DEFS_10K: list[tuple[str, list[str]]] = [
     # Business" appear throughout other sections and will otherwise cap
     # later section bodies (e.g. Item 7 MD&A) too early.
     ("item_1_business", [r"^\s*ITEM\s*1\.?\s*BUSINESS\b"]),
-    ("item_1a_risk_factors", [r"\bITEM\s*1A\.?\s*RISK\s+FACTORS\b"]),
+    ("item_1a_risk_factors", [r"\bITEM\s*1A\.?\s*R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S\b"]),
     # Boundaries between Item 1A and Item 7. Each of these caps any
     # cross-reference to a later section embedded in an earlier body —
     # crucial for picking the real Item 7 heading over cross-references
@@ -87,7 +87,7 @@ _SECTION_DEFS_10Q: list[tuple[str, list[str]]] = [
     ]),
     (_BOUNDARY_PREFIX + "item_3_10q", [r"\bITEM\s*3\.?\s*QUANTITATIVE"]),
     (_BOUNDARY_PREFIX + "item_4_10q", [r"\bITEM\s*4\.?\s*CONTROLS\s+AND\s+PROCEDURES"]),
-    ("item_1a_risk_factors", [r"\bITEM\s*1A\.?\s*RISK\s+FACTORS\b"]),
+    ("item_1a_risk_factors", [r"\bITEM\s*1A\.?\s*R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S\b"]),
     (_BOUNDARY_PREFIX + "part2_item_2_10q", [r"\bITEM\s*2\.?\s*UNREGISTERED\s+SALES"]),
 ]
 
