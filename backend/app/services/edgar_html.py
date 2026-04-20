@@ -50,6 +50,11 @@ _SECTION_DEFS_10K: list[tuple[str, list[str]]] = [
     # Business" appear throughout other sections and will otherwise cap
     # later section bodies (e.g. Item 7 MD&A) too early.
     ("item_1_business", [r"^\s*ITEM\s*1\.?\s*BUSINESS\b"]),
+    # "R\s*I\s*S\s*K" / "F\s*A\s*C\s*T\s*O\s*R\s*S" tolerate HTML-unwrap splits
+    # mid-word (e.g. Oracle's 10-K renders "R\nisk" at an XBRL boundary) — same
+    # treatment as "O\s*F" in the MD&A patterns below. The "\s+" between RISK
+    # and FACTORS remains load-bearing: it preserves the word boundary so
+    # "RISKFACTORS" can't match.
     ("item_1a_risk_factors", [r"\bITEM\s*1A\.?\s*R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S\b"]),
     # Boundaries between Item 1A and Item 7. Each of these caps any
     # cross-reference to a later section embedded in an earlier body —
