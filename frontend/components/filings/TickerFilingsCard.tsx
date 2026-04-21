@@ -1,8 +1,8 @@
 "use client";
 
-import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
-import { filings } from "@/lib/api";
-import type { FilingRecord, FilingIngestSummary } from "@/lib/api";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { fanouts, filings } from "@/lib/api";
+import type { FanoutStatus, FilingRecord, FilingIngestSummary } from "@/lib/api";
 import SectionReader from "./SectionReader";
 
 interface OpenSection {
@@ -39,6 +39,14 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
   const [ingestMsg, setIngestMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<OpenSection | null>(null);
+  const [fanoutStatus, setFanoutStatus] = useState<FanoutStatus | null>(null);
+  const fanoutPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (fanoutPollRef.current) clearInterval(fanoutPollRef.current);
+    };
+  }, []);
 
   useImperativeHandle(ref, () => ({ ingest: () => onIngest() }));
 
@@ -83,6 +91,33 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
     }
   }
 
+  async function onFanout() {
+    try {
+      const initial = await fanouts.startTicker(ticker);
+      setFanoutStatus(initial);
+      if (fanoutPollRef.current) clearInterval(fanoutPollRef.current);
+      fanoutPollRef.current = setInterval(async () => {
+        try {
+          const next = await fanouts.get(initial.fanout_id);
+          setFanoutStatus(next);
+          if (next.status !== "running" && fanoutPollRef.current) {
+            clearInterval(fanoutPollRef.current);
+            fanoutPollRef.current = null;
+          }
+        } catch (err) {
+          console.error("fanout poll failed", err);
+          if (fanoutPollRef.current) {
+            clearInterval(fanoutPollRef.current);
+            fanoutPollRef.current = null;
+          }
+        }
+      }, 3000);
+    } catch (err) {
+      console.error("fanout start failed", err);
+      setFanoutStatus(null);
+    }
+  }
+
   const withSections = (records ?? []).filter((r) => r.sections.length > 0);
   const hasFilings = withSections.length > 0;
 
@@ -102,18 +137,39 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
                 : "no sections yet"}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onIngest}
-            disabled={ingesting}
-            className="text-[11px] px-2 py-1 rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)] disabled:opacity-50"
-          >
-            {ingesting ? "Ingesting…" : "Ingest latest"}
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onFanout}
+              disabled={fanoutStatus?.status === "running"}
+              className="text-[11px] px-2 py-1 rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)] disabled:opacity-50"
+            >
+              {fanoutStatus?.status === "running" ? "Fanning…" : "Fan out"}
+            </button>
+            <button
+              type="button"
+              onClick={onIngest}
+              disabled={ingesting}
+              className="text-[11px] px-2 py-1 rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)] disabled:opacity-50"
+            >
+              {ingesting ? "Ingesting…" : "Ingest latest"}
+            </button>
+          </div>
         </div>
 
         {ingestMsg && (
           <div className="text-[11px] text-[var(--text-muted)]">{ingestMsg}</div>
+        )}
+        {fanoutStatus && (
+          <div className="text-[11px] text-[var(--text-muted)]">
+            Fan-out: {fanoutStatus.status === "running"
+              ? `${fanoutStatus.current_stage ?? "starting"}${fanoutStatus.current_ticker ? ` · ${fanoutStatus.current_ticker}` : ""}`
+              : fanoutStatus.status === "completed"
+              ? fanoutStatus.errors.length > 0
+                ? `done · ${fanoutStatus.errors.length} error${fanoutStatus.errors.length !== 1 ? "s" : ""}`
+                : "done"
+              : "failed"}
+          </div>
         )}
         {error && (
           <div className="text-[11px] text-[var(--error-text)]">{error}</div>
