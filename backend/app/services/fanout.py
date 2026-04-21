@@ -20,8 +20,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from backend.app.clients.edgar import EdgarClient
 from backend.app.db import async_session
+from backend.app.models.theme import Theme
 from backend.app.services import (
     counterparty_resolver,
     edgar_relationships,
@@ -112,6 +116,46 @@ class FanoutService:
         )
         self._statuses[status.fanout_id] = status
         asyncio.create_task(self._run([ticker.upper()], status, force=force))
+        return status
+
+    async def start_theme(
+        self, theme_id: str, db: AsyncSession, force: bool = False
+    ) -> FanoutStatus:
+        """Begin a theme-scoped fan-out. Reads seed_tickers from the theme
+        row up-front so the returned total_tickers is accurate; raises if
+        the theme doesn't exist."""
+        result = await db.execute(select(Theme).where(Theme.id == theme_id))
+        theme = result.scalar_one_or_none()
+        if theme is None:
+            raise ValueError(f"theme {theme_id!r} not found")
+
+        raw_tickers = theme.seed_tickers or []
+        # Theme.seed_tickers is JSONB. In practice rows are list-of-strings
+        # (verified across current DB content), but we also tolerate
+        # list-of-dicts with a "ticker" key so we don't blow up on any
+        # historical shapes.
+        tickers: list[str] = []
+        for entry in raw_tickers:
+            if isinstance(entry, str):
+                tickers.append(entry.upper())
+            elif isinstance(entry, dict) and entry.get("ticker"):
+                tickers.append(str(entry["ticker"]).upper())
+        tickers = sorted(set(tickers))
+
+        status = FanoutStatus(
+            fanout_id=self._new_id(),
+            status="running",
+            scope=FanoutScope(kind="theme", theme_id=theme_id),
+            total_tickers=len(tickers),
+        )
+        self._statuses[status.fanout_id] = status
+
+        if not tickers:
+            status.status = "completed"
+            status.finished_at = datetime.now(timezone.utc)
+            return status
+
+        asyncio.create_task(self._run(tickers, status, force=force))
         return status
 
     async def _run(
