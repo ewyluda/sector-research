@@ -219,12 +219,23 @@ class FanoutService:
     ) -> None:
         """Run ingest → extract → resolve for one ticker. Per-stage errors
         are captured and do not abort the outer loop."""
-        # Stage 1: ingest
+        # Stage 1: ingest. Note: these service functions do NOT commit
+        # — existing callers in api/filings.py commit after each one, so
+        # we do the same here. async_session uses expire_on_commit=False.
         status.current_stage = "ingest"
         try:
             async with async_session() as db:
-                await edgar_sections_ingest.ingest_ticker_sections(
+                summary = await edgar_sections_ingest.ingest_ticker_sections(
                     ticker, db=db, edgar=edgar
+                )
+                await db.commit()
+            # `ingest_ticker_sections` returns a summary with `errors: []`
+            # rather than raising on per-form problems (e.g., no CIK, no
+            # recent filings). Surface those so the status endpoint shows
+            # them instead of a silent success.
+            for msg in summary.get("errors", []) or []:
+                status.errors.append(
+                    FanoutError(ticker=ticker, stage="ingest", message=str(msg))
                 )
         except Exception as exc:
             logger.warning("Fanout ingest failed for %s: %r", ticker, exc)
@@ -240,6 +251,7 @@ class FanoutService:
                 await edgar_relationships.extract_ticker_relationships(
                     ticker, db=db, force=force
                 )
+                await db.commit()
         except Exception as exc:
             logger.warning("Fanout extract failed for %s: %r", ticker, exc)
             status.errors.append(
@@ -254,6 +266,7 @@ class FanoutService:
                 await counterparty_resolver.resolve_ticker_relationships(
                     ticker, db=db
                 )
+                await db.commit()
         except Exception as exc:
             logger.warning("Fanout resolve failed for %s: %r", ticker, exc)
             status.errors.append(
