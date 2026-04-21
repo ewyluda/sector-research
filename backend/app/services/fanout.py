@@ -127,6 +127,8 @@ class FanoutService:
         result = await db.execute(select(Theme).where(Theme.id == theme_id))
         theme = result.scalar_one_or_none()
         if theme is None:
+            # Router maps ValueError → HTTP 404 (same pattern as
+            # pipeline.py's run-not-found handling).
             raise ValueError(f"theme {theme_id!r} not found")
 
         raw_tickers = theme.seed_tickers or []
@@ -191,6 +193,11 @@ class FanoutService:
             status.current_ticker = None
             status.current_stage = None
             status.finished_at = datetime.now(timezone.utc)
+            # If neither the success nor the `except Exception` path ran,
+            # something like CancelledError escaped — don't leave the
+            # status stuck on "running" with finished_at populated.
+            if status.status == "running":
+                status.status = "failed"
 
     async def _run_one_ticker(
         self,
