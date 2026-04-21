@@ -186,7 +186,7 @@ class FanoutService:
         try:
             for ticker in tickers:
                 status.current_ticker = ticker
-                await self._run_one_ticker(ticker, self._edgar, status, force=force)
+                await self._run_one_ticker(ticker, status, force=force)
                 status.completed_tickers += 1
             status.status = "completed"
         except Exception as exc:  # orchestrator-level crash only
@@ -212,7 +212,6 @@ class FanoutService:
     async def _run_one_ticker(
         self,
         ticker: str,
-        edgar: EdgarClient,
         status: FanoutStatus,
         *,
         force: bool,
@@ -226,7 +225,7 @@ class FanoutService:
         try:
             async with async_session() as db:
                 summary = await edgar_sections_ingest.ingest_ticker_sections(
-                    ticker, db=db, edgar=edgar
+                    ticker, db=db, edgar=self._edgar
                 )
                 await db.commit()
             # `ingest_ticker_sections` returns a summary with `errors: []`

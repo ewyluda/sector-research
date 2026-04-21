@@ -18,6 +18,7 @@ from backend.app.api.pipeline import router as pipeline_router
 from backend.app.api.filings import router as filings_router
 from backend.app.api.fanouts import router as fanouts_router
 from backend.app.services.pipeline import PipelineService
+from backend.app.services.fanout import FanoutService
 
 settings = get_settings()
 
@@ -46,7 +47,6 @@ async def lifespan(app: FastAPI):
     logger.info("PipelineService initialised")
 
     # Fan-out service (relationship extraction orchestrator)
-    from backend.app.services.fanout import FanoutService
     app.state.fanout = FanoutService(edgar=app.state.edgar)
     logger.info("FanoutService initialised")
 

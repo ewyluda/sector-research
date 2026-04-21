@@ -842,8 +842,11 @@ async def node_deep_dive(
     Governance, and Future Durability per FILING_EXCERPT_ROUTING.
 
     `counterparty_context` is an optional CounterpartyContext pre-fetched
-    from the relationships table. Per-category routing is applied in
-    Task 11 — for now the argument is accepted but unused.
+    from the relationships table. When present, the outbound + inbound
+    counterparty graph is routed into Business Quality, Risk Assessment,
+    and Future Durability prompts per RELATIONSHIP_ROUTING. Rendered as
+    a structured anchor list — the prompt instructs the LLM to cite
+    these entities by name rather than re-quoting filing text.
     """
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
     state.phase = "deep_dive"
@@ -1178,7 +1181,8 @@ async def node_deep_dive(
                 lines.append(f"  As a {t.replace('_', ' ')} ({len(entries)} mention(s)):")
                 for e in entries:
                     # e.resolved_ticker is the author ticker here
-                    lines.append(f"    - ${e.resolved_ticker} — {e.relationship_type}")
+                    # Bucket header already states the relationship_type; don't repeat.
+                    lines.append(f"    - ${e.resolved_ticker}")
             lines.append("")
 
         return "\n".join(lines).rstrip() + "\n"

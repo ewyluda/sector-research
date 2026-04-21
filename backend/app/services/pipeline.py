@@ -30,6 +30,10 @@ from backend.app.db import async_session
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
 from backend.app.services import edgar_ingest, edgar_sections_ingest
+from backend.app.services.relationship_context import (
+    CounterpartyContext,
+    get_counterparty_context,
+)
 from backend.app.graph.nodes import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
@@ -279,7 +283,7 @@ class PipelineService:
                 logger.warning("[%s] Filing-section fetch failed: %s", ticker, e)
                 return {}
 
-    async def _fetch_counterparty_context(self, ticker: str):
+    async def _fetch_counterparty_context(self, ticker: str) -> CounterpartyContext:
         """Return a CounterpartyContext for the deep-dive prompt.
 
         Read-only: queries the relationships table (populated by the
@@ -289,10 +293,6 @@ class PipelineService:
         Returns an empty context if nothing has been extracted for this
         ticker yet — the prompt renderer will then no-op the slot.
         """
-        from backend.app.services.relationship_context import (
-            CounterpartyContext,
-            get_counterparty_context,
-        )
         async with async_session() as s:
             try:
                 return await get_counterparty_context(ticker, s)
