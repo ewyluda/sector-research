@@ -809,6 +809,7 @@ async def node_deep_dive(
     signals: dict | None = None,
     edgar_facts: dict | None = None,
     filing_sections: dict | None = None,
+    counterparty_context=None,  # CounterpartyContext | None — typed loosely to avoid import cycle risk
 ) -> ResearchState:
     """Phase 3: run all 9 categories in parallel. Partial success is OK.
 
@@ -826,6 +827,10 @@ async def node_deep_dive(
     (Phase A narrative sections). When present, excerpts are routed into
     Business Quality, Risk Assessment, Growth & Earnings, Management &
     Governance, and Future Durability per FILING_EXCERPT_ROUTING.
+
+    `counterparty_context` is an optional CounterpartyContext pre-fetched
+    from the relationships table. Per-category routing is applied in
+    Task 11 — for now the argument is accepted but unused.
     """
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
     state.phase = "deep_dive"
