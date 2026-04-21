@@ -19,6 +19,7 @@ import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -124,6 +125,15 @@ class FanoutService:
         """Begin a theme-scoped fan-out. Reads seed_tickers from the theme
         row up-front so the returned total_tickers is accurate; raises if
         the theme doesn't exist."""
+        # Theme.id is a PG UUID column, so a malformed string would hit
+        # asyncpg as a DataError (500) before scalar_one_or_none() could
+        # return None. Validate format first and treat invalid UUIDs as
+        # "not found" so the router's ValueError → 404 mapping applies.
+        try:
+            UUID(theme_id)
+        except (ValueError, TypeError):
+            raise ValueError(f"theme {theme_id!r} not found")
+
         result = await db.execute(select(Theme).where(Theme.id == theme_id))
         theme = result.scalar_one_or_none()
         if theme is None:
