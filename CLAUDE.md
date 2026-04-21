@@ -104,15 +104,16 @@ Two kinds of async work run under the FastAPI process:
 - **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task holds the DB session passed from the request; if you change session lifecycle, verify the background task still has a live session.
 - **Daily signal refresh** — `AsyncIOScheduler` cron job registered in `app/main.py::lifespan`, calls `services.signal_scheduler.run_daily_refresh`.
 
-### SEC EDGAR filing pipeline (read this before touching `backend/app/services/edgar*` or `supply_chain.py`)
+### SEC EDGAR filing pipeline (read this before touching `backend/app/services/edgar*`, `supply_chain.py`, `fanout.py`, or `relationship_context.py`)
 
-Four-phase pipeline for extracting and consuming SEC filing narrative. All on-demand — no automatic trigger during pipeline runs.
+Five-phase pipeline for extracting and consuming SEC filing narrative. All on-demand — no automatic trigger during pipeline runs.
 
 **Phase A — Filing section extraction** (`services/edgar_sections_ingest.py` + `services/edgar_html.py`):
 - `POST /api/filings/ingest/{ticker}` pulls the latest 10-K, 10-Q, and DEF 14A from EDGAR, extracts Item 1 Business, Item 1A Risk Factors, Item 7 MD&A (10-K) / Item 2 MD&A (10-Q), and DEF 14A Governance via BeautifulSoup.
 - Strips inline XBRL (`ix:hidden` dropped, `ix:nonFraction`/`ix:nonNumeric` unwrapped to displayed value). Heading regex anchored to line-start (MULTILINE) for MD&A and Item 1 Business to avoid matching in-body cross-references.
+- Item 1A regex tolerates mid-word whitespace: `R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S` — mirrors the `O\s*F` tolerance on MD&A patterns. Needed because XBRL/markup boundaries can split characters with `\n` mid-word (e.g., ORCL 10-K renders `Risk` as `R\nisk`).
 - Full text stored in `filing_sections` table; prompt builders truncate to 5K chars per section via `FILING_EXCERPT_BUDGET_CHARS`.
-- Idempotent on `(filing_id, section_key)`.
+- Idempotent on `(filing_id, section_key)`. Service functions return a summary dict with an `errors: []` list rather than raising on per-form problems — callers must either check the list or surface it to end users.
 
 **Phase A — Prompt integration** (`FILING_EXCERPT_ROUTING` in `graph/nodes.py`):
 - Deep-dive categories receive verbatim filing excerpts via `{filing_excerpts}` slot in `DEEP_DIVE_USER`: Business Quality ← Item 1, Risk Assessment ← Item 1A, Growth & Earnings ← Item 7 + Item 2, Management & Governance ← DEF 14A governance, Future Durability ← Item 7 + Item 1.
@@ -134,6 +135,15 @@ Four-phase pipeline for extracting and consuming SEC filing narrative. All on-de
 - `GET /api/relationships/graph/{ticker}?direction=out|in|both` returns `{root_ticker, nodes[], edges[], summary}`. 1-hop depth. Nodes identified by CIK (resolved) or normalized name (unresolved). `tracked` flag from theme seed_tickers.
 - `POST /api/relationships/reconcile` flips `confirmed_bilateral=true` on reciprocal pairs (customer↔supplier, partner↔partner, competitor↔competitor, licensor↔licensee, distributor↔reseller, joint_venture↔joint_venture).
 - Frontend: `SupplyChainEcosystem` card in the deep-dive dashboard (after Business Quality). Groups counterparties by type, shows verbatim quotes, bilateral badges, tracker-links.
+
+**Phase E — Fan-out orchestration + deep-dive prompt routing** (`services/fanout.py` + `services/relationship_context.py`):
+- `FanoutService` wired into `main.py::lifespan` as `app.state.fanout = FanoutService(edgar=app.state.edgar)` (reuses the shared EdgarClient). Three endpoints: `POST /api/themes/{id}/relationships/fanout?force=false` and `POST /api/tickers/{ticker}/relationships/fanout?force=false` return 202 + `fanout_id` immediately; `GET /api/fanouts/{id}` returns `FanoutStatus`. Status is in-memory (no restart persistence — acceptable for a personal tool).
+- Per-ticker flow: serial ingest → extract → resolve, each in its own `async_session()` with an **explicit `await db.commit()`** (existing callers in `api/filings.py` do the same; `async_session` is `expire_on_commit=False` but does NOT autocommit — forgetting this means nothing persists). `force=True` only affects the extract stage; resolve already skips rows with `resolved_to_cik IS NOT NULL`. Ingest summary errors (no CIK, empty submissions, etc) are surfaced to `status.errors[]` so the UI doesn't report silent success.
+- Per-ticker errors are captured in `status.errors[]` and don't abort the outer loop; `status = "failed"` only on orchestrator-level crashes. CancelledError (a `BaseException` subclass) bypasses `except Exception` and the `finally` block resolves the stuck "running" → "failed" state.
+- Frontend: `/filings` page has a "Fan out" button per ticker card and "Fan out N" button per theme header; both poll `GET /api/fanouts/{id}` every 3s for progress.
+- `relationship_context.py::get_counterparty_context(ticker, db) -> CounterpartyContext` pulls outbound + inbound relationship rows for a ticker (both via the denormalized `Relationship.ticker` column — no Filing join). Buckets are grouped by `relationship_type` and capped at 20 entries each (prefer rows with `magnitude_pct` populated as a salience proxy).
+- Deep-dive prompt routing via `RELATIONSHIP_ROUTING: set[str] = {"Business Quality", "Risk Assessment", "Future Durability"}` (display-name keys matching `FILING_EXCERPT_ROUTING`'s convention). `_build_counterparty_context` is a nested closure inside `node_deep_dive` that renders the payload into the `{counterparty_context}` slot of `DEEP_DIVE_USER`, positioned immediately after `{filing_excerpts}`. Framing: "pre-extracted from the filing excerpts above; use these as anchors … do NOT re-quote verbatim text from the filings for these entities." Outbound renders with `$TICKER` notation for resolved counterparties; inbound renders under "Mentioned by others" and is the payoff for fan-out (e.g., MSFT's prompt sees `$ORCL — competitor`, `$NVDA — other` even when MSFT's own filings aren't ingested).
+- `PipelineService._fetch_counterparty_context(ticker) -> CounterpartyContext` mirrors `_fetch_filing_sections` — dedicated `async_session()`, exception-safe empty-fallback. Threaded into `node_deep_dive` as the `counterparty_context=` kwarg alongside `filing_sections`, `edgar_facts`, etc.
 
 Database tables (all in `models/filing.py`):
 - `filings` — one row per accession_number (10-K, 10-Q, DEF 14A, etc.)
@@ -171,9 +181,10 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 - **Macro routing** (`MACRO_ROUTING`): Macro & Regime (all 9 FRED series), Risk Assessment (all 9), Future Durability (5 series), Financial Health (rates + yield curve).
 
 - **Filing excerpt routing** (`FILING_EXCERPT_ROUTING` in `nodes.py`): Business Quality (Item 1), Risk Assessment (Item 1A), Growth & Earnings (Item 7 + Item 2), Future Durability (Item 7 + Item 1), Management & Governance (DEF 14A). Truncated to `FILING_EXCERPT_BUDGET_CHARS` (5000) per section.
+- **Relationship routing** (`RELATIONSHIP_ROUTING` in `nodes.py`): Business Quality, Risk Assessment, Future Durability. Uses display-name keys. Rendered by the `_build_counterparty_context` closure in `node_deep_dive` from the `CounterpartyContext` fetched in `PipelineService._fetch_counterparty_context`. Positioned in `DEEP_DIVE_USER` right after `{filing_excerpts}` so the "anchors not re-quotes" instruction reads against the filing text. Empty payload → empty string → slot drops out cleanly.
 - **EDGAR XBRL routing** (`EDGAR_ROUTING`): Growth & Earnings (RPO), Future Durability (RPO), Financial Health (debt maturity + credit), Risk Assessment (debt maturity + concentration + credit), Business Quality (concentration).
 
-The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q). It also pulls ingested filing sections (if any) via `PipelineService._fetch_filing_sections()` and XBRL facts via `_fetch_edgar_facts()`.
+The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q). It also pulls ingested filing sections (if any) via `PipelineService._fetch_filing_sections()`, XBRL facts via `_fetch_edgar_facts()`, and the counterparty graph via `_fetch_counterparty_context()`.
 
 ## State-of-repo notes
 

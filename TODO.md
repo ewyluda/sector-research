@@ -4,32 +4,19 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## In progress
 
-- **Tier 3 v2 — follow-ups**
-  - Fan-out orchestration — run extract + resolve across every ticker in a theme's seed list / discovery universe, respecting per-call idempotency.
-  - Deep-dive prompt routing — feed resolved relationships into Business Quality / Risk Assessment prompts so the LLM can reference supply-chain context.
+- _Nothing open. PR #16 closes the Tier 3 v2 loop._
 
 ## Backlog / polish
 
-- **Item 1A regex misses mid-word `\n` splits** — ORCL 10-K has "Risk" rendered as "R\nisk" because of an XBRL/markup boundary inside the word, so `\bITEM 1A RISK FACTORS\b` doesn't match the real heading and the algorithm falls back to cross-references. Add `R\s*I\s*S\s*K` / `F\s*A\s*C\s*T\s*O\s*R\s*S` tolerance like we did for `O\s*F` in MD&A patterns.
+- **LLM prompt behaviour validation (Phase 2 follow-up, PR #16)** — run a fresh ORCL deep-dive after merging PR #16 and inspect Business Quality / Risk Assessment / Future Durability prose. Confirm counterparties are cited by name with `$TICKER` notation (no verbatim Item 1 / 1A / 7 re-quotes for listed entities). If the LLM still re-quotes, iterate on the "anchors not re-quotes" wording in `_build_counterparty_context` in `backend/app/graph/nodes.py`.
+- **`FanoutService._statuses` dict has no eviction** — grows for the lifetime of the process. Fine for a personal tool, but if any run has a very wide theme with many errors the list of `FanoutError` entries could be heavy. If it ever matters, bound by size or recency.
+- **Theme-level fan-out doesn't auto-refresh per-ticker cards** — after `Fan out N` completes, the `TickerFilingsCard` components still show stale "no sections yet" until the user manually clicks `Ingest latest` on each or reloads the page. Fix: iterate `cardRefs.current` on completion and call each handle's `loadFilings`.
+- **Relationship extraction from earnings-call transcripts** (already ingested) — catches partnership announcements not yet in 10-Ks.
+- **Customer concentration via XBRL `ConcentrationRiskPercentage1`** with dimensional axis handling (v1 skips axes; HTML extraction catches it indirectly via Phase B).
 
 ## Next up (sequenced)
 
-- **Tier 3 v2 — Phase B: relationship extraction (inline)**
-  - New table `relationships` — see spec for full schema. Unique on `(filing_id, section_key, counterparty_name, relationship_type)`.
-  - One Haiku call per section with structured output — counterparty_name, relationship_type, magnitude_pct, unnamed flag, verbatim_quote, source_section.
-  - Runs inline during deep-dive (confirmed with user 2026-04-14). Cached by `(accession_number, section_key)` — re-runs only when new filing ingested.
-  - Fan-out: every ticker surfaced in quick_screen `competitive_landscape` + every discovery-ranked ticker. Lazy — first time a ticker is touched, extract once; subsequent runs are free.
-
-- **Tier 3 v2 — Phase C: name → ticker resolution**
-  - New table `counterparty_aliases(alias_name, canonical_cik, source)` — grows over time.
-  - Normalizer (strip "Inc.", "Corporation", etc.) + RapidFuzz `token_set_ratio`.
-  - `GET /api/relationships/unresolved` — curation queue sorted by frequency.
-  - `POST /api/relationships/alias` — writes resolution + backfills matching rows.
-
-- **Tier 3 v2 — Phase D: graph API + Supply Chain card + bilateral reconciliation**
-  - `GET /api/relationships/{ticker}?depth=1&direction=both` — returns `{nodes, edges}` with weights and `confirmed_bilateral` flag.
-  - New "Supply Chain" card in deep-dive dashboard — 1-hop named customers + suppliers as a list (not a graph), linked to their own research page if tracked. Separate bucket for "disclosed but unnamed" concentrations.
-  - Bilateral reconciliation: when a new row lands, check for a reciprocal row and flip `confirmed_bilateral=true` on both.
+- _No sequenced next steps. Pick from the Backlog / polish or v3 list when ready._
 
 ## Backlog / v3
 
@@ -47,6 +34,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Done (recent)
 
+- **Tier 3 v2 completion — fan-out orchestration + relationship prompt routing + Item 1A regex (PR #16)**. New `FanoutService` with in-memory status tracker wired through `app.state.fanout`. Three endpoints: `POST /api/themes/{id}/relationships/fanout` + `POST /api/tickers/{ticker}/relationships/fanout` (both 202 with `fanout_id`), `GET /api/fanouts/{id}` for polling. Per-ticker flow runs ingest → extract → resolve serially with per-stage `db.commit()` and error capture into `status.errors[]`; ingest summary errors (no CIK, empty submissions, etc) are surfaced too. Frontend adds "Fan out" buttons on both `TickerFilingsCard` and `ThemeFilingsPanel` with 3s-interval polling. New read-path `relationship_context.py` produces `CounterpartyContext` (outbound + inbound grouped by relationship_type, 20-entry cap per bucket); threaded into `node_deep_dive` via `PipelineService._fetch_counterparty_context`. New `RELATIONSHIP_ROUTING = {Business Quality, Risk Assessment, Future Durability}` + `{counterparty_context}` slot in `DEEP_DIVE_USER` with "cite by name, don't re-quote" framing. `_build_counterparty_context` renders `$TICKER` notation for resolved counterparties and an `Mentioned by others` bucket that surfaces the theme-fan-out payoff (e.g., MSFT's prompt sees `$ORCL — competitor`, `$NVDA — other` with no outbound data of its own). Phase 0 bolt-on: Item 1A regex now tolerates mid-word `\s*` (ORCL 10-K went 5.3KB cross-ref fragment → 97KB real prose). Verified: 2-ticker theme fan-out end-to-end via Playwright; NVDA full-stack (3 filings, 2 relationships, 1 auto-resolve); idempotent re-run zero-op.
 - Tier 3 v2 Phase D (graph + Supply Chain card + reconciliation): `GET /api/relationships/graph/{ticker}?direction=out|in|both` returns `{root_ticker, nodes[], edges[], summary}` — 1-hop graph with direction, magnitude_pct, bilateral flag. Node identity: resolved via CIK, or normalized name for unresolved counterparties. `tracked` flag annotated from theme seed_tickers. `POST /api/relationships/reconcile` scans all resolved rows for reciprocal pairs (customer↔supplier, partner↔partner, competitor↔competitor, licensor↔licensee, distributor↔reseller, joint_venture↔joint_venture) and flips `confirmed_bilateral=true` on both sides. Frontend: new `SupplyChainEcosystem` component in deep-dive dashboard after Business Quality — shows named counterparties grouped by type, with verbatim quotes, bilateral badges, tracker-link for tracked tickers, and an "Unnamed concentrations" bucket. Verified: ORCL graph returns 6 nodes + 5 edges bucketed by competitor/other/partner
 - Tier 3 v2 Phase C (counterparty resolution): new `counterparty_aliases` table + `resolved_to_cik` / `resolved_to_ticker` columns on `relationships`. Normalizer strips corporate suffixes (Inc/Corp/LLC/Holdings/Group/etc) and punctuation. RapidFuzz token_set_ratio against EDGAR's ~10k-entity company_tickers.json — auto-resolves at ≥95, surfaces 80-94 for manual curation. On-demand endpoints `POST /api/relationships/resolve/{ticker}` + `GET /api/relationships/unresolved` + `POST /api/relationships/alias`. Write-through: creating an alias backfills every matching Relationship row. Frontend curation panel on `/filings` shows pending counterparties with top-5 candidates and one-click "Use this" resolution. Verified on ORCL: Microsoft Azure auto-resolved to MSFT, AWS manually resolved to AMZN, AMPR/GOOG/SoftBank correctly surfaced to queue
 - Tier 3 v2 Phase B (relationship extraction, on-demand): new `relationships` table + `FilingSection.relationships_extracted_at` tombstone column for idempotency (including zero-relationship sections). Haiku extractor with Pydantic structured output over 15K-char excerpts from `item_1_business`, `item_1a_risk_factors`, `item_7_mda`, `item_2_mda_10q`. On-demand endpoints `POST /api/filings/extract-relationships/{ticker}` (with `?force=true` re-run) + `GET /api/filings/{ticker}/relationships`. Verified end-to-end on ORCL: 5 relationships (Ampere joint-venture 29%, SoftBank partner, AWS/Azure/GCP competitors) with verbatim quotes

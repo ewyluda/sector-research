@@ -12,7 +12,7 @@ Three core workflows:
 
 **Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. AI automation on each phase, human-in-the-loop validation at three interrupt gates, citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
 
-**Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a supply-chain graph card in the deep-dive dashboard and a curation queue for manual resolution.
+**Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a supply-chain graph card in the deep-dive dashboard, a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
 
 ---
 
@@ -135,9 +135,23 @@ GET /api/relationships/graph/{ticker}?direction=both
 POST /api/relationships/reconcile
   ↓  Finds reciprocal pairs (customer↔supplier, etc.)
   ↓  Flips confirmed_bilateral on both sides
+
+POST /api/themes/{id}/relationships/fanout
+POST /api/tickers/{ticker}/relationships/fanout
+  ↓  Kicks off a background FanoutService task that chains
+  ↓    ingest → extract → resolve over every seed ticker
+  ↓    (serial, one EdgarClient reused, per-stage DB commit)
+  ↓  Returns { fanout_id, status, total_tickers, ... } immediately.
+
+GET /api/fanouts/{fanout_id}
+  ↓  Poll for progress: { status, current_ticker, current_stage,
+  ↓    completed_tickers, errors[] }. Frontend polls at 3s intervals
+  ↓    from the "Fan out" buttons on /filings.
 ```
 
 The Supply Chain & Ecosystem card in the deep-dive dashboard renders the graph data — counterparties grouped by type with verbatim SEC quotes, bilateral confirmation badges, and tracker-links for companies in your discovery universe.
+
+Beyond the card, the resolved counterparty list is routed into the Business Quality, Risk Assessment, and Future Durability deep-dive prompts via `RELATIONSHIP_ROUTING` in `graph/nodes.py`. The prompt slot lists outbound relationships grouped by type (plus inbound mentions from other tickers that named this one in their own filings), and the framing tells the LLM to cite entities by name and NOT to re-quote filing excerpts for them — making the supply-chain data an authoritative index rather than material to restate.
 
 ---
 
@@ -219,6 +233,9 @@ No auth system — personal local tool.
 | `backend/app/services/edgar_relationships.py` | Haiku relationship extraction service |
 | `backend/app/services/counterparty_resolver.py` | Normalizer + RapidFuzz matcher + alias management |
 | `backend/app/services/supply_chain.py` | Graph traversal + bilateral reconciliation |
+| `backend/app/services/fanout.py` | FanoutService — orchestrates ingest → extract → resolve across a theme or a single ticker; in-memory status tracker wired through `app.state.fanout` |
+| `backend/app/services/relationship_context.py` | Read-path query layer: builds the `CounterpartyContext` (outbound + inbound, grouped by type) consumed by the deep-dive prompt routing |
+| `backend/app/api/fanouts.py` | Fan-out endpoints (theme, ticker, status polling) |
 | `frontend/lib/api.ts` | Typed API client + all TypeScript interfaces |
 | `frontend/components/deep-dive/` | 30+ component financial dashboard (charts, sections, panels, skeletons) |
 | `frontend/components/filings/` | Filing ingest, section reader, curation panel |
