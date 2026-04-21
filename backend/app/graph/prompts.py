@@ -99,6 +99,8 @@ Available data:
 
 {filing_excerpts}
 
+{counterparty_context}
+
 {loop_context}
 
 Produce a rigorous {category} analysis. Output the JSON described above."""
