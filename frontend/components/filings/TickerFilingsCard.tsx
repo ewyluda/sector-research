@@ -13,6 +13,7 @@ interface OpenSection {
 
 export interface TickerFilingsCardHandle {
   ingest: () => Promise<void>;
+  load: () => Promise<void>;
 }
 
 const SECTION_LABEL: Record<string, string> = {
@@ -48,7 +49,7 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
     };
   }, []);
 
-  useImperativeHandle(ref, () => ({ ingest: () => onIngest() }));
+  useImperativeHandle(ref, () => ({ ingest: () => onIngest(), load: () => load() }));
 
   async function load() {
     setLoading(true);

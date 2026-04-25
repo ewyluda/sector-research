@@ -24,8 +24,15 @@ export default function ThemeFilingsPanel({ theme }: { theme: Theme }) {
     else cardRefs.current.delete(ticker);
   }, []);
 
+  async function refreshCards() {
+    await Promise.allSettled(
+      Array.from(cardRefs.current.values()).map((handle) => handle.load())
+    );
+  }
+
   async function onFanoutTheme() {
     try {
+      setExpanded(true);
       const initial = await fanouts.startTheme(theme.id);
       setFanoutStatus(initial);
       if (fanoutPollRef.current) clearInterval(fanoutPollRef.current);
@@ -36,6 +43,7 @@ export default function ThemeFilingsPanel({ theme }: { theme: Theme }) {
           if (next.status !== "running" && fanoutPollRef.current) {
             clearInterval(fanoutPollRef.current);
             fanoutPollRef.current = null;
+            await refreshCards();
           }
         } catch (err) {
           console.error("fanout poll failed", err);
