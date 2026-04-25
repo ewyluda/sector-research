@@ -1,0 +1,264 @@
+# AGENTS.md
+
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+Before implementing:
+
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+When editing existing code:
+
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+Transform tasks into verifiable goals:
+
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## PROJECT SPECIFIC INFO:
+
+## What this is
+
+Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with human-in-the-loop interrupts and citations on every data point). No auth — local-only tool.
+
+Three-pane split: **Discovery** (ranked companies per theme), **Pipeline** (6-phase due diligence), and **Filings** (SEC EDGAR filing extraction, relationship graph, and counterparty resolution).
+
+Two deployables in a flat layout:
+
+- `backend/` — FastAPI + async SQLAlchemy + LangGraph + PostgreSQL (Python 3, venv in `backend/venv/`)
+- `frontend/` — Next.js 16 App Router + React 19 + Tailwind v4
+- `.env` at **project root** is the single source of secrets for both sides
+
+## ⚠️ Next.js 16 is not the Next.js you know
+
+`frontend/AGENTS.md` says: _"This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code."_ Heed this before editing anything in `frontend/`. Do not assume `middleware.ts`, route-handler shapes, caching primitives, or Server Component APIs match older releases — check `node_modules/next/dist/docs/` first.
+
+## Common commands
+
+**Backend** (run from project root so `backend.app.*` absolute imports resolve):
+
+```bash
+source backend/venv/bin/activate
+pip install -r backend/requirements.txt
+
+# Dev server — imports are absolute (backend.app.*), so launch from project root:
+uvicorn backend.app.main:app --reload
+
+# Migrations (alembic.ini lives in backend/):
+cd backend && alembic upgrade head
+cd backend && alembic revision --autogenerate -m "description"
+```
+
+No test framework is configured for the backend.
+
+**Frontend:**
+
+```bash
+cd frontend
+npm install
+npm run dev        # Next dev server on :3000
+npm run build
+npm run lint       # eslint (flat config in eslint.config.mjs)
+```
+
+Frontend talks to the backend via `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). CORS on the backend allows `http://localhost:3000` by default.
+
+## Environment
+
+`SEC_USER_AGENT` is used by the EDGAR client — SEC requires a descriptive User-Agent string with a contact email (e.g. `"SectorResearch/1.0 ericwyluda@gmail.com"`). Set it in `config.py` settings.
+
+Single `.env` at project root. `backend/app/config.py` reads it via `env_file="../../.env"` (relative to `backend/app/`), so the backend is hard-coded to that path — don't move the file. Required: `FMP_API_KEY`, `X_BEARER_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL` (asyncpg URL), `DATABASE_URL_SYNC` (used by Alembic).
+
+## Architecture essentials
+
+### The pipeline (read this before touching `backend/app/graph/`)
+
+`backend/app/graph/pipeline.py` compiles a LangGraph `StateGraph` around a single `ResearchState` dataclass (`graph/state.py`). Flow:
+
+```
+quick_screen (Haiku)
+  → deep_dive (Sonnet, 9 categories in parallel)
+  → thesis_construction (Sonnet)
+  → risk_stress_test (Sonnet)
+       ├─ loop_required & loop_count ≤ 2 → back to deep_dive
+       └─ else → completed
+  → [optional: position_monitor (Haiku) — manually triggered]
+```
+
+**No interrupt gates.** Phases 1-5 run continuously after `POST /api/runs` starts a run. Each node sets `state.status = "in_progress"` to advance, or `"completed"` / `"watchlist"` to stop. The `PipelineService._run_phase()` loops while status is `in_progress`, automatically chaining through phases. Position monitor (phase 6) is manually triggered via `POST /api/runs/{run_id}/advance` with action `"approve"` on a completed run. If you add a new phase, update **both** `graph/pipeline.py` edges **and** `services/pipeline.py::_next_phase` — they're parallel sources of truth for routing.
+
+**Prompt deduplication:** The thesis prompt receives quick screen context (verdict, thesis, key risk) and a concise deep dive summary (scores + top 2 findings per category) as "established findings" with instructions not to restate them. The risk prompt receives the thesis output with instructions to stress-test it, not re-derive the analysis.
+
+`ResearchState` is persisted as JSONB into `research_runs.state` at every phase transition. All serialization goes through `to_dict()` / `from_dict()`. `CategoryResult` and `CategoryError` use a `__type__` discriminator in their dict form so `get_deep_dive_results()` can round-trip them. Add any new state field to `ResearchState` **and** make sure it's JSON-safe — datetime fields are stored as ISO strings, not `datetime` objects.
+
+`CuratedFinancials` (in `graph/state.py`) holds a curated subset of FMP + FRED data for frontend dashboard charts. It's built once in `node_deep_dive` from the raw FMP fetch (8 quarters of income/balance/cashflow, profile, DCF, estimates, key-metrics-ttm, financial-growth, and 1-year daily OHLCV). Valuation ratios (PE, EV/EBITDA, P/B, P/FCF, P/S, PEG) and return metrics (ROE, ROIC, ROA, interest coverage, dividend yield) come from the `key-metrics-ttm` endpoint. Technical indicators (SMA 9/20/50/100/200, RSI 14) are computed in `_build_technical_data()` and stored in `daily_prices`. FRED macro indicators are attached after the main build. The report API returns it under `phases.deep_dive.curated_financials`. The `deep_dive_start` SSE event also carries it. Note: `phases.deep_dive` in the report API is `{ categories: Record<str, CategoryOutput>, curated_financials: CuratedFinancials | null }` — not a flat record.
+
+Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU = "claude-haiku-4-5-20251001"`. `complete()` and `stream_complete()` auto-enable prompt caching (`cache_control: ephemeral`) when the system prompt is >500 chars — keep reused system prompts long enough to benefit.
+
+### Discovery engine
+
+`services/discovery.py::DiscoveryEngine` runs two passes concurrently per theme:
+
+1. **FMP screener pass** — runs the theme's `screener_criteria`, then enriches each ticker with income/balance/cashflow/profile via `_fetch_company_fundamentals` (batched 10 at a time to avoid hammering FMP).
+2. **X signal pass** — **does not hit the X API at request time**. It reads pre-computed rows from the `signals` table. Those rows are written by the `signal_scheduler` APScheduler job that runs daily at 2 AM (wired up in `app/main.py` lifespan). Triggering a refresh on demand goes through `POST /api/themes/{id}/signals/refresh`.
+
+Combined score = 40% X velocity + 40% fundamental quality + 20% discovery score when X data is fresh. When X is missing or stale, the weights collapse to 80% fundamental + 20% discovery. Staleness threshold lives in `clients/x_client.py::STALE_THRESHOLD_HOURS`.
+
+### Citations as a first-class primitive
+
+Every data-client method returns `tuple[data, Citation]`, not just data. `models/citation.py` defines two shapes: the `Citation` dataclass (in-memory / embedded in `CompanySignalCard` / etc.) and `CitationRecord` ORM (persisted rows). Inside the LangGraph state, use `StateCitation` (in `graph/state.py`) — it's the JSON-serializable form with an ISO-string timestamp. When adding a new data source, preserve this convention or the report endpoint and frontend's `Citation[]` typing break silently.
+
+### Streaming
+
+`services/pipeline.py::PipelineService` holds an in-memory `dict[run_id, asyncio.Queue]` for SSE subscribers. Events are pushed with `_emit()` and consumed via `event_stream()` which `GET /api/runs/{id}/stream` wraps in a `StreamingResponse`. Event types live as a discriminated union in `frontend/lib/api.ts::SSEEvent` — keep the Python `_emit` calls and the TS union in sync.
+
+### Background task scheduling
+
+Two kinds of async work run under the FastAPI process:
+
+- **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task holds the DB session passed from the request; if you change session lifecycle, verify the background task still has a live session.
+- **Daily signal refresh** — `AsyncIOScheduler` cron job registered in `app/main.py::lifespan`, calls `services.signal_scheduler.run_daily_refresh`.
+
+### SEC EDGAR filing pipeline (read this before touching `backend/app/services/edgar*`, `supply_chain.py`, `fanout.py`, or `relationship_context.py`)
+
+Five-phase pipeline for extracting and consuming SEC filing narrative. All on-demand — no automatic trigger during pipeline runs.
+
+**Phase A — Filing section extraction** (`services/edgar_sections_ingest.py` + `services/edgar_html.py`):
+
+- `POST /api/filings/ingest/{ticker}` pulls the latest 10-K, 10-Q, and DEF 14A from EDGAR, extracts Item 1 Business, Item 1A Risk Factors, Item 7 MD&A (10-K) / Item 2 MD&A (10-Q), and DEF 14A Governance via BeautifulSoup.
+- Strips inline XBRL (`ix:hidden` dropped, `ix:nonFraction`/`ix:nonNumeric` unwrapped to displayed value). Heading regex anchored to line-start (MULTILINE) for MD&A and Item 1 Business to avoid matching in-body cross-references.
+- Item 1A regex tolerates mid-word whitespace: `R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S` — mirrors the `O\s*F` tolerance on MD&A patterns. Needed because XBRL/markup boundaries can split characters with `\n` mid-word (e.g., ORCL 10-K renders `Risk` as `R\nisk`).
+- Full text stored in `filing_sections` table; prompt builders truncate to 5K chars per section via `FILING_EXCERPT_BUDGET_CHARS`.
+- Idempotent on `(filing_id, section_key)`. Service functions return a summary dict with an `errors: []` list rather than raising on per-form problems — callers must either check the list or surface it to end users.
+
+**Phase A — Prompt integration** (`FILING_EXCERPT_ROUTING` in `graph/nodes.py`):
+
+- Deep-dive categories receive verbatim filing excerpts via `{filing_excerpts}` slot in `DEEP_DIVE_USER`: Business Quality ← Item 1, Risk Assessment ← Item 1A, Growth & Earnings ← Item 7 + Item 2, Management & Governance ← DEF 14A governance, Future Durability ← Item 7 + Item 1.
+- Filing sections are fetched per-ticker in `PipelineService._fetch_filing_sections()` using a dedicated session (same pattern as `_fetch_edgar_facts`).
+
+**Phase B — Relationship extraction** (`services/edgar_relationships.py`):
+
+- `POST /api/filings/extract-relationships/{ticker}` runs one Haiku call per extractable section (Item 1, 1A, 7/2). Each section truncated to 15K chars.
+- Pydantic structured output (`ExtractionResult` with `ExtractedRelationship` list) via `assistant_prefill='{"relationships":'`. Extracts counterparty_name, relationship_type, magnitude_pct, unnamed flag, verbatim_quote.
+- Relationship types: `customer`, `supplier`, `partner`, `competitor`, `licensor`, `licensee`, `distributor`, `reseller`, `joint_venture`, `other`.
+- Persisted in `relationships` table. Idempotent via `filing_sections.relationships_extracted_at` tombstone column — zero-relationship sections are marked too.
+
+**Phase C — Counterparty resolution** (`services/counterparty_resolver.py`):
+
+- `POST /api/relationships/resolve/{ticker}` normalizes counterparty names (strips Inc/Corp/LLC/Holdings/Group/etc, punctuation, lowercases) and matches against EDGAR's `company_tickers.json` (~10K entities).
+- Exact match → auto-resolve. RapidFuzz `token_set_ratio` ≥ 95 → auto-resolve. 80-94 → curation queue. Below 80 → queue only.
+- Aliases persisted in `counterparty_aliases` table (unique on `alias_normalized`). Write-through populates `relationships.resolved_to_cik` / `resolved_to_ticker` on every matching row.
+- `GET /api/relationships/unresolved` → curation queue. `POST /api/relationships/alias` → manual override.
+
+**Phase D — Supply-chain graph** (`services/supply_chain.py`):
+
+- `GET /api/relationships/graph/{ticker}?direction=out|in|both` returns `{root_ticker, nodes[], edges[], summary}`. 1-hop depth. Nodes identified by CIK (resolved) or normalized name (unresolved). `tracked` flag from theme seed_tickers.
+- `POST /api/relationships/reconcile` flips `confirmed_bilateral=true` on reciprocal pairs (customer↔supplier, partner↔partner, competitor↔competitor, licensor↔licensee, distributor↔reseller, joint_venture↔joint_venture).
+- Frontend: `SupplyChainEcosystem` card in the deep-dive dashboard (after Business Quality). Groups counterparties by type, shows verbatim quotes, bilateral badges, tracker-links.
+
+**Phase E — Fan-out orchestration + deep-dive prompt routing** (`services/fanout.py` + `services/relationship_context.py`):
+
+- `FanoutService` wired into `main.py::lifespan` as `app.state.fanout = FanoutService(edgar=app.state.edgar)` (reuses the shared EdgarClient). Three endpoints: `POST /api/themes/{id}/relationships/fanout?force=false` and `POST /api/tickers/{ticker}/relationships/fanout?force=false` return 202 + `fanout_id` immediately; `GET /api/fanouts/{id}` returns `FanoutStatus`. Status is in-memory (no restart persistence — acceptable for a personal tool).
+- Per-ticker flow: serial ingest → extract → resolve, each in its own `async_session()` with an **explicit `await db.commit()`** (existing callers in `api/filings.py` do the same; `async_session` is `expire_on_commit=False` but does NOT autocommit — forgetting this means nothing persists). `force=True` only affects the extract stage; resolve already skips rows with `resolved_to_cik IS NOT NULL`. Ingest summary errors (no CIK, empty submissions, etc) are surfaced to `status.errors[]` so the UI doesn't report silent success.
+- Per-ticker errors are captured in `status.errors[]` and don't abort the outer loop; `status = "failed"` only on orchestrator-level crashes. CancelledError (a `BaseException` subclass) bypasses `except Exception` and the `finally` block resolves the stuck "running" → "failed" state.
+- Frontend: `/filings` page has a "Fan out" button per ticker card and "Fan out N" button per theme header; both poll `GET /api/fanouts/{id}` every 3s for progress.
+- `relationship_context.py::get_counterparty_context(ticker, db) -> CounterpartyContext` pulls outbound + inbound relationship rows for a ticker (both via the denormalized `Relationship.ticker` column — no Filing join). Buckets are grouped by `relationship_type` and capped at 20 entries each (prefer rows with `magnitude_pct` populated as a salience proxy).
+- Deep-dive prompt routing via `RELATIONSHIP_ROUTING: set[str] = {"Business Quality", "Risk Assessment", "Future Durability"}` (display-name keys matching `FILING_EXCERPT_ROUTING`'s convention). `_build_counterparty_context` is a nested closure inside `node_deep_dive` that renders the payload into the `{counterparty_context}` slot of `DEEP_DIVE_USER`, positioned immediately after `{filing_excerpts}`. Framing: "pre-extracted from the filing excerpts above; use these as anchors … do NOT re-quote verbatim text from the filings for these entities." Outbound renders with `$TICKER` notation for resolved counterparties; inbound renders under "Mentioned by others" and is the payoff for fan-out (e.g., MSFT's prompt sees `$ORCL — competitor`, `$NVDA — other` even when MSFT's own filings aren't ingested).
+- `PipelineService._fetch_counterparty_context(ticker) -> CounterpartyContext` mirrors `_fetch_filing_sections` — dedicated `async_session()`, exception-safe empty-fallback. Threaded into `node_deep_dive` as the `counterparty_context=` kwarg alongside `filing_sections`, `edgar_facts`, etc.
+
+Database tables (all in `models/filing.py`):
+
+- `filings` — one row per accession_number (10-K, 10-Q, DEF 14A, etc.)
+- `xbrl_facts` — XBRL numeric facts (RPO, debt maturity, concentration, credit)
+- `filing_sections` — extracted narrative text per section per filing
+- `relationships` — LLM-extracted counterparty relationships
+- `counterparty_aliases` — normalized name → canonical CIK/ticker resolution
+
+### Import conventions
+
+Backend uses **absolute imports rooted at project root**: `from backend.app.config import get_settings`. That's why uvicorn must be launched from project root. `backend/migrations/env.py` also imports from `backend.app.*`, so Alembic commands need project root on `PYTHONPATH` (running `alembic` from inside `backend/` works if you've activated the venv and `pip install -e .`'d — otherwise use `PYTHONPATH=.. alembic ...`).
+
+### Frontend layout
+
+- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports). `/report/[runId]` redirects here.
+- `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
+- `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
+- `components/filings/` — `ThemeFilingsPanel`, `TickerFilingsCard`, `SectionReader` (modal), `CurationPanel` (counterparty resolution queue)
+- `components/deep-dive/` — 30+ component module for the financial dashboard: `DeepDiveDashboard` orchestrator (receives `ticker` prop for supply-chain card), `SectionNav` (sticky horizontal scroll-spy nav, pills grouped into Summary / Financials / Context / Qualitative clusters with visual dividers), `CommandPalette` (⌘K / Ctrl-K fuzzy jump over the same `sections.ts` registry), `ReportHeader` (company identity + verdict + thesis/risk callouts — the scoreboards live in `OverviewBanner`, not here), `OverviewBanner` (synthesized verdict line + radar + HeadlineMetrics + ScoreBar, single source for these), `VelocitySparkline` (X signal badge), `sections/` (9 category sections + CrossCategoryCorrelation + `SupplyChainEcosystem`), `charts/` (Recharts bar/line/trend + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
+- **Shared utilities under `components/deep-dive/`:**
+  - `scoreKeys.ts` — `DISPLAY_TO_KEY` + `normalizeScoreKeys`. Use at every boundary where the backend hands you a `scores` object; the report API returns display-name keys (`"Macro & Regime"`) while the chip/radar components expect snake_case. Skipping this normalizer silently produces an all-em-dash ScoreBar.
+  - `scoreColors.ts` — shared 4-tier palette at 40/55/70 thresholds with `scoreTier` / `scoreBadge` / `scoreSegment` helpers. Don't reintroduce local `if score >= 70 / >= 50` palettes; they cluster everything in 40-60 into a single amber band.
+  - `sections.ts` — single registry the SectionNav and CommandPalette both read, so adding a section only needs one edit to stay in sync.
+  - `usePersistedCollapse.ts` — per-section `useState`-compatible hook backed by `localStorage["sr:collapse:{id}"]`. Uses a skip-first-write pattern (`isFirstWrite` ref) so the default value from the initial render doesn't clobber the persisted value before the read effect hydrates.
+- **Section shell contract:** `DataRichSection` and `MixedSection` render `AICompanionPanel` twice per section — once with `section="summary"` (score callout + key findings) inside the chart grid, and once with `section="analysis"` as a full-width block below. This prevents the analysis paragraph from making the right column 2x taller than the charts and leaving empty whitespace on the left. `QualitativeCard` still renders the panel without a `section` prop because it's already a single-column layout.
+- **Print view:** `@media print` in `app/globals.css` hides any element carrying `data-print-hide="true"` and forces opaque surfaces. When you add new sticky UI (nav, action buttons, modals), tag it with that attribute so it drops out of the PDF.
+- Path alias: `@/*` → project root. Tailwind v4 via `@tailwindcss/postcss`.
+- Chart libraries: **Recharts** (bar, line, radar charts) and **lightweight-charts** (TradingView candlestick + RSI).
+
+### Deep-dive data routing
+
+`_fmt_fundamentals()` in `graph/nodes.py` builds the data payload every category receives. It includes: company profile, valuation ratios (PE, EV/EBITDA, P/B, P/FCF, P/S, PEG), return metrics (ROE, ROIC, ROA, interest coverage), 8 quarters of income statement trends with YoY growth, balance sheet with ST/LT debt structure, cash flow with SBC, DCF valuation, forward analyst estimates with earnings surprise, and historical growth rates. On top of that base payload, categories receive supplementary data via routing tables:
+
+- **Transcript routing** (`TRANSCRIPT_ROUTING` in `nodes.py`): Management & Governance (all 5 passes), Business Quality (pass3, pass5), Growth & Earnings (pass1, pass4, pass6), Sentiment & Narrative (pass3, pass5), Risk Assessment (pass1, pass4), Future Durability (pass1, pass5).
+- **Macro routing** (`MACRO_ROUTING`): Macro & Regime (all 9 FRED series), Risk Assessment (all 9), Future Durability (5 series), Financial Health (rates + yield curve).
+
+- **Filing excerpt routing** (`FILING_EXCERPT_ROUTING` in `nodes.py`): Business Quality (Item 1), Risk Assessment (Item 1A), Growth & Earnings (Item 7 + Item 2), Future Durability (Item 7 + Item 1), Management & Governance (DEF 14A). Truncated to `FILING_EXCERPT_BUDGET_CHARS` (5000) per section.
+- **Relationship routing** (`RELATIONSHIP_ROUTING` in `nodes.py`): Business Quality, Risk Assessment, Future Durability. Uses display-name keys. Rendered by the `_build_counterparty_context` closure in `node_deep_dive` from the `CounterpartyContext` fetched in `PipelineService._fetch_counterparty_context`. Positioned in `DEEP_DIVE_USER` right after `{filing_excerpts}` so the "anchors not re-quotes" instruction reads against the filing text. Empty payload → empty string → slot drops out cleanly.
+- **EDGAR XBRL routing** (`EDGAR_ROUTING`): Growth & Earnings (RPO), Future Durability (RPO), Financial Health (debt maturity + credit), Risk Assessment (debt maturity + concentration + credit), Business Quality (concentration).
+
+The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q). It also pulls ingested filing sections (if any) via `PipelineService._fetch_filing_sections()`, XBRL facts via `_fetch_edgar_facts()`, and the counterparty graph via `_fetch_counterparty_context()`.
+
+## State-of-repo notes
+
+`TODO.md` at the repo root is the live rolling tracker for in-progress work, backlog, and a "Done (recent)" log — read it before starting anything substantive so you know what's already shipped. The `skills/due-diligence/` + `BACKLOG.md` design-phase artifacts are gone; active specs live in `docs/superpowers/specs/` (which is itself `.gitignore`d, so it's local-only). If you need old plans or the due-diligence methodology, recover from git history (`git log --all --diff-filter=D -- docs/`).
