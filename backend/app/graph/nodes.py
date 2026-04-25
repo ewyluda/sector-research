@@ -1142,16 +1142,16 @@ async def node_deep_dive(
             "RESOLVED COUNTERPARTIES",
             "(pre-extracted from the filing excerpts above; use these as anchors when",
             "referring to named customers, suppliers, partners, or competitors.",
-            "Do NOT re-quote verbatim text from the filings for these entities — cite",
-            "them by name. Resolved tickers in $ notation indicate companies tracked",
-            "elsewhere in this research platform.)",
+            "For resolved entities, use the $TICKER notation exactly as shown below",
+            "on first mention — do not refer to them by product/vendor name alone.",
+            "Do NOT re-quote verbatim text from the filings for these entities.)",
             "",
         ]
 
         def _fmt_entry(e) -> str:
             # e: CounterpartyEntry
-            ticker_suffix = f" (${e.resolved_ticker})" if e.resolved_ticker else ""
-            parts = [f"{e.name}{ticker_suffix}", e.relationship_type]
+            label = f"${e.resolved_ticker} — {e.name}" if e.resolved_ticker else e.name
+            parts = [label, e.relationship_type]
             if e.magnitude_pct is not None:
                 parts.append(f"{e.magnitude_pct:.1f}%")
             return "    - " + " — ".join(parts)
