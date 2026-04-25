@@ -16,7 +16,9 @@ from backend.app.api.themes import router as themes_router
 from backend.app.api.discovery import router as discovery_router
 from backend.app.api.pipeline import router as pipeline_router
 from backend.app.api.filings import router as filings_router
+from backend.app.api.fanouts import router as fanouts_router
 from backend.app.services.pipeline import PipelineService
+from backend.app.services.fanout import FanoutService
 
 settings = get_settings()
 
@@ -43,6 +45,10 @@ async def lifespan(app: FastAPI):
         fmp=app.state.fmp, fred=app.state.fred, edgar=app.state.edgar,
     )
     logger.info("PipelineService initialised")
+
+    # Fan-out service (relationship extraction orchestrator)
+    app.state.fanout = FanoutService(edgar=app.state.edgar)
+    logger.info("FanoutService initialised")
 
     # Daily signal scheduler — 2 AM local time
     scheduler = AsyncIOScheduler()
@@ -96,3 +102,4 @@ app.include_router(themes_router, prefix="/api")
 app.include_router(discovery_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
 app.include_router(filings_router, prefix="/api")
+app.include_router(fanouts_router, prefix="/api")

@@ -218,6 +218,34 @@ export interface ResolveSummary {
   aliases_created: number;
 }
 
+// ── Fan-out (bulk ingest + extract + resolve per theme or ticker) ─────────────
+
+export type FanoutStatusLiteral = "running" | "completed" | "failed";
+export type FanoutStage = "ingest" | "extract" | "resolve";
+
+export type FanoutScope =
+  | { kind: "theme"; theme_id: string }
+  | { kind: "ticker"; ticker: string };
+
+export interface FanoutError {
+  ticker: string;
+  stage: FanoutStage;
+  message: string;
+}
+
+export interface FanoutStatus {
+  fanout_id: string;
+  status: FanoutStatusLiteral;
+  scope: FanoutScope;
+  total_tickers: number;
+  completed_tickers: number;
+  current_ticker: string | null;
+  current_stage: FanoutStage | null;
+  errors: FanoutError[];
+  started_at: string;
+  finished_at: string | null;
+}
+
 export const relationships = {
   listForTicker: (ticker: string) =>
     apiFetch<RelationshipRecord[]>(
@@ -251,6 +279,21 @@ export const relationships = {
       `/api/relationships/reconcile`,
       { method: "POST" }
     ),
+};
+
+export const fanouts = {
+  startTheme: (themeId: string, force: boolean = false) =>
+    apiFetch<FanoutStatus>(
+      `/api/themes/${encodeURIComponent(themeId)}/relationships/fanout${force ? "?force=true" : ""}`,
+      { method: "POST" }
+    ),
+  startTicker: (ticker: string, force: boolean = false) =>
+    apiFetch<FanoutStatus>(
+      `/api/tickers/${encodeURIComponent(ticker)}/relationships/fanout${force ? "?force=true" : ""}`,
+      { method: "POST" }
+    ),
+  get: (fanoutId: string) =>
+    apiFetch<FanoutStatus>(`/api/fanouts/${encodeURIComponent(fanoutId)}`),
 };
 
 // ── Supply-chain graph (Phase D) ─────────────────────────────────────────────

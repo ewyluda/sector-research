@@ -30,6 +30,10 @@ from backend.app.db import async_session
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
 from backend.app.services import edgar_ingest, edgar_sections_ingest
+from backend.app.services.relationship_context import (
+    CounterpartyContext,
+    get_counterparty_context,
+)
 from backend.app.graph.nodes import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
@@ -279,6 +283,23 @@ class PipelineService:
                 logger.warning("[%s] Filing-section fetch failed: %s", ticker, e)
                 return {}
 
+    async def _fetch_counterparty_context(self, ticker: str) -> CounterpartyContext:
+        """Return a CounterpartyContext for the deep-dive prompt.
+
+        Read-only: queries the relationships table (populated by the
+        Phase B extractor + on-demand fan-out). Uses a dedicated
+        session, same rationale as `_fetch_filing_sections`.
+
+        Returns an empty context if nothing has been extracted for this
+        ticker yet — the prompt renderer will then no-op the slot.
+        """
+        async with async_session() as s:
+            try:
+                return await get_counterparty_context(ticker, s)
+            except Exception as e:
+                logger.warning("[%s] Counterparty-context fetch failed: %s", ticker, e)
+                return CounterpartyContext()
+
     async def _fetch_edgar_facts(self, ticker: str) -> tuple[dict, list]:
         """Ingest (best-effort) + return ({concept: [fact,...]}, citations).
 
@@ -345,6 +366,7 @@ class PipelineService:
         signals = await self._fetch_signals(state.ticker, state.theme_id)
         edgar_facts, edgar_citations = await self._fetch_edgar_facts(state.ticker)
         filing_sections = await self._fetch_filing_sections(state.ticker)
+        counterparty_context = await self._fetch_counterparty_context(state.ticker)
         # Persist SEC source citations so they appear in the Library citation
         # panel alongside FMP / FRED / X.
         from backend.app.graph.state import StateCitation
@@ -352,6 +374,7 @@ class PipelineService:
             state.add_citation(StateCitation.from_citation(cit))
         state = await nodes.node_deep_dive(
             state, self._fmp, self._fred, signals, edgar_facts, filing_sections,
+            counterparty_context=counterparty_context,
         )
 
         # Emit start event with curated financials (available after node runs)

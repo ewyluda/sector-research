@@ -109,6 +109,17 @@ FILING_EXCERPT_ROUTING: dict[str, list[str]] = {
 FILING_EXCERPT_BUDGET_CHARS = 5000
 
 
+# Categories that receive the counterparty (supply-chain) context in
+# their deep-dive prompt. Uses DISPLAY NAMES to match FILING_EXCERPT_ROUTING.
+# Structured as a set (no per-section sub-list needed — relationship
+# data is already aggregated per-ticker, not per-filing-section).
+RELATIONSHIP_ROUTING: set[str] = {
+    "Business Quality",
+    "Risk Assessment",
+    "Future Durability",
+}
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _extract_score(text: str) -> int:
@@ -521,6 +532,7 @@ async def _run_one_category(
     sentiment_context: str = "",
     edgar_context: str = "",
     filing_excerpts_context: str = "",
+    counterparty_context_text: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -538,6 +550,7 @@ async def _run_one_category(
                     sentiment_data=sentiment_context,
                     edgar_data=edgar_context,
                     filing_excerpts=filing_excerpts_context,
+                    counterparty_context=counterparty_context_text,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -809,6 +822,7 @@ async def node_deep_dive(
     signals: dict | None = None,
     edgar_facts: dict | None = None,
     filing_sections: dict | None = None,
+    counterparty_context=None,  # CounterpartyContext | None — typed loosely to avoid import cycle risk
 ) -> ResearchState:
     """Phase 3: run all 9 categories in parallel. Partial success is OK.
 
@@ -826,6 +840,13 @@ async def node_deep_dive(
     (Phase A narrative sections). When present, excerpts are routed into
     Business Quality, Risk Assessment, Growth & Earnings, Management &
     Governance, and Future Durability per FILING_EXCERPT_ROUTING.
+
+    `counterparty_context` is an optional CounterpartyContext pre-fetched
+    from the relationships table. When present, the outbound + inbound
+    counterparty graph is routed into Business Quality, Risk Assessment,
+    and Future Durability prompts per RELATIONSHIP_ROUTING. Rendered as
+    a structured anchor list — the prompt instructs the LLM to cite
+    these entities by name rather than re-quoting filing text.
     """
     logger.info("[%s] deep_dive starting (loop %d)", state.ticker, state.loop_count)
     state.phase = "deep_dive"
@@ -1106,6 +1127,66 @@ async def node_deep_dive(
             + "\n\n".join(blocks)
         )
 
+    def _build_counterparty_context(category: str) -> str:
+        """Render the relationship graph payload for the deep-dive prompt.
+        Returns '' when the category is not routed, or when we have no
+        extracted relationships for this ticker."""
+        if category not in RELATIONSHIP_ROUTING:
+            return ""
+        if not counterparty_context or not counterparty_context.has_data:
+            return ""
+
+        ctx = counterparty_context  # alias for brevity
+
+        lines: list[str] = [
+            "RESOLVED COUNTERPARTIES",
+            "(pre-extracted from the filing excerpts above; use these as anchors when",
+            "referring to named customers, suppliers, partners, or competitors.",
+            "Do NOT re-quote verbatim text from the filings for these entities — cite",
+            "them by name. Resolved tickers in $ notation indicate companies tracked",
+            "elsewhere in this research platform.)",
+            "",
+        ]
+
+        def _fmt_entry(e) -> str:
+            # e: CounterpartyEntry
+            ticker_suffix = f" (${e.resolved_ticker})" if e.resolved_ticker else ""
+            parts = [f"{e.name}{ticker_suffix}", e.relationship_type]
+            if e.magnitude_pct is not None:
+                parts.append(f"{e.magnitude_pct:.1f}%")
+            return "    - " + " — ".join(parts)
+
+        if ctx.outbound:
+            lines.append(f"Outbound — {state.ticker}'s disclosed relationships:")
+            # Stable type order — show concentration-relevant buckets first.
+            type_order = [
+                "customer", "supplier", "partner", "joint_venture",
+                "licensor", "licensee", "distributor", "reseller",
+                "competitor", "other",
+            ]
+            for t in type_order:
+                entries = ctx.outbound.get(t)
+                if not entries:
+                    continue
+                lines.append(f"  {t.replace('_', ' ').title()}s:")
+                for e in entries:
+                    lines.append(_fmt_entry(e))
+            lines.append("")
+
+        if ctx.inbound:
+            lines.append(f"Mentioned by others — who named {state.ticker} in their own filings:")
+            for t, entries in sorted(ctx.inbound.items()):
+                if not entries:
+                    continue
+                lines.append(f"  As a {t.replace('_', ' ')} ({len(entries)} mention(s)):")
+                for e in entries:
+                    # e.resolved_ticker is the author ticker here
+                    # Bucket header already states the relationship_type; don't repeat.
+                    lines.append(f"    - ${e.resolved_ticker}")
+            lines.append("")
+
+        return "\n".join(lines).rstrip() + "\n"
+
     # Run all categories in parallel
     tasks = [
         _run_one_category(
@@ -1114,6 +1195,7 @@ async def node_deep_dive(
             _build_technical_context(cat), _build_sentiment_context(cat),
             _build_edgar_context(cat),
             _build_filing_excerpt_context(cat),
+            _build_counterparty_context(cat),
         )
         for cat in categories_to_run
     ]
