@@ -1,6 +1,72 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+## 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+Before implementing:
+
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+## 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+When editing existing code:
+
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+Transform tasks into verifiable goals:
+
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+
+## PROJECT SPECIFIC INFO:
 
 ## What this is
 
@@ -16,7 +82,7 @@ Two deployables in a flat layout:
 
 ## ⚠️ Next.js 16 is not the Next.js you know
 
-`frontend/AGENTS.md` says: *"This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code."* Heed this before editing anything in `frontend/`. Do not assume `middleware.ts`, route-handler shapes, caching primitives, or Server Component APIs match older releases — check `node_modules/next/dist/docs/` first.
+`frontend/AGENTS.md` says: _"This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code."_ Heed this before editing anything in `frontend/`. Do not assume `middleware.ts`, route-handler shapes, caching primitives, or Server Component APIs match older releases — check `node_modules/next/dist/docs/` first.
 
 ## Common commands
 
@@ -109,6 +175,7 @@ Two kinds of async work run under the FastAPI process:
 Five-phase pipeline for extracting and consuming SEC filing narrative. All on-demand — no automatic trigger during pipeline runs.
 
 **Phase A — Filing section extraction** (`services/edgar_sections_ingest.py` + `services/edgar_html.py`):
+
 - `POST /api/filings/ingest/{ticker}` pulls the latest 10-K, 10-Q, and DEF 14A from EDGAR, extracts Item 1 Business, Item 1A Risk Factors, Item 7 MD&A (10-K) / Item 2 MD&A (10-Q), and DEF 14A Governance via BeautifulSoup.
 - Strips inline XBRL (`ix:hidden` dropped, `ix:nonFraction`/`ix:nonNumeric` unwrapped to displayed value). Heading regex anchored to line-start (MULTILINE) for MD&A and Item 1 Business to avoid matching in-body cross-references.
 - Item 1A regex tolerates mid-word whitespace: `R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S` — mirrors the `O\s*F` tolerance on MD&A patterns. Needed because XBRL/markup boundaries can split characters with `\n` mid-word (e.g., ORCL 10-K renders `Risk` as `R\nisk`).
@@ -116,27 +183,32 @@ Five-phase pipeline for extracting and consuming SEC filing narrative. All on-de
 - Idempotent on `(filing_id, section_key)`. Service functions return a summary dict with an `errors: []` list rather than raising on per-form problems — callers must either check the list or surface it to end users.
 
 **Phase A — Prompt integration** (`FILING_EXCERPT_ROUTING` in `graph/nodes.py`):
+
 - Deep-dive categories receive verbatim filing excerpts via `{filing_excerpts}` slot in `DEEP_DIVE_USER`: Business Quality ← Item 1, Risk Assessment ← Item 1A, Growth & Earnings ← Item 7 + Item 2, Management & Governance ← DEF 14A governance, Future Durability ← Item 7 + Item 1.
 - Filing sections are fetched per-ticker in `PipelineService._fetch_filing_sections()` using a dedicated session (same pattern as `_fetch_edgar_facts`).
 
 **Phase B — Relationship extraction** (`services/edgar_relationships.py`):
+
 - `POST /api/filings/extract-relationships/{ticker}` runs one Haiku call per extractable section (Item 1, 1A, 7/2). Each section truncated to 15K chars.
 - Pydantic structured output (`ExtractionResult` with `ExtractedRelationship` list) via `assistant_prefill='{"relationships":'`. Extracts counterparty_name, relationship_type, magnitude_pct, unnamed flag, verbatim_quote.
 - Relationship types: `customer`, `supplier`, `partner`, `competitor`, `licensor`, `licensee`, `distributor`, `reseller`, `joint_venture`, `other`.
 - Persisted in `relationships` table. Idempotent via `filing_sections.relationships_extracted_at` tombstone column — zero-relationship sections are marked too.
 
 **Phase C — Counterparty resolution** (`services/counterparty_resolver.py`):
+
 - `POST /api/relationships/resolve/{ticker}` normalizes counterparty names (strips Inc/Corp/LLC/Holdings/Group/etc, punctuation, lowercases) and matches against EDGAR's `company_tickers.json` (~10K entities).
 - Exact match → auto-resolve. RapidFuzz `token_set_ratio` ≥ 95 → auto-resolve. 80-94 → curation queue. Below 80 → queue only.
 - Aliases persisted in `counterparty_aliases` table (unique on `alias_normalized`). Write-through populates `relationships.resolved_to_cik` / `resolved_to_ticker` on every matching row.
 - `GET /api/relationships/unresolved` → curation queue. `POST /api/relationships/alias` → manual override.
 
 **Phase D — Supply-chain graph** (`services/supply_chain.py`):
+
 - `GET /api/relationships/graph/{ticker}?direction=out|in|both` returns `{root_ticker, nodes[], edges[], summary}`. 1-hop depth. Nodes identified by CIK (resolved) or normalized name (unresolved). `tracked` flag from theme seed_tickers.
 - `POST /api/relationships/reconcile` flips `confirmed_bilateral=true` on reciprocal pairs (customer↔supplier, partner↔partner, competitor↔competitor, licensor↔licensee, distributor↔reseller, joint_venture↔joint_venture).
 - Frontend: `SupplyChainEcosystem` card in the deep-dive dashboard (after Business Quality). Groups counterparties by type, shows verbatim quotes, bilateral badges, tracker-links.
 
 **Phase E — Fan-out orchestration + deep-dive prompt routing** (`services/fanout.py` + `services/relationship_context.py`):
+
 - `FanoutService` wired into `main.py::lifespan` as `app.state.fanout = FanoutService(edgar=app.state.edgar)` (reuses the shared EdgarClient). Three endpoints: `POST /api/themes/{id}/relationships/fanout?force=false` and `POST /api/tickers/{ticker}/relationships/fanout?force=false` return 202 + `fanout_id` immediately; `GET /api/fanouts/{id}` returns `FanoutStatus`. Status is in-memory (no restart persistence — acceptable for a personal tool).
 - Per-ticker flow: serial ingest → extract → resolve, each in its own `async_session()` with an **explicit `await db.commit()`** (existing callers in `api/filings.py` do the same; `async_session` is `expire_on_commit=False` but does NOT autocommit — forgetting this means nothing persists). `force=True` only affects the extract stage; resolve already skips rows with `resolved_to_cik IS NOT NULL`. Ingest summary errors (no CIK, empty submissions, etc) are surfaced to `status.errors[]` so the UI doesn't report silent success.
 - Per-ticker errors are captured in `status.errors[]` and don't abort the outer loop; `status = "failed"` only on orchestrator-level crashes. CancelledError (a `BaseException` subclass) bypasses `except Exception` and the `finally` block resolves the stuck "running" → "failed" state.
@@ -146,6 +218,7 @@ Five-phase pipeline for extracting and consuming SEC filing narrative. All on-de
 - `PipelineService._fetch_counterparty_context(ticker) -> CounterpartyContext` mirrors `_fetch_filing_sections` — dedicated `async_session()`, exception-safe empty-fallback. Threaded into `node_deep_dive` as the `counterparty_context=` kwarg alongside `filing_sections`, `edgar_facts`, etc.
 
 Database tables (all in `models/filing.py`):
+
 - `filings` — one row per accession_number (10-K, 10-Q, DEF 14A, etc.)
 - `xbrl_facts` — XBRL numeric facts (RPO, debt maturity, concentration, credit)
 - `filing_sections` — extracted narrative text per section per filing
