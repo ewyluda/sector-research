@@ -34,6 +34,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
     title: "Context",
     items: [
       { id: "business_quality", label: "Business Quality" },
+      { id: "competition", label: "Competition" },
       { id: "supply_chain", label: "Supply Chain" },
       { id: "macro_regime", label: "Macro", title: "Macro & Regime" },
       { id: "risk_assessment", label: "Risk", title: "Risk Assessment" },
