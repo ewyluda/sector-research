@@ -21,6 +21,7 @@ from backend.app.models.filing import (
     FilingSegment,
     Relationship,
 )
+from backend.app.models.theme import Theme
 from backend.app.services.counterparty_resolver import (
     list_unresolved_counterparties,
     resolve_batch,
@@ -583,22 +584,24 @@ async def get_competition(
             extracted_at=None, segments=[],
         )
 
-    # Pull segments + landscape for this filing
+    # Pull segments + landscape for this filing — order by extracted_at so
+    # the response is deterministic across re-reads (heap order is not).
     seg_rows = (
         await db.execute(
-            select(FilingSegment).where(FilingSegment.filing_id == filing.id)
+            select(FilingSegment)
+            .where(FilingSegment.filing_id == filing.id)
+            .order_by(FilingSegment.extracted_at)
         )
     ).scalars().all()
     landscape_rows = (
         await db.execute(
-            select(CompetitorLandscape).where(
-                CompetitorLandscape.filing_id == filing.id
-            )
+            select(CompetitorLandscape)
+            .where(CompetitorLandscape.filing_id == filing.id)
+            .order_by(CompetitorLandscape.extracted_at)
         )
     ).scalars().all()
 
     # Build tracked-ticker set from theme.seed_tickers across all themes
-    from backend.app.models.theme import Theme
     theme_rows = (await db.execute(select(Theme))).scalars().all()
     tracked: set[str] = set()
     for t in theme_rows:
