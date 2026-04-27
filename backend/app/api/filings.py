@@ -17,9 +17,11 @@ from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, 
 from backend.app.services.counterparty_resolver import (
     list_unresolved_counterparties,
     resolve_batch,
+    resolve_competition_for_ticker,
     resolve_ticker_relationships,
     upsert_manual_alias,
 )
+from backend.app.services.edgar_competition import extract_ticker_competition
 from backend.app.services.edgar_relationships import (
     extract_batch_relationships,
     extract_ticker_relationships,
@@ -184,6 +186,33 @@ async def extract_relationships_batch(
     results = await extract_batch_relationships(body.tickers, db=db, force=force)
     await db.commit()
     return results
+
+
+@router.post("/filings/extract-competition/{ticker}")
+async def extract_competition_for_ticker(
+    ticker: str,
+    force: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Run Haiku competition extraction on the latest 10-K for the ticker.
+
+    Idempotent on filing_sections.competition_extracted_at. Pass `?force=true`
+    to wipe prior segments/landscape rows and re-extract. After extraction
+    runs, the counterparty resolver back-fills resolved_to_ticker / _cik
+    into the competitors[] JSONB array.
+    """
+    summary = await extract_ticker_competition(ticker, db=db, force=force)
+    await db.commit()
+
+    # Resolver runs against the freshly-persisted JSONB rows. A second commit
+    # picks up the JSONB mutations from flag_modified.
+    if summary.filing_id and not summary.skipped:
+        resolver_summary = await resolve_competition_for_ticker(ticker, db=db)
+        await db.commit()
+    else:
+        resolver_summary = None
+
+    return {**summary.as_dict(), "resolver": resolver_summary}
 
 
 class RelationshipRecord(BaseModel):
