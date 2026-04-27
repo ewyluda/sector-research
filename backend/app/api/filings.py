@@ -369,10 +369,15 @@ async def resolve_ticker(
     ticker: str, db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Resolve unresolved counterparties for a ticker via alias reuse,
-    exact match, and ≥95 fuzzy match against EDGAR's company universe."""
-    summary = await resolve_ticker_relationships(ticker, db=db)
+    exact match, and ≥95 fuzzy match against EDGAR's company universe.
+
+    Runs against both `relationships` rows AND `competitor_landscape`
+    JSONB elements so a single resolve action covers both surfaces.
+    """
+    rel_summary = await resolve_ticker_relationships(ticker, db=db)
+    comp_summary = await resolve_competition_for_ticker(ticker, db=db)
     await db.commit()
-    return summary
+    return {"relationships": rel_summary, "competition": comp_summary}
 
 
 @router.post("/relationships/resolve/batch")
