@@ -112,3 +112,106 @@ class ExtractionSummary:
             "skipped": self.skipped,
             "errors": list(self.errors),
         }
+
+
+# ── Prompts ──────────────────────────────────────────────────────────────────
+
+
+_SYSTEM_PROMPT = """You extract the Competition disclosure from Item 1 of a 10-K filing.
+
+Most filers structure this as a table:
+  Segment → Areas of Competition → list of named Competitors.
+
+Some filers (single-segment businesses) describe competition as a paragraph
+without a segment header. In that case use segment_name="Overall".
+
+Rules:
+- Capture every Segment, every Area of Competition, and every named Competitor as written in the filing.
+- Use the EXACT casing from the text for company names. Don't normalize.
+- Do NOT infer competitors from background knowledge. Only extract entities the filer explicitly names.
+- Skip generic language ("we face competition from numerous companies"); only extract when the filer names competitors OR names a competitive arena (an "area of competition") with at least one named competitor.
+- For each segment, write a 2–3 sentence `narrative` summarizing segment scope, end markets, and growth direction. Pull cues from the same Item 1 text — DO NOT invent numbers or revenue figures.
+- If the filing discloses no structured competition, return an empty `segments` array.
+
+Output strict JSON matching this schema:
+{
+  "segments": [
+    {
+      "segment_name": "string (or 'Overall' for single-segment filers)",
+      "narrative": "2-3 sentences from Item 1 text",
+      "areas": [
+        {
+          "area_of_competition": "left-column text",
+          "competitors": [
+            {
+              "name": "Exact Company Name Inc.",
+              "magnitude_pct": number | null,
+              "verbatim_quote": "optional anchor sentence ≤200 chars"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}"""
+
+_USER_TEMPLATE = """Ticker: {ticker}
+Filing: {form_type} filed {filing_date}
+Section: {section_key} ({heading})
+
+Section text (truncated to {budget} chars):
+\"\"\"
+{text}
+\"\"\"
+
+Extract the Competition disclosure as the JSON object described in the system prompt."""
+
+
+# ── Extraction ────────────────────────────────────────────────────────────────
+
+
+async def _call_haiku_on_item_1(
+    ticker: str,
+    form_type: str,
+    filing_date: str,
+    section_key: str,
+    heading: str | None,
+    text: str,
+) -> tuple[ExtractionResult | None, str | None]:
+    """Run one Haiku extraction pass. Returns (result, error_str).
+
+    On any failure returns (None, error_str) so callers can persist the
+    tombstone and surface the error without aborting.
+    """
+    truncated = text[:SECTION_CHAR_BUDGET]
+    prompt = _USER_TEMPLATE.format(
+        ticker=ticker.upper(),
+        section_key=section_key,
+        heading=heading or section_key,
+        form_type=form_type,
+        filing_date=filing_date,
+        budget=SECTION_CHAR_BUDGET,
+        text=truncated,
+    )
+    try:
+        raw = await complete(
+            system=_SYSTEM_PROMPT,
+            user=prompt,
+            model=HAIKU,
+            max_tokens=4000,
+            assistant_prefill='{"segments":',
+        )
+    except Exception as e:
+        logger.warning(
+            "Haiku competition call failed for %s: %s", ticker, e,
+        )
+        return None, f"haiku_call_failed: {e}"
+
+    parsed, err = parse_structured_output(raw, ExtractionResult)
+    if parsed is None:
+        logger.warning(
+            "competition parse failed for %s: %s; raw head: %r",
+            ticker, err, raw[:400],
+        )
+        return None, err or "unknown_parse_error"
+    return parsed, None
