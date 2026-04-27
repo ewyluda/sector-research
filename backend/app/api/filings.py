@@ -13,7 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
 from backend.app.db import get_db
-from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship
+from backend.app.models.filing import (
+    CompetitorLandscape,
+    CounterpartyAlias,
+    Filing,
+    FilingSection,
+    FilingSegment,
+    Relationship,
+)
 from backend.app.services.counterparty_resolver import (
     list_unresolved_counterparties,
     resolve_batch,
@@ -71,6 +78,40 @@ class FilingSectionText(BaseModel):
     char_count: int
     extraction_method: str
     extracted_at: str
+
+
+# Competition response schemas
+class CompetitorChipResponse(BaseModel):
+    name: str
+    ticker: str | None
+    magnitude_pct: float | None
+    verbatim_quote: str | None
+    tracked: bool
+
+
+class CompetitionAreaResponse(BaseModel):
+    area_of_competition: str
+    competitors: list[CompetitorChipResponse]
+
+
+class CompetitionSegmentResponse(BaseModel):
+    segment_name: str
+    narrative: str
+    areas: list[CompetitionAreaResponse]
+
+
+class CompetitionFilingResponse(BaseModel):
+    accession_number: str
+    form_type: str
+    filing_date: str
+    sec_filing_url: str | None
+
+
+class CompetitionResponse(BaseModel):
+    ticker: str
+    filing: CompetitionFilingResponse | None
+    extracted_at: str | None
+    segments: list[CompetitionSegmentResponse]
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -476,3 +517,123 @@ async def reconcile_all_bilaterals(db: AsyncSession = Depends(get_db)) -> dict:
     summary = await reconcile_bilaterals(db)
     await db.commit()
     return summary
+
+
+@router.get("/competition/{ticker}")
+async def get_competition(
+    ticker: str,
+    db: AsyncSession = Depends(get_db),
+) -> CompetitionResponse:
+    """Return the structured Competition view for a ticker.
+
+    Reads from the latest 10-K's filing_segments + competitor_landscape rows.
+    Returns `extracted_at: null` when extraction has never run.
+    """
+    ticker_upper = ticker.upper()
+
+    filing = (
+        await db.execute(
+            select(Filing)
+            .where(Filing.ticker == ticker_upper, Filing.form_type == "10-K")
+            .order_by(Filing.filing_date.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if filing is None:
+        return CompetitionResponse(
+            ticker=ticker_upper, filing=None, extracted_at=None, segments=[],
+        )
+
+    section = (
+        await db.execute(
+            select(FilingSection).where(
+                FilingSection.filing_id == filing.id,
+                FilingSection.section_key == "item_1_business",
+            )
+        )
+    ).scalar_one_or_none()
+    extracted_at = (
+        section.competition_extracted_at.isoformat()
+        if section and section.competition_extracted_at
+        else None
+    )
+
+    sec_url = (
+        f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={filing.cik}"
+        f"&type={filing.form_type}&dateb=&owner=include&count=40"
+        if filing.cik else None
+    )
+
+    filing_response = CompetitionFilingResponse(
+        accession_number=filing.accession_number,
+        form_type=filing.form_type,
+        filing_date=filing.filing_date.isoformat(),
+        sec_filing_url=sec_url,
+    )
+
+    if extracted_at is None:
+        return CompetitionResponse(
+            ticker=ticker_upper, filing=filing_response,
+            extracted_at=None, segments=[],
+        )
+
+    # Pull segments + landscape for this filing
+    seg_rows = (
+        await db.execute(
+            select(FilingSegment).where(FilingSegment.filing_id == filing.id)
+        )
+    ).scalars().all()
+    landscape_rows = (
+        await db.execute(
+            select(CompetitorLandscape).where(
+                CompetitorLandscape.filing_id == filing.id
+            )
+        )
+    ).scalars().all()
+
+    # Build tracked-ticker set from theme.seed_tickers across all themes
+    from backend.app.models.theme import Theme
+    theme_rows = (await db.execute(select(Theme))).scalars().all()
+    tracked: set[str] = set()
+    for t in theme_rows:
+        for tk in (t.seed_tickers or []):
+            tracked.add(tk.upper())
+
+    # Group landscape rows by segment_name → list of areas
+    by_segment: dict[str, list[CompetitorLandscape]] = {}
+    for row in landscape_rows:
+        by_segment.setdefault(row.segment_name, []).append(row)
+
+    segments_out: list[CompetitionSegmentResponse] = []
+    for seg in seg_rows:
+        areas_out: list[CompetitionAreaResponse] = []
+        for area_row in by_segment.get(seg.segment_name, []):
+            chips: list[CompetitorChipResponse] = []
+            for comp in (area_row.competitors or []):
+                resolved_ticker = comp.get("resolved_to_ticker")
+                chips.append(CompetitorChipResponse(
+                    name=comp.get("name", ""),
+                    ticker=resolved_ticker,
+                    magnitude_pct=comp.get("magnitude_pct"),
+                    verbatim_quote=comp.get("verbatim_quote"),
+                    tracked=bool(
+                        resolved_ticker and resolved_ticker.upper() in tracked
+                    ),
+                ))
+            areas_out.append(CompetitionAreaResponse(
+                area_of_competition=area_row.area_of_competition,
+                competitors=chips,
+            ))
+        segments_out.append(CompetitionSegmentResponse(
+            segment_name=seg.segment_name,
+            narrative=seg.narrative,
+            areas=areas_out,
+        ))
+
+    return CompetitionResponse(
+        ticker=ticker_upper,
+        filing=filing_response,
+        extracted_at=extracted_at,
+        segments=segments_out,
+    )
