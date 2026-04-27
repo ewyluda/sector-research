@@ -43,7 +43,7 @@ EXTRACTABLE_SECTION_KEYS: tuple[str, ...] = (
 SECTION_CHAR_BUDGET = 15000
 
 ALLOWED_TYPES: tuple[str, ...] = (
-    "customer", "supplier", "partner", "competitor", "licensor",
+    "customer", "supplier", "partner", "licensor",
     "licensee", "distributor", "reseller", "joint_venture", "other",
 )
 
@@ -64,8 +64,8 @@ class ExtractedRelationship(BaseModel):
     relationship_type: str = Field(
         ...,
         description=(
-            "One of: customer, supplier, partner, competitor, licensor, "
-            "licensee, distributor, reseller, joint_venture, other."
+            "One of: customer, supplier, partner, licensor, licensee, "
+            "distributor, reseller, joint_venture, other."
         ),
     )
     magnitude_pct: float | None = Field(
@@ -103,7 +103,7 @@ class ExtractionResult(BaseModel):
 
 _SYSTEM_PROMPT = """You extract business-relationship disclosures from SEC filing sections.
 
-A relationship is any named business counterparty (customer, supplier, partner, competitor, licensor, licensee, distributor, reseller, joint-venture partner) OR an UNNAMED counterparty concentration (e.g. "one customer represented 12% of revenue") that the filer discloses.
+A relationship is any named business counterparty (customer, supplier, partner, licensor, licensee, distributor, reseller, joint-venture partner) OR an UNNAMED counterparty concentration (e.g. "one customer represented 12% of revenue") that the filer discloses.
 
 Rules:
 - Only extract relationships that the filer explicitly describes in the text. Do NOT infer from company background knowledge.
@@ -120,7 +120,7 @@ Output strict JSON matching this schema:
   "relationships": [
     {
       "counterparty_name": "string (exact name or empty for unnamed)",
-      "relationship_type": "customer|supplier|partner|competitor|licensor|licensee|distributor|reseller|joint_venture|other",
+      "relationship_type": "customer|supplier|partner|licensor|licensee|distributor|reseller|joint_venture|other",
       "magnitude_pct": number | null,
       "unnamed": boolean,
       "verbatim_quote": "verbatim sentence(s) up to ~500 chars"
