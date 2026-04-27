@@ -2,8 +2,8 @@
 section using Haiku. Persists per-segment narrative + per-(segment, area)
 competitor lists into filing_segments and competitor_landscape.
 
-Idempotent on `filing_sections.competition_extracted_at`. Re-runs are no-ops
-unless `force=True`.
+Idempotent on `filing_sections.competition_extracted_at`. Successfully parsed
+runs are no-ops unless `force=True`; failed calls remain retryable.
 """
 from __future__ import annotations
 
@@ -180,8 +180,8 @@ async def _call_haiku_on_item_1(
 ) -> tuple[ExtractionResult | None, str | None]:
     """Run one Haiku extraction pass. Returns (result, error_str).
 
-    On any failure returns (None, error_str) so callers can persist the
-    tombstone and surface the error without aborting.
+    On any failure returns (None, error_str) so callers can surface the error
+    without aborting. Failures are intentionally retryable.
     """
     truncated = text[:SECTION_CHAR_BUDGET]
     prompt = _USER_TEMPLATE.format(
@@ -230,7 +230,7 @@ async def extract_ticker_competition(
       2. Look up its item_1_business filing_section.
       3. If competition_extracted_at is set and not force, return skipped.
       4. Call Haiku, persist filing_segments + competitor_landscape.
-      5. Stamp the tombstone (always, even on zero segments).
+      5. Stamp the tombstone after a successful parse (even on zero segments).
       6. Run resolver to back-fill resolved_to_cik / _ticker into JSONB.
 
     Caller is responsible for `await db.commit()`.
@@ -280,14 +280,14 @@ async def extract_ticker_competition(
         text=section.text,
     )
 
-    # Step 5: stamp tombstone — always, even on call failure or zero segments,
-    # so re-runs are no-ops unless force=True.
-    section.competition_extracted_at = datetime.utcnow()
-
     if err is not None:
         summary.errors.append(err)
         return summary
     assert result is not None  # for type-checker
+
+    # Step 5: stamp tombstone only after a successful parse. Successful
+    # zero-segment results are still terminal/idempotent; failures retry.
+    section.competition_extracted_at = datetime.utcnow()
 
     # Step 5a: persist segments + landscape rows. force=True wipes prior rows
     # so we don't accumulate stale segments from earlier extraction runs.
@@ -303,11 +303,50 @@ async def extract_ticker_competition(
             )
         )
 
+    segment_rows: dict[str, tuple[str, str]] = {}
+    landscape_rows: dict[tuple[str, str], dict] = {}
+
     for seg in result.segments:
-        seg_name = seg.segment_name.strip()[:256] or "Overall"
+        seg_name = " ".join(seg.segment_name.strip().split())[:256] or "Overall"
+        seg_key = seg_name.lower()
         narrative = seg.narrative.strip()
         if not narrative:
             continue
+        segment_rows.setdefault(seg_key, (seg_name, narrative))
+
+        for area in seg.areas:
+            area_text = " ".join(area.area_of_competition.strip().split())
+            if not area_text:
+                continue
+            area_key = area_text.lower()
+            row_key = (seg_key, area_key)
+            row = landscape_rows.setdefault(
+                row_key,
+                {
+                    "segment_name": seg_name,
+                    "area_text": area_text,
+                    "competitors": [],
+                    "competitor_keys": set(),
+                },
+            )
+            for c in area.competitors:
+                name = c.name.strip()[:256]
+                if not name:
+                    continue
+                competitor_key = normalize_name(name) or name.lower()
+                if competitor_key in row["competitor_keys"]:
+                    continue
+                row["competitor_keys"].add(competitor_key)
+                row["competitors"].append({
+                    "name": name,
+                    "name_normalized": normalize_name(name),
+                    "magnitude_pct": c.magnitude_pct,
+                    "verbatim_quote": (c.verbatim_quote or "").strip()[:1000] or None,
+                    "resolved_to_cik": None,
+                    "resolved_to_ticker": None,
+                })
+
+    for seg_name, narrative in segment_rows.values():
         db.add(FilingSegment(
             filing_id=filing.id,
             ticker=ticker_upper,
@@ -316,36 +355,19 @@ async def extract_ticker_competition(
         ))
         summary.segments_extracted += 1
 
-        for area in seg.areas:
-            area_text = area.area_of_competition.strip()
-            if not area_text:
-                continue
-            competitors_payload = []
-            for c in area.competitors:
-                name = c.name.strip()[:256]
-                if not name:
-                    continue
-                competitors_payload.append({
-                    "name": name,
-                    "name_normalized": normalize_name(name),
-                    "magnitude_pct": c.magnitude_pct,
-                    "verbatim_quote": (c.verbatim_quote or "").strip()[:1000] or None,
-                    "resolved_to_cik": None,
-                    "resolved_to_ticker": None,
-                })
-                summary.competitors_extracted += 1
-            if not competitors_payload:
-                # still record the area row so the UI can show "named arena"
-                # cases where a filer described an area but didn't name competitors
-                pass
-            db.add(CompetitorLandscape(
-                filing_id=filing.id,
-                ticker=ticker_upper,
-                segment_name=seg_name,
-                area_of_competition=area_text,
-                competitors=competitors_payload,
-            ))
-            summary.areas_extracted += 1
+    for row in landscape_rows.values():
+        competitors_payload = row["competitors"]
+        # Still record empty area rows so the UI can show "named arena" cases
+        # where a filer described an area but didn't name competitors.
+        summary.competitors_extracted += len(competitors_payload)
+        db.add(CompetitorLandscape(
+            filing_id=filing.id,
+            ticker=ticker_upper,
+            segment_name=row["segment_name"],
+            area_of_competition=row["area_text"],
+            competitors=competitors_payload,
+        ))
+        summary.areas_extracted += 1
 
     # Step 6: resolver runs in caller after commit (see API layer). We can't
     # run it here without a second commit — keep the persistence atomic.

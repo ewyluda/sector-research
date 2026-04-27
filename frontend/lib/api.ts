@@ -218,6 +218,25 @@ export interface ResolveSummary {
   aliases_created: number;
 }
 
+export interface CompetitionResolveSummary {
+  ticker: string;
+  rows_considered: number;
+  competitors_considered: number;
+  already_resolved: number;
+  resolved_via_alias: number;
+  resolved_via_exact: number;
+  resolved_via_fuzzy: number;
+  unresolved: number;
+  rows_updated: number;
+  aliases_created: number;
+  relationships_updated: number;
+}
+
+export interface CombinedResolveSummary {
+  relationships: ResolveSummary;
+  competition: CompetitionResolveSummary;
+}
+
 // ── Competition extraction (Phase A for competitive landscape) ─────────────────
 
 export interface CompetitorChip {
@@ -261,7 +280,7 @@ export interface CompetitionExtractionSummary {
   competitors_extracted: number;
   skipped: boolean;
   errors: string[];
-  resolver: Record<string, unknown> | null;
+  resolver: CompetitionResolveSummary | null;
 }
 
 // ── Fan-out (bulk ingest + extract + resolve per theme or ticker) ─────────────
@@ -303,7 +322,7 @@ export const relationships = {
       { method: "POST" }
     ),
   resolveTicker: (ticker: string) =>
-    apiFetch<ResolveSummary>(
+    apiFetch<CombinedResolveSummary>(
       `/api/relationships/resolve/${encodeURIComponent(ticker)}`,
       { method: "POST" }
     ),

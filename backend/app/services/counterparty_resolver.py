@@ -417,10 +417,9 @@ async def resolve_competition_for_ticker(
     match → fuzzy ≥ FUZZY_AUTO_THRESHOLD). Score 80–94 is left unresolved
     (no curation queue for the new surface in v1).
 
-    Per-ticker only: does NOT cascade newly-created aliases to other
-    tickers' competitor_landscape rows (the relationship resolver does
-    that via `_write_back_relationships`, but JSONB-element write-back
-    across rows is deferred until cross-ticker resolution is needed).
+    Per-ticker only for competitor_landscape JSONB rows. Newly-created aliases
+    still write through to matching Relationship rows so the alias store keeps
+    its global relationship-resolution invariant.
 
     Caller is responsible for `await db.commit()`.
     """
@@ -436,6 +435,7 @@ async def resolve_competition_for_ticker(
         "unresolved": 0,
         "rows_updated": 0,
         "aliases_created": 0,
+        "relationships_updated": 0,
     }
 
     rows = (
@@ -526,6 +526,9 @@ async def resolve_competition_for_ticker(
                 )
                 db.add(new_alias)
                 summary["aliases_created"] += 1
+                summary["relationships_updated"] += await _write_back_relationships(
+                    db, normalized, top.cik, top.ticker,
+                )
 
                 comp["resolved_to_cik"] = top.cik
                 comp["resolved_to_ticker"] = top.ticker
