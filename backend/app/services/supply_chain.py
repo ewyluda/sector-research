@@ -243,7 +243,6 @@ _RECIPROCAL_PAIRS: tuple[tuple[str, str], ...] = (
     ("distributor", "reseller"),
     ("partner", "partner"),
     ("joint_venture", "joint_venture"),
-    ("competitor", "competitor"),
 )
 
 
