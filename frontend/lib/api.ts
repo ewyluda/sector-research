@@ -218,6 +218,71 @@ export interface ResolveSummary {
   aliases_created: number;
 }
 
+export interface CompetitionResolveSummary {
+  ticker: string;
+  rows_considered: number;
+  competitors_considered: number;
+  already_resolved: number;
+  resolved_via_alias: number;
+  resolved_via_exact: number;
+  resolved_via_fuzzy: number;
+  unresolved: number;
+  rows_updated: number;
+  aliases_created: number;
+  relationships_updated: number;
+}
+
+export interface CombinedResolveSummary {
+  relationships: ResolveSummary;
+  competition: CompetitionResolveSummary;
+}
+
+// ── Competition extraction (Phase A for competitive landscape) ─────────────────
+
+export interface CompetitorChip {
+  name: string;
+  ticker: string | null;
+  magnitude_pct: number | null;
+  verbatim_quote: string | null;
+  tracked: boolean;
+}
+
+export interface CompetitionArea {
+  area_of_competition: string;
+  competitors: CompetitorChip[];
+}
+
+export interface CompetitionSegment {
+  segment_name: string;
+  narrative: string;
+  areas: CompetitionArea[];
+}
+
+export interface CompetitionFiling {
+  accession_number: string;
+  form_type: string;
+  filing_date: string;
+  sec_filing_url: string | null;
+}
+
+export interface CompetitionData {
+  ticker: string;
+  filing: CompetitionFiling | null;
+  extracted_at: string | null;
+  segments: CompetitionSegment[];
+}
+
+export interface CompetitionExtractionSummary {
+  ticker: string;
+  filing_id: string | null;
+  segments_extracted: number;
+  areas_extracted: number;
+  competitors_extracted: number;
+  skipped: boolean;
+  errors: string[];
+  resolver: CompetitionResolveSummary | null;
+}
+
 // ── Fan-out (bulk ingest + extract + resolve per theme or ticker) ─────────────
 
 export type FanoutStatusLiteral = "running" | "completed" | "failed";
@@ -257,7 +322,7 @@ export const relationships = {
       { method: "POST" }
     ),
   resolveTicker: (ticker: string) =>
-    apiFetch<ResolveSummary>(
+    apiFetch<CombinedResolveSummary>(
       `/api/relationships/resolve/${encodeURIComponent(ticker)}`,
       { method: "POST" }
     ),
@@ -277,6 +342,18 @@ export const relationships = {
   reconcile: () =>
     apiFetch<{ pairs_reconciled: number; rows_flipped: number }>(
       `/api/relationships/reconcile`,
+      { method: "POST" }
+    ),
+};
+
+export const competition = {
+  get: (ticker: string) =>
+    apiFetch<CompetitionData>(
+      `/api/competition/${encodeURIComponent(ticker)}`
+    ),
+  extract: (ticker: string, force = false) =>
+    apiFetch<CompetitionExtractionSummary>(
+      `/api/filings/extract-competition/${encodeURIComponent(ticker)}${force ? "?force=true" : ""}`,
       { method: "POST" }
     ),
 };

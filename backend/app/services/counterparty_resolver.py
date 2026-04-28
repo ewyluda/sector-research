@@ -31,7 +31,8 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
-from backend.app.models.filing import CounterpartyAlias, Relationship
+from backend.app.models.filing import CompetitorLandscape, CounterpartyAlias, Relationship
+from sqlalchemy.orm.attributes import flag_modified
 
 logger = logging.getLogger(__name__)
 
@@ -403,6 +404,148 @@ async def resolve_batch(
             logger.exception("resolve failed for %s", t)
             out.append({"ticker": t.upper(), "error": str(e)})
     return out
+
+
+async def resolve_competition_for_ticker(
+    ticker: str, db: AsyncSession,
+) -> dict:
+    """Walk competitor_landscape rows for `ticker`, attempt to resolve each
+    unresolved competitor name in the JSONB array, write resolved_to_cik /
+    resolved_to_ticker back into the array, persist.
+
+    Mirrors `resolve_ticker_relationships` semantics (alias reuse → exact
+    match → fuzzy ≥ FUZZY_AUTO_THRESHOLD). Score 80–94 is left unresolved
+    (no curation queue for the new surface in v1).
+
+    Per-ticker only for competitor_landscape JSONB rows. Newly-created aliases
+    still write through to matching Relationship rows so the alias store keeps
+    its global relationship-resolution invariant.
+
+    Caller is responsible for `await db.commit()`.
+    """
+    ticker_upper = ticker.upper()
+    summary: dict = {
+        "ticker": ticker_upper,
+        "rows_considered": 0,
+        "competitors_considered": 0,
+        "already_resolved": 0,
+        "resolved_via_alias": 0,
+        "resolved_via_exact": 0,
+        "resolved_via_fuzzy": 0,
+        "unresolved": 0,
+        "rows_updated": 0,
+        "aliases_created": 0,
+        "relationships_updated": 0,
+    }
+
+    rows = (
+        await db.execute(
+            select(CompetitorLandscape).where(
+                CompetitorLandscape.ticker == ticker_upper
+            )
+        )
+    ).scalars().all()
+    if not rows:
+        return summary
+
+    edgar = EdgarClient()
+    resolver = CounterpartyResolver(edgar)
+    try:
+        await resolver.load()
+
+        # Cache normalized→(cik, ticker) decisions inside this run
+        local_cache: dict[str, tuple[str | None, str | None]] = {}
+
+        for row in rows:
+            summary["rows_considered"] += 1
+            competitors = list(row.competitors or [])
+            row_changed = False
+
+            for comp in competitors:
+                summary["competitors_considered"] += 1
+                if comp.get("resolved_to_cik"):
+                    summary["already_resolved"] += 1
+                    continue
+
+                raw_name = comp.get("name", "")
+                normalized = comp.get("name_normalized") or normalize_name(raw_name)
+                if not normalized:
+                    summary["unresolved"] += 1
+                    continue
+
+                # Local cache hit
+                if normalized in local_cache:
+                    cik, t = local_cache[normalized]
+                    if cik is None:
+                        summary["unresolved"] += 1
+                        continue
+                    comp["resolved_to_cik"] = cik
+                    comp["resolved_to_ticker"] = t
+                    row_changed = True
+                    continue
+
+                # 1. Alias reuse
+                alias = await _existing_alias_for(db, normalized)
+                if alias is not None:
+                    comp["resolved_to_cik"] = alias.canonical_cik
+                    comp["resolved_to_ticker"] = alias.canonical_ticker
+                    summary["resolved_via_alias"] += 1
+                    local_cache[normalized] = (
+                        alias.canonical_cik, alias.canonical_ticker,
+                    )
+                    row_changed = True
+                    continue
+
+                # 2 + 3. Exact / fuzzy match via the resolver universe
+                candidates = resolver.match(raw_name)
+                top = candidates[0] if candidates else None
+                if top is None or top.score < FUZZY_AUTO_THRESHOLD:
+                    local_cache[normalized] = (None, None)
+                    summary["unresolved"] += 1
+                    continue
+
+                # The resolver labels exact matches with source="exact_match"
+                # and fuzzy auto-resolves with source="fuzzy_auto". We persist
+                # alias rows mirroring those values so the existing curation
+                # tooling stays consistent.
+                if top.source == "exact_match":
+                    summary["resolved_via_exact"] += 1
+                    alias_source = "exact_match"
+                else:
+                    summary["resolved_via_fuzzy"] += 1
+                    alias_source = "fuzzy_auto"
+
+                new_alias = CounterpartyAlias(
+                    alias_name=raw_name[:256],
+                    alias_normalized=normalized,
+                    canonical_cik=top.cik,
+                    canonical_ticker=top.ticker,
+                    canonical_name=top.canonical_name,
+                    source=alias_source,
+                    confidence_score=top.score,
+                )
+                db.add(new_alias)
+                summary["aliases_created"] += 1
+                summary["relationships_updated"] += await _write_back_relationships(
+                    db, normalized, top.cik, top.ticker,
+                )
+
+                comp["resolved_to_cik"] = top.cik
+                comp["resolved_to_ticker"] = top.ticker
+                local_cache[normalized] = (top.cik, top.ticker)
+                row_changed = True
+
+            if row_changed:
+                row.competitors = competitors
+                # JSONB mutation tracking — without flag_modified, SA may not
+                # detect the in-place dict change on the JSONB column.
+                flag_modified(row, "competitors")
+                summary["rows_updated"] += 1
+
+    finally:
+        await edgar.close()
+
+    return summary
 
 
 # ── Curation queue ────────────────────────────────────────────────────────────

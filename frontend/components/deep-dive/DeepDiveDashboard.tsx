@@ -2,6 +2,7 @@ import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, Tra
 import { OverviewBanner } from "./OverviewBanner";
 import { FinancialHealth } from "./sections/FinancialHealth";
 import { SupplyChainEcosystem } from "./sections/SupplyChainEcosystem";
+import { Competition } from "./sections/Competition";
 import { GrowthEarnings } from "./sections/GrowthEarnings";
 import { TechnicalMarket } from "./sections/TechnicalMarket";
 import { BusinessQuality } from "./sections/BusinessQuality";
@@ -81,6 +82,9 @@ export function DeepDiveDashboard({ ticker, financials, categories: rawCategorie
           isLive={isLive}
           transcriptAnalysis={transcriptAnalysis ?? null}
         />
+
+        {/* Competition — Item 1 segment / area / competitor table */}
+        <Competition ticker={ticker} />
 
         {/* Supply Chain & Ecosystem — 1-hop relationship graph */}
         <SupplyChainEcosystem ticker={ticker} />

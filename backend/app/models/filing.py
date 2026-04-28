@@ -12,7 +12,7 @@ from datetime import date, datetime
 from uuid import uuid4
 
 from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.app.models.base import Base, TimestampMixin
@@ -112,6 +112,13 @@ class FilingSection(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Timestamp of the most recent Haiku competition-extraction pass.
+    # Mirrors `relationships_extracted_at` semantics: null = never attempted,
+    # non-null = attempted (even if zero segments were found).
+    competition_extracted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     __table_args__ = (
         UniqueConstraint("filing_id", "section_key", name="uq_filing_sections_filing_section"),
         Index("ix_filing_sections_ticker_section", "ticker", "section_key"),
@@ -177,6 +184,78 @@ class Relationship(Base):
         ),
         Index("ix_relationships_ticker_type", "ticker", "relationship_type"),
         Index("ix_relationships_counterparty_name", "counterparty_name"),
+    )
+
+
+class FilingSegment(Base):
+    """Per-segment narrative extracted from a 10-K's Item 1 Business section.
+
+    Companion to `competitor_landscape`. One row per (filing_id, segment_name).
+    The narrative is a 2–3 sentence Haiku-extracted summary of segment scope,
+    end markets, and growth direction — qualitative only, no numbers.
+    """
+
+    __tablename__ = "filing_segments"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    filing_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("filings.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    segment_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    narrative: Mapped[str] = mapped_column(Text, nullable=False)
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "filing_id", "segment_name",
+            name="uq_filing_segments_filing_segment",
+        ),
+    )
+
+
+class CompetitorLandscape(Base):
+    """Structured competition disclosure: one row per (filing, segment, area).
+
+    The `competitors` JSONB array holds the right-column entries from the
+    filer's competition table. Each element has the shape:
+        {
+          "name": str,
+          "name_normalized": str,
+          "magnitude_pct": float | null,
+          "verbatim_quote": str | null,
+          "resolved_to_cik": str | null,
+          "resolved_to_ticker": str | null
+        }
+    """
+
+    __tablename__ = "competitor_landscape"
+
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
+    )
+    filing_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("filings.id", ondelete="CASCADE"),
+        nullable=False, index=True,
+    )
+    ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    segment_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    area_of_competition: Mapped[str] = mapped_column(Text, nullable=False)
+    competitors: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "filing_id", "segment_name", "area_of_competition",
+            name="uq_competitor_landscape_filing_segment_area",
+        ),
     )
 
 

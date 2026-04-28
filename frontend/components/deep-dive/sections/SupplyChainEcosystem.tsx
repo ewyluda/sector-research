@@ -10,7 +10,6 @@ const TYPE_LABEL: Record<string, string> = {
   customer: "Customers",
   supplier: "Suppliers",
   partner: "Partners",
-  competitor: "Competitors",
   licensor: "Licensors",
   licensee: "Licensees",
   distributor: "Distributors",
@@ -28,7 +27,6 @@ const TYPE_ORDER = [
   "reseller",
   "licensor",
   "licensee",
-  "competitor",
   "other",
 ];
 

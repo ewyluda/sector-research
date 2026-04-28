@@ -1,8 +1,13 @@
 "use client";
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
-import { fanouts, filings } from "@/lib/api";
-import type { FanoutStatus, FilingRecord, FilingIngestSummary } from "@/lib/api";
+import { competition, fanouts, filings } from "@/lib/api";
+import type {
+  CompetitionExtractionSummary,
+  FanoutStatus,
+  FilingRecord,
+  FilingIngestSummary,
+} from "@/lib/api";
 import SectionReader from "./SectionReader";
 
 interface OpenSection {
@@ -42,6 +47,9 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
   const [openSection, setOpenSection] = useState<OpenSection | null>(null);
   const [fanoutStatus, setFanoutStatus] = useState<FanoutStatus | null>(null);
   const fanoutPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [extractingCompetition, setExtractingCompetition] = useState(false);
+  const [competitionMsg, setCompetitionMsg] = useState<string | null>(null);
+  const [competitionExtractedAt, setCompetitionExtractedAt] = useState<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -57,6 +65,13 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
     try {
       const rows = await filings.list(ticker);
       setRecords(rows);
+      // Hydrate the "extracted at" badge for the competition button.
+      try {
+        const cdata = await competition.get(ticker);
+        setCompetitionExtractedAt(cdata.extracted_at);
+      } catch {
+        // ignore; the badge just won't render
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "load failed");
     } finally {
@@ -119,6 +134,40 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
     }
   }
 
+  async function onExtractCompetition() {
+    setExtractingCompetition(true);
+    setCompetitionMsg(null);
+    setError(null);
+    try {
+      const force = competitionExtractedAt !== null;
+      const summary: CompetitionExtractionSummary = await competition.extract(
+        ticker, force,
+      );
+      if (summary.skipped) {
+        setCompetitionMsg("already extracted (use Re-extract to refresh)");
+      } else if (summary.errors.length > 0) {
+        setCompetitionMsg(
+          `${summary.segments_extracted} segments, ${summary.competitors_extracted} competitors · ${summary.errors.length} error(s)`,
+        );
+      } else {
+        setCompetitionMsg(
+          `${summary.segments_extracted} segments, ${summary.competitors_extracted} competitors`,
+        );
+      }
+      // Refresh the badge.
+      try {
+        const cdata = await competition.get(ticker);
+        setCompetitionExtractedAt(cdata.extracted_at);
+      } catch {
+        // ignore
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "extract failed");
+    } finally {
+      setExtractingCompetition(false);
+    }
+  }
+
   const withSections = (records ?? []).filter((r) => r.sections.length > 0);
   const hasFilings = withSections.length > 0;
 
@@ -155,11 +204,33 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
             >
               {ingesting ? "Ingesting…" : "Ingest latest"}
             </button>
+            <button
+              type="button"
+              onClick={onExtractCompetition}
+              disabled={extractingCompetition}
+              className="text-[11px] px-2 py-1 rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)] disabled:opacity-50"
+            >
+              {extractingCompetition
+                ? "Extracting…"
+                : competitionExtractedAt
+                ? "Re-extract competition"
+                : "Extract competition"}
+            </button>
           </div>
         </div>
 
         {ingestMsg && (
           <div className="text-[11px] text-[var(--text-muted)]">{ingestMsg}</div>
+        )}
+        {competitionMsg && (
+          <div className="text-[11px] text-[var(--text-muted)]">
+            Competition: {competitionMsg}
+          </div>
+        )}
+        {!competitionMsg && competitionExtractedAt && (
+          <div className="text-[10px] text-[var(--text-faint)]">
+            Competition extracted {new Date(competitionExtractedAt).toLocaleDateString()}
+          </div>
         )}
         {fanoutStatus && (
           <div className="text-[11px] text-[var(--text-muted)]">
