@@ -149,8 +149,9 @@ class Relationship(Base):
     # Free-text name as it appears in the filing. Resolution to a canonical
     # CIK is deferred to Phase C (counterparty_aliases table).
     counterparty_name: Mapped[str] = mapped_column(String(256), nullable=False, index=True)
-    # customer, supplier, partner, competitor, licensor, licensee,
+    # customer, supplier, partner, licensor, licensee,
     # distributor, reseller, joint_venture, other
+    # (competitor relationships live in competitor_landscape, not here)
     relationship_type: Mapped[str] = mapped_column(String(32), nullable=False)
 
     # Optional percentage (e.g. "20% of revenue"). Null when not disclosed.
