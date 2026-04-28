@@ -101,7 +101,7 @@ class ExtractionResult(BaseModel):
 
 # ── Prompts ──────────────────────────────────────────────────────────────────
 
-_SYSTEM_PROMPT = """You extract business-relationship disclosures from SEC filing sections.
+_SYSTEM_PROMPT = """You extract business-relationship disclosures from SEC filing sections or earnings call transcripts.
 
 A relationship is any named business counterparty (customer, supplier, partner, licensor, licensee, distributor, reseller, joint-venture partner) OR an UNNAMED counterparty concentration (e.g. "one customer represented 12% of revenue") that the filer discloses.
 
@@ -111,6 +111,7 @@ Rules:
 - Pull a verbatim quote (the sentence or two that establishes the relationship). Don't paraphrase.
 - When the filing describes a concentration without naming the counterparty, set unnamed=true and counterparty_name="".
 - Skip generic mentions of "customers" or "suppliers" — only extract specific entities or specific concentrations.
+- Skip analysts and brokerage firm participants in earnings call Q&A — they ask questions but are not counterparties.
 - Skip internal entities (subsidiaries, the filer's own products).
 - Deduplicate by (counterparty_name, relationship_type). Pick the quote with the most context.
 - Extract 0 relationships if none are disclosed — don't force matches.
