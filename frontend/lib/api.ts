@@ -286,7 +286,7 @@ export interface CompetitionExtractionSummary {
 // ── Fan-out (bulk ingest + extract + resolve per theme or ticker) ─────────────
 
 export type FanoutStatusLiteral = "running" | "completed" | "failed";
-export type FanoutStage = "ingest" | "extract" | "resolve";
+export type FanoutStage = "ingest" | "extract" | "extract_transcripts" | "resolve";
 
 export type FanoutScope =
   | { kind: "theme"; theme_id: string }
@@ -310,6 +310,25 @@ export interface FanoutStatus {
   started_at: string;
   finished_at: string | null;
 }
+
+export type TranscriptExtractionSummary = {
+  ticker: string;
+  transcripts_considered: number;
+  transcripts_extracted: number;
+  transcripts_skipped_existing: number;
+  relationships_added: number;
+  relationships_dropped: number;
+  per_transcript: Array<{
+    year: number | null;
+    quarter: number | null;
+    date: string;
+    relationships_added: number;
+    relationships_dropped: number;
+    skipped: string | null;
+    error: string | null;
+  }>;
+  errors: string[];
+};
 
 export const relationships = {
   listForTicker: (ticker: string) =>
@@ -354,6 +373,14 @@ export const competition = {
   extract: (ticker: string, force = false) =>
     apiFetch<CompetitionExtractionSummary>(
       `/api/filings/extract-competition/${encodeURIComponent(ticker)}${force ? "?force=true" : ""}`,
+      { method: "POST" }
+    ),
+};
+
+export const transcripts = {
+  extract: (ticker: string, force = false) =>
+    apiFetch<TranscriptExtractionSummary>(
+      `/api/transcripts/extract-relationships/${encodeURIComponent(ticker)}${force ? "?force=true" : ""}`,
       { method: "POST" }
     ),
 };
