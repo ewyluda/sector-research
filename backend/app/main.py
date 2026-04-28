@@ -47,7 +47,7 @@ async def lifespan(app: FastAPI):
     logger.info("PipelineService initialised")
 
     # Fan-out service (relationship extraction orchestrator)
-    app.state.fanout = FanoutService(edgar=app.state.edgar)
+    app.state.fanout = FanoutService(edgar=app.state.edgar, fmp=app.state.fmp)
     logger.info("FanoutService initialised")
 
     # Daily signal scheduler — 2 AM local time

@@ -11,7 +11,7 @@ bloating run state.
 from datetime import date, datetime
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -138,13 +138,26 @@ class Relationship(Base):
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
     )
-    filing_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("filings.id", ondelete="CASCADE"), nullable=False, index=True
+    # NULL for transcript-sourced rows (source_type='transcript');
+    # populated for filing-sourced rows (source_type='filing').
+    filing_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("filings.id", ondelete="CASCADE"), nullable=True, index=True
     )
     # Ticker of the filer (anchor company). Counterparty resolution to a
     # canonical CIK happens in Phase C.
     ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     section_key: Mapped[str] = mapped_column(String(64), nullable=False)
+
+    # 'filing' (default) or 'transcript'. CHECK constraint enforces that
+    # filing rows have filing_id NOT NULL and transcript rows have
+    # transcript_year/quarter NOT NULL.
+    source_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="filing", server_default="filing"
+    )
+    # Populated only when source_type='transcript'. Year/quarter of the
+    # earnings call. (filing_id stays NULL for transcript rows.)
+    transcript_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    transcript_quarter: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
 
     # Free-text name as it appears in the filing. Resolution to a canonical
     # CIK is deferred to Phase C (counterparty_aliases table).
@@ -179,10 +192,6 @@ class Relationship(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "filing_id", "section_key", "counterparty_name", "relationship_type",
-            name="uq_relationships_filing_section_counterparty_type",
-        ),
         Index("ix_relationships_ticker_type", "ticker", "relationship_type"),
         Index("ix_relationships_counterparty_name", "counterparty_name"),
     )
@@ -303,3 +312,27 @@ class CounterpartyAlias(Base):
     __table_args__ = (
         Index("ix_counterparty_aliases_canonical_cik", "canonical_cik"),
     )
+
+
+class TranscriptExtraction(Base):
+    """Idempotency tombstone for transcript relationship extraction.
+
+    One row per (ticker, year, quarter). A row's existence means the
+    extractor has run for that transcript — including the zero-relationship
+    case. `force=True` deletes the row before re-running.
+    """
+
+    __tablename__ = "transcript_extractions"
+
+    ticker: Mapped[str] = mapped_column(String(16), primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    quarter: Mapped[int] = mapped_column(SmallInteger, primary_key=True)
+    extracted_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.utcnow(),
+    )
+    relationships_added: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0
+    )
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)

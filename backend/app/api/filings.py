@@ -6,7 +6,7 @@ frontend filings page or ad-hoc scripts.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +33,9 @@ from backend.app.services.edgar_competition import extract_ticker_competition
 from backend.app.services.edgar_relationships import (
     extract_batch_relationships,
     extract_ticker_relationships,
+)
+from backend.app.services.edgar_transcripts_relationships import (
+    extract_ticker_transcript_relationships,
 )
 from backend.app.services.edgar_sections_ingest import (
     ingest_batch_sections,
@@ -228,6 +231,26 @@ async def extract_relationships_batch(
     results = await extract_batch_relationships(body.tickers, db=db, force=force)
     await db.commit()
     return results
+
+
+@router.post("/transcripts/extract-relationships/{ticker}")
+async def extract_transcript_relationships_for_ticker(
+    ticker: str,
+    request: Request,
+    force: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Run Haiku relationship extraction over the last 4 quarters of
+    earnings call transcripts for `ticker`. Persists rows in `relationships`
+    with `source_type='transcript'`. Idempotent via `transcript_extractions`
+    — pass `?force=true` to delete and re-run.
+    """
+    fmp = request.app.state.fmp
+    summary = await extract_ticker_transcript_relationships(
+        ticker, fmp=fmp, db=db, force=force
+    )
+    await db.commit()
+    return summary
 
 
 @router.post("/filings/extract-competition/{ticker}")

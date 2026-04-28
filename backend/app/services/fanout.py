@@ -25,18 +25,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
+from backend.app.clients.fmp import FMPClient
 from backend.app.db import async_session
 from backend.app.models.theme import Theme
 from backend.app.services import (
     counterparty_resolver,
     edgar_relationships,
     edgar_sections_ingest,
+    edgar_transcripts_relationships,
 )
 
 logger = logging.getLogger(__name__)
 
 FanoutStatusLiteral = Literal["running", "completed", "failed"]
-FanoutStageLiteral = Literal["ingest", "extract", "resolve"]
+FanoutStageLiteral = Literal["ingest", "extract", "extract_transcripts", "resolve"]
 
 
 @dataclass
@@ -95,9 +97,10 @@ class FanoutService:
     PipelineService. `edgar` is the process-wide shared EdgarClient,
     so the service does NOT own its lifecycle (no close on exit)."""
 
-    def __init__(self, *, edgar: EdgarClient) -> None:
+    def __init__(self, *, edgar: EdgarClient, fmp: FMPClient) -> None:
         self._statuses: dict[str, FanoutStatus] = {}
         self._edgar = edgar
+        self._fmp = fmp
 
     @staticmethod
     def _new_id() -> str:
@@ -258,7 +261,25 @@ class FanoutService:
             )
             return  # no point resolving empty rows
 
-        # Stage 3: resolve
+        # Stage 3: extract transcripts. New in 2026-04-27 — earnings call
+        # transcripts go through the same Haiku extractor, write to the
+        # same `relationships` table with source_type='transcript'.
+        status.current_stage = "extract_transcripts"
+        try:
+            async with async_session() as db:
+                await edgar_transcripts_relationships.extract_ticker_transcript_relationships(
+                    ticker, fmp=self._fmp, db=db, force=force
+                )
+                await db.commit()
+        except Exception as exc:
+            logger.warning("Fanout extract_transcripts failed for %s: %r", ticker, exc)
+            status.errors.append(
+                FanoutError(ticker=ticker, stage="extract_transcripts", message=str(exc))
+            )
+            # Continue to resolve — filing-sourced relationships from Stage 2
+            # still benefit from resolution.
+
+        # Stage 4: resolve
         status.current_stage = "resolve"
         try:
             async with async_session() as db:
