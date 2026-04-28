@@ -36,3 +36,6 @@ docs/
 
 # Ad-hoc dev/debug screenshots at the project root
 /*.png
+
+# Local worktrees for parallel feature work
+.worktrees/
