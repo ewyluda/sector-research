@@ -1141,7 +1141,7 @@ async def node_deep_dive(
         lines: list[str] = [
             "RESOLVED COUNTERPARTIES",
             "(pre-extracted from the filing excerpts above; use these as anchors when",
-            "referring to named customers, suppliers, partners, or competitors.",
+            "referring to named customers, suppliers, or partners.",
             "For resolved entities, use the $TICKER notation exactly as shown below",
             "on first mention — do not refer to them by product/vendor name alone.",
             "Do NOT re-quote verbatim text from the filings for these entities.)",
@@ -1162,7 +1162,7 @@ async def node_deep_dive(
             type_order = [
                 "customer", "supplier", "partner", "joint_venture",
                 "licensor", "licensee", "distributor", "reseller",
-                "competitor", "other",
+                "other",
             ]
             for t in type_order:
                 entries = ctx.outbound.get(t)
