@@ -10,6 +10,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 - **`FanoutService._statuses` dict has no eviction** — grows for the lifetime of the process. Fine for a personal tool, but if any run has a very wide theme with many errors the list of `FanoutError` entries could be heavy. If it ever matters, bound by size or recency.
 - **Customer concentration via XBRL `ConcentrationRiskPercentage1`** with dimensional axis handling (v1 skips axes; HTML extraction catches it indirectly via Phase B).
+- **Deep-dive `run_transcript_analysis` uses broken FMP `earning-call-transcript-latest` endpoint** — `backend/app/graph/nodes.py:877` calls `fmp.get_earnings_transcript(state.ticker)` with no year/quarter, hitting an FMP endpoint that ignores the symbol param. Result: deep-dive transcript analysis has been receiving arbitrary tickers' transcripts. Fix mirrors `_fetch_recent_transcripts` in `edgar_transcripts_relationships.py`: walk back from current quarter calling the explicit `(year, quarter)` endpoint.
 
 ## Next up (sequenced)
 
@@ -22,7 +23,6 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 - Sankey revenue-flow visualization for supply chain.
 - Graph centrality (betweenness, eigenvector) as an input to discovery ranking.
 - Cross-theme supply-chain traversal ("from NVDA, 2 hops, filtered to AI-infra theme").
-- Customer concentration via XBRL `ConcentrationRiskPercentage1` with dimensional axis handling (v1 skips axes; HTML extraction catches it indirectly via Phase B).
 - Options IV / put-call / short interest — new vendor or FMP higher tier.
 - Credit ratings — new vendor.
 - Institutional ownership (13F) via FMP — current plan returns 404 on ticker-side endpoints; would need daily polling of `institutional-ownership/latest` into a local ticker→holder aggregation.
