@@ -1,20 +1,26 @@
-"use client";
+/**
+ * Page — /catalysts
+ *
+ * Fleet-wide catalyst calendar. Server component fetches the proximity-
+ * bucketed catalyst list (latest run per ticker); the bucket sections
+ * and per-row signposts toggle are client components.
+ */
 
-import { useEffect, useState } from "react";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
-import { getCatalysts, type CatalystListResponse } from "@/lib/api";
+import { getCatalysts } from "@/lib/api";
+import type { CatalystListResponse } from "@/lib/api";
 
-export default function CatalystsPage() {
-  const [data, setData] = useState<CatalystListResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
+export const dynamic = "force-dynamic";
 
-  useEffect(() => {
-    let cancelled = false;
-    getCatalysts()
-      .then((d) => { if (!cancelled) setData(d); })
-      .catch((e) => { if (!cancelled) setError(String(e)); });
-    return () => { cancelled = true; };
-  }, []);
+export default async function CatalystsPage() {
+  let data: CatalystListResponse | null = null;
+  let error: string | null = null;
+
+  try {
+    data = await getCatalysts();
+  } catch {
+    error = "Could not connect to backend. Is the FastAPI server running?";
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-6">
@@ -34,12 +40,6 @@ export default function CatalystsPage() {
       )}
 
       {data && <CatalystCalendar buckets={data.buckets} />}
-
-      {!data && !error && (
-        <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-          <p className="text-xs text-[var(--text-muted)]">Loading…</p>
-        </div>
-      )}
     </main>
   );
 }
