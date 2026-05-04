@@ -17,6 +17,7 @@ from backend.app.api.discovery import router as discovery_router
 from backend.app.api.pipeline import router as pipeline_router
 from backend.app.api.filings import router as filings_router
 from backend.app.api.fanouts import router as fanouts_router
+from backend.app.api.catalysts import router as catalysts_router
 from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
 
@@ -103,3 +104,4 @@ app.include_router(discovery_router, prefix="/api")
 app.include_router(pipeline_router, prefix="/api")
 app.include_router(filings_router, prefix="/api")
 app.include_router(fanouts_router, prefix="/api")
+app.include_router(catalysts_router, prefix="/api")
