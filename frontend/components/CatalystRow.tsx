@@ -72,6 +72,7 @@ export function CatalystRow({ row }: { row: CatalystRowT }) {
             <button
               type="button"
               aria-expanded={open}
+              aria-controls={`catalyst-row-signposts-${row.id}`}
               onClick={() => setOpen(!open)}
               className="text-[9px] font-mono text-[var(--text-faint)] hover:text-[var(--primary)] underline-offset-2"
             >
@@ -80,7 +81,7 @@ export function CatalystRow({ row }: { row: CatalystRowT }) {
           )}
         </div>
         {hasSignposts && open && (
-          <ul className="ml-3 list-disc text-[10px] text-[var(--text-muted)] leading-relaxed">
+          <ul id={`catalyst-row-signposts-${row.id}`} className="ml-3 list-disc text-[10px] text-[var(--text-muted)] leading-relaxed">
             {row.signposts.map((s, j) => <li key={j}>{s}</li>)}
           </ul>
         )}
