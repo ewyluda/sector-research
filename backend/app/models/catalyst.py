@@ -19,11 +19,11 @@ from backend.app.models.base import Base
 class Catalyst(Base):
     __tablename__ = "catalysts"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid.uuid4())
     )
-    run_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+    run_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=False),
         ForeignKey("research_runs.id", ondelete="CASCADE"),
         nullable=False,
     )
