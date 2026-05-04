@@ -71,9 +71,18 @@ class CatalystListResponse(BaseModel):
 def _bucket(row: CatalystRow, today: date) -> str:
     if row.expected_date is None:
         return "untimed"
+    # A windowed catalyst (Q2 2026, H1 2027, etc.) stays on the calendar
+    # until its window has fully ended. A point-in-time catalyst (FMP
+    # earnings date, no parsed window) drops off after expected_date.
+    if row.expected_window_end is not None:
+        if row.expected_window_end < today:
+            return "passed"
+    elif row.expected_date < today:
+        return "passed"
+    # Bucket on proximity to the midpoint. If the midpoint has already
+    # passed but the window is still open, treat as "this_week" (in
+    # progress / imminent), which is the correct user-facing read.
     days = (row.expected_date - today).days
-    if days < 0:
-        return "passed"  # filtered out before bucketing
     if days <= 7:
         return "this_week"
     if days <= 30:
