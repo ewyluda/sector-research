@@ -1300,10 +1300,13 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
         # Failure here is non-fatal — JSONB still has the canonical copy.
         if parsed is not None:
             try:
-                async with async_session() as cat_db:
-                    fmp = FMPClient()
-                    await promote_catalysts(state, parsed, fmp, cat_db)
-                    await cat_db.commit()
+                fmp = FMPClient()
+                try:
+                    async with async_session() as cat_db:
+                        await promote_catalysts(state, parsed, fmp, cat_db)
+                        await cat_db.commit()
+                finally:
+                    await fmp.close()
             except Exception as cat_err:
                 logger.warning(
                     "[%s] catalyst promotion failed: %s", state.ticker, cat_err

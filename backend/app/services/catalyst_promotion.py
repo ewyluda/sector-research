@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta, timezone
 
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
@@ -102,8 +103,15 @@ async def promote_catalysts(
     """
     if relative_anchor is None:
         relative_anchor = datetime.now(timezone.utc)
-    inserted = 0
 
+    # Idempotent on run_id. risk_stress_test can route a run back through
+    # node_thesis_construction up to 2 times; without this, each loop
+    # iteration appends a fresh set of rows and the calendar shows
+    # duplicates. Backfill is also safe: if a run already has rows, this
+    # replaces them with a fresh extraction.
+    await db.execute(delete(Catalyst).where(Catalyst.run_id == state.run_id))
+
+    inserted = 0
     for ordinal, c in enumerate(parsed.catalysts, start=1):
         parsed_dates = parse_timeframe(c.timeframe, relative_anchor)
         expected_date: date | None = _midpoint(parsed_dates)
