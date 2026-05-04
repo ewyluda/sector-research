@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.clients.fmp import FMPClient
 from backend.app.graph.state import ResearchState
 from backend.app.models.catalyst import Catalyst
-from backend.app.models.phase_schemas import Catalyst as CatalystSchema, ThesisOutput
+from backend.app.models.phase_schemas import ThesisOutput
 from backend.app.services.catalyst_dates import ParsedDates, parse_timeframe
 
 logger = logging.getLogger(__name__)
@@ -86,18 +86,25 @@ async def promote_catalysts(
     parsed: ThesisOutput,
     fmp: FMPClient,
     db: AsyncSession,
+    relative_anchor: datetime | None = None,
 ) -> int:
     """Insert one Catalyst row per parsed.catalysts entry. Returns count.
 
-    Anchors relative-date parsing to "now" — ResearchState carries no
-    timestamp, and the thesis phase runs minutes after run creation, so
-    the difference is negligible.
+    Caller owns the transaction. This function adds rows and flushes,
+    but does not commit — callers must commit (or rollback) the session
+    they passed in.
+
+    `relative_anchor` is the reference datetime for relative timeframes
+    like "Next 1-3 mo". Live thesis runs should leave it None to use
+    "now" (they run minutes after run creation, so the difference is
+    negligible). The backfill script should pass the original run's
+    created_at so historical relative timeframes anchor correctly.
     """
-    relative_anchor = datetime.now(timezone.utc)
+    if relative_anchor is None:
+        relative_anchor = datetime.now(timezone.utc)
     inserted = 0
 
     for ordinal, c in enumerate(parsed.catalysts, start=1):
-        assert isinstance(c, CatalystSchema)
         parsed_dates = parse_timeframe(c.timeframe, relative_anchor)
         expected_date: date | None = _midpoint(parsed_dates)
         date_source = parsed_dates.source
@@ -124,7 +131,7 @@ async def promote_catalysts(
         ))
         inserted += 1
 
-    await db.commit()
+    await db.flush()
     logger.info("[%s] promoted %d catalyst rows for run %s",
                 state.ticker, inserted, state.run_id)
     return inserted
