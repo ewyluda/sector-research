@@ -20,7 +20,7 @@ def upgrade() -> None:
     op.create_table('catalysts',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('run_id', sa.UUID(), nullable=False),
-    sa.Column('ticker', sa.String(length=10), nullable=False),
+    sa.Column('ticker', sa.String(length=16), nullable=False),
     sa.Column('ordinal', sa.Integer(), nullable=False),
     sa.Column('timeframe', sa.String(), nullable=False),
     sa.Column('description', sa.String(), nullable=False),
@@ -31,7 +31,7 @@ def upgrade() -> None:
     sa.Column('expected_window_start', sa.Date(), nullable=True),
     sa.Column('expected_window_end', sa.Date(), nullable=True),
     sa.Column('date_source', sa.String(length=20), nullable=False),
-    sa.Column('created_at', sa.DateTime(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
     sa.ForeignKeyConstraint(['run_id'], ['research_runs.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
