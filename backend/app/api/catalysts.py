@@ -131,9 +131,13 @@ async def list_catalysts(
 
     catalysts: list[CatalystRow] = []
     for row in rows:
+        # Raw text(sql) returns UUID objects for UUID columns regardless of
+        # the model's UUID(as_uuid=False) declaration (that flag only
+        # controls ORM-mapped accesses). Cast to str to match the wire
+        # format the frontend expects.
         catalysts.append(CatalystRow(
-            id=row["id"],
-            run_id=row["run_id"],
+            id=str(row["id"]),
+            run_id=str(row["run_id"]),
             ticker=row["ticker"],
             ordinal=row["ordinal"],
             timeframe=row["timeframe"],
