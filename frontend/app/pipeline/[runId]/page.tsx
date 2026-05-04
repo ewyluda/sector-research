@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { pipeline as api } from "@/lib/api";
+import { pipeline as api, getCatalysts } from "@/lib/api";
 import type {
   RunDetail,
   ReportResponse,
@@ -19,6 +19,7 @@ import type {
   TranscriptAnalysis,
   XSignalVelocity,
   EdgarFacts,
+  CatalystBuckets,
 } from "@/lib/api";
 import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
@@ -26,6 +27,7 @@ import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 import { CommandPalette } from "@/components/deep-dive/CommandPalette";
+import { CatalystCalendar } from "@/components/CatalystCalendar";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -166,6 +168,7 @@ export default function PipelineRunnerPage() {
   const [thesisStructured, setThesisStructured] = useState<ThesisStructured | null>(null);
   const [riskStructured, setRiskStructured] = useState<RiskStressTestStructured | null>(null);
   const [positionStructured, setPositionStructured] = useState<PositionMonitorStructured | null>(null);
+  const [catalystBuckets, setCatalystBuckets] = useState<CatalystBuckets | null>(null);
 
   // Raw content fallback (when structured parsing fails)
   const [thesisContent, setThesisContent] = useState<string | null>(null);
@@ -506,6 +509,17 @@ export default function PipelineRunnerPage() {
     return () => clearInterval(id);
   }, [runId, isLive, loadReportData]);
 
+  // Tier 1.3: per-ticker catalyst panel.
+  useEffect(() => {
+    const ticker = run?.ticker;
+    if (!ticker) return;
+    let cancelled = false;
+    getCatalysts(ticker)
+      .then((d) => { if (!cancelled) setCatalystBuckets(d.buckets); })
+      .catch(() => { /* non-fatal — panel just hides */ });
+    return () => { cancelled = true; };
+  }, [run?.ticker]);
+
   // ── Generate Position ───────────────────────────────────────────────────────
 
   async function handleGeneratePosition() {
@@ -641,6 +655,19 @@ export default function PipelineRunnerPage() {
               xSignalVelocity={xSignalVelocity ?? undefined}
               edgarFacts={edgarFacts}
             />
+          )}
+
+          {/* Tier 1.3: catalyst panel for this ticker */}
+          {catalystBuckets && (
+            <section id="catalyst_section">
+              <h2 className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-faint)] mb-2">
+                Catalyst Calendar · {ticker}
+              </h2>
+              <CatalystCalendar
+                buckets={catalystBuckets}
+                emptyMessage={`No catalysts yet for ${ticker}.`}
+              />
+            </section>
           )}
 
           {/* Thesis */}
