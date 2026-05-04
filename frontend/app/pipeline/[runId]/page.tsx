@@ -660,7 +660,7 @@ export default function PipelineRunnerPage() {
           {/* Tier 1.3: catalyst panel for this ticker */}
           {catalystBuckets && (
             <section id="catalyst_section">
-              <h2 className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-faint)] mb-2">
+              <h2 className="text-[10px] uppercase tracking-wider font-semibold text-[var(--color-text-faint)] mb-2">
                 Catalyst Calendar · {ticker}
               </h2>
               <CatalystCalendar
