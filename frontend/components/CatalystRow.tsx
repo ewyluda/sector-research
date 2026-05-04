@@ -16,7 +16,7 @@ const TYPE_COLORS: Record<CatalystType, string> = {
   regulatory: "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30",
   m_and_a:    "bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30",
   macro:      "bg-[var(--text-muted)]/10 text-[var(--text-muted)] border-[var(--text-muted)]/30",
-  other:      "bg-[var(--surface-alt)] text-[var(--text-faint)] border-[var(--border)]",
+  other:      "bg-[var(--surface-alt)] text-[var(--color-text-faint)] border-[var(--border)]",
 };
 
 const TYPE_LABELS: Record<CatalystType, string> = {
@@ -74,7 +74,7 @@ export function CatalystRow({ row }: { row: CatalystRowT }) {
               aria-expanded={open}
               aria-controls={`catalyst-row-signposts-${row.id}`}
               onClick={() => setOpen(!open)}
-              className="text-[9px] font-mono text-[var(--text-faint)] hover:text-[var(--primary)] underline-offset-2"
+              className="text-[9px] font-mono text-[var(--color-text-faint)] hover:text-[var(--primary)] underline-offset-2"
             >
               {open ? "− signposts" : `+ ${row.signposts.length} signpost${row.signposts.length === 1 ? "" : "s"}`}
             </button>
@@ -91,7 +91,7 @@ export function CatalystRow({ row }: { row: CatalystRowT }) {
           {formatDate(row.expected_date)}
         </span>
         {row.expected_date && (
-          <div className="text-[8px] uppercase tracking-wider text-[var(--text-faint)]">
+          <div className="text-[8px] uppercase tracking-wider text-[var(--color-text-faint)]">
             {row.date_source.replace(/_/g, " ")}
           </div>
         )}

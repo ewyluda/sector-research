@@ -44,7 +44,7 @@ export function CatalystCalendar({ buckets, emptyMessage }: { buckets: CatalystB
         return (
           <section key={key}>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-faint)]">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-[var(--color-text-faint)]">
                 {label} · {rows.length}
               </span>
               <span className="flex-1 h-px bg-[var(--border)]" />
