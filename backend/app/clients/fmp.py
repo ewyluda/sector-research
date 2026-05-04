@@ -258,6 +258,30 @@ class FMPClient:
         )
         return data, citation
 
+    async def get_earnings_calendar(
+        self, ticker: str, limit: int = 4
+    ) -> tuple[list[dict], Citation]:
+        """Upcoming earnings dates for a ticker.
+
+        Returns up to `limit` upcoming events, each typically:
+        {date: 'YYYY-MM-DD', symbol, eps, epsEstimated, time,
+         revenue, revenueEstimated, fiscalDateEnding, ...}.
+
+        FMP's /earning_calendar?symbol={ticker} endpoint may return both
+        past and future entries; callers should filter to future dates.
+        """
+        params = {"symbol": ticker, "limit": limit}
+        data = await self._request("earning_calendar", params, ttl=TTL_FUNDAMENTAL)
+        if not isinstance(data, list):
+            data = []
+        citation = self._make_citation(
+            "earning_calendar",
+            "Earnings Calendar",
+            ticker,
+            params,
+        )
+        return data, citation
+
     async def get_analyst_estimates(
         self, ticker: str, period: str = "annual", limit: int = 4
     ) -> tuple[list[dict], Citation]:
