@@ -973,16 +973,10 @@ export interface CatalystListResponse {
 }
 
 export async function getCatalysts(ticker?: string): Promise<CatalystListResponse> {
-  const url = ticker
-    ? `${BASE}/api/catalysts?ticker=${encodeURIComponent(ticker)}`
-    : `${BASE}/api/catalysts`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`getCatalysts ${res.status}`);
-  return res.json();
+  const qs = ticker ? `?ticker=${encodeURIComponent(ticker)}` : "";
+  return apiFetch<CatalystListResponse>(`/api/catalysts${qs}`);
 }
 
 export async function getCatalyst(id: string): Promise<CatalystRow> {
-  const res = await fetch(`${BASE}/api/catalysts/${id}`);
-  if (!res.ok) throw new Error(`getCatalyst ${res.status}`);
-  return res.json();
+  return apiFetch<CatalystRow>(`/api/catalysts/${encodeURIComponent(id)}`);
 }
