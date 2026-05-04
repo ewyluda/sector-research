@@ -12,6 +12,9 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import Literal
 
+# `fmp_earnings` is set externally by services.catalyst_promotion when the
+# FMP earnings calendar overrides a parsed window for type='earnings'
+# catalysts; the parser itself never produces this value.
 DateSource = Literal[
     "fmp_earnings",
     "parsed_quarter",
@@ -36,7 +39,18 @@ _RELATIVE = re.compile(
     r"(?:next\s+|in\s+)?(\d+)\s*(?:[-–]\s*(\d+))?\s*(mo|month|months|wk|week|weeks|day|days)\b",
     re.IGNORECASE,
 )
-_UNTIMED_HINTS = {"pending", "eventually", "tbd", "tbd date", "n/a", "long-term", "long term"}
+_UNTIMED_HINTS = {
+    "pending", "eventually", "tbd", "tbd date", "n/a",
+    "long-term", "long term", "unknown", "undisclosed", "not yet scheduled",
+}
+
+# Belt-and-suspenders bounds. Catalyst horizons are 0-18 months; anything
+# substantially beyond that is almost certainly a regex false positive
+# (e.g. "FY2026 days post-launch" extracting "2026" as a day count).
+_MAX_INPUT_LEN = 256
+_MAX_RELATIVE_MONTHS = 24
+_MAX_RELATIVE_WEEKS = 104
+_MAX_RELATIVE_DAYS = 730
 
 
 def parse_timeframe(timeframe: str, anchor: datetime) -> ParsedDates:
@@ -51,7 +65,7 @@ def parse_timeframe(timeframe: str, anchor: datetime) -> ParsedDates:
         recognised, else (None, None, "untimed").
     """
     s = (timeframe or "").strip()
-    if not s or s.lower() in _UNTIMED_HINTS:
+    if not s or len(s) > _MAX_INPUT_LEN or s.lower() in _UNTIMED_HINTS:
         return ParsedDates(None, None, "untimed")
 
     if (m := _QUARTER.search(s)):
@@ -78,6 +92,17 @@ def parse_timeframe(timeframe: str, anchor: datetime) -> ParsedDates:
         lo = int(m.group(1))
         hi = int(m.group(2)) if m.group(2) else lo
         unit = m.group(3).lower()
+        # Reject implausibly large magnitudes — these are almost always
+        # regex false positives like "FY2026 days" capturing "2026".
+        unit_max = {
+            "day": _MAX_RELATIVE_DAYS, "days": _MAX_RELATIVE_DAYS,
+            "wk": _MAX_RELATIVE_WEEKS, "week": _MAX_RELATIVE_WEEKS,
+            "weeks": _MAX_RELATIVE_WEEKS,
+            "mo": _MAX_RELATIVE_MONTHS, "month": _MAX_RELATIVE_MONTHS,
+            "months": _MAX_RELATIVE_MONTHS,
+        }[unit]
+        if hi > unit_max:
+            return ParsedDates(None, None, "untimed")
         days_per = {
             "day": 1, "days": 1,
             "wk": 7, "week": 7, "weeks": 7,
