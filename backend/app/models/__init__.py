@@ -1,4 +1,5 @@
 from backend.app.models.base import Base
+from backend.app.models.catalyst import Catalyst
 from backend.app.models.citation import Citation, CitationRecord
 from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship, XBRLFact
 from backend.app.models.theme import Theme
@@ -9,6 +10,7 @@ from backend.app.models.surprise_alert import SurpriseAlert
 
 __all__ = [
     "Base",
+    "Catalyst",
     "Citation",
     "CitationRecord",
     "CounterpartyAlias",
