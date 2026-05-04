@@ -199,11 +199,37 @@ Your thesis must be:
   ],
   "variant_perception": "<what you believe that consensus does not — 1-3 sentences>",
   "catalysts": [
-    {"timeframe": "<e.g. 'Next 1-3 mo', 'Q2 2026', '6-12 mo'>", "description": "<catalyst event>"},
+    {
+      "timeframe": "<e.g. 'Next 1-3 mo', 'Q2 2026', '6-12 mo'>",
+      "description": "<catalyst event>",
+      "type": "earnings" | "product" | "regulatory" | "m_and_a" | "macro" | "other",
+      "signposts": ["<leading indicator 1>", "<leading indicator 2>"],
+      "linked_pillar": "bull:N" | "bear:N" | null
+    },
     ... 3-5 catalysts
   ],
   "conviction_score": <int 0-100>,
-  "conviction_rationale": "<why this specific score — 1-3 sentences>"
+  "conviction_rationale": "<why this specific score — 1-3 sentences>",
+  "kill_criteria": [
+    {
+      "condition": "<what would falsify the thesis>",
+      "threshold": "<observable numeric/factual trigger>",
+      "monitoring_source": "<where this is observed: 10-Q, transcript, EDGAR XBRL, etc>",
+      "kills_pillar": "bull:N" | "bear:N" | null
+    },
+    ... 3-5 kill criteria
+  ],
+  "pre_mortem": {
+    "framing": "Imagine it's 18 months from now and this thesis is dead. What killed it?",
+    "failure_modes": [
+      {
+        "mode": "<concrete cause>",
+        "leading_indicator": "<what we'd see first>",
+        "probability": "Low" | "Medium" | "High"
+      },
+      ... 3-5 failure modes
+    ]
+  }
 }
 
 ## Rules
@@ -212,7 +238,23 @@ Your thesis must be:
 - Bull and bear points must have specific evidence, not generic statements.
 - Catalysts must have concrete timeframes, not vague "eventually".
 - Every claim must trace to a category analysis from the deep dive results below.
-- Do NOT restate observations already documented in the established findings. Reference categories by name (e.g. "as shown in Financial Health"). Only introduce new observations if the data reveals something the category analyses missed."""
+- Do NOT restate observations already documented in the established findings. Reference categories by name (e.g. "as shown in Financial Health"). Only introduce new observations if the data reveals something the category analyses missed.
+
+## Catalyst calibration
+- type must be exactly one of the literals listed.
+- signposts are LEADING indicators ("what we'd see first") — concrete and observable. 0-3 per catalyst; leave empty when no genuine leading indicator exists. Do not fabricate signposts to fill the list.
+- linked_pillar is optional. Use it when a catalyst directly tests one bull or bear pillar. Format: "bull:N" or "bear:N" where N is the 1-indexed position in bull_case / bear_case. Use null otherwise.
+
+## Kill criteria calibration
+- Produce 3-5 criteria. Each MUST be falsifiable.
+- threshold must specify a numeric or factual trigger, not a feeling. Reject "if competition increases" — require "if market share drops below X% for 2 consecutive quarters."
+- monitoring_source must name the document or feed where the trigger is observed (10-Q, 10-K, transcript, EDGAR XBRL, FMP, news).
+- kills_pillar uses the same "bull:N" / "bear:N" format as linked_pillar; null when the criterion kills the whole thesis rather than one pillar.
+
+## Pre-mortem calibration
+- The framing string is fixed: "Imagine it's 18 months from now and this thesis is dead. What killed it?"
+- Produce 3-5 failure_modes. Each mode is a concrete cause; each leading_indicator is what we'd see first.
+- probability reflects today's odds of that specific failure mode materialising in 18 months. Be calibrated — most failure modes are Low or Medium."""
 
 THESIS_USER = """Ticker: {ticker}
 Theme: {theme}

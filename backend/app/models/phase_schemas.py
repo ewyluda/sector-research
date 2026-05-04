@@ -74,9 +74,39 @@ class ThesisPoint(BaseModel):
 
 
 class Catalyst(BaseModel):
-    """A catalyst event with a timeframe estimate."""
+    """A catalyst event with timeframe, type, and watchable signposts."""
     timeframe: str = Field(..., min_length=1, max_length=60)
     description: str = Field(..., min_length=1, max_length=600)
+    type: Literal[
+        "earnings", "product", "regulatory", "m_and_a", "macro", "other"
+    ] | None = None
+    signposts: list[str] = Field(default_factory=list, max_length=3)
+    linked_pillar: str | None = Field(
+        default=None, pattern=r"^(bull|bear):[1-5]$"
+    )
+
+
+class KillCriterion(BaseModel):
+    """A falsifiable thesis-killer with an observable trigger."""
+    condition: str = Field(..., min_length=1, max_length=300)
+    threshold: str = Field(..., min_length=1, max_length=300)
+    monitoring_source: str = Field(..., min_length=1, max_length=200)
+    kills_pillar: str | None = Field(
+        default=None, pattern=r"^(bull|bear):[1-5]$"
+    )
+
+
+class FailureMode(BaseModel):
+    """A specific way the thesis could be killed in the next 18 months."""
+    mode: str = Field(..., min_length=1, max_length=300)
+    leading_indicator: str = Field(..., min_length=1, max_length=300)
+    probability: Literal["Low", "Medium", "High"]
+
+
+class PreMortem(BaseModel):
+    """Devil's-advocate analysis: assume the thesis is dead — what killed it?"""
+    framing: str = Field(..., min_length=1, max_length=300)
+    failure_modes: list[FailureMode] = Field(..., min_length=3, max_length=5)
 
 
 class ThesisOutput(BaseModel):
@@ -89,6 +119,9 @@ class ThesisOutput(BaseModel):
     catalysts: list[Catalyst] = Field(..., min_length=3, max_length=5)
     conviction_score: int = Field(..., ge=0, le=100)
     conviction_rationale: str = Field(..., min_length=1, max_length=2000)
+    # New (optional for backwards compatibility with old runs):
+    kill_criteria: list[KillCriterion] = Field(default_factory=list, max_length=5)
+    pre_mortem: PreMortem | None = None
 
 
 # ── Risk Stress-Test ────────────────────────────────────────────────────────

@@ -534,9 +534,38 @@ export interface ThesisPoint {
   evidence: string;
 }
 
+export type CatalystType =
+  | "earnings"
+  | "product"
+  | "regulatory"
+  | "m_and_a"
+  | "macro"
+  | "other";
+
 export interface Catalyst {
   timeframe: string;
   description: string;
+  type?: CatalystType | null;
+  signposts?: string[];
+  linked_pillar?: string | null; // "bull:N" or "bear:N"
+}
+
+export interface KillCriterion {
+  condition: string;
+  threshold: string;
+  monitoring_source: string;
+  kills_pillar?: string | null; // "bull:N" or "bear:N"
+}
+
+export interface FailureMode {
+  mode: string;
+  leading_indicator: string;
+  probability: "Low" | "Medium" | "High";
+}
+
+export interface PreMortem {
+  framing: string;
+  failure_modes: FailureMode[];
 }
 
 export interface ThesisStructured {
@@ -547,6 +576,8 @@ export interface ThesisStructured {
   catalysts: Catalyst[];
   conviction_score: number;
   conviction_rationale: string;
+  kill_criteria?: KillCriterion[];
+  pre_mortem?: PreMortem | null;
 }
 
 // ── Risk Stress-Test structured output ───────────────────────────────────────

@@ -1268,7 +1268,7 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
                 loop_context=loop_ctx,
             ),
             model=SONNET,
-            max_tokens=4000,
+            max_tokens=6000,
         )
 
         parsed, parse_err = parse_structured_output(response, ThesisOutput)
