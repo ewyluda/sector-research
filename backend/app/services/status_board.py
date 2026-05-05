@@ -14,7 +14,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.catalysts import CatalystRow, nearest_catalyst
-from backend.app.models import Catalyst, KillCriterionState, ResearchRun, Theme
+from backend.app.models import Catalyst, KillCriterionState, Theme
 
 logger = logging.getLogger(__name__)
 
