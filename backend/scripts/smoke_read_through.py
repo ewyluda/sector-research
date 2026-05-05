@@ -63,9 +63,7 @@ async def main() -> None:
         print(f"peer: {peer_ticker}")
 
         # Seed a synthetic earnings catalyst on the peer.
-        synthetic_run_id = str((await db.execute(
-            select(Catalyst.run_id).limit(1)
-        )).scalar()) or str(uuid.uuid4())  # any run_id is fine for the smoke
+        synthetic_run_id = target.run_id
         synth = Catalyst(
             id=str(uuid.uuid4()),
             run_id=synthetic_run_id,

@@ -317,7 +317,11 @@ async def resolve_read_throughs(
     if items_by_key:
         dismissed_q = select(
             ReadThroughDismissal.run_id, ReadThroughDismissal.event_key
-        ).where(ReadThroughDismissal.run_id.in_([k[0] for k in items_by_key]))
+        ).where(
+            ReadThroughDismissal.run_id.in_([k[0] for k in items_by_key])
+        ).where(
+            ReadThroughDismissal.event_key.in_([k[1] for k in items_by_key])
+        )
         dismissed = {(str(rid), ek) for rid, ek in (await db.execute(dismissed_q)).all()}
     else:
         dismissed = set()

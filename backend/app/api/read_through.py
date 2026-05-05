@@ -90,9 +90,9 @@ async def get_read_throughs(
 ) -> dict[str, list[ReadThroughItemOut]]:
     now = datetime.now(timezone.utc)
     if until is None:
-        until = now
+        until = now + timedelta(days=30)
     if since is None:
-        since = until - timedelta(days=30)
+        since = now - timedelta(days=30)
 
     board = await build_status_board(db)
     if not board.entries:
