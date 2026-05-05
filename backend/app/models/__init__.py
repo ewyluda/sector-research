@@ -3,6 +3,7 @@ from backend.app.models.catalyst import Catalyst
 from backend.app.models.citation import Citation, CitationRecord
 from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship, XBRLFact
 from backend.app.models.kill_criterion_state import KillCriterionState
+from backend.app.models.read_through_dismissal import ReadThroughDismissal
 from backend.app.models.theme import Theme
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
@@ -18,6 +19,7 @@ __all__ = [
     "Filing",
     "FilingSection",
     "KillCriterionState",
+    "ReadThroughDismissal",
     "Relationship",
     "XBRLFact",
     "Theme",
