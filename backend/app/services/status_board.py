@@ -146,16 +146,16 @@ def _resolve_health(
         return "triggered", reasons
     if days_since_update > STALE_DAYS:
         return "stale", reasons
-    if (
-        next_cat is not None
-        and next_cat.days_until is not None
-        and 0 <= next_cat.days_until <= IMMINENT_DAYS
-        and (
-            next_cat.expected_window_end is None
-            or next_cat.expected_window_end >= datetime.now(timezone.utc).date()
+    if next_cat is not None and next_cat.days_until is not None:
+        today_utc = datetime.now(timezone.utc).date()
+        in_imminent_window = 0 <= next_cat.days_until <= IMMINENT_DAYS
+        in_progress = (
+            next_cat.days_until < 0
+            and next_cat.expected_window_end is not None
+            and next_cat.expected_window_end >= today_utc
         )
-    ):
-        return "imminent", reasons
+        if in_imminent_window or in_progress:
+            return "imminent", reasons
     return "healthy", reasons
 
 
