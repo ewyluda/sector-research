@@ -1,6 +1,7 @@
 from backend.app.models.base import Base
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.citation import Citation, CitationRecord
+from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship, XBRLFact
 from backend.app.models.kill_criterion_state import KillCriterionState
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
@@ -16,6 +17,7 @@ __all__ = [
     "Citation",
     "CitationRecord",
     "CounterpartyAlias",
+    "EarningsPrint",
     "Filing",
     "FilingSection",
     "KillCriterionState",
