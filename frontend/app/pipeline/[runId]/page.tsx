@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { pipeline as api } from "@/lib/api";
+import { pipeline as api, getCatalystsForRun } from "@/lib/api";
 import type {
   RunDetail,
   ReportResponse,
@@ -19,6 +19,7 @@ import type {
   TranscriptAnalysis,
   XSignalVelocity,
   EdgarFacts,
+  CatalystBuckets,
 } from "@/lib/api";
 import { ThesisCard } from "@/components/ThesisCard";
 import { RiskCard } from "@/components/RiskCard";
@@ -26,6 +27,7 @@ import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 import { CommandPalette } from "@/components/deep-dive/CommandPalette";
+import { CatalystCalendar } from "@/components/CatalystCalendar";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -166,6 +168,7 @@ export default function PipelineRunnerPage() {
   const [thesisStructured, setThesisStructured] = useState<ThesisStructured | null>(null);
   const [riskStructured, setRiskStructured] = useState<RiskStressTestStructured | null>(null);
   const [positionStructured, setPositionStructured] = useState<PositionMonitorStructured | null>(null);
+  const [catalystBuckets, setCatalystBuckets] = useState<CatalystBuckets | null>(null);
 
   // Raw content fallback (when structured parsing fails)
   const [thesisContent, setThesisContent] = useState<string | null>(null);
@@ -183,6 +186,15 @@ export default function PipelineRunnerPage() {
   const [generatingPosition, setGeneratingPosition] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
+
+  const loadCatalystData = useCallback(async (id: string) => {
+    try {
+      const d = await getCatalystsForRun(id);
+      setCatalystBuckets(d.buckets);
+    } catch {
+      setCatalystBuckets(null);
+    }
+  }, []);
 
   // ── Load completed report data ──────────────────────────────────────────────
 
@@ -240,10 +252,11 @@ export default function PipelineRunnerPage() {
       setConvictionScore(r.conviction_score);
       setCitations(r.citations);
       setXSignalVelocity(r.x_signal_velocity ?? null);
+      await loadCatalystData(id);
     } catch {
       // Report endpoint may 404 for in-progress runs — that's fine
     }
-  }, []);
+  }, [loadCatalystData]);
 
   // ── Initial fetch ───────────────────────────────────────────────────────────
 
@@ -405,6 +418,9 @@ export default function PipelineRunnerPage() {
           }
           setThesisContent((output.content as string) ?? null);
           setThesisParseError((output.parse_error as string) ?? null);
+          if (runId) {
+            void loadCatalystData(runId);
+          }
         } else if (event.phase === "risk_stress_test" || event.phase === "risk") {
           if (structured) {
             setRiskStructured(structured as unknown as RiskStressTestStructured);
@@ -481,7 +497,7 @@ export default function PipelineRunnerPage() {
       case "heartbeat":
         break;
     }
-  }, [runId, loadReportData]);
+  }, [runId, loadReportData, loadCatalystData]);
 
   // ── Polling fallback ────────────────────────────────────────────────────────
 
@@ -641,6 +657,19 @@ export default function PipelineRunnerPage() {
               xSignalVelocity={xSignalVelocity ?? undefined}
               edgarFacts={edgarFacts}
             />
+          )}
+
+          {/* Tier 1.3: catalyst panel for this ticker */}
+          {catalystBuckets && (
+            <section id="catalyst_section">
+              <h2 className="text-[10px] uppercase tracking-wider font-semibold text-[var(--color-text-faint)] mb-2">
+                Catalyst Calendar · {ticker}
+              </h2>
+              <CatalystCalendar
+                buckets={catalystBuckets}
+                emptyMessage={`No catalysts yet for ${ticker}.`}
+              />
+            </section>
           )}
 
           {/* Thesis */}

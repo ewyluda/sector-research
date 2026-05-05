@@ -22,7 +22,9 @@ from typing import Any
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
+from backend.app.db import async_session
 from backend.app.graph.llm import complete, SONNET, HAIKU
+from backend.app.services.catalyst_promotion import promote_catalysts
 from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput
 from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
@@ -1293,6 +1295,23 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
         state.conviction_score = conviction
         state.thesis_status = "ON TRACK"
         state.scores["thesis"] = conviction
+
+        # Tier 1.3: promote parsed catalysts into first-class DB rows.
+        # Failure here is non-fatal — JSONB still has the canonical copy.
+        if parsed is not None:
+            try:
+                fmp = FMPClient()
+                try:
+                    async with async_session() as cat_db:
+                        await promote_catalysts(state, parsed, fmp, cat_db)
+                        await cat_db.commit()
+                finally:
+                    await fmp.close()
+            except Exception as cat_err:
+                logger.warning(
+                    "[%s] catalyst promotion failed: %s", state.ticker, cat_err
+                )
+
         logger.info(
             "[%s] thesis complete: conviction %d/100 (structured=%s)",
             state.ticker, conviction, structured is not None,

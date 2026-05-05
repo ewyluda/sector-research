@@ -1,0 +1,215 @@
+"""GET /api/catalysts and GET /api/catalysts/{id}.
+
+Returns proximity-bucketed catalysts from the latest completed thesis
+run per ticker. Same endpoint serves both the fleet view (no ticker
+filter) and the per-ticker view inside /pipeline/[runId].
+"""
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.db import get_db
+from backend.app.models.catalyst import Catalyst
+
+router = APIRouter()
+
+
+class CatalystRow(BaseModel):
+    id: str                         # SQLAlchemy stores as UUID(as_uuid=False) → str
+    run_id: str
+    ticker: str
+    ordinal: int
+    timeframe: str
+    description: str
+    type: str | None
+    signposts: list[str]
+    linked_pillar: str | None
+    expected_date: date | None
+    expected_window_start: date | None
+    expected_window_end: date | None
+    date_source: str
+    created_at: datetime
+
+    @classmethod
+    def from_orm_row(cls, row: Catalyst) -> "CatalystRow":
+        return cls(
+            id=row.id,
+            run_id=row.run_id,
+            ticker=row.ticker,
+            ordinal=row.ordinal,
+            timeframe=row.timeframe,
+            description=row.description,
+            type=row.type,
+            signposts=list(row.signposts or []),
+            linked_pillar=row.linked_pillar,
+            expected_date=row.expected_date,
+            expected_window_start=row.expected_window_start,
+            expected_window_end=row.expected_window_end,
+            date_source=row.date_source,
+            created_at=row.created_at,
+        )
+
+
+class CatalystBuckets(BaseModel):
+    this_week: list[CatalystRow]
+    next_30d: list[CatalystRow]
+    next_90d: list[CatalystRow]
+    later: list[CatalystRow]
+    untimed: list[CatalystRow]
+
+
+class CatalystListResponse(BaseModel):
+    buckets: CatalystBuckets
+    total: int
+
+
+def _build_list_catalysts_sql(
+    ticker: str | None,
+    run_id: str | None,
+) -> tuple[str, dict[str, str]]:
+    params: dict[str, str] = {}
+    order_by = """
+        ORDER BY
+            (c.expected_date IS NULL),
+            c.expected_date NULLS LAST,
+            c.ticker,
+            c.ordinal
+    """
+
+    if run_id is not None:
+        params["run_id"] = run_id
+        where_parts = ["c.run_id = :run_id"]
+        if ticker is not None:
+            params["ticker"] = ticker
+            where_parts.append("c.ticker = :ticker")
+        where_clause = "WHERE " + " AND ".join(where_parts)
+        return f"""
+            SELECT c.*
+            FROM catalysts c
+            {where_clause}
+            {order_by}
+        """, params
+
+    # Latest completed-thesis run per ticker. We treat a run as having
+    # completed thesis-construction if state.phase_outputs.thesis.structured
+    # is an object (matches what the upsert path needs to fire). JSON null is
+    # deliberately excluded so parse-failed newer runs do not hide older
+    # catalyst rows.
+    #
+    # Note: asyncpg can't infer the type of a parameter used only in
+    # `:ticker IS NULL OR c.ticker = :ticker`, so we conditionally append
+    # the filter clause and only bind :ticker when needed.
+    where_clause = ""
+    if ticker is not None:
+        where_clause = "WHERE c.ticker = :ticker"
+        params["ticker"] = ticker
+
+    return f"""
+        WITH latest AS (
+            SELECT DISTINCT ON (ticker) id, ticker, created_at
+            FROM research_runs
+            WHERE jsonb_typeof(state->'phase_outputs'->'thesis'->'structured') = 'object'
+            ORDER BY ticker, created_at DESC
+        )
+        SELECT c.*
+        FROM catalysts c
+        JOIN latest l ON c.run_id = l.id
+        {where_clause}
+        {order_by}
+    """, params
+
+
+def _bucket(row: CatalystRow, today: date) -> str:
+    if row.expected_date is None:
+        return "untimed"
+    # A windowed catalyst (Q2 2026, H1 2027, etc.) stays on the calendar
+    # until its window has fully ended. A point-in-time catalyst (FMP
+    # earnings date, no parsed window) drops off after expected_date.
+    if row.expected_window_end is not None:
+        if row.expected_window_end < today:
+            return "passed"
+    elif row.expected_date < today:
+        return "passed"
+    # Bucket on proximity to the midpoint. If the midpoint has already
+    # passed but the window is still open, treat as "this_week" (in
+    # progress / imminent), which is the correct user-facing read.
+    days = (row.expected_date - today).days
+    if days <= 7:
+        return "this_week"
+    if days <= 30:
+        return "next_30d"
+    if days <= 90:
+        return "next_90d"
+    return "later"
+
+
+@router.get("/catalysts", response_model=CatalystListResponse)
+async def list_catalysts(
+    ticker: str | None = Query(default=None),
+    run_id: str | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+) -> CatalystListResponse:
+    """Catalysts from the latest completed thesis run per ticker.
+
+    If `ticker` is supplied, restricts to that ticker. If `run_id` is
+    supplied, restricts to that specific research run instead of selecting
+    the latest run per ticker.
+    """
+    today = datetime.now(timezone.utc).date()
+
+    sql, params = _build_list_catalysts_sql(ticker=ticker, run_id=run_id)
+    result = await db.execute(text(sql), params)
+    rows = result.mappings().all()
+
+    catalysts: list[CatalystRow] = []
+    for row in rows:
+        # Raw text(sql) returns UUID objects for UUID columns regardless of
+        # the model's UUID(as_uuid=False) declaration (that flag only
+        # controls ORM-mapped accesses). Cast to str to match the wire
+        # format the frontend expects.
+        catalysts.append(CatalystRow(
+            id=str(row["id"]),
+            run_id=str(row["run_id"]),
+            ticker=row["ticker"],
+            ordinal=row["ordinal"],
+            timeframe=row["timeframe"],
+            description=row["description"],
+            type=row["type"],
+            signposts=row["signposts"] or [],
+            linked_pillar=row["linked_pillar"],
+            expected_date=row["expected_date"],
+            expected_window_start=row["expected_window_start"],
+            expected_window_end=row["expected_window_end"],
+            date_source=row["date_source"],
+            created_at=row["created_at"],
+        ))
+
+    buckets: dict[str, list[CatalystRow]] = {
+        "this_week": [], "next_30d": [], "next_90d": [], "later": [], "untimed": []
+    }
+    for r in catalysts:
+        b = _bucket(r, today)
+        if b == "passed":
+            continue
+        buckets[b].append(r)
+
+    return CatalystListResponse(
+        buckets=CatalystBuckets(**buckets),
+        total=sum(len(v) for v in buckets.values()),
+    )
+
+
+@router.get("/catalysts/{catalyst_id}", response_model=CatalystRow)
+async def get_catalyst(
+    catalyst_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> CatalystRow:
+    row = await db.get(Catalyst, catalyst_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="catalyst not found")
+    return CatalystRow.from_orm_row(row)

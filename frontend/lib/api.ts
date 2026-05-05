@@ -931,3 +931,58 @@ export function fmtPct(n: number | null): string {
 export function fmtScore(n: number): string {
   return n.toFixed(0);
 }
+
+// ── Catalysts (Tier 1.3) ──────────────────────────────────────────────────────
+
+export type CatalystDateSource =
+  | "fmp_earnings"
+  | "parsed_quarter"
+  | "parsed_relative"
+  | "parsed_year"
+  | "parsed_half"
+  | "untimed";
+
+export interface CatalystRow {
+  id: string;
+  run_id: string;
+  ticker: string;
+  ordinal: number;
+  timeframe: string;
+  description: string;
+  type?: CatalystType | null;
+  signposts: string[];
+  linked_pillar?: string | null;
+  expected_date: string | null;          // ISO date "YYYY-MM-DD"
+  expected_window_start: string | null;
+  expected_window_end: string | null;
+  date_source: CatalystDateSource;
+  created_at: string;                     // ISO datetime
+}
+
+export interface CatalystBuckets {
+  this_week: CatalystRow[];
+  next_30d: CatalystRow[];
+  next_90d: CatalystRow[];
+  later: CatalystRow[];
+  untimed: CatalystRow[];
+}
+
+export interface CatalystListResponse {
+  buckets: CatalystBuckets;
+  total: number;
+}
+
+export async function getCatalysts(ticker?: string): Promise<CatalystListResponse> {
+  const qs = ticker ? `?ticker=${encodeURIComponent(ticker)}` : "";
+  return apiFetch<CatalystListResponse>(`/api/catalysts${qs}`);
+}
+
+export async function getCatalystsForRun(runId: string): Promise<CatalystListResponse> {
+  return apiFetch<CatalystListResponse>(
+    `/api/catalysts?run_id=${encodeURIComponent(runId)}`
+  );
+}
+
+export async function getCatalyst(id: string): Promise<CatalystRow> {
+  return apiFetch<CatalystRow>(`/api/catalysts/${encodeURIComponent(id)}`);
+}

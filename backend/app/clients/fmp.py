@@ -258,6 +258,32 @@ class FMPClient:
         )
         return data, citation
 
+    async def get_earnings_calendar(
+        self, ticker: str, limit: int = 4
+    ) -> tuple[list[dict], Citation]:
+        """Earnings calendar entries for a ticker (past and future).
+
+        FMP's /stable/earnings endpoint returns per-symbol earnings rows
+        with both past actuals and forward estimates, each shaped like:
+        {symbol, date: 'YYYY-MM-DD', epsActual, epsEstimated,
+         revenueActual, revenueEstimated, lastUpdated}.
+
+        Callers must filter to future dates (epsActual is null for those).
+        The /earnings-calendar (kebab/plural) variant returns the global
+        firehose ignoring `symbol`; /earnings is the per-symbol form.
+        """
+        params = {"symbol": ticker, "limit": limit}
+        data = await self._request("earnings", params, ttl=TTL_FUNDAMENTAL)
+        if not isinstance(data, list):
+            data = []
+        citation = self._make_citation(
+            "earnings",
+            "Earnings Calendar",
+            ticker,
+            params,
+        )
+        return data, citation
+
     async def get_analyst_estimates(
         self, ticker: str, period: str = "annual", limit: int = 4
     ) -> tuple[list[dict], Citation]:
