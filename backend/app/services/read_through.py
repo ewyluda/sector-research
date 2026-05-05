@@ -178,11 +178,9 @@ async def resolve_read_throughs(
     )
     rows = (await db.execute(runs_q)).all()
     run_id_by_ticker: dict[str, list[str]] = {}
-    ticker_by_run: dict[str, str] = {}
     for run_id, ticker in rows:
         t = ticker.upper()
         run_id_by_ticker.setdefault(t, []).append(str(run_id))
-        ticker_by_run[str(run_id)] = t
 
     thesis_tickers = list(run_id_by_ticker.keys())
     peer_tickers = list({e.peer_ticker for e in peer_events})
@@ -282,6 +280,7 @@ async def resolve_read_throughs(
 
     # ── bucket edges by (run_id, event_key) ───────────────────────────────
     items_by_key: dict[tuple[str, str], ReadThroughItem] = {}
+    seen_links: dict[tuple[str, str], set[tuple[str, str]]] = {}
     for thesis_ticker, peer_ticker, link in edges:
         for run_id in run_id_by_ticker.get(thesis_ticker, []):
             for event in events_by_peer.get(peer_ticker, []):
@@ -295,6 +294,11 @@ async def resolve_read_throughs(
                         payload=event.payload,
                         links=[],
                     )
+                    seen_links[key] = set()
+                link_sig = (link.relationship_type, link.direction)
+                if link_sig in seen_links[key]:
+                    continue
+                seen_links[key].add(link_sig)
                 items_by_key[key].links.append(link)
 
     # ── filter dismissed ──────────────────────────────────────────────────
