@@ -5,10 +5,13 @@ import { useRouter } from "next/navigation";
 import {
   status as statusApi,
   themes as themesApi,
+  readThroughs,
   type Health,
+  type ReadThroughsByRun,
   type StatusBoardEntry,
   type Theme,
 } from "@/lib/api";
+import { ReadThroughDrawer } from "@/components/status/ReadThroughDrawer";
 
 const HEALTH_PILL: Record<Health, string> = {
   healthy:   "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -192,6 +195,8 @@ export default function StatusPage() {
   const [includeArchived, setIncludeArchived] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [rtByRun, setRtByRun] = useState<ReadThroughsByRun>({});
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
   useEffect(() => {
     themesApi.list().then(setThemes).catch(() => {});
@@ -246,6 +251,31 @@ export default function StatusPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [themeId, includeArchived]);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const data = await readThroughs.list();
+        if (!cancelled) setRtByRun(data);
+      } catch {
+        // best-effort — leave previous data on the screen
+      }
+    }
+    load();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
   const counts = useMemo(() => {
     const c: Record<Health | "all", number> = {
       all: entries.length,
@@ -275,6 +305,13 @@ export default function StatusPage() {
   async function unarchiveEntry(run_id: string) {
     await statusApi.unarchive(run_id);
     fetchBoard();
+  }
+
+  function handleReadThroughDismissed(runId: string, eventKey: string) {
+    setRtByRun((prev) => ({
+      ...prev,
+      [runId]: (prev[runId] ?? []).filter((it) => it.event_key !== eventKey),
+    }));
   }
 
   return (
@@ -366,16 +403,45 @@ export default function StatusPage() {
             <div>Refreshed</div>
             <div></div>
           </div>
-          {filtered.map((e) => (
-            <Row
-              key={e.run_id}
-              entry={e}
-              archived={archived.has(e.run_id)}
-              onClick={() => router.push(`/pipeline/${e.run_id}`)}
-              onArchive={() => archiveEntry(e.run_id)}
-              onUnarchive={() => unarchiveEntry(e.run_id)}
-            />
-          ))}
+          {filtered.map((e) => {
+            const items = rtByRun[e.run_id] ?? [];
+            const isExpanded = expandedRunId === e.run_id;
+            return (
+              <div key={e.run_id} className="space-y-1">
+                <div className="relative">
+                  <Row
+                    entry={e}
+                    archived={archived.has(e.run_id)}
+                    onClick={() => router.push(`/pipeline/${e.run_id}`)}
+                    onArchive={() => archiveEntry(e.run_id)}
+                    onUnarchive={() => unarchiveEntry(e.run_id)}
+                  />
+                  {items.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        setExpandedRunId(isExpanded ? null : e.run_id);
+                      }}
+                      title="Read-through events"
+                      className="absolute right-12 top-1/2 -translate-y-1/2 rounded bg-amber-900/40 px-1.5 py-0.5 text-[11px] text-amber-200 ring-1 ring-amber-700 hover:bg-amber-900/60"
+                    >
+                      ⟿ {items.length}
+                    </button>
+                  )}
+                </div>
+                {isExpanded && items.length > 0 && (
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)]">
+                    <ReadThroughDrawer
+                      runId={e.run_id}
+                      items={items}
+                      onDismissed={(ek) => handleReadThroughDismissed(e.run_id, ek)}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </main>
