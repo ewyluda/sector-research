@@ -10,7 +10,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.catalysts import CatalystRow, nearest_catalyst
@@ -149,7 +149,7 @@ def _resolve_health(
     if (
         next_cat is not None
         and next_cat.days_until is not None
-        and next_cat.days_until <= IMMINENT_DAYS
+        and 0 <= next_cat.days_until <= IMMINENT_DAYS
         and (
             next_cat.expected_window_end is None
             or next_cat.expected_window_end >= datetime.now(timezone.utc).date()
@@ -171,8 +171,6 @@ async def build_status_board(
 
     # Latest completed/watchlist run per (ticker, theme_id) that isn't archived.
     # Use DISTINCT ON for the per-pair latest selection.
-    from sqlalchemy import text
-
     where_archived = "" if include_archived else "AND r.archived_at IS NULL"
     where_theme = "AND r.theme_id = :theme_id" if theme_id else ""
     params: dict[str, str] = {}
