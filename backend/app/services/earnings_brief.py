@@ -53,8 +53,13 @@ must be a subset of the input thesis_pillars names."""
 
 
 def _extract_thesis(run: ResearchRun) -> tuple[str | None, list[str]]:
-    """Pull (thesis_summary, thesis_pillars[]) from persisted run state.
-    Mirrors the helper in read_through.py but additionally extracts pillars."""
+    """Pull (core_thesis, bull_case_pillars[]) from persisted run state.
+
+    `core_thesis` is the high-level thesis statement (ThesisOutput.core_thesis).
+    Bull-case pillars are the `title` values of each ThesisPoint in
+    ThesisOutput.bull_case — those are the load-bearing claims the print
+    will be evaluated against.
+    """
     if not isinstance(run.state, dict):
         return None, []
     phase_outputs = run.state.get("phase_outputs") or {}
@@ -62,15 +67,13 @@ def _extract_thesis(run: ResearchRun) -> tuple[str | None, list[str]]:
     structured = thesis.get("structured") if isinstance(thesis, dict) else None
     if not isinstance(structured, dict):
         return None, []
-    summary = structured.get("thesis_summary")
-    pillars_raw = structured.get("thesis_pillars") or structured.get("pillars") or []
+    summary = structured.get("core_thesis")
+    bull = structured.get("bull_case") or []
     pillars: list[str] = []
-    if isinstance(pillars_raw, list):
-        for p in pillars_raw:
-            if isinstance(p, str):
-                pillars.append(p)
-            elif isinstance(p, dict) and isinstance(p.get("name"), str):
-                pillars.append(p["name"])
+    if isinstance(bull, list):
+        for p in bull:
+            if isinstance(p, dict) and isinstance(p.get("title"), str):
+                pillars.append(p["title"])
     return summary, pillars
 
 
@@ -124,7 +127,7 @@ async def compute_brief(
         assistant_prefill='{"summary_md":',
         max_tokens=800,
     )
-    full_json = '{"summary_md":' + raw
+    full_json = raw
     try:
         parsed = BriefOutput.model_validate_json(full_json)
     except Exception as e:

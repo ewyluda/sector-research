@@ -115,7 +115,7 @@ async def extract_guidance_direction(
         assistant_prefill='{"guidance_direction":',
         max_tokens=200,
     )
-    full_json = '{"guidance_direction":' + raw
+    full_json = raw
     try:
         return GuidanceOutput.model_validate_json(full_json)
     except Exception:
@@ -191,7 +191,7 @@ async def compute_verdict(
         assistant_prefill='{"verdict":',
         max_tokens=900,
     )
-    full_json = '{"verdict":' + raw
+    full_json = raw
     try:
         parsed = VerdictOutput.model_validate_json(full_json)
     except Exception as e:
