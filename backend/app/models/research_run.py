@@ -2,7 +2,8 @@
 
 from uuid import uuid4
 
-from sqlalchemy import ForeignKey, Integer, String
+from datetime import datetime
+from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,3 +34,8 @@ class ResearchRun(Base, TimestampMixin):
 
     # Loop tracking (Phase 5 → Phase 3 loop-backs, max 2)
     loop_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+    # Status board: archive gesture. Null = on the board, non-null = archived.
+    archived_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True, default=None
+    )
