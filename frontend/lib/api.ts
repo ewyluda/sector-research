@@ -1112,3 +1112,86 @@ export const readThroughs = {
     });
   },
 };
+
+// ── Earnings cycle navigator ────────────────────────────────────────────────
+
+export type VerdictPhase = "pre" | "post" | "none";
+export type Verdict = "confirms" | "threatens" | "neutral" | "insufficient";
+
+export interface EarningsPrintRow {
+  id: string;
+  ticker: string;
+  fiscal_year: number;
+  fiscal_quarter: number;
+  earnings_date: string; // YYYY-MM-DD
+  eps_estimated: number | null;
+  eps_actual: number | null;
+  revenue_estimated: number | null;
+  revenue_actual: number | null;
+  eps_surprise_pct: number | null;
+  revenue_surprise_pct: number | null;
+  guidance_direction: "raised" | "maintained" | "lowered" | "n/a" | null;
+}
+
+export interface ThesisPrintVerdictRow {
+  id: string;
+  run_id: string;
+  earnings_print_id: string;
+  verdict: Verdict;
+  summary_md: string;
+  pillars_addressed: string[];
+  generated_at: string; // ISO
+}
+
+export interface MatchedEarningsCatalyst {
+  ordinal: number;
+  signposts: string[];
+  description: string;
+}
+
+export interface EarningsBoardEntry {
+  run_id: string;
+  ticker: string;
+  theme_id: string;
+  phase: VerdictPhase;
+  print: EarningsPrintRow | null;
+  matched_catalyst: MatchedEarningsCatalyst | null;
+  verdict: ThesisPrintVerdictRow | null;
+}
+
+export interface EarningsBoardResponse {
+  entries: EarningsBoardEntry[];
+}
+
+export interface BriefResponse {
+  summary_md: string;
+  pillars_addressed: string[];
+  generated_at: string;
+}
+
+export const earnings = {
+  board: async (windowDays: number = 14): Promise<EarningsBoardResponse> => {
+    return apiFetch<EarningsBoardResponse>(`/api/earnings/board?window_days=${windowDays}`);
+  },
+  brief: async (runId: string, printId: string): Promise<BriefResponse> => {
+    return apiFetch<BriefResponse>(
+      `/api/runs/${encodeURIComponent(runId)}/earnings/${encodeURIComponent(printId)}/brief`,
+      { method: "POST" }
+    );
+  },
+  verdict: async (runId: string, printId: string): Promise<ThesisPrintVerdictRow> => {
+    return apiFetch<ThesisPrintVerdictRow>(
+      `/api/runs/${encodeURIComponent(runId)}/earnings/${encodeURIComponent(printId)}/verdict`,
+      { method: "POST" }
+    );
+  },
+  printsByTicker: async (ticker: string): Promise<EarningsPrintRow[]> => {
+    return apiFetch<EarningsPrintRow[]>(`/api/earnings/prints/${encodeURIComponent(ticker)}`);
+  },
+  refresh: async (ticker: string): Promise<{ updated: number; ticker: string }> => {
+    return apiFetch<{ updated: number; ticker: string }>(
+      `/api/earnings/refresh/${encodeURIComponent(ticker)}`,
+      { method: "POST" }
+    );
+  },
+};
