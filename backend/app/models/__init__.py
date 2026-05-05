@@ -6,6 +6,7 @@ from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, 
 from backend.app.models.kill_criterion_state import KillCriterionState
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
 from backend.app.models.theme import Theme
+from backend.app.models.thesis_print_verdict import ThesisPrintVerdict
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
 from backend.app.models.watchlist import WatchlistItem
@@ -25,6 +26,7 @@ __all__ = [
     "Relationship",
     "XBRLFact",
     "Theme",
+    "ThesisPrintVerdict",
     "ResearchRun",
     "Signal",
     "WatchlistItem",
