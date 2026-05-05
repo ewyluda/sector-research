@@ -1,8 +1,8 @@
 """ResearchRun — a single ticker's journey through the 6-phase pipeline."""
 
+from datetime import datetime
 from uuid import uuid4
 
-from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
