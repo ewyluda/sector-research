@@ -1,0 +1,224 @@
+"use client";
+
+import { useState, type ReactNode } from "react";
+import {
+  earnings,
+  type EarningsBoardEntry,
+  type Verdict,
+  type ThesisPrintVerdictRow,
+  type BriefResponse,
+} from "@/lib/api";
+
+interface Props {
+  entry: EarningsBoardEntry;
+  onVerdictGenerated?: (verdict: ThesisPrintVerdictRow) => void;
+}
+
+const VERDICT_PILL: Record<Verdict, string> = {
+  confirms:     "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+  threatens:    "bg-red-500/10 text-red-400 border-red-500/30",
+  neutral:      "bg-slate-500/10 text-slate-400 border-slate-500/30",
+  insufficient: "bg-amber-500/10 text-amber-400 border-amber-500/30",
+};
+
+function fmtPct(v: number | null): string {
+  if (v == null) return "—";
+  const sign = v >= 0 ? "+" : "";
+  return `${sign}${(v * 100).toFixed(1)}%`;
+}
+
+function fmtUSD(v: number | null): string {
+  if (v == null) return "—";
+  if (Math.abs(v) >= 1e9) return `$${(v / 1e9).toFixed(2)}B`;
+  if (Math.abs(v) >= 1e6) return `$${(v / 1e6).toFixed(1)}M`;
+  return `$${v.toLocaleString()}`;
+}
+
+// ── Safe markdown renderer (no innerHTML) ───────────────────────────────────
+
+/**
+ * Render a small subset of markdown as React nodes — paragraphs, bullet
+ * lists (`- ` lines), and `**bold**` spans. Anything else is rendered as
+ * plain text. Safe by construction: no innerHTML, no HTML injection.
+ *
+ * Haiku output for this feature is constrained to bullets + bold by the
+ * system prompt, so this renderer is sufficient. If/when the project
+ * adopts a markdown library (e.g. react-markdown), swap this for that.
+ */
+function SafeMarkdownBlock({ source }: { source: string }) {
+  const blocks = source.split(/\n\n+/).map((b) => b.trim()).filter(Boolean);
+  return (
+    <div className="space-y-2 text-sm text-slate-200">
+      {blocks.map((block, i) => {
+        const lines = block.split("\n");
+        const isList = lines.every((l) => l.trimStart().startsWith("- "));
+        if (isList) {
+          return (
+            <ul key={i} className="list-disc list-inside space-y-1">
+              {lines.map((l, j) => (
+                <li key={j}>{renderInline(l.trimStart().slice(2))}</li>
+              ))}
+            </ul>
+          );
+        }
+        return <p key={i}>{renderInline(block.replace(/\n/g, " "))}</p>;
+      })}
+    </div>
+  );
+}
+
+function renderInline(text: string): ReactNode {
+  // Split on **bold**, returning alternating text and <strong> nodes.
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={i}>{part.slice(2, -2)}</strong>;
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+// ── Drawer dispatcher ───────────────────────────────────────────────────────
+
+export function EarningsDrawer({ entry, onVerdictGenerated }: Props) {
+  if (!entry.print) return null;
+  if (entry.verdict) return <VerdictBlock entry={entry} />;
+  if (entry.phase === "post") return <PostEarningsBlock entry={entry} onVerdictGenerated={onVerdictGenerated} />;
+  return <PreEarningsBlock entry={entry} />;
+}
+
+// ── Pre-print ───────────────────────────────────────────────────────────────
+
+function PreEarningsBlock({ entry }: { entry: EarningsBoardEntry }) {
+  const [brief, setBrief] = useState<BriefResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function generate() {
+    if (!entry.print) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      const out = await earnings.brief(entry.run_id, entry.print.id);
+      setBrief(out);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const p = entry.print!;
+  return (
+    <div data-print-hide="true" className="px-4 py-3 bg-slate-900/40 border-t border-slate-800">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-300">
+        <span><span className="text-slate-500">Date:</span> {p.earnings_date} ({p.fiscal_year}Q{p.fiscal_quarter})</span>
+        <span><span className="text-slate-500">EPS est:</span> {p.eps_estimated?.toFixed(2) ?? "—"}</span>
+        <span><span className="text-slate-500">Rev est:</span> {fmtUSD(p.revenue_estimated)}</span>
+      </div>
+      {entry.matched_catalyst && entry.matched_catalyst.signposts.length > 0 && (
+        <div className="mt-2">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Signposts</div>
+          <ul className="list-disc list-inside text-xs text-slate-300 space-y-0.5">
+            {entry.matched_catalyst.signposts.map((s, i) => <li key={i}>{s}</li>)}
+          </ul>
+        </div>
+      )}
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={generate}
+          disabled={loading}
+          className="px-2.5 py-1 text-xs rounded border border-slate-700 hover:border-slate-500 disabled:opacity-50"
+        >
+          {loading ? "Generating…" : brief ? "Regenerate brief" : "Generate pre-earnings brief"}
+        </button>
+        {err && <span className="text-xs text-red-400">{err}</span>}
+      </div>
+      {brief && (
+        <div className="mt-3">
+          <SafeMarkdownBlock source={brief.summary_md} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Post-print, no verdict yet ──────────────────────────────────────────────
+
+function PostEarningsBlock({
+  entry,
+  onVerdictGenerated,
+}: {
+  entry: EarningsBoardEntry;
+  onVerdictGenerated?: (v: ThesisPrintVerdictRow) => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function generate() {
+    if (!entry.print) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      const v = await earnings.verdict(entry.run_id, entry.print.id);
+      onVerdictGenerated?.(v);
+    } catch (e: unknown) {
+      setErr(e instanceof Error ? e.message : "failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const p = entry.print!;
+  return (
+    <div data-print-hide="true" className="px-4 py-3 bg-slate-900/40 border-t border-slate-800">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-300">
+        <span><span className="text-slate-500">Reported:</span> {p.earnings_date} ({p.fiscal_year}Q{p.fiscal_quarter})</span>
+        <span><span className="text-slate-500">EPS surprise:</span> <strong>{fmtPct(p.eps_surprise_pct)}</strong></span>
+        <span><span className="text-slate-500">Rev surprise:</span> <strong>{fmtPct(p.revenue_surprise_pct)}</strong></span>
+        <span><span className="text-slate-500">Guidance:</span> {p.guidance_direction ?? "—"}</span>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={generate}
+          disabled={loading}
+          className="px-2.5 py-1 text-xs rounded border border-emerald-700 text-emerald-400 hover:border-emerald-500 disabled:opacity-50"
+        >
+          {loading ? "Running thesis-check…" : "Run thesis-check"}
+        </button>
+        {err && <span className="text-xs text-red-400">{err}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ── Verdict rendered ────────────────────────────────────────────────────────
+
+function VerdictBlock({ entry }: { entry: EarningsBoardEntry }) {
+  const v = entry.verdict!;
+  const p = entry.print!;
+  return (
+    <div data-print-hide="true" className="px-4 py-3 bg-slate-900/40 border-t border-slate-800">
+      <div className="flex items-center gap-3 mb-2">
+        <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold ${VERDICT_PILL[v.verdict]}`}>
+          {v.verdict}
+        </span>
+        <span className="text-xs text-slate-500">
+          {p.earnings_date} · {p.fiscal_year}Q{p.fiscal_quarter} ·
+          EPS {fmtPct(p.eps_surprise_pct)} · Rev {fmtPct(p.revenue_surprise_pct)} ·
+          Guidance {p.guidance_direction ?? "—"}
+        </span>
+      </div>
+      <SafeMarkdownBlock source={v.summary_md} />
+      {v.pillars_addressed.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1">
+          {v.pillars_addressed.map((pillar) => (
+            <span key={pillar} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+              {pillar}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
