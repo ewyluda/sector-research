@@ -19,10 +19,12 @@ from typing import Any, Literal
 from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from backend.app.graph.llm import HAIKU, complete
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.filing import CompetitorLandscape, Relationship
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
 from backend.app.models.research_run import ResearchRun
+from backend.app.services.relationship_context import get_counterparty_context
 
 logger = logging.getLogger(__name__)
 
@@ -328,3 +330,132 @@ async def resolve_read_throughs(
         )
 
     return out
+
+
+# ── Layer 3: lazy Haiku impact summary ─────────────────────────────────────
+
+
+async def _lookup_event_by_key(
+    db: AsyncSession, event_key: str
+) -> PeerEvent | None:
+    """Resolve a deterministic event_key back to its PeerEvent."""
+    if event_key.startswith("earnings:"):
+        try:
+            _, ticker, date_str = event_key.split(":", 2)
+            event_date = date.fromisoformat(date_str)
+        except ValueError:
+            return None
+        cat_q = (
+            select(Catalyst)
+            .where(Catalyst.type == "earnings")
+            .where(Catalyst.ticker == ticker.upper())
+            .where(Catalyst.expected_window_start == event_date)
+            .limit(1)
+        )
+        c = (await db.execute(cat_q)).scalars().first()
+        if not c or not c.expected_window_start:
+            return None
+        return PeerEvent(
+            event_key=event_key,
+            peer_ticker=c.ticker.upper(),
+            event_type="earnings",
+            event_date=c.expected_window_start,
+            payload={
+                "description": c.description,
+                "type": c.type,
+                "timeframe": c.timeframe,
+            },
+        )
+    if event_key.startswith("run_complete:"):
+        run_id = event_key.split(":", 1)[1]
+        run = (
+            await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+        ).scalar_one_or_none()
+        if not run:
+            return None
+        thesis_summary = None
+        if isinstance(run.state, dict):
+            structured = (
+                (run.state.get("phase_outputs") or {}).get("thesis") or {}
+            ).get("structured")
+            if isinstance(structured, dict):
+                thesis_summary = structured.get("thesis_summary")
+        return PeerEvent(
+            event_key=event_key,
+            peer_ticker=run.ticker.upper(),
+            event_type="run_complete",
+            event_date=run.updated_at.date(),
+            payload={
+                "run_id": str(run.id),
+                "theme_id": str(run.theme_id),
+                "thesis_summary": thesis_summary,
+            },
+        )
+    return None
+
+
+def _render_counterparty_context(ctx) -> str:
+    """Render a CounterpartyContext into prompt-friendly text."""
+    lines: list[str] = []
+    if ctx.outbound:
+        lines.append("Outbound (this thesis names them):")
+        for rt, entries in ctx.outbound.items():
+            for e in entries:
+                anchor = f"${e.resolved_ticker}" if e.resolved_ticker else e.name
+                lines.append(f"  - {anchor} — {rt}")
+    if ctx.inbound:
+        lines.append("Mentioned by others:")
+        for rt, entries in ctx.inbound.items():
+            for e in entries:
+                anchor = f"${e.resolved_ticker}" if e.resolved_ticker else e.name
+                lines.append(f"  - {anchor} — {rt}")
+    return "\n".join(lines) if lines else "(no relationships on file)"
+
+
+_SUMMARY_SYSTEM = (
+    "You are a sell-side equity analyst evaluating peer-event read-through. "
+    "Given a thesis on TICKER and a peer event on PEER_TICKER, produce one "
+    "paragraph (<= 120 words) answering: how does this peer event affect the "
+    "thesis? Cite the relationship from the counterparty context if relevant. "
+    "Do not invent quantitative claims. Do not restate the event verbatim — "
+    "interpret it."
+)
+
+
+async def summarize_read_through(
+    db: AsyncSession,
+    run_id: str,
+    event_key: str,
+) -> str:
+    """Run a one-shot Haiku summary for a single (run, event) read-through."""
+    run = (
+        await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+    ).scalar_one_or_none()
+    if run is None:
+        raise ValueError(f"run not found: {run_id}")
+
+    event = await _lookup_event_by_key(db, event_key)
+    if event is None:
+        raise ValueError(f"event not found for key: {event_key}")
+
+    thesis_summary = None
+    if isinstance(run.state, dict):
+        structured = (
+            (run.state.get("phase_outputs") or {}).get("thesis") or {}
+        ).get("structured")
+        if isinstance(structured, dict):
+            thesis_summary = structured.get("thesis_summary")
+
+    ctx = await get_counterparty_context(run.ticker.upper(), db)
+    rendered = _render_counterparty_context(ctx)
+
+    user = (
+        f"TICKER: {run.ticker}\n"
+        f"PEER_TICKER: {event.peer_ticker}\n"
+        f"Thesis summary: {thesis_summary or '(none on file)'}\n"
+        f"Peer event: {event.event_type} on {event.event_date.isoformat()} — "
+        f"{event.payload}\n"
+        f"Relationships from filings:\n{rendered}"
+    )
+
+    return await complete(system=_SUMMARY_SYSTEM, user=user, model=HAIKU, max_tokens=400)
