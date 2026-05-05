@@ -26,7 +26,9 @@ import type {
   KillCriterion,
   FailureMode,
   PreMortem,
+  KillCriterionStateOut,
 } from "@/lib/api";
+import { killCriteria as killCriteriaApi } from "@/lib/api";
 import ScoreRing from "@/components/ScoreRing";
 import { BullBearColumns } from "@/components/BullBearColumns";
 import { CatalystList } from "@/components/CatalystList";
@@ -51,6 +53,8 @@ interface Props {
   citations?: Citation[];
   ticker: string;
   thesisStatus: string;
+  runId: string;
+  killCriterionStates: KillCriterionStateOut[];
 }
 
 function PillarChip({
@@ -78,15 +82,50 @@ function PillarChip({
 
 function KillCriteriaSection({
   items,
+  states: initialStates,
+  runId,
   onPillarHover,
 }: {
   items: KillCriterion[];
+  states: KillCriterionStateOut[];
+  runId: string;
   onPillarHover: (p: string | null) => void;
 }) {
   const [collapsed, setCollapsed] = usePersistedCollapse(
     "thesis-kill-criteria",
     true,
   );
+  const [states, setStates] = useState<KillCriterionStateOut[]>(initialStates);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [draftNote, setDraftNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  function statusOf(ordinal: number): "armed" | "triggered" {
+    return states.find((s) => s.ordinal === ordinal)?.status ?? "armed";
+  }
+
+  async function flip(ordinal: number, next: "armed" | "triggered", note: string) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const res = await killCriteriaApi.set(runId, ordinal, {
+        status: next,
+        note: note || undefined,
+      });
+      setStates((prev) => {
+        const without = prev.filter((s) => s.ordinal !== ordinal);
+        return [...without, res].sort((a, b) => a.ordinal - b.ordinal);
+      });
+      setEditing(null);
+      setDraftNote("");
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)]">
       <button
@@ -105,32 +144,89 @@ function KillCriteriaSection({
       </button>
       {!collapsed && (
         <div id="thesis-kill-criteria-panel" className="px-3.5 pb-3 flex flex-col gap-2">
-          {items.map((k, i) => (
-            <div
-              key={i}
-              className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-2.5 flex flex-col gap-1"
-            >
-              <div className="text-[11px] font-semibold text-[var(--text)] leading-snug">
-                {k.condition}
-              </div>
-              <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-                <span className="font-mono text-[var(--text-faint)]">trigger</span>{" "}
-                {k.threshold}
-              </div>
-              <div className="flex items-center gap-2 flex-wrap mt-0.5">
-                <span className="text-[9px] font-mono text-[var(--text-faint)]">
-                  watch: {k.monitoring_source}
-                </span>
-                {k.kills_pillar && (
-                  <PillarChip
-                    pillar={k.kills_pillar}
-                    prefix="kills"
-                    onHover={onPillarHover}
-                  />
+          {items.map((k, i) => {
+            const cur = statusOf(i);
+            const isEditing = editing === i;
+            return (
+              <div
+                key={i}
+                className="rounded-md border border-[var(--border)] bg-[var(--surface)] p-2.5 flex flex-col gap-1.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="text-[11px] font-semibold text-[var(--text)] leading-snug flex-1">
+                    {k.condition}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const note = states.find((s) => s.ordinal === i)?.note ?? "";
+                      setDraftNote(note);
+                      setEditing(isEditing ? null : i);
+                      setSaveError(null);
+                    }}
+                    className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
+                      cur === "triggered"
+                        ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                        : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${cur === "triggered" ? "bg-amber-400" : "bg-slate-400"}`} />
+                    {cur === "triggered" ? "Triggered" : "Armed"}
+                  </button>
+                </div>
+                <div className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+                  <span className="font-mono text-[var(--text-faint)]">trigger</span>{" "}
+                  {k.threshold}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                  <span className="text-[9px] font-mono text-[var(--text-faint)]">
+                    watch: {k.monitoring_source}
+                  </span>
+                  {k.kills_pillar && (
+                    <PillarChip
+                      pillar={k.kills_pillar}
+                      prefix="kills"
+                      onHover={onPillarHover}
+                    />
+                  )}
+                </div>
+
+                {isEditing && (
+                  <div className="mt-1.5 flex flex-col gap-1.5 border-t border-[var(--border)] pt-1.5">
+                    <textarea
+                      value={draftNote}
+                      onChange={(e) => setDraftNote(e.target.value)}
+                      placeholder="Optional note (what triggered it?)"
+                      className="w-full text-[11px] bg-[var(--surface-alt)] border border-[var(--border)] rounded px-2 py-1 resize-y min-h-[40px]"
+                    />
+                    <div className="flex gap-2 items-center">
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() =>
+                          flip(i, cur === "triggered" ? "armed" : "triggered", draftNote)
+                        }
+                        className="px-2 py-0.5 rounded bg-[var(--accent-bg)] text-[var(--primary-dk)] text-[10px] font-semibold disabled:opacity-50"
+                      >
+                        {saving ? "Saving…" : cur === "triggered" ? "Mark Armed" : "Mark Triggered"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={saving}
+                        onClick={() => { setEditing(null); setDraftNote(""); setSaveError(null); }}
+                        className="px-2 py-0.5 rounded text-[10px] text-[var(--text-muted)] hover:text-[var(--text)]"
+                      >
+                        Cancel
+                      </button>
+                      {saveError && (
+                        <span className="text-[10px] text-red-400">{saveError}</span>
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -195,6 +291,8 @@ export function ThesisCard({
   citations = [],
   ticker,
   thesisStatus,
+  runId,
+  killCriterionStates,
 }: Props) {
   const statusColor = STATUS_COLORS[thesisStatus] ?? STATUS_COLORS.PENDING;
   const [highlightedPillar, setHighlightedPillar] = useState<string | null>(null);
@@ -267,6 +365,8 @@ export function ThesisCard({
       {killCriteria.length > 0 && (
         <KillCriteriaSection
           items={killCriteria}
+          states={killCriterionStates}
+          runId={runId}
           onPillarHover={setHighlightedPillar}
         />
       )}

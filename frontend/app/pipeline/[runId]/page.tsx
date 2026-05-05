@@ -681,6 +681,8 @@ export default function PipelineRunnerPage() {
                   citations={citations}
                   ticker={ticker}
                   thesisStatus={thesisStatus}
+                  runId={runId}
+                  killCriterionStates={report?.kill_criterion_states ?? []}
                 />
               ) : (
                 <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">

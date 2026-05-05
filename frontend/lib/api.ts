@@ -858,6 +858,7 @@ export interface ReportResponse {
     date_researched: string;
     loop_count: number;
   };
+  kill_criterion_states?: KillCriterionStateOut[];
 }
 
 // ── SSE event types ────────────────────────────────────────────────────────────
