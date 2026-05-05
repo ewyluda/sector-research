@@ -24,7 +24,10 @@ from backend.app.models.catalyst import Catalyst
 from backend.app.models.filing import CompetitorLandscape, Relationship
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
 from backend.app.models.research_run import ResearchRun
-from backend.app.services.relationship_context import get_counterparty_context
+from backend.app.services.relationship_context import (
+    CounterpartyContext,
+    get_counterparty_context,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +59,19 @@ class ReadThroughItem:
     event_date: date
     payload: dict[str, Any]
     links: list[RelationshipLink]
+
+
+def _extract_thesis_summary(run: ResearchRun) -> str | None:
+    """Pull thesis_summary from a ResearchRun's persisted state. Tolerates
+    missing or malformed phase outputs (returns None)."""
+    if not isinstance(run.state, dict):
+        return None
+    phase_outputs = run.state.get("phase_outputs") or {}
+    thesis = phase_outputs.get("thesis") or {}
+    structured = thesis.get("structured") if isinstance(thesis, dict) else None
+    if isinstance(structured, dict):
+        return structured.get("thesis_summary")
+    return None
 
 
 # ── Layer 1: peer-event indexer ────────────────────────────────────────────
@@ -116,13 +132,7 @@ async def compute_peer_events(
     )
     run_rows = (await db.execute(run_q)).scalars().all()
     for r in run_rows:
-        thesis_summary = None
-        if isinstance(r.state, dict):
-            phase_outputs = r.state.get("phase_outputs") or {}
-            thesis = phase_outputs.get("thesis") or {}
-            structured = thesis.get("structured") if isinstance(thesis, dict) else None
-            if isinstance(structured, dict):
-                thesis_summary = structured.get("thesis_summary")
+        thesis_summary = _extract_thesis_summary(r)
         events.append(
             PeerEvent(
                 event_key=f"run_complete:{r.id}",
@@ -373,13 +383,7 @@ async def _lookup_event_by_key(
         ).scalar_one_or_none()
         if not run:
             return None
-        thesis_summary = None
-        if isinstance(run.state, dict):
-            structured = (
-                (run.state.get("phase_outputs") or {}).get("thesis") or {}
-            ).get("structured")
-            if isinstance(structured, dict):
-                thesis_summary = structured.get("thesis_summary")
+        thesis_summary = _extract_thesis_summary(run)
         return PeerEvent(
             event_key=event_key,
             peer_ticker=run.ticker.upper(),
@@ -394,7 +398,7 @@ async def _lookup_event_by_key(
     return None
 
 
-def _render_counterparty_context(ctx) -> str:
+def _render_counterparty_context(ctx: CounterpartyContext) -> str:
     """Render a CounterpartyContext into prompt-friendly text."""
     lines: list[str] = []
     if ctx.outbound:
@@ -438,23 +442,17 @@ async def summarize_read_through(
     if event is None:
         raise ValueError(f"event not found for key: {event_key}")
 
-    thesis_summary = None
-    if isinstance(run.state, dict):
-        structured = (
-            (run.state.get("phase_outputs") or {}).get("thesis") or {}
-        ).get("structured")
-        if isinstance(structured, dict):
-            thesis_summary = structured.get("thesis_summary")
+    thesis_summary = _extract_thesis_summary(run)
 
     ctx = await get_counterparty_context(run.ticker.upper(), db)
     rendered = _render_counterparty_context(ctx)
 
+    event_summary = event.payload.get("description") or event.payload.get("thesis_summary") or ""
     user = (
         f"TICKER: {run.ticker}\n"
         f"PEER_TICKER: {event.peer_ticker}\n"
         f"Thesis summary: {thesis_summary or '(none on file)'}\n"
-        f"Peer event: {event.event_type} on {event.event_date.isoformat()} — "
-        f"{event.payload}\n"
+        f"Peer event: {event.event_type} on {event.event_date.isoformat()} — {event_summary}\n"
         f"Relationships from filings:\n{rendered}"
     )
 
