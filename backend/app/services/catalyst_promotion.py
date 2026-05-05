@@ -21,8 +21,9 @@ from backend.app.services.catalyst_dates import ParsedDates, parse_timeframe
 logger = logging.getLogger(__name__)
 
 # Slack window for matching FMP earnings dates against parsed timeframes.
-# A "Q2 2026" parsed window ends Jun 30, but the actual earnings print may
-# fall a few weeks later (mid-July). Allow this much buffer past window_end.
+# A "Q2 2026" parsed window is Apr 1 – Jun 30, but actual earnings prints
+# routinely fall mid-July (post window_end) and pre-announcements can hit
+# late March (pre window_start). Symmetric slack on both sides catches both.
 _FMP_EARNINGS_SLACK_DAYS = 30
 
 
@@ -55,7 +56,7 @@ async def _try_fmp_earnings_override(
 
     # Build a window: prefer parsed window, else "next 365 days" as fallback
     if parsed.window_start and parsed.window_end:
-        lower = max(parsed.window_start, today)
+        lower = max(parsed.window_start - timedelta(days=_FMP_EARNINGS_SLACK_DAYS), today)
         upper = parsed.window_end + timedelta(days=_FMP_EARNINGS_SLACK_DAYS)
     else:
         lower = today
