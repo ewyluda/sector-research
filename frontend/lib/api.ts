@@ -1034,6 +1034,24 @@ export interface KillCriterionStateOut {
   note: string | null;
 }
 
+export interface RelationshipLink {
+  relationship_type: string;
+  direction: "outbound" | "inbound";
+  verbatim_quote?: string | null;
+  magnitude_pct?: number | null;
+}
+
+export interface ReadThroughItem {
+  event_key: string;
+  peer_ticker: string;
+  event_type: "earnings" | "run_complete";
+  event_date: string;
+  payload: Record<string, unknown>;
+  links: RelationshipLink[];
+}
+
+export type ReadThroughsByRun = Record<string, ReadThroughItem[]>;
+
 export const status = {
   board: (opts?: { theme_id?: string; include_archived?: boolean }) => {
     const qs = new URLSearchParams();
@@ -1069,4 +1087,28 @@ export const killCriteria = {
         body: JSON.stringify(body),
       },
     ),
+};
+
+export const readThroughs = {
+  async list(params?: { since?: string; until?: string }): Promise<ReadThroughsByRun> {
+    const qs = new URLSearchParams();
+    if (params?.since) qs.set("since", params.since);
+    if (params?.until) qs.set("until", params.until);
+    const url = `/api/status/read-throughs${qs.toString() ? `?${qs}` : ""}`;
+    return apiFetch<ReadThroughsByRun>(url);
+  },
+
+  async dismiss(run_id: string, event_key: string): Promise<void> {
+    await apiFetch<void>("/api/status/read-throughs/dismiss", {
+      method: "POST",
+      body: JSON.stringify({ run_id, event_key }),
+    });
+  },
+
+  async summarize(run_id: string, event_key: string): Promise<{ summary: string }> {
+    return apiFetch<{ summary: string }>("/api/status/read-throughs/summary", {
+      method: "POST",
+      body: JSON.stringify({ run_id, event_key }),
+    });
+  },
 };
