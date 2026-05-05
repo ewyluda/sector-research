@@ -120,7 +120,7 @@ async def compute_brief(
     raw = await complete(
         model=HAIKU,
         system=EARNINGS_BRIEF_SYSTEM,
-        messages=[{"role": "user", "content": json.dumps(user_payload, indent=2)}],
+        user=json.dumps(user_payload, indent=2),
         assistant_prefill='{"summary_md":',
         max_tokens=800,
     )

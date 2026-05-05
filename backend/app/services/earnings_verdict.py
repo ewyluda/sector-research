@@ -111,7 +111,7 @@ async def extract_guidance_direction(
     raw = await complete(
         model=HAIKU,
         system=GUIDANCE_EXTRACTION_SYSTEM,
-        messages=[{"role": "user", "content": excerpt}],
+        user=excerpt,
         assistant_prefill='{"guidance_direction":',
         max_tokens=200,
     )
@@ -187,7 +187,7 @@ async def compute_verdict(
     raw = await complete(
         model=HAIKU,
         system=EARNINGS_VERDICT_SYSTEM,
-        messages=[{"role": "user", "content": json.dumps(user_payload, indent=2)}],
+        user=json.dumps(user_payload, indent=2),
         assistant_prefill='{"verdict":',
         max_tokens=900,
     )
