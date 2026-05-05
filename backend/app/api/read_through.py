@@ -1,10 +1,9 @@
 """Read-through API — board-wide read-throughs, dismissal, and lazy summary."""
-from __future__ import annotations
-
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -21,6 +20,8 @@ from backend.app.services.read_through import (
     summarize_read_through,
 )
 from backend.app.services.status_board import build_status_board
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -58,12 +59,12 @@ class SummaryOut(BaseModel):
     summary: str
 
 
-def _serialize_link(l: RelationshipLink) -> RelationshipLinkOut:
+def _serialize_link(link: RelationshipLink) -> RelationshipLinkOut:
     return RelationshipLinkOut(
-        relationship_type=l.relationship_type,
-        direction=l.direction,
-        verbatim_quote=l.verbatim_quote,
-        magnitude_pct=l.magnitude_pct,
+        relationship_type=link.relationship_type,
+        direction=link.direction,
+        verbatim_quote=link.verbatim_quote,
+        magnitude_pct=link.magnitude_pct,
     )
 
 
@@ -74,7 +75,7 @@ def _serialize_item(item: ReadThroughItem) -> ReadThroughItemOut:
         event_type=item.event_type,
         event_date=item.event_date.isoformat(),
         payload=item.payload,
-        links=[_serialize_link(l) for l in item.links],
+        links=[_serialize_link(link) for link in item.links],
     )
 
 
@@ -111,7 +112,7 @@ async def get_read_throughs(
 async def dismiss_read_through(
     body: DismissBody,
     db: AsyncSession = Depends(get_db),
-) -> Response:
+) -> None:
     stmt = (
         pg_insert(ReadThroughDismissal)
         .values(run_id=body.run_id, event_key=body.event_key)
@@ -119,7 +120,6 @@ async def dismiss_read_through(
     )
     await db.execute(stmt)
     await db.commit()
-    return Response(status_code=204)
 
 
 @router.post("/status/read-throughs/summary", response_model=SummaryOut)
@@ -132,5 +132,6 @@ async def summarize(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
+        logger.exception("read_through.summary_failed", extra={"run_id": body.run_id, "event_key": body.event_key})
         raise HTTPException(status_code=502, detail=f"summary generation failed: {e}")
     return SummaryOut(summary=summary)
