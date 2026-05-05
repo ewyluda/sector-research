@@ -124,6 +124,37 @@ def _build_list_catalysts_sql(
     """, params
 
 
+def nearest_catalyst(rows: list[CatalystRow], today: date) -> CatalystRow | None:
+    """Pick the most-imminent still-relevant catalyst from a run's rows.
+
+    Tie-break order:
+      1. expected_date >= today, ascending by expected_date
+      2. windowed catalysts whose expected_window_end >= today,
+         ascending by expected_window_end
+      3. first undated catalyst by ordinal (so the row always has
+         something to show)
+    """
+    upcoming = [r for r in rows if r.expected_date is not None and r.expected_date >= today]
+    if upcoming:
+        upcoming.sort(key=lambda r: r.expected_date)
+        return upcoming[0]
+
+    open_window = [
+        r for r in rows
+        if r.expected_window_end is not None and r.expected_window_end >= today
+    ]
+    if open_window:
+        open_window.sort(key=lambda r: r.expected_window_end)
+        return open_window[0]
+
+    undated = [r for r in rows if r.expected_date is None]
+    if undated:
+        undated.sort(key=lambda r: r.ordinal)
+        return undated[0]
+
+    return None
+
+
 def _bucket(row: CatalystRow, today: date) -> str:
     if row.expected_date is None:
         return "untimed"
