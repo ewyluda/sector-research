@@ -68,6 +68,62 @@ class CatalystListResponse(BaseModel):
     total: int
 
 
+def _build_list_catalysts_sql(
+    ticker: str | None,
+    run_id: str | None,
+) -> tuple[str, dict[str, str]]:
+    params: dict[str, str] = {}
+    order_by = """
+        ORDER BY
+            (c.expected_date IS NULL),
+            c.expected_date NULLS LAST,
+            c.ticker,
+            c.ordinal
+    """
+
+    if run_id is not None:
+        params["run_id"] = run_id
+        where_parts = ["c.run_id = :run_id"]
+        if ticker is not None:
+            params["ticker"] = ticker
+            where_parts.append("c.ticker = :ticker")
+        where_clause = "WHERE " + " AND ".join(where_parts)
+        return f"""
+            SELECT c.*
+            FROM catalysts c
+            {where_clause}
+            {order_by}
+        """, params
+
+    # Latest completed-thesis run per ticker. We treat a run as having
+    # completed thesis-construction if state.phase_outputs.thesis.structured
+    # is an object (matches what the upsert path needs to fire). JSON null is
+    # deliberately excluded so parse-failed newer runs do not hide older
+    # catalyst rows.
+    #
+    # Note: asyncpg can't infer the type of a parameter used only in
+    # `:ticker IS NULL OR c.ticker = :ticker`, so we conditionally append
+    # the filter clause and only bind :ticker when needed.
+    where_clause = ""
+    if ticker is not None:
+        where_clause = "WHERE c.ticker = :ticker"
+        params["ticker"] = ticker
+
+    return f"""
+        WITH latest AS (
+            SELECT DISTINCT ON (ticker) id, ticker, created_at
+            FROM research_runs
+            WHERE jsonb_typeof(state->'phase_outputs'->'thesis'->'structured') = 'object'
+            ORDER BY ticker, created_at DESC
+        )
+        SELECT c.*
+        FROM catalysts c
+        JOIN latest l ON c.run_id = l.id
+        {where_clause}
+        {order_by}
+    """, params
+
+
 def _bucket(row: CatalystRow, today: date) -> str:
     if row.expected_date is None:
         return "untimed"
@@ -95,46 +151,18 @@ def _bucket(row: CatalystRow, today: date) -> str:
 @router.get("/catalysts", response_model=CatalystListResponse)
 async def list_catalysts(
     ticker: str | None = Query(default=None),
+    run_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> CatalystListResponse:
     """Catalysts from the latest completed thesis run per ticker.
 
-    If `ticker` is supplied, restricts to that ticker.
+    If `ticker` is supplied, restricts to that ticker. If `run_id` is
+    supplied, restricts to that specific research run instead of selecting
+    the latest run per ticker.
     """
     today = datetime.now(timezone.utc).date()
 
-    # Latest completed-thesis run per ticker. We treat a run as having
-    # completed thesis-construction if state.phase_outputs.thesis.structured
-    # exists and is non-null (matches what the upsert path needs to fire).
-    # `phase_outputs` is a key inside the JSONB `state` column, not a
-    # top-level column.
-    #
-    # Note: asyncpg can't infer the type of a parameter used only in
-    # `:ticker IS NULL OR c.ticker = :ticker`, so we conditionally append
-    # the filter clause and only bind :ticker when needed.
-    where_clause = ""
-    params: dict[str, str] = {}
-    if ticker is not None:
-        where_clause = "WHERE c.ticker = :ticker"
-        params["ticker"] = ticker
-
-    sql = f"""
-        WITH latest AS (
-            SELECT DISTINCT ON (ticker) id, ticker, created_at
-            FROM research_runs
-            WHERE state->'phase_outputs'->'thesis'->'structured' IS NOT NULL
-            ORDER BY ticker, created_at DESC
-        )
-        SELECT c.*
-        FROM catalysts c
-        JOIN latest l ON c.run_id = l.id
-        {where_clause}
-        ORDER BY
-            (c.expected_date IS NULL),
-            c.expected_date NULLS LAST,
-            c.ticker,
-            c.ordinal
-    """
+    sql, params = _build_list_catalysts_sql(ticker=ticker, run_id=run_id)
     result = await db.execute(text(sql), params)
     rows = result.mappings().all()
 

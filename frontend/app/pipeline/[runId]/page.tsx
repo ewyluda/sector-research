@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { pipeline as api, getCatalysts } from "@/lib/api";
+import { pipeline as api, getCatalystsForRun } from "@/lib/api";
 import type {
   RunDetail,
   ReportResponse,
@@ -187,6 +187,15 @@ export default function PipelineRunnerPage() {
 
   const esRef = useRef<EventSource | null>(null);
 
+  const loadCatalystData = useCallback(async (id: string) => {
+    try {
+      const d = await getCatalystsForRun(id);
+      setCatalystBuckets(d.buckets);
+    } catch {
+      setCatalystBuckets(null);
+    }
+  }, []);
+
   // ── Load completed report data ──────────────────────────────────────────────
 
   const loadReportData = useCallback(async (id: string) => {
@@ -243,10 +252,11 @@ export default function PipelineRunnerPage() {
       setConvictionScore(r.conviction_score);
       setCitations(r.citations);
       setXSignalVelocity(r.x_signal_velocity ?? null);
+      await loadCatalystData(id);
     } catch {
       // Report endpoint may 404 for in-progress runs — that's fine
     }
-  }, []);
+  }, [loadCatalystData]);
 
   // ── Initial fetch ───────────────────────────────────────────────────────────
 
@@ -408,6 +418,9 @@ export default function PipelineRunnerPage() {
           }
           setThesisContent((output.content as string) ?? null);
           setThesisParseError((output.parse_error as string) ?? null);
+          if (runId) {
+            void loadCatalystData(runId);
+          }
         } else if (event.phase === "risk_stress_test" || event.phase === "risk") {
           if (structured) {
             setRiskStructured(structured as unknown as RiskStressTestStructured);
@@ -484,7 +497,7 @@ export default function PipelineRunnerPage() {
       case "heartbeat":
         break;
     }
-  }, [runId, loadReportData]);
+  }, [runId, loadReportData, loadCatalystData]);
 
   // ── Polling fallback ────────────────────────────────────────────────────────
 
@@ -508,17 +521,6 @@ export default function PipelineRunnerPage() {
     }, 5000);
     return () => clearInterval(id);
   }, [runId, isLive, loadReportData]);
-
-  // Tier 1.3: per-ticker catalyst panel.
-  useEffect(() => {
-    const ticker = run?.ticker;
-    if (!ticker) return;
-    let cancelled = false;
-    getCatalysts(ticker)
-      .then((d) => { if (!cancelled) setCatalystBuckets(d.buckets); })
-      .catch(() => { /* non-fatal — panel just hides */ });
-    return () => { cancelled = true; };
-  }, [run?.ticker]);
 
   // ── Generate Position ───────────────────────────────────────────────────────
 

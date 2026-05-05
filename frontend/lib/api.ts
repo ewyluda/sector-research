@@ -977,6 +977,12 @@ export async function getCatalysts(ticker?: string): Promise<CatalystListRespons
   return apiFetch<CatalystListResponse>(`/api/catalysts${qs}`);
 }
 
+export async function getCatalystsForRun(runId: string): Promise<CatalystListResponse> {
+  return apiFetch<CatalystListResponse>(
+    `/api/catalysts?run_id=${encodeURIComponent(runId)}`
+  );
+}
+
 export async function getCatalyst(id: string): Promise<CatalystRow> {
   return apiFetch<CatalystRow>(`/api/catalysts/${encodeURIComponent(id)}`);
 }
