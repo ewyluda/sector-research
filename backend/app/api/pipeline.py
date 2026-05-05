@@ -324,6 +324,23 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
             "computed_at": sig.computed_at.isoformat() if sig.computed_at else None,
         }
 
+    # Tier 2.6: kill-criterion state hydration for the report-page toggle UI.
+    from backend.app.models import KillCriterionState
+    kc_result = await db.execute(
+        select(KillCriterionState)
+        .where(KillCriterionState.run_id == run_id)
+        .order_by(KillCriterionState.ordinal)
+    )
+    kill_criterion_states = [
+        {
+            "ordinal": s.ordinal,
+            "status": s.status,
+            "flipped_at": s.flipped_at.isoformat(),
+            "note": s.note,
+        }
+        for s in kc_result.scalars()
+    ]
+
     return {
         "run_id": run_id,
         "ticker": run.ticker,
@@ -333,6 +350,7 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
         "thesis_status": state.get("thesis_status", "PENDING"),
         "loop_count": run.loop_count,
         "x_signal_velocity": x_signal_velocity,
+        "kill_criterion_states": kill_criterion_states,
         "phases": {
             "quick_screen": phase_outputs.get("quick_screen", {}),
             "deep_dive": {
