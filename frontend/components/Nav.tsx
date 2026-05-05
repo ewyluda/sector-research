@@ -8,6 +8,7 @@ const links = [
   { href: "/",              label: "Themes"   },
   { href: "/filings",       label: "Filings"  },
   { href: "/catalysts",     label: "Catalysts" },
+  { href: "/status",        label: "Status"   },
   { href: "/library",       label: "Library"  },
   { href: "/pipeline/new",  label: "+ New Run" },
 ];
