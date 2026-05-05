@@ -20,6 +20,7 @@ from backend.app.api.fanouts import router as fanouts_router
 from backend.app.api.catalysts import router as catalysts_router
 from backend.app.api.status import router as status_router
 from backend.app.api.read_through import router as read_through_router
+from backend.app.api.earnings import router as earnings_router
 from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
 
@@ -127,3 +128,4 @@ app.include_router(fanouts_router, prefix="/api")
 app.include_router(catalysts_router, prefix="/api")
 app.include_router(status_router, prefix="/api")
 app.include_router(read_through_router, prefix="/api")
+app.include_router(earnings_router, prefix="/api")
