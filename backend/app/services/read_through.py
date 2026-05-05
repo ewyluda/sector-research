@@ -74,12 +74,46 @@ def _extract_thesis_summary_from_state(state: Any) -> str | None:
     thesis = phase_outputs.get("thesis") or {}
     structured = thesis.get("structured") if isinstance(thesis, dict) else None
     if isinstance(structured, dict):
-        return structured.get("thesis_summary")
+        return structured.get("core_thesis") or structured.get("thesis_summary")
     return None
 
 
 def _extract_thesis_summary(run: ResearchRun) -> str | None:
     return _extract_thesis_summary_from_state(run.state)
+
+
+async def _print_payload_for_peer(
+    db: AsyncSession,
+    peer_ticker: str,
+    expected_window_start: date,
+) -> dict[str, Any]:
+    """Look up an EarningsPrint row whose earnings_date is within ±7 days
+    of the catalyst's expected_window_start. Returns surprise numbers +
+    guidance direction when actuals are present; empty dict otherwise.
+
+    Per Tier 2.5 spec Q5-B: peer drawers see numbers, never the
+    originator's narrative verdict."""
+    from backend.app.models.earnings_print import EarningsPrint
+
+    lo = expected_window_start - timedelta(days=7)
+    hi = expected_window_start + timedelta(days=7)
+    q = (
+        select(EarningsPrint)
+        .where(EarningsPrint.ticker == peer_ticker.upper())
+        .where(and_(EarningsPrint.earnings_date >= lo, EarningsPrint.earnings_date <= hi))
+        .order_by(EarningsPrint.earnings_date.desc())
+        .limit(1)
+    )
+    row = (await db.execute(q)).scalar_one_or_none()
+    if row is None:
+        return {}
+    if row.eps_actual is None:
+        return {}
+    return {
+        "eps_surprise_pct": row.eps_surprise_pct,
+        "revenue_surprise_pct": row.revenue_surprise_pct,
+        "guidance_direction": row.guidance_direction,
+    }
 
 
 # ── Layer 1: peer-event indexer ────────────────────────────────────────────
@@ -115,6 +149,9 @@ async def compute_peer_events(
     for c in cat_rows:
         if not c.expected_window_start:
             continue
+        print_payload = await _print_payload_for_peer(
+            db, c.ticker, c.expected_window_start
+        )
         events.append(
             PeerEvent(
                 event_key=f"earnings:{c.ticker.upper()}:{c.expected_window_start.isoformat()}",
@@ -126,6 +163,7 @@ async def compute_peer_events(
                     "type": c.type,
                     "timeframe": c.timeframe,
                     "expected_date": c.expected_date.isoformat() if c.expected_date else None,
+                    **print_payload,  # eps_surprise_pct, revenue_surprise_pct, guidance_direction
                 },
             )
         )
@@ -445,7 +483,13 @@ _SUMMARY_SYSTEM = (
     "paragraph (<= 120 words) answering: how does this peer event affect the "
     "thesis? Cite the relationship from the counterparty context if relevant. "
     "Do not invent quantitative claims. Do not restate the event verbatim — "
-    "interpret it."
+    "interpret it. "
+    "If the peer event includes post-print actuals (`eps_surprise_pct`, "
+    "`revenue_surprise_pct`, `guidance_direction`), treat them as the most "
+    "recent objective signal about the peer's print and reason about "
+    "implications for THIS thesis. Do not parrot or restate the peer thesis's "
+    "verdict — it is not provided to you. Reason from the numbers, the "
+    "relationship type, and this thesis's pillars."
 )
 
 
