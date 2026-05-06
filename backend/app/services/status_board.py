@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.catalysts import CatalystRow, nearest_catalyst
 from backend.app.models import Catalyst, KillCriterionState, Theme
+from backend.app.services.run_timestamps import completed_at_sql
 
 logger = logging.getLogger(__name__)
 
@@ -108,6 +109,44 @@ def _build_next_catalyst(rows: list[CatalystRow], today: date) -> NextCatalyst |
     )
 
 
+def _build_latest_runs_sql(
+    *,
+    theme_id: str | None,
+    include_archived: bool,
+) -> tuple[str, dict[str, str]]:
+    """Latest completed/watchlist run per pair, then optional archive filter."""
+    params: dict[str, str] = {}
+    where_theme = ""
+    if theme_id:
+        params["theme_id"] = theme_id
+        where_theme = "AND r.theme_id = :theme_id"
+
+    completed_expr = completed_at_sql("r")
+    where_archived = "" if include_archived else "WHERE archived_at IS NULL"
+
+    sql = f"""
+        WITH latest AS (
+            SELECT DISTINCT ON (r.ticker, r.theme_id)
+                r.id,
+                r.ticker,
+                r.theme_id,
+                r.status,
+                r.state,
+                r.created_at,
+                r.archived_at,
+                {completed_expr} AS completed_at
+            FROM research_runs r
+            WHERE r.status IN ('completed', 'watchlist')
+              {where_theme}
+            ORDER BY r.ticker, r.theme_id, {completed_expr} DESC, r.created_at DESC
+        )
+        SELECT *
+        FROM latest
+        {where_archived}
+    """
+    return sql, params
+
+
 def _resolve_health(
     thesis_status: str,
     triggered_count: int,
@@ -169,23 +208,10 @@ async def build_status_board(
     today = datetime.now(timezone.utc).date()
     now = datetime.now(timezone.utc)
 
-    # Latest completed/watchlist run per (ticker, theme_id) that isn't archived.
-    # Use DISTINCT ON for the per-pair latest selection.
-    where_archived = "" if include_archived else "AND r.archived_at IS NULL"
-    where_theme = "AND r.theme_id = :theme_id" if theme_id else ""
-    params: dict[str, str] = {}
-    if theme_id:
-        params["theme_id"] = theme_id
-
-    sql = f"""
-        SELECT DISTINCT ON (r.ticker, r.theme_id)
-            r.id, r.ticker, r.theme_id, r.status, r.state, r.updated_at, r.created_at
-        FROM research_runs r
-        WHERE r.status IN ('completed', 'watchlist')
-          {where_archived}
-          {where_theme}
-        ORDER BY r.ticker, r.theme_id, r.updated_at DESC
-    """
+    sql, params = _build_latest_runs_sql(
+        theme_id=theme_id,
+        include_archived=include_archived,
+    )
     result = await db.execute(text(sql), params)
     run_rows = result.mappings().all()
 
@@ -230,7 +256,7 @@ async def build_status_board(
         kill_criteria = structured.get("kill_criteria") or []
         thesis_status = state.get("thesis_status") or "PENDING"
         conviction_score = state.get("conviction_score")
-        completed_at = row["updated_at"] or row["created_at"]
+        completed_at = row["completed_at"] or row["created_at"]
         days_since_update = (now - completed_at).days
 
         rows_for_run = catalysts_by_run.get(run_id, [])

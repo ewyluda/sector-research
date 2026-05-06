@@ -28,6 +28,10 @@ from backend.app.services.relationship_context import (
     CounterpartyContext,
     get_counterparty_context,
 )
+from backend.app.services.run_timestamps import (
+    completed_at_sql,
+    stable_completed_at_from_state,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,17 +65,21 @@ class ReadThroughItem:
     links: list[RelationshipLink]
 
 
-def _extract_thesis_summary(run: ResearchRun) -> str | None:
-    """Pull thesis_summary from a ResearchRun's persisted state. Tolerates
+def _extract_thesis_summary_from_state(state: Any) -> str | None:
+    """Pull thesis_summary from a persisted state dict. Tolerates
     missing or malformed phase outputs (returns None)."""
-    if not isinstance(run.state, dict):
+    if not isinstance(state, dict):
         return None
-    phase_outputs = run.state.get("phase_outputs") or {}
+    phase_outputs = state.get("phase_outputs") or {}
     thesis = phase_outputs.get("thesis") or {}
     structured = thesis.get("structured") if isinstance(thesis, dict) else None
     if isinstance(structured, dict):
         return structured.get("thesis_summary")
     return None
+
+
+def _extract_thesis_summary(run: ResearchRun) -> str | None:
+    return _extract_thesis_summary_from_state(run.state)
 
 
 # ── Layer 1: peer-event indexer ────────────────────────────────────────────
@@ -122,26 +130,36 @@ async def compute_peer_events(
             )
         )
 
-    # Completed runs
-    run_q = (
-        select(ResearchRun)
-        .where(ResearchRun.status == "completed")
-        .where(ResearchRun.archived_at.is_(None))
-        .where(ResearchRun.updated_at >= since)
-        .where(ResearchRun.updated_at <= until)
+    # Completed runs. Use immutable state.completed_at when present; fallback
+    # to created_at for historical runs created before the field existed.
+    completed_expr = completed_at_sql("r")
+    run_q = text(
+        f"""
+        SELECT
+            r.id,
+            r.ticker,
+            r.theme_id,
+            r.state,
+            {completed_expr} AS completed_at
+        FROM research_runs r
+        WHERE r.status = 'completed'
+          AND r.archived_at IS NULL
+          AND {completed_expr} >= :since
+          AND {completed_expr} <= :until
+        """
     )
-    run_rows = (await db.execute(run_q)).scalars().all()
+    run_rows = (await db.execute(run_q, {"since": since, "until": until})).mappings().all()
     for r in run_rows:
-        thesis_summary = _extract_thesis_summary(r)
+        thesis_summary = _extract_thesis_summary_from_state(r["state"])
         events.append(
             PeerEvent(
-                event_key=f"run_complete:{r.id}",
-                peer_ticker=r.ticker.upper(),
+                event_key=f"run_complete:{r['id']}",
+                peer_ticker=r["ticker"].upper(),
                 event_type="run_complete",
-                event_date=r.updated_at.date(),
+                event_date=r["completed_at"].date(),
                 payload={
-                    "run_id": str(r.id),
-                    "theme_id": str(r.theme_id),
+                    "run_id": str(r["id"]),
+                    "theme_id": str(r["theme_id"]),
                     "thesis_summary": thesis_summary,
                 },
             )
@@ -388,11 +406,12 @@ async def _lookup_event_by_key(
         if not run:
             return None
         thesis_summary = _extract_thesis_summary(run)
+        completed_at = stable_completed_at_from_state(run.state, run.created_at)
         return PeerEvent(
             event_key=event_key,
             peer_ticker=run.ticker.upper(),
             event_type="run_complete",
-            event_date=run.updated_at.date(),
+            event_date=completed_at.date(),
             payload={
                 "run_id": str(run.id),
                 "theme_id": str(run.theme_id),
