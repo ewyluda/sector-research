@@ -1237,8 +1237,15 @@ async def node_deep_dive(
                 auto_answerable=bool(raw_q["auto_answerable"]),
             ).to_dict())
         for raw_rq in structured.get("resolved_questions", []) or []:
+            qid = raw_rq.get("question_id")
+            # Look up original question text from this category's prior set
+            original_text = qid  # fallback to the id if lookup fails
+            for prior_entry in prior_q_map.get(result.category, []) or []:
+                if prior_entry.get("id") == qid:
+                    original_text = prior_entry.get("question_text") or qid
+                    break
             state.questions_resolved_this_run.append(StateResolvedQuestion(
-                question_text=f"[{raw_rq['question_id']}] (resurfaced)",
+                question_text=original_text,
                 answer_text=raw_rq["answer_text"],
                 source="deep_dive_resurfaced",
             ).to_dict())
@@ -1288,7 +1295,7 @@ async def node_targeted_followup(state: ResearchState) -> ResearchState:
 
     deep = state.get_deep_dive_results()
 
-    async def _answer_one(snap: dict) -> tuple[str, str]:
+    async def _answer_one(snap: dict) -> tuple[str, str | None]:
         cat = snap["category"]
         result = deep.get(cat)
         findings_block = ""
@@ -1313,16 +1320,17 @@ async def node_targeted_followup(state: ResearchState) -> ResearchState:
                 assistant_prefill='{"answer_text":',
             )
             parsed = TargetedAnswer.model_validate_json(raw)
-            answer = parsed.answer_text
-        except Exception as e:  # noqa: BLE001
-            logger.exception("targeted_followup failed for question %s", snap["id"])
-            answer = f"[Targeted follow-up failed: {type(e).__name__}]"
-        return snap["id"], answer
+            return snap["id"], parsed.answer_text
+        except Exception:  # noqa: BLE001
+            logger.exception("targeted_followup failed for question %s — leaving open", snap["id"])
+            return snap["id"], None
 
     answers = await asyncio.gather(*(_answer_one(s) for s in snapshots))
 
     async with async_session() as db:
         for qid, answer in answers:
+            if answer is None:
+                continue  # Sonnet failure — leave question open for retry
             stmt = (
                 update(Question)
                 .where(Question.id == qid)
@@ -1339,6 +1347,8 @@ async def node_targeted_followup(state: ResearchState) -> ResearchState:
         await db.commit()
 
     for snap, (_, answer) in zip(snapshots, answers):
+        if answer is None:
+            continue
         state.questions_resolved_this_run.append(StateResolvedQuestion(
             question_text=snap["question_text"],
             answer_text=answer,

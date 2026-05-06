@@ -224,6 +224,7 @@ class DeepDiveCategoryOutput(BaseModel):
     data_gaps: list[str] = Field(default_factory=list, max_length=3)
     questions: list[ExtractedQuestion] = Field(
         default_factory=list,
+        max_length=3,
         description="Up to 3 unresolved questions for this pillar.",
     )
     resolved_questions: list[ResolvedQuestion] = Field(
