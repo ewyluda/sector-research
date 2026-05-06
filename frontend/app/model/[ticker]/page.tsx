@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getModel, initializeModel, type TickerModelVersion, type TickerModelDraft } from "@/lib/api";
 import { MODEL_TABS, type ModelTab } from "@/components/model/modelSections";
+import { DriverPanel } from "@/components/model/DriverPanel";
+import { ForecastGrid } from "@/components/model/ForecastGrid";
+import { FormulaBar } from "@/components/model/FormulaBar";
+import { putModelDraft, saveModelVersion, discardModelDraft, type ModelState as MS, type TickerModelDraft as TMD, type TickerModelVersion as TMV } from "@/lib/api";
 
 export default function ModelPage() {
   const params = useParams<{ ticker: string }>();
@@ -106,15 +110,71 @@ export default function ModelPage() {
 
 // Stubs for the next tasks — props typed for call-site TS safety; param intentionally unused
 /* eslint-disable @typescript-eslint/no-unused-vars */
-function ForecastTabContent(_props: {
-  state: import("@/lib/api").ModelState;
-  draft: import("@/lib/api").TickerModelDraft | null;
-  latest: TickerModelVersion;
+function ForecastTabContent({
+  state, draft, latest, ticker, onDraftChange, onSaved,
+}: {
+  state: MS;
+  draft: TMD | null;
+  latest: TMV;
   ticker: string;
-  onDraftChange: (d: import("@/lib/api").TickerModelDraft | null) => void;
-  onSaved: (v: TickerModelVersion) => void;
+  onDraftChange: (d: TMD | null) => void;
+  onSaved: (v: TMV) => void;
 }) {
-  return <div className="p-6 text-slate-500">Forecast tab — see Task 24</div>;
+  const [focused, setFocused] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleEdit(cellPath: string, value: number | null) {
+    setBusy(true);
+    try {
+      const updated = await putModelDraft(ticker, { cell_path: cellPath, value });
+      onDraftChange(updated);
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function handleSave() {
+    const label = prompt("Version label:", "");
+    if (label === null) return;
+    setBusy(true);
+    try {
+      await saveModelVersion(ticker, label || null);
+      const r = await import("@/lib/api").then((m) => m.getModel(ticker));
+      onSaved(r.latest_version!);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function handleDiscard() {
+    if (!confirm("Discard draft?")) return;
+    setBusy(true);
+    try {
+      await discardModelDraft(ticker);
+      onDraftChange(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Suppress 'latest' unused warning — kept in props for future cross-version reads.
+  void latest;
+
+  return (
+    <>
+      <FormulaBar state={state} focused={focused} />
+      <DriverPanel state={state} focused={focused} onFocus={setFocused} onEdit={handleEdit} />
+      <ForecastGrid state={state} focused={focused} onFocus={setFocused} onEdit={handleEdit} />
+      <div className="sticky bottom-0 left-0 right-0 bg-slate-950 border-t border-slate-800 px-6 py-2 flex gap-2 justify-end" data-print-hide="true">
+        <button onClick={handleDiscard} disabled={!draft || busy} className="px-3 py-1 text-sm rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">
+          Discard draft
+        </button>
+        <button onClick={handleSave} disabled={!draft || busy} className="px-3 py-1 text-sm rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white">
+          Save Version
+        </button>
+      </div>
+    </>
+  );
 }
 function ReverseDcfTabContent(_props: { ticker: string; hasDraft: boolean }) {
   return <div className="p-6 text-slate-500">Reverse DCF tab — see Task 25</div>;
