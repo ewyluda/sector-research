@@ -113,6 +113,7 @@ class StateCitation:
     source_url: str
     tier: int
     retrieved_at: str  # ISO string for JSON serialisation
+    cell_path: str | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -127,6 +128,7 @@ class StateCitation:
             source_url=c.source_url,
             tier=c.tier,
             retrieved_at=c.retrieved_at.isoformat(),
+            cell_path=c.cell_path,
         )
 
 

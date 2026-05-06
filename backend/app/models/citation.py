@@ -29,6 +29,12 @@ class Citation:
     source_url: str  # direct link to endpoint or SEC filing
     tier: int  # 1 = authoritative, 2 = qualitative signal only
     retrieved_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    cell_path: str | None = None
+
+    def with_cell(self, path: str) -> "Citation":
+        """Return a copy of this Citation with cell_path set."""
+        from dataclasses import replace
+        return replace(self, cell_path=path)
 
     def to_record(self, run_id: str) -> "CitationRecord":
         """Convert to a persistable ORM instance."""
@@ -40,6 +46,7 @@ class Citation:
             source_url=self.source_url,
             tier=self.tier,
             retrieved_at=self.retrieved_at,
+            cell_path=self.cell_path,
         )
 
 
@@ -62,3 +69,4 @@ class CitationRecord(Base):
     retrieved_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False
     )
+    cell_path: Mapped[str | None] = mapped_column(String, nullable=True, index=False)
