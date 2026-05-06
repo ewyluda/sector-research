@@ -7,6 +7,7 @@ from backend.app.models.kill_criterion_state import KillCriterionState
 from backend.app.models.question import Question  # noqa: F401
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
 from backend.app.models.ticker_model import TickerModel  # noqa: F401
+from backend.app.models.ticker_model_draft import TickerModelDraft  # noqa: F401
 from backend.app.models.theme import Theme
 from backend.app.models.thesis_print_verdict import ThesisPrintVerdict
 from backend.app.models.research_run import ResearchRun
@@ -35,4 +36,5 @@ __all__ = [
     "WatchlistItem",
     "SurpriseAlert",
     "TickerModel",
+    "TickerModelDraft",
 ]
