@@ -52,7 +52,35 @@ def test_generate_baseline_drivers_with_mock():
     asyncio.run(_test())
 
 
+async def test_initialize_model_for_ticker_with_mocks():
+    """Mocks ResearchRun + FMP + llm.complete; asserts a ModelState comes out balanced."""
+    from backend.app.services import model_baseline
+    fake_llm = json.dumps(FAKE_LLM_OUTPUT)
+    fake_run_state = {
+        "curated_financials": {
+            "income_statements": [{"period": "2025Y", "revenue": 1000.0, "ebitda": 200.0, "shares_diluted": 100.0,
+                                   "gross_profit": 500.0, "operating_expenses": 300.0, "depreciation_amortization": 50.0,
+                                   "ebit": 150.0, "net_income": 120.0, "eps_diluted": 1.20}],
+            "balance_sheets": [{"period": "2025Y", "cash_and_equivalents": 200.0, "accounts_receivable": 120.0,
+                                "inventory": 80.0, "ppe_net": 400.0, "accounts_payable": 110.0,
+                                "long_term_debt": 200.0, "common_equity": 200.0, "retained_earnings": 290.0}],
+            "cash_flows": [],
+            "profile": {"beta": 1.0},
+        },
+        "thesis_output": {"core_thesis": "growth thesis"},
+        "deep_dive_results": {},
+    }
+    with patch.object(model_baseline, "_load_seeding_context", new=AsyncMock(return_value=fake_run_state)), \
+         patch("backend.app.graph.model_baseline_node.llm.complete", new=AsyncMock(return_value=fake_llm)), \
+         patch.object(model_baseline, "_get_risk_free_rate", new=AsyncMock(return_value=0.04)), \
+         patch.object(model_baseline, "recompute", side_effect=lambda s: s):
+        state = await model_baseline.build_baseline_state(ticker="ZZZ", forecast_period_labels=["2026Y"])
+    assert state.assumptions.discount_rate.value > 0
+    print(f"OK: build_baseline_state produces ModelState (discount={state.assumptions.discount_rate.value:.4f})")
+
+
 if __name__ == "__main__":
     test_generate_baseline_drivers_with_mock()
-    print("OK: smoke_model_baseline (Task 15) passed")
+    asyncio.run(test_initialize_model_for_ticker_with_mocks())
+    print("OK: smoke_model_baseline (Tasks 15+16) passed")
     sys.exit(0)
