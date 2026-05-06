@@ -154,3 +154,27 @@ async def build_baseline_state(*, ticker: str, forecast_period_labels: list[str]
 
     state = recompute(state)
     return state
+
+
+async def initialize_or_get_model(ticker: str, *, force: bool = False):
+    """Returns the latest TickerModel row for ticker, building one if missing or force=True.
+    The returned object is a TickerModel ORM row (state already a dict via Pydantic round-trip)."""
+    from backend.app.db import async_session
+    from backend.app.models.ticker_model import TickerModel
+    from sqlalchemy import select, desc
+    async with async_session() as db:
+        stmt = select(TickerModel).where(TickerModel.ticker == ticker).order_by(desc(TickerModel.version)).limit(1)
+        latest = (await db.execute(stmt)).scalar_one_or_none()
+        if latest is not None and not force:
+            return latest
+        next_version = 1 if latest is None else latest.version + 1
+        state = await build_baseline_state(ticker=ticker)
+        row = TickerModel(
+            ticker=ticker, version=next_version,
+            state=state.model_dump(),
+            label=("AI baseline" if latest is None else "AI reseed"),
+        )
+        db.add(row)
+        await db.commit()
+        await db.refresh(row)
+        return row

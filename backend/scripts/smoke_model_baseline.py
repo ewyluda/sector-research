@@ -79,8 +79,51 @@ async def test_initialize_model_for_ticker_with_mocks():
     print(f"OK: build_baseline_state produces ModelState (discount={state.assumptions.discount_rate.value:.4f})")
 
 
+async def test_initialize_or_get_model_synthetic_ticker():
+    """Use synthetic ticker 'ZMODEL'. Cleans up after test. Requires DB up."""
+    from unittest.mock import patch, AsyncMock
+    from backend.app.db import async_session
+    from backend.app.models.ticker_model import TickerModel
+    from sqlalchemy import delete
+    from backend.app.services import model_baseline
+
+    fake_llm = json.dumps(FAKE_LLM_OUTPUT)
+    fake_run_state = {
+        "curated_financials": {
+            "income_statements": [{"period": "2025Y", "revenue": 1000.0}],
+            "balance_sheets": [], "cash_flows": [], "profile": {"beta": 1.0},
+        },
+        "thesis_output": {}, "deep_dive_results": {},
+    }
+
+    async def cleanup():
+        async with async_session() as db:
+            await db.execute(delete(TickerModel).where(TickerModel.ticker == "ZMODEL"))
+            await db.commit()
+
+    await cleanup()
+    try:
+        with patch.object(model_baseline, "_load_seeding_context", new=AsyncMock(return_value=fake_run_state)), \
+             patch("backend.app.graph.model_baseline_node.llm.complete", new=AsyncMock(return_value=fake_llm)), \
+             patch.object(model_baseline, "_get_risk_free_rate", new=AsyncMock(return_value=0.04)), \
+             patch.object(model_baseline, "recompute", side_effect=lambda s: s):
+            row = await model_baseline.initialize_or_get_model("ZMODEL")
+            assert row.version == 1, f"expected v1, got v{row.version}"
+            assert row.state is not None
+            # Idempotent
+            row2 = await model_baseline.initialize_or_get_model("ZMODEL")
+            assert row2.id == row.id, f"expected same row on repeat, got {row2.id} vs {row.id}"
+            # Force reseed → new version
+            row3 = await model_baseline.initialize_or_get_model("ZMODEL", force=True)
+            assert row3.version == 2, f"expected v2, got v{row3.version}"
+            print(f"OK: persisted ZMODEL v1 ({row.id[:8]}) and v2 ({row3.id[:8]})")
+    finally:
+        await cleanup()
+
+
 if __name__ == "__main__":
     test_generate_baseline_drivers_with_mock()
     asyncio.run(test_initialize_model_for_ticker_with_mocks())
-    print("OK: smoke_model_baseline (Tasks 15+16) passed")
+    asyncio.run(test_initialize_or_get_model_synthetic_ticker())
+    print("OK: smoke_model_baseline (Tasks 15+16+17) passed")
     sys.exit(0)
