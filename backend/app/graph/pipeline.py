@@ -45,6 +45,11 @@ def make_graph(fmp: FMPClient) -> StateGraph:
         rs = await nodes.node_deep_dive(rs, fmp)
         return rs.to_dict()
 
+    async def targeted_followup(state: dict) -> dict:
+        rs = ResearchState.from_dict(state)
+        rs = await nodes.node_targeted_followup(rs)
+        return rs.to_dict()
+
     async def thesis_construction(state: dict) -> dict:
         rs = ResearchState.from_dict(state)
         rs = await nodes.node_thesis_construction(rs)
@@ -75,7 +80,15 @@ def make_graph(fmp: FMPClient) -> StateGraph:
             return END  # Graph pauses here; pipeline service resumes on approval
         return "deep_dive"
 
-    def after_deep_dive(state: dict) -> Literal["thesis_construction", "__end__"]:
+    def after_deep_dive(state: dict) -> Literal["targeted_followup", "__end__"]:
+        status = state.get("status", "in_progress")
+        if status in ("watchlist", "pass", "completed"):
+            return END
+        if status == "awaiting_approval":
+            return END
+        return "targeted_followup"
+
+    def after_targeted_followup(state: dict) -> Literal["thesis_construction", "__end__"]:
         status = state.get("status", "in_progress")
         if status in ("watchlist", "pass", "completed"):
             return END
@@ -115,6 +128,7 @@ def make_graph(fmp: FMPClient) -> StateGraph:
 
     builder.add_node("quick_screen", quick_screen)
     builder.add_node("deep_dive", deep_dive)
+    builder.add_node("targeted_followup", targeted_followup)
     builder.add_node("thesis_construction", thesis_construction)
     builder.add_node("risk_stress_test", risk_stress_test)
     builder.add_node("position_monitor", position_monitor)
@@ -122,6 +136,7 @@ def make_graph(fmp: FMPClient) -> StateGraph:
     builder.add_edge(START, "quick_screen")
     builder.add_conditional_edges("quick_screen", after_quick_screen)
     builder.add_conditional_edges("deep_dive", after_deep_dive)
+    builder.add_conditional_edges("targeted_followup", after_targeted_followup)
     builder.add_conditional_edges("thesis_construction", after_thesis)
     builder.add_conditional_edges("risk_stress_test", after_risk)
     builder.add_conditional_edges("position_monitor", after_position)

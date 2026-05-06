@@ -28,36 +28,15 @@ import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 import { CommandPalette } from "@/components/deep-dive/CommandPalette";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
+import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
+import { PHASE_ETA_SECONDS, PHASE_LABELS, PHASE_ORDER } from "@/lib/pipeline-progress";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-
-const PHASE_ORDER = [
-  "quick_screen",
-  "deep_dive",
-  "thesis_construction",
-  "risk_stress_test",
-  "position_monitor",
-] as const;
-
-const PHASE_LABELS: Record<string, string> = {
-  quick_screen: "Quick Screen",
-  deep_dive: "Deep Dive",
-  thesis_construction: "Thesis Construction",
-  risk_stress_test: "Risk Stress-Test",
-  position_monitor: "Position Monitor",
-};
 
 /** Rough per-phase durations (seconds), calibrated from observed runs.
  *  Used for ETA display and to smooth the progress bar between discrete phase
  *  transitions. Not authoritative — phase completion events still drive the
  *  actual phase indicator. */
-const PHASE_ETA_SECONDS: Record<string, number> = {
-  quick_screen: 30,
-  deep_dive: 120,
-  thesis_construction: 45,
-  risk_stress_test: 45,
-  position_monitor: 30,
-};
 
 function formatDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return "—";
@@ -715,6 +694,13 @@ export default function PipelineRunnerPage() {
                   <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{riskContent}</p>
                 </div>
               )}
+            </section>
+          )}
+
+          {/* Open Questions (Tier 1.2) */}
+          {report?.questions && report.questions.length > 0 && (
+            <section id="questions_section">
+              <OpenQuestionsPanel questions={report.questions} />
             </section>
           )}
 

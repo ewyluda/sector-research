@@ -1,0 +1,213 @@
+"""Questions API — Tier 1.2 question log + targeted second-pass.
+
+CRITICAL: do NOT add `from __future__ import annotations` to this module.
+FastAPI 0.115 + Python 3.12 evaluates `-> None` returns as the string
+"None" and trips an internal assertion when the future import is
+present. Same constraint applied to api/status.py and api/read_through.py.
+"""
+import logging
+from datetime import datetime, timezone
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from backend.app.db import get_db
+from backend.app.models.question import Question
+from backend.app.services.questions import (
+    by_ticker_rollup,
+    list_questions,
+    retry_auto_answer,
+)
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/questions", tags=["questions"])
+
+
+# ── Response models ──────────────────────────────────────────────────────────
+
+
+class QuestionResponse(BaseModel):
+    id: str
+    ticker: str
+    theme_id: Optional[str]
+    category: str
+    question_text: str
+    priority: int
+    auto_answerable: bool
+    status: str
+    answer_text: Optional[str]
+    answer_source: Optional[str]
+    created_run_id: str
+    resolved_run_id: Optional[str]
+    created_at: str
+    resolved_at: Optional[str]
+    dismissed_at: Optional[str]
+    dismiss_note: Optional[str]
+
+
+def _serialize(q: Question) -> QuestionResponse:
+    return QuestionResponse(
+        id=str(q.id),
+        ticker=q.ticker,
+        theme_id=str(q.theme_id) if q.theme_id else None,
+        category=q.category,
+        question_text=q.question_text,
+        priority=q.priority,
+        auto_answerable=q.auto_answerable,
+        status=q.status,
+        answer_text=q.answer_text,
+        answer_source=q.answer_source,
+        created_run_id=str(q.created_run_id),
+        resolved_run_id=str(q.resolved_run_id) if q.resolved_run_id else None,
+        created_at=q.created_at.isoformat() if q.created_at else "",
+        resolved_at=q.resolved_at.isoformat() if q.resolved_at else None,
+        dismissed_at=q.dismissed_at.isoformat() if q.dismissed_at else None,
+        dismiss_note=q.dismiss_note,
+    )
+
+
+class QuestionListResponse(BaseModel):
+    questions: list[QuestionResponse]
+
+
+class TickerRollupRow(BaseModel):
+    ticker: str
+    p1_count: int
+    p2_count: int
+    p3_count: int
+    open_count: int
+
+
+class TickerRollupResponse(BaseModel):
+    tickers: list[TickerRollupRow]
+
+
+class DismissBody(BaseModel):
+    note: Optional[str] = Field(default=None, max_length=2000)
+
+
+class ResolveBody(BaseModel):
+    answer_text: str = Field(min_length=1, max_length=10000)
+
+
+def _normalize_status_filter(status: Optional[str]) -> Optional[str]:
+    if status == "all":
+        return None
+    return status or "open"
+
+
+# ── Endpoints ────────────────────────────────────────────────────────────────
+
+
+@router.get("", response_model=QuestionListResponse)
+async def list_questions_endpoint(
+    ticker: Optional[str] = None,
+    theme_id: Optional[str] = None,
+    status: Optional[str] = "open",
+    priority: Optional[int] = None,
+    category: Optional[str] = None,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+) -> QuestionListResponse:
+    rows = await list_questions(
+        db,
+        ticker=ticker,
+        theme_id=theme_id,
+        status=_normalize_status_filter(status),
+        priority=priority,
+        category=category,
+        limit=min(limit, 500),
+    )
+    return QuestionListResponse(questions=[_serialize(r) for r in rows])
+
+
+@router.get("/by-ticker", response_model=TickerRollupResponse)
+async def by_ticker_endpoint(
+    theme_id: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+) -> TickerRollupResponse:
+    rows = await by_ticker_rollup(db, theme_id=theme_id)
+    return TickerRollupResponse(tickers=[TickerRollupRow(**r) for r in rows])
+
+
+@router.post("/{question_id}/dismiss", response_model=QuestionResponse)
+async def dismiss_endpoint(
+    question_id: str,
+    body: DismissBody,
+    db: AsyncSession = Depends(get_db),
+) -> QuestionResponse:
+    q = (await db.execute(select(Question).where(Question.id == question_id))).scalar_one_or_none()
+    if q is None:
+        raise HTTPException(404, "question not found")
+    if q.status != "open":
+        raise HTTPException(409, f"question is {q.status}, cannot dismiss")
+
+    stmt = (
+        update(Question)
+        .where(Question.id == question_id)
+        .where(Question.status == "open")
+        .values(
+            status="dismissed",
+            dismissed_at=datetime.now(timezone.utc),
+            dismiss_note=body.note,
+        )
+        .returning(Question.id)
+    )
+    if (await db.execute(stmt)).scalar_one_or_none() is None:
+        raise HTTPException(409, "question was concurrently modified")
+    await db.commit()
+    await db.refresh(q)
+    return _serialize(q)
+
+
+@router.post("/{question_id}/resolve", response_model=QuestionResponse)
+async def resolve_endpoint(
+    question_id: str,
+    body: ResolveBody,
+    db: AsyncSession = Depends(get_db),
+) -> QuestionResponse:
+    q = (await db.execute(select(Question).where(Question.id == question_id))).scalar_one_or_none()
+    if q is None:
+        raise HTTPException(404, "question not found")
+    if q.status != "open":
+        raise HTTPException(409, f"question is {q.status}, cannot resolve")
+
+    stmt = (
+        update(Question)
+        .where(Question.id == question_id)
+        .where(Question.status == "open")
+        .values(
+            status="resolved_manual",
+            answer_text=body.answer_text,
+            answer_source="manual",
+            resolved_at=datetime.now(timezone.utc),
+        )
+        .returning(Question.id)
+    )
+    if (await db.execute(stmt)).scalar_one_or_none() is None:
+        raise HTTPException(409, "question was concurrently modified")
+    await db.commit()
+    await db.refresh(q)
+    return _serialize(q)
+
+
+@router.post("/{question_id}/retry-auto", response_model=QuestionResponse)
+async def retry_auto_endpoint(
+    question_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> QuestionResponse:
+    q = (await db.execute(select(Question).where(Question.id == question_id))).scalar_one_or_none()
+    if q is None:
+        raise HTTPException(404, "question not found")
+    try:
+        updated = await retry_auto_answer(db, q)
+    except ValueError as e:
+        raise HTTPException(409, str(e))
+    except RuntimeError as e:
+        logger.exception("retry-auto Sonnet failure for %s", question_id)
+        raise HTTPException(502, str(e))
+    return _serialize(updated)

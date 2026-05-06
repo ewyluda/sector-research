@@ -3,6 +3,8 @@
  * All fetches go through here. SSE streaming handled separately.
  */
 
+import { buildQuestionListPath, type QuestionStatusFilter } from "./questions-ui";
+
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -859,6 +861,7 @@ export interface ReportResponse {
     loop_count: number;
   };
   kill_criterion_states?: KillCriterionStateOut[];
+  questions?: Question[];
 }
 
 // ── SSE event types ────────────────────────────────────────────────────────────
@@ -1194,4 +1197,83 @@ export const earnings = {
       { method: "POST" }
     );
   },
+};
+
+// ── Questions (Tier 1.2) ────────────────────────────────────────────────────
+
+export type QuestionStatus =
+  | "open"
+  | "resolved_auto"
+  | "resolved_inline"
+  | "resolved_manual"
+  | "dismissed";
+
+export type QuestionAnswerSource =
+  | "targeted_followup"
+  | "deep_dive_resurfaced"
+  | "manual"
+  | null;
+
+export interface Question {
+  id: string;
+  ticker: string;
+  theme_id: string | null;
+  category: string;
+  question_text: string;
+  priority: 1 | 2 | 3;
+  auto_answerable: boolean;
+  status: QuestionStatus;
+  answer_text: string | null;
+  answer_source: QuestionAnswerSource;
+  created_run_id: string;
+  resolved_run_id: string | null;
+  created_at: string;
+  resolved_at: string | null;
+  dismissed_at: string | null;
+  dismiss_note: string | null;
+}
+
+export interface QuestionTickerRollup {
+  ticker: string;
+  p1_count: number;
+  p2_count: number;
+  p3_count: number;
+  open_count: number;
+}
+
+export const questions = {
+  list: async (params: {
+    ticker?: string;
+    theme_id?: string;
+    status?: QuestionStatusFilter;
+    priority?: 1 | 2 | 3;
+    category?: string;
+    limit?: number;
+  } = {}): Promise<{ questions: Question[] }> => {
+    return apiFetch<{ questions: Question[] }>(buildQuestionListPath(params));
+  },
+
+  byTicker: async (params: { theme_id?: string } = {}): Promise<{ tickers: QuestionTickerRollup[] }> => {
+    const qs = new URLSearchParams();
+    if (params.theme_id) qs.set("theme_id", params.theme_id);
+    const url = `/api/questions/by-ticker${qs.toString() ? `?${qs}` : ""}`;
+    return apiFetch<{ tickers: QuestionTickerRollup[] }>(url);
+  },
+
+  dismiss: async (id: string, note?: string): Promise<Question> =>
+    apiFetch<Question>(`/api/questions/${encodeURIComponent(id)}/dismiss`, {
+      method: "POST",
+      body: JSON.stringify({ note: note ?? null }),
+    }),
+
+  resolve: async (id: string, answer_text: string): Promise<Question> =>
+    apiFetch<Question>(`/api/questions/${encodeURIComponent(id)}/resolve`, {
+      method: "POST",
+      body: JSON.stringify({ answer_text }),
+    }),
+
+  retryAuto: async (id: string): Promise<Question> =>
+    apiFetch<Question>(`/api/questions/${encodeURIComponent(id)}/retry-auto`, {
+      method: "POST",
+    }),
 };

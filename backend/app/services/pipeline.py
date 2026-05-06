@@ -165,7 +165,8 @@ class PipelineService:
         """Determine next phase based on current phase and state."""
         phase_sequence = {
             "quick_screen": "deep_dive",
-            "deep_dive": "thesis_construction",
+            "deep_dive": "targeted_followup",
+            "targeted_followup": "thesis_construction",
             "thesis_construction": "risk_stress_test",
             "risk_stress_test": (
                 "deep_dive" if (state.loop_context and state.loop_count <= 2)
@@ -188,6 +189,8 @@ class PipelineService:
                     state = await nodes.node_quick_screen(state, self._fmp)
                 elif phase == "deep_dive":
                     state = await self._run_deep_dive_with_streaming(state, run_id, db)
+                elif phase == "targeted_followup":
+                    state = await nodes.node_targeted_followup(state)
                 elif phase == "thesis_construction":
                     state = await nodes.node_thesis_construction(state)
                 elif phase == "risk_stress_test":

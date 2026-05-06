@@ -25,7 +25,7 @@ from backend.app.clients.fred import FREDClient
 from backend.app.db import async_session
 from backend.app.graph.llm import complete, SONNET, HAIKU
 from backend.app.services.catalyst_promotion import promote_catalysts
-from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput
+from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput, TargetedAnswer
 from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
@@ -36,14 +36,16 @@ from backend.app.graph.prompts import (
     TRANSCRIPT_PASS1_SYSTEM, TRANSCRIPT_PASS2_SYSTEM,
     TRANSCRIPT_PASS3_SYSTEM, TRANSCRIPT_PASS4_SYSTEM,
     TRANSCRIPT_PASS5_SYSTEM, TRANSCRIPT_PASS6_SYSTEM,
+    TARGETED_FOLLOWUP_SYSTEM,
 )
 from backend.app.graph.state import (
-    ResearchState, CategoryResult, CategoryError, StateCitation
+    ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
 
 logger = logging.getLogger(__name__)
 
 CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
+TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
 
 TRANSCRIPT_ROUTING: dict[str, list[str]] = {
     "Management & Governance": ["pass1_claims", "pass2_tiers", "pass3_qa_tensions", "pass4_validation", "pass5_consistency"],
@@ -535,6 +537,7 @@ async def _run_one_category(
     edgar_context: str = "",
     filing_excerpts_context: str = "",
     counterparty_context_text: str = "",
+    prior_questions_text: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -553,6 +556,7 @@ async def _run_one_category(
                     edgar_data=edgar_context,
                     filing_excerpts=filing_excerpts_context,
                     counterparty_context=counterparty_context_text,
+                    prior_questions=prior_questions_text,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -1189,15 +1193,53 @@ async def node_deep_dive(
 
         return "\n".join(lines).rstrip() + "\n"
 
+    category_contexts: dict[str, dict[str, str]] = {}
+    for cat in categories_to_run:
+        category_contexts[cat] = {
+            "transcript": _build_transcript_context(cat),
+            "macro": _build_macro_context(cat),
+            "technical": _build_technical_context(cat),
+            "sentiment": _build_sentiment_context(cat),
+            "edgar": _build_edgar_context(cat),
+            "filing": _build_filing_excerpt_context(cat),
+            "counterparty": _build_counterparty_context(cat),
+        }
+
+    def _build_targeted_context_for_category(category: str) -> str:
+        parts = [f"Fundamental data:\n{data_text}"]
+        ctx = category_contexts.get(category, {})
+        for label, text in [
+            ("Transcript context", ctx.get("transcript", "")),
+            ("Macro context", ctx.get("macro", "")),
+            ("Technical context", ctx.get("technical", "")),
+            ("Sentiment context", ctx.get("sentiment", "")),
+            ("EDGAR XBRL context", ctx.get("edgar", "")),
+            ("Filing excerpt context", ctx.get("filing", "")),
+            ("Counterparty context", ctx.get("counterparty", "")),
+        ]:
+            if text:
+                parts.append(f"{label}:\n{text}")
+        return "\n\n".join(parts)[:TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS]
+
+    # Fetch prior open questions for each category (cross-run resurfacing)
+    prior_q_lists = await asyncio.gather(
+        *[_fetch_prior_open_questions(state.ticker, cat) for cat in categories_to_run],
+        return_exceptions=True,
+    )
+    prior_q_map: dict[str, list[dict]] = {}
+    for cat, pq in zip(categories_to_run, prior_q_lists):
+        prior_q_map[cat] = pq if isinstance(pq, list) else []
+
     # Run all categories in parallel
     tasks = [
         _run_one_category(
             cat, state.ticker, state.theme_id, data_text, loop_ctx_str,
-            _build_transcript_context(cat), _build_macro_context(cat),
-            _build_technical_context(cat), _build_sentiment_context(cat),
-            _build_edgar_context(cat),
-            _build_filing_excerpt_context(cat),
-            _build_counterparty_context(cat),
+            category_contexts[cat]["transcript"], category_contexts[cat]["macro"],
+            category_contexts[cat]["technical"], category_contexts[cat]["sentiment"],
+            category_contexts[cat]["edgar"],
+            category_contexts[cat]["filing"],
+            category_contexts[cat]["counterparty"],
+            _render_prior_questions_slot(prior_q_map[cat]),
         )
         for cat in categories_to_run
     ]
@@ -1211,8 +1253,178 @@ async def node_deep_dive(
     logger.info("[%s] deep_dive complete: %d/%d succeeded, failed: %s",
                 state.ticker, succeeded, len(results), failed)
 
+    # Tier 1.2 — stage extracted questions for DB persistence
+    question_categories: set[str] = set()
+    for result in results:
+        if not isinstance(result, CategoryResult):
+            continue
+        structured = result.structured or {}
+        for raw_q in structured.get("questions", []) or []:
+            question_categories.add(result.category)
+            state.questions_extracted.append(StateQuestion(
+                category=result.category,
+                question_text=raw_q["question_text"],
+                priority=int(raw_q["priority"]),
+                auto_answerable=bool(raw_q["auto_answerable"]),
+            ).to_dict())
+        for raw_rq in structured.get("resolved_questions", []) or []:
+            qid = raw_rq.get("question_id")
+            # Look up original question text from this category's prior set
+            original_text = qid  # fallback to the id if lookup fails
+            for prior_entry in prior_q_map.get(result.category, []) or []:
+                if prior_entry.get("id") == qid:
+                    original_text = prior_entry.get("question_text") or qid
+                    break
+            state.questions_resolved_this_run.append(StateResolvedQuestion(
+                question_text=original_text,
+                answer_text=raw_rq["answer_text"],
+                source="deep_dive_resurfaced",
+            ).to_dict())
+
+    state.targeted_followup_context = {
+        cat: _build_targeted_context_for_category(cat)
+        for cat in sorted(question_categories)
+    }
+
+    await _persist_extracted_questions(state)
+    await _apply_resurfaced_resolutions(state)
+
     state.status = "in_progress"
     return state
+
+
+# ── Tier 1.2 targeted followup ────────────────────────────────────────────────
+
+def _build_targeted_followup_user_msg(
+    *,
+    question_text: str,
+    category: str,
+    key_findings: list[str],
+    analysis: str,
+    routed_context: str = "",
+) -> str:
+    findings_block = "\n".join(f"- {f}" for f in key_findings or []) or "(none)"
+    parts = [
+        f"Question: {question_text}",
+        f"Originating category: {category}",
+        f"Key findings from that category's deep-dive:\n{findings_block}",
+        f"Full category analysis:\n{analysis}",
+    ]
+    if routed_context:
+        parts.append(f"Original data payload and routed context:\n{routed_context}")
+    return "\n\n".join(parts)
+
+
+async def node_targeted_followup(state: ResearchState) -> ResearchState:
+    """Tier 1.2 targeted second-pass.
+
+    Picks ≤3 priority-1 + auto_answerable questions created this run,
+    runs them in parallel through focused Sonnet calls, persists answers
+    back to the questions table, and stages StateResolvedQuestion entries
+    for node_thesis_construction to see."""
+    from backend.app.models.question import Question
+    from sqlalchemy import select, update
+    from datetime import datetime, timezone
+
+    state.phase = "targeted_followup"
+
+    # 1. Pick eligible questions. All ID columns are UUID(as_uuid=False) — strings.
+    async with async_session() as db:
+        stmt = (
+            select(Question)
+            .where(Question.created_run_id == state.run_id)
+            .where(Question.priority == 1)
+            .where(Question.auto_answerable.is_(True))
+            .where(Question.status == "open")
+            .order_by(Question.category.asc(), Question.created_at.asc())
+            .limit(3)
+        )
+        eligible = (await db.execute(stmt)).scalars().all()
+        snapshots = [
+            {"id": q.id, "category": q.category, "question_text": q.question_text}
+            for q in eligible
+        ]
+
+    if not snapshots:
+        state.status = "in_progress"
+        return state
+
+    deep = state.get_deep_dive_results()
+
+    async def _answer_one(snap: dict) -> tuple[str, str | None]:
+        cat = snap["category"]
+        result = deep.get(cat)
+        content = ""
+        if result is not None and hasattr(result, "key_findings"):
+            content = (getattr(result, "content", "") or "")[:6000]
+
+        user_msg = _build_targeted_followup_user_msg(
+            question_text=snap["question_text"],
+            category=cat,
+            key_findings=list(getattr(result, "key_findings", []) or []) if result is not None else [],
+            analysis=content,
+            routed_context=(state.targeted_followup_context or {}).get(cat, ""),
+        )
+
+        try:
+            raw = await complete(
+                model=SONNET,
+                system=TARGETED_FOLLOWUP_SYSTEM,
+                user=user_msg,
+                max_tokens=600,
+                assistant_prefill='{"answer_text":',
+            )
+            parsed = TargetedAnswer.model_validate_json(raw)
+            return snap["id"], parsed.answer_text
+        except Exception:  # noqa: BLE001
+            logger.exception("targeted_followup failed for question %s — leaving open", snap["id"])
+            return snap["id"], None
+
+    answers = await asyncio.gather(*(_answer_one(s) for s in snapshots))
+
+    async with async_session() as db:
+        for qid, answer in answers:
+            if answer is None:
+                continue  # Sonnet failure — leave question open for retry
+            stmt = (
+                update(Question)
+                .where(Question.id == qid)
+                .where(Question.status == "open")
+                .values(
+                    status="resolved_auto",
+                    answer_text=answer,
+                    answer_source="targeted_followup",
+                    resolved_run_id=state.run_id,
+                    resolved_at=datetime.now(timezone.utc),
+                )
+            )
+            await db.execute(stmt)
+        await db.commit()
+
+    for snap, (_, answer) in zip(snapshots, answers):
+        if answer is None:
+            continue
+        state.questions_resolved_this_run.append(StateResolvedQuestion(
+            question_text=snap["question_text"],
+            answer_text=answer,
+            source="targeted_followup",
+        ).to_dict())
+
+    state.status = "in_progress"
+    return state
+
+
+def _render_questions_resolved(staged: list[dict]) -> str:
+    """Render state.questions_resolved_this_run for the thesis prompt slot."""
+    if not staged:
+        return "(none this run)"
+    lines = []
+    for entry in staged:
+        src = entry.get("source", "?")
+        text = entry.get("question_text", "?")
+        ans = entry.get("answer_text", "?")
+        lines.append(f"- [{src}] Q: {text}\n  A: {ans}")
+    return "\n".join(lines)
 
 
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────
@@ -1268,6 +1480,7 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
                 category_results=results_text,
                 failed_categories=", ".join(failed) if failed else "None",
                 loop_context=loop_ctx,
+                questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
             ),
             model=SONNET,
             max_tokens=6000,
@@ -1550,3 +1763,132 @@ async def run_transcript_analysis(
         results["pass6_bom"] = None
 
     return results
+
+
+# ── Tier 1.2 — question persistence ──────────────────────────────────────────
+
+async def _persist_extracted_questions(state: ResearchState) -> None:
+    """After deep_dive merges, write staged questions to the DB.
+
+    All UUID(as_uuid=False) columns store strings at Python level."""
+    from backend.app.db import async_session
+    from backend.app.models.question import Question
+
+    if not state.questions_extracted:
+        return
+
+    async with async_session() as db:
+        for staged in state.questions_extracted:
+            q = Question(
+                ticker=state.ticker,
+                theme_id=state.theme_id or None,
+                category=staged["category"],
+                question_text=staged["question_text"],
+                priority=staged["priority"],
+                auto_answerable=staged["auto_answerable"],
+                status="open",
+                created_run_id=state.run_id,
+            )
+            db.add(q)
+        await db.commit()
+    state.questions_extracted = []
+
+
+async def _fetch_prior_open_questions(
+    ticker: str,
+    category: str,
+    limit: int = 5,
+) -> list[dict]:
+    """Top open priority-1/2 questions for (ticker, category) ordered most-recent first.
+
+    Returns list of {id, question_text, priority, created_at_iso} dicts.
+    Caller renders these into the {prior_questions} slot."""
+    from backend.app.db import async_session
+    from backend.app.models.question import Question
+    from sqlalchemy import select
+
+    async with async_session() as db:
+        stmt = (
+            select(Question)
+            .where(Question.ticker == ticker)
+            .where(Question.category == category)
+            .where(Question.status == "open")
+            .where(Question.priority.in_([1, 2]))
+            .order_by(Question.created_at.desc())
+            .limit(limit)
+        )
+        rows = (await db.execute(stmt)).scalars().all()
+
+    return [
+        {
+            "id": str(r.id),
+            "question_text": r.question_text,
+            "priority": r.priority,
+            "created_at_iso": r.created_at.isoformat() if r.created_at else "",
+        }
+        for r in rows
+    ]
+
+
+def _render_prior_questions_slot(prior: list[dict]) -> str:
+    """Render the {prior_questions} prompt block. Empty string when no priors."""
+    if not prior:
+        return ""
+    lines = [
+        "PREVIOUSLY UNRESOLVED QUESTIONS FOR THIS PILLAR.",
+        "If the current data permits answering them, emit them in `resolved_questions` "
+        "with `question_id` and `answer_text`. Otherwise, you may restate them — "
+        "that's signal they're genuinely hard.",
+        "",
+    ]
+    for q in prior:
+        lines.append(f"- [{q['id']}] (P{q['priority']}) {q['question_text']}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+async def _apply_resurfaced_resolutions(state: ResearchState) -> None:
+    """Mark resurfaced questions as resolved_inline in the DB.
+
+    Reads the freshly-merged state.phase_outputs to find each category's
+    resolved_questions list, then updates the corresponding question rows.
+    Question IDs and run IDs are strings (UUID(as_uuid=False))."""
+    from backend.app.db import async_session
+    from backend.app.models.question import Question
+    from sqlalchemy import update
+    from uuid import UUID
+    from datetime import datetime, timezone
+
+    resolutions: list[tuple[str, str]] = []  # (question_id, answer_text)
+    for category, payload in state.phase_outputs.items():
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("__type__") != "CategoryResult":
+            continue
+        structured = payload.get("structured") or {}
+        for rq in structured.get("resolved_questions", []) or []:
+            resolutions.append((rq["question_id"], rq["answer_text"]))
+
+    if not resolutions:
+        return
+
+    async with async_session() as db:
+        for qid_str, answer in resolutions:
+            try:
+                UUID(qid_str)  # validate; skip junk if LLM hallucinated a non-UUID
+            except (ValueError, TypeError):
+                continue
+            stmt = (
+                update(Question)
+                .where(Question.id == qid_str)
+                .where(Question.status == "open")
+                .values(
+                    status="resolved_inline",
+                    answer_text=answer,
+                    answer_source="deep_dive_resurfaced",
+                    resolved_run_id=state.run_id,
+                    resolved_at=datetime.now(timezone.utc),
+                )
+            )
+            await db.execute(stmt)
+        await db.commit()
