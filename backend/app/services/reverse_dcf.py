@@ -86,3 +86,30 @@ def solve_implied_driver(
             lo = mid
             f_lo = f_mid
     return 0.5 * (lo + hi)
+
+
+def solve_implied_irr(
+    state: ModelState,
+    *,
+    target_per_share: float,
+    tolerance: float = 1e-4,
+    max_iter: int = 80,
+) -> float:
+    """Bisection on discount_rate; returns the rate where intrinsic_per_share == target_per_share."""
+    lo, hi = -0.05, 0.50
+    def evaluate(r: float) -> float:
+        return dcf(state, discount_rate=r).intrinsic_per_share
+    f_lo = evaluate(lo) - target_per_share
+    f_hi = evaluate(hi) - target_per_share
+    if f_lo * f_hi > 0:
+        raise ValueError(f"solve_implied_irr: target {target_per_share} unreachable in [{lo}, {hi}]")
+    for _ in range(max_iter):
+        mid = 0.5 * (lo + hi)
+        f_mid = evaluate(mid) - target_per_share
+        if abs(f_mid) < tolerance:
+            return mid
+        if f_lo * f_mid < 0:
+            hi = mid; f_hi = f_mid
+        else:
+            lo = mid; f_lo = f_mid
+    return 0.5 * (lo + hi)

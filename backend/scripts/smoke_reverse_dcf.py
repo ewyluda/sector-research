@@ -21,7 +21,17 @@ def test_implied_terminal_multiple_round_trip():
     print(f"OK: implied terminal_multiple={implied:.3f} → per_share={out:.4f} (target {target})")
 
 
+def test_implied_irr_round_trip():
+    state = make_flat_fixture(fcf_per_year=100.0, share_count=100.0, discount=0.10, exit_mult=12.0, ebitda=150.0)
+    target_per_share = 14.9677  # the baseline at r=10%
+    from backend.app.services.reverse_dcf import solve_implied_irr
+    irr = solve_implied_irr(state, target_per_share=target_per_share)
+    assert abs(irr - 0.10) < 0.005, f"implied IRR should ≈ 10%, got {irr}"
+    print(f"OK: implied IRR={irr:.4f}")
+
+
 if __name__ == "__main__":
     test_implied_terminal_multiple_round_trip()
+    test_implied_irr_round_trip()
     print("OK: smoke_reverse_dcf (Task 7) passed")
     sys.exit(0)
