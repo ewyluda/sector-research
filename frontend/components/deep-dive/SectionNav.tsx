@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { SECTION_GROUPS, SECTIONS } from "./sections";
 
-export function SectionNav() {
+export function SectionNav({ ticker }: { ticker?: string } = {}) {
   const [active, setActive] = useState("overview");
   const [stuck, setStuck] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -74,6 +74,14 @@ export function SectionNav() {
               ))}
             </div>
           ))}
+          {ticker && (
+            <a
+              href={`/model/${ticker}#forecast`}
+              className="ml-auto px-3 py-1 rounded text-sm text-blue-400 hover:bg-slate-800 shrink-0"
+            >
+              Model →
+            </a>
+          )}
         </div>
       </nav>
     </>

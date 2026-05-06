@@ -40,7 +40,7 @@ export function DeepDiveDashboard({ ticker, financials, categories: rawCategorie
   const categories = normalizeScoreKeys(rawCategories);
   return (
   <>
-    <SectionNav />
+    <SectionNav ticker={ticker} />
     <div className="space-y-6">
         <OverviewBanner financials={financials} scores={scores} />
 
