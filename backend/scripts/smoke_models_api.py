@@ -70,9 +70,22 @@ def test_apply_edit_unknown_shape_raises():
     print("OK: _apply_edit rejects unknown cell_path shape")
 
 
+# ---------------------------------------------------------------------------
+# Task 20 tests
+# ---------------------------------------------------------------------------
+
+def test_save_with_no_draft_returns_404():
+    c = _patched_client()
+    r = c.post("/api/models/UNKNOWN_NODRAFT/save", json={"label": "test"})
+    app.dependency_overrides.clear()
+    assert r.status_code == 404, f"expected 404, got {r.status_code}"
+    print("OK: POST /save returns 404 when no draft exists")
+
+
 if __name__ == "__main__":
     test_get_model_for_unknown_ticker()
     test_apply_edit_driver()
     test_apply_edit_unknown_shape_raises()
-    print("OK: smoke_models_api (Task 19) passed")
+    test_save_with_no_draft_returns_404()
+    print("OK: smoke_models_api (Task 20) passed")
     sys.exit(0)

@@ -168,3 +168,59 @@ async def put_draft(ticker: str, edit: DraftEditRequest, db: AsyncSession = Depe
         "state": draft.state,
         "updated_at": draft.updated_at.isoformat(),
     }
+
+
+# ---------------------------------------------------------------------------
+# Task 20: POST /save + DELETE /draft
+# ---------------------------------------------------------------------------
+
+class SaveVersionRequest(_BM):
+    label: str | None = None
+
+
+@router.post("/{ticker}/save")
+async def save_version(
+    ticker: str, body: SaveVersionRequest, db: AsyncSession = Depends(get_db)
+) -> dict:
+    draft = (
+        await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
+    ).scalar_one_or_none()
+    if draft is None:
+        raise HTTPException(status_code=404, detail="no draft to save")
+    latest = (
+        await db.execute(
+            select(TickerModel)
+            .where(TickerModel.ticker == ticker)
+            .order_by(desc(TickerModel.version))
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    next_version = 1 if latest is None else latest.version + 1
+    new_row = TickerModel(
+        ticker=ticker,
+        version=next_version,
+        state=draft.state,
+        label=body.label or f"v{next_version}",
+        parent_research_run_id=getattr(latest, "parent_research_run_id", None),
+    )
+    db.add(new_row)
+    await db.delete(draft)
+    await db.commit()
+    await db.refresh(new_row)
+    return {
+        "id": new_row.id,
+        "ticker": ticker,
+        "version": new_row.version,
+        "label": new_row.label,
+    }
+
+
+@router.delete("/{ticker}/draft")
+async def discard_draft(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
+    draft = (
+        await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
+    ).scalar_one_or_none()
+    if draft is not None:
+        await db.delete(draft)
+        await db.commit()
+    return {"ok": True}
