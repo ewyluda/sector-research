@@ -341,6 +341,18 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
         for s in kc_result.scalars()
     ]
 
+    # Tier 1.2: question-log rows linked to this run via either created_run_id
+    # or resolved_run_id (so resurfaced answers from prior runs show up too).
+    from backend.app.models.question import Question
+    from backend.app.api.questions import _serialize as _serialize_question
+    from sqlalchemy import or_
+    q_result = await db.execute(
+        select(Question)
+        .where(or_(Question.created_run_id == run_id, Question.resolved_run_id == run_id))
+        .order_by(Question.priority.asc(), Question.created_at.desc())
+    )
+    questions_payload = [_serialize_question(q).model_dump() for q in q_result.scalars().all()]
+
     return {
         "run_id": run_id,
         "ticker": run.ticker,
@@ -351,6 +363,7 @@ async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
         "loop_count": run.loop_count,
         "x_signal_velocity": x_signal_velocity,
         "kill_criterion_states": kill_criterion_states,
+        "questions": questions_payload,
         "phases": {
             "quick_screen": phase_outputs.get("quick_screen", {}),
             "deep_dive": {
