@@ -7,6 +7,7 @@ import { DriverPanel } from "@/components/model/DriverPanel";
 import { ForecastGrid } from "@/components/model/ForecastGrid";
 import { FormulaBar } from "@/components/model/FormulaBar";
 import { putModelDraft, saveModelVersion, discardModelDraft, type ModelState as MS, type TickerModelDraft as TMD, type TickerModelVersion as TMV } from "@/lib/api";
+import { ReverseDcfPanel } from "@/components/model/ReverseDcfPanel";
 
 export default function ModelPage() {
   const params = useParams<{ ticker: string }>();
@@ -176,8 +177,8 @@ function ForecastTabContent({
     </>
   );
 }
-function ReverseDcfTabContent(_props: { ticker: string; hasDraft: boolean }) {
-  return <div className="p-6 text-slate-500">Reverse DCF tab — see Task 25</div>;
+function ReverseDcfTabContent({ ticker, hasDraft }: { ticker: string; hasDraft: boolean }) {
+  return <ReverseDcfPanel ticker={ticker} hasDraft={hasDraft} />;
 }
 function HistoryTabContent(_props: { ticker: string }) {
   return <div className="p-6 text-slate-500">History tab — see Task 27</div>;
