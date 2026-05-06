@@ -208,6 +208,14 @@ class ResolvedQuestion(BaseModel):
     answer_text: str = Field(description="Concise answer using current data.")
 
 
+class TargetedAnswer(BaseModel):
+    """Sonnet response to a single targeted-followup question."""
+    answer_text: str = Field(
+        description="Concise answer using only the data payload provided. "
+        "If data is insufficient, say so explicitly rather than speculating."
+    )
+
+
 class DeepDiveCategoryOutput(BaseModel):
     score: int = Field(..., ge=0, le=100)
     score_rationale: str = Field(..., min_length=1, max_length=600)
