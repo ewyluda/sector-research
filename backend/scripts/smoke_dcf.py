@@ -51,7 +51,29 @@ def test_flat_dcf_exit_multiple():
     print(f"OK: flat exit-multiple DCF: intrinsic={actual:.2f} per_share={result.intrinsic_per_share:.4f}")
 
 
+def test_flat_dcf_perpetuity():
+    state = make_flat_fixture(fcf_per_year=100.0, share_count=100.0, discount=0.10, exit_mult=12.0, ebitda=150.0)
+    result = dcf(state, terminal_method="perpetuity")
+    # PV of 5 FCFs = 379.08
+    # Terminal (perp at g=2.5%): TV = 100 * 1.025 / (0.10 - 0.025) = 1366.67
+    # PV terminal = 1366.67 / 1.10^5 = 848.42
+    # Intrinsic = 379.08 + 848.42 = 1227.50
+    expected = 1227.50
+    assert abs(result.intrinsic_value - expected) < 1.0, f"perpetuity DCF mismatch: got {result.intrinsic_value}"
+    print(f"OK: flat perpetuity DCF: intrinsic={result.intrinsic_value:.2f}")
+
+
+def test_dcf_discount_override():
+    state = make_flat_fixture(fcf_per_year=100.0, share_count=100.0, discount=0.10, exit_mult=12.0, ebitda=150.0)
+    base = dcf(state).intrinsic_value
+    higher = dcf(state, discount_rate=0.15).intrinsic_value
+    assert higher < base, f"higher discount must reduce intrinsic; got {higher} >= {base}"
+    print(f"OK: discount override: base={base:.2f}, @15%={higher:.2f}")
+
+
 if __name__ == "__main__":
     test_flat_dcf_exit_multiple()
+    test_flat_dcf_perpetuity()
+    test_dcf_discount_override()
     print("OK: smoke_dcf passed")
     sys.exit(0)
