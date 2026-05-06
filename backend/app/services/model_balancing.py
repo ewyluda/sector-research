@@ -14,10 +14,21 @@ def _drv(state: ModelState, period: str, key: str) -> float | None:
     return cell.value if cell else None
 
 
-def _set_pnl(state: ModelState, line: str, period: str, value: float, formula: str | None = None) -> None:
-    state.income_statement.setdefault(line, {})[period] = ModelCell(
+def _override_value(cell: ModelCell | None) -> float | None:
+    if cell is not None and cell.source == "override" and cell.value is not None:
+        return float(cell.value)
+    return None
+
+
+def _set_pnl(state: ModelState, line: str, period: str, value: float, formula: str | None = None) -> float:
+    period_cells = state.income_statement.setdefault(line, {})
+    override = _override_value(period_cells.get(period))
+    if override is not None:
+        return override
+    period_cells[period] = ModelCell(
         value=value, source="computed", formula=formula,
     )
+    return value
 
 
 def compute_income_statement(state: ModelState) -> ModelState:
@@ -36,77 +47,76 @@ def compute_income_statement(state: ModelState) -> ModelState:
 
     for p in forecast:
         # --- Revenue ---
-        existing = s.income_statement.get("revenue", {}).get(p.label)
-        if existing and existing.source == "override" and existing.value is not None:
-            rev = existing.value
+        abs_cell = s.drivers.get(p.label, {}).get("revenue_absolute")
+        if abs_cell and abs_cell.value is not None:
+            computed_rev = abs_cell.value
         else:
-            abs_cell = s.drivers.get(p.label, {}).get("revenue_absolute")
-            if abs_cell and abs_cell.value is not None:
-                rev = abs_cell.value
-            else:
-                growth = _drv(s, p.label, "revenue_growth_pct") or 0.0
-                if prior_rev is None:
-                    raise ValueError(f"compute_income_statement: no prior revenue for {p.label}")
-                # Quarterly periods: apply growth as YoY against prior_rev (simplification for v1)
-                rev = prior_rev * (1.0 + growth)
-            _set_pnl(s, "revenue", p.label, rev, formula="= prior_revenue * (1 + revenue_growth_pct)")
+            growth = _drv(s, p.label, "revenue_growth_pct") or 0.0
+            if prior_rev is None:
+                raise ValueError(f"compute_income_statement: no prior revenue for {p.label}")
+            # Quarterly periods: apply growth as YoY against prior_rev (simplification for v1)
+            computed_rev = prior_rev * (1.0 + growth)
+        rev = _set_pnl(s, "revenue", p.label, computed_rev, formula="= prior_revenue * (1 + revenue_growth_pct)")
         prior_rev = rev
 
         gm = _drv(s, p.label, "gross_margin_pct") or 0.0
-        gp = rev * gm
-        cogs = rev - gp
-        _set_pnl(s, "cost_of_revenue", p.label, cogs, formula="= revenue - gross_profit")
-        _set_pnl(s, "gross_profit", p.label, gp, formula="= revenue * gross_margin_pct")
+        gp = _set_pnl(s, "gross_profit", p.label, rev * gm, formula="= revenue * gross_margin_pct")
+        cogs = _set_pnl(s, "cost_of_revenue", p.label, rev - gp, formula="= revenue - gross_profit")
 
         sga_pct = _drv(s, p.label, "sga_pct_revenue") or 0.0
         rd_pct = _drv(s, p.label, "rd_pct_revenue") or 0.0
         other_pct = _drv(s, p.label, "other_opex_pct_revenue") or 0.0
         da_pct = _drv(s, p.label, "da_pct_revenue") or 0.0
-        sga, rd, other, da = rev * sga_pct, rev * rd_pct, rev * other_pct, rev * da_pct
-        opex = sga + rd + other
-        _set_pnl(s, "sga", p.label, sga)
-        _set_pnl(s, "rd", p.label, rd)
-        _set_pnl(s, "other_opex", p.label, other)
-        _set_pnl(s, "operating_expenses", p.label, opex)
-        _set_pnl(s, "depreciation_amortization", p.label, da)
-        ebit = gp - opex - da
-        _set_pnl(s, "ebit", p.label, ebit, formula="= gross_profit - operating_expenses - da")
+        sga = _set_pnl(s, "sga", p.label, rev * sga_pct)
+        rd = _set_pnl(s, "rd", p.label, rev * rd_pct)
+        other = _set_pnl(s, "other_opex", p.label, rev * other_pct)
+        opex = _set_pnl(s, "operating_expenses", p.label, sga + rd + other)
+        da = _set_pnl(s, "depreciation_amortization", p.label, rev * da_pct)
+        ebit = _set_pnl(s, "ebit", p.label, gp - opex - da, formula="= gross_profit - operating_expenses - da")
         _set_pnl(s, "ebitda", p.label, ebit + da, formula="= ebit + da")
 
         # Interest assumed 0 in v1 P&L; debt schedule lives in CF/BS step
-        _set_pnl(s, "interest_income", p.label, 0.0)
-        _set_pnl(s, "interest_expense", p.label, 0.0)
-        pretax = ebit
-        _set_pnl(s, "pretax_income", p.label, pretax)
+        interest_income = _set_pnl(s, "interest_income", p.label, 0.0)
+        interest_expense = _set_pnl(s, "interest_expense", p.label, 0.0)
+        pretax = _set_pnl(s, "pretax_income", p.label, ebit + interest_income - interest_expense)
         tax_rate = _drv(s, p.label, "effective_tax_rate") or 0.0
-        tax = pretax * tax_rate
-        _set_pnl(s, "income_tax", p.label, tax)
-        ni = pretax - tax
-        _set_pnl(s, "net_income", p.label, ni, formula="= pretax_income * (1 - effective_tax_rate)")
+        tax = _set_pnl(s, "income_tax", p.label, pretax * tax_rate)
+        ni = _set_pnl(s, "net_income", p.label, pretax - tax, formula="= pretax_income - income_tax")
 
         # Shares: prior shares × (1 + share_count_change_pct)
         sh_change = _drv(s, p.label, "share_count_change_pct") or 0.0
-        prior_sh_cell = s.income_statement.get("shares_diluted", {}).get(p.label)
-        if prior_sh_cell and prior_sh_cell.source != "override":
-            # Find prior period's shares
-            idx = s.periods.index(p)
-            prior_period = s.periods[idx - 1]
-            prior_sh = (s.income_statement.get("shares_diluted", {}).get(prior_period.label) or ModelCell()).value or 0.0
-            sh = prior_sh * (1.0 + sh_change)
-            _set_pnl(s, "shares_diluted", p.label, sh)
+        existing_sh = s.income_statement.get("shares_diluted", {}).get(p.label)
+        override_sh = _override_value(existing_sh)
+        if override_sh is not None:
+            sh = override_sh
         else:
-            sh = (prior_sh_cell.value if prior_sh_cell else 0.0) or 0.0
+            idx = s.periods.index(p)
+            prior_period = s.periods[idx - 1] if idx > 0 else p
+            prior_sh = (s.income_statement.get("shares_diluted", {}).get(prior_period.label) or ModelCell()).value
+            if prior_sh is None and existing_sh is not None:
+                prior_sh = existing_sh.value
+            sh = _set_pnl(s, "shares_diluted", p.label, (prior_sh or 0.0) * (1.0 + sh_change))
         _set_pnl(s, "eps_diluted", p.label, ni / sh if sh else 0.0)
 
     return s
 
 
-def _set_cf(state: ModelState, line: str, period: str, value: float) -> None:
-    state.cash_flow.setdefault(line, {})[period] = ModelCell(value=value, source="computed")
+def _set_cf(state: ModelState, line: str, period: str, value: float) -> float:
+    period_cells = state.cash_flow.setdefault(line, {})
+    override = _override_value(period_cells.get(period))
+    if override is not None:
+        return override
+    period_cells[period] = ModelCell(value=value, source="computed")
+    return value
 
 
-def _set_bs(state: ModelState, line: str, period: str, value: float) -> None:
-    state.balance_sheet.setdefault(line, {})[period] = ModelCell(value=value, source="computed")
+def _set_bs(state: ModelState, line: str, period: str, value: float) -> float:
+    period_cells = state.balance_sheet.setdefault(line, {})
+    override = _override_value(period_cells.get(period))
+    if override is not None:
+        return override
+    period_cells[period] = ModelCell(value=value, source="computed")
+    return value
 
 
 def _bs_prior(state: ModelState, line: str, period_idx: int) -> float:
@@ -146,29 +156,20 @@ def compute_cash_flow(state: ModelState) -> ModelState:
         capex_pct = _drv(s, p.label, "capex_pct_revenue") or 0.0
         capex = -(rev * capex_pct)    # negative outflow
 
-        ocf = ni + da + d_ar + d_inv + d_ap
-        fcf = ocf + capex
-
-        debt_repay = -(_drv(s, p.label, "debt_repayment_dollars") or 0.0)
-        buybacks = -(_drv(s, p.label, "buyback_dollars") or 0.0)
-        payout = _drv(s, p.label, "dividend_payout_ratio") or 0.0
-        dividends = -(ni * payout)
-
-        net_change = fcf + debt_repay + buybacks + dividends
-
         _set_cf(s, "net_income_cf", p.label, ni)
         _set_cf(s, "depreciation_amortization_cf", p.label, da)
-        _set_cf(s, "delta_accounts_receivable", p.label, d_ar)
-        _set_cf(s, "delta_inventory", p.label, d_inv)
-        _set_cf(s, "delta_accounts_payable", p.label, d_ap)
-        _set_cf(s, "operating_cash_flow", p.label, ocf)
-        _set_cf(s, "capex", p.label, capex)
-        _set_cf(s, "free_cash_flow", p.label, fcf)
-        _set_cf(s, "debt_issued", p.label, 0.0)
-        _set_cf(s, "debt_repaid", p.label, debt_repay)
-        _set_cf(s, "dividends_paid", p.label, dividends)
-        _set_cf(s, "buybacks", p.label, buybacks)
-        _set_cf(s, "net_change_in_cash", p.label, net_change)
+        d_ar = _set_cf(s, "delta_accounts_receivable", p.label, d_ar)
+        d_inv = _set_cf(s, "delta_inventory", p.label, d_inv)
+        d_ap = _set_cf(s, "delta_accounts_payable", p.label, d_ap)
+        ocf = _set_cf(s, "operating_cash_flow", p.label, ni + da + d_ar + d_inv + d_ap)
+        capex = _set_cf(s, "capex", p.label, capex)
+        fcf = _set_cf(s, "free_cash_flow", p.label, ocf + capex)
+        debt_issued = _set_cf(s, "debt_issued", p.label, 0.0)
+        debt_repay = _set_cf(s, "debt_repaid", p.label, -(_drv(s, p.label, "debt_repayment_dollars") or 0.0))
+        payout = _drv(s, p.label, "dividend_payout_ratio") or 0.0
+        dividends = _set_cf(s, "dividends_paid", p.label, -(ni * payout))
+        buybacks = _set_cf(s, "buybacks", p.label, -(_drv(s, p.label, "buyback_dollars") or 0.0))
+        _set_cf(s, "net_change_in_cash", p.label, fcf + debt_issued + debt_repay + buybacks + dividends)
     return s
 
 
@@ -199,21 +200,18 @@ def roll_balance_sheet(state: ModelState) -> ModelState:
 
         capex = -(s.cash_flow["capex"][p.label].value or 0.0)  # positive for PPE addition
         da = s.income_statement["depreciation_amortization"][p.label].value or 0.0
-        ppe = _bs_prior(s, "ppe_net", idx) + capex - da
-        _set_bs(s, "ppe_net", p.label, ppe)
+        ppe = _set_bs(s, "ppe_net", p.label, _bs_prior(s, "ppe_net", idx) + capex - da)
 
         # Debt
         prior_lt = _bs_prior(s, "long_term_debt", idx)
         debt_repay = (_drv(s, p.label, "debt_repayment_dollars") or 0.0)
-        new_lt = max(0.0, prior_lt - debt_repay)
-        _set_bs(s, "long_term_debt", p.label, new_lt)
+        new_lt = _set_bs(s, "long_term_debt", p.label, max(0.0, prior_lt - debt_repay))
 
         # Equity
         prior_re = _bs_prior(s, "retained_earnings", idx)
         ni = s.income_statement["net_income"][p.label].value or 0.0
         dividends = -(s.cash_flow["dividends_paid"][p.label].value or 0.0)  # negative cash, positive distribution
-        new_re = prior_re + ni - dividends
-        _set_bs(s, "retained_earnings", p.label, new_re)
+        new_re = _set_bs(s, "retained_earnings", p.label, prior_re + ni - dividends)
         prior_ce = _bs_prior(s, "common_equity", idx)
         buybacks = -(s.cash_flow["buybacks"][p.label].value or 0.0)
         _set_bs(s, "common_equity", p.label, prior_ce - buybacks)
@@ -235,19 +233,17 @@ def roll_balance_sheet(state: ModelState) -> ModelState:
         ca = sum((s.balance_sheet[li][p.label].value or 0.0) for li in [
             "cash_and_equivalents", "accounts_receivable", "inventory", "other_current_assets",
         ])
-        _set_bs(s, "total_current_assets", p.label, ca)
-        ta = ca + sum((s.balance_sheet[li][p.label].value or 0.0) for li in [
+        ca = _set_bs(s, "total_current_assets", p.label, ca)
+        ta = _set_bs(s, "total_assets", p.label, ca + sum((s.balance_sheet[li][p.label].value or 0.0) for li in [
             "ppe_net", "goodwill", "other_long_term_assets",
-        ])
-        _set_bs(s, "total_assets", p.label, ta)
+        ]))
         cl = sum((s.balance_sheet[li][p.label].value or 0.0) for li in [
             "accounts_payable", "short_term_debt", "other_current_liabilities",
         ])
-        _set_bs(s, "total_current_liabilities", p.label, cl)
-        tl = cl + sum((s.balance_sheet[li][p.label].value or 0.0) for li in [
+        cl = _set_bs(s, "total_current_liabilities", p.label, cl)
+        tl = _set_bs(s, "total_liabilities", p.label, cl + sum((s.balance_sheet[li][p.label].value or 0.0) for li in [
             "long_term_debt", "other_long_term_liabilities",
-        ])
-        _set_bs(s, "total_liabilities", p.label, tl)
+        ]))
         # Plug retained_earnings to force balance: RE absorbs any gap from
         # untracked BS items (ppe_net, goodwill, etc. seeded as 0 when
         # CuratedFinancials lacks granular BS data). This is the standard
@@ -257,15 +253,14 @@ def roll_balance_sheet(state: ModelState) -> ModelState:
         ce_val = (s.balance_sheet.get("common_equity", {}).get(p.label) or ModelCell(value=0.0)).value or 0.0
         te_target = ta - tl
         re_plugged = te_target - ce_val
-        _set_bs(s, "retained_earnings", p.label, re_plugged)
-        te = ce_val + re_plugged
-        _set_bs(s, "total_equity", p.label, te)
-        _set_bs(s, "total_liab_and_equity", p.label, tl + te)
+        re_val = _set_bs(s, "retained_earnings", p.label, re_plugged)
+        te = _set_bs(s, "total_equity", p.label, ce_val + re_val)
+        total_le = _set_bs(s, "total_liab_and_equity", p.label, tl + te)
 
         # Balance check (should always pass after plug)
-        if abs(ta - (tl + te)) > 1.0:
+        if abs(ta - total_le) > 1.0:
             raise ModelBalanceError(
-                f"BS imbalance at {p.label}: assets={ta:.2f}, liab+eq={tl+te:.2f}, diff={ta-(tl+te):.2f}"
+                f"BS imbalance at {p.label}: assets={ta:.2f}, liab+eq={total_le:.2f}, diff={ta-total_le:.2f}"
             )
 
     return s

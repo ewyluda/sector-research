@@ -109,8 +109,46 @@ def test_full_rollforward_balances():
     print(f"OK: BS balances at 2026Y: assets={assets:.2f}, liab+eq={liab+eq:.2f}")
 
 
+def test_statement_overrides_survive_recompute():
+    """A user override should remain the stored value after the recompute pass."""
+    from backend.app.services.model_balancing import recompute
+
+    s = make_minimal_state()
+    s.income_statement["net_income"]["2026Y"] = ModelCell(value=9999.0, source="override")
+    s.cash_flow["free_cash_flow"]["2026Y"] = ModelCell(value=7777.0, source="override")
+    s.balance_sheet["cash_and_equivalents"]["2026Y"] = ModelCell(value=5555.0, source="override")
+
+    s2 = recompute(s)
+
+    assert s2.income_statement["net_income"]["2026Y"].value == 9999.0
+    assert s2.income_statement["net_income"]["2026Y"].source == "override"
+    assert s2.cash_flow["free_cash_flow"]["2026Y"].value == 7777.0
+    assert s2.cash_flow["free_cash_flow"]["2026Y"].source == "override"
+    assert s2.balance_sheet["cash_and_equivalents"]["2026Y"].value == 5555.0
+    assert s2.balance_sheet["cash_and_equivalents"]["2026Y"].source == "override"
+    print("OK: user statement overrides survive recompute")
+
+
+def test_share_count_rolls_forward_without_forecast_seed():
+    """Baseline states may only have historical share count; forecast shares should still populate."""
+    from backend.app.services.model_balancing import recompute
+
+    s = make_minimal_state()
+    del s.income_statement["shares_diluted"]["2026Y"]
+
+    s2 = recompute(s)
+
+    shares = s2.income_statement["shares_diluted"]["2026Y"]
+    assert shares.value == 100.0, f"expected historical shares to roll forward, got {shares.value}"
+    assert shares.source == "computed"
+    assert s2.income_statement["eps_diluted"]["2026Y"].value != 0.0
+    print("OK: forecast share count rolls forward from historical seed")
+
+
 if __name__ == "__main__":
     test_compute_income_statement_minimal()
     test_full_rollforward_balances()
+    test_statement_overrides_survive_recompute()
+    test_share_count_rolls_forward_without_forecast_seed()
     print("OK: smoke_model_balancing (Task 11+12) passed")
     sys.exit(0)

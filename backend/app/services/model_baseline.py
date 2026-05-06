@@ -118,6 +118,19 @@ def _seed_historicals(state: ModelState, ctx: dict[str, Any]) -> None:
                 except (TypeError, ValueError):
                     pass
 
+    market_cap = cf.get("market_cap")
+    current_price = cf.get("current_price")
+    try:
+        inferred_shares = float(market_cap) / float(current_price)
+    except (TypeError, ValueError, ZeroDivisionError):
+        inferred_shares = 0.0
+    if inferred_shares > 0:
+        for period in hist:
+            state.income_statement.setdefault("shares_diluted", {}).setdefault(
+                period.label,
+                ModelCell(value=inferred_shares, source="historical", last_edited_by="system"),
+            )
+
 
 def _apply_baseline_drivers(state: ModelState, response: BaselineDriversResponse) -> None:
     """Inject Sonnet-generated drivers into state.drivers, source='ai_baseline'.

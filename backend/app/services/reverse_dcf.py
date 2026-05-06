@@ -29,12 +29,16 @@ def _apply_uniform_override(state: ModelState, dimension: ImpliedDimension, valu
         return s
     if dimension == "ebit_margin_pct":
         for p in forecast:
+            expense_drag = sum(
+                (s.drivers[p.label].get(key).value if s.drivers[p.label].get(key) else 0.0) or 0.0
+                for key in ("sga_pct_revenue", "rd_pct_revenue", "other_opex_pct_revenue", "da_pct_revenue")
+            )
             cell = s.drivers[p.label].get("gross_margin_pct")
             if cell is None:
                 from backend.app.models.model_state import ModelCell
-                s.drivers[p.label]["gross_margin_pct"] = ModelCell(value=value, source="driver")
+                s.drivers[p.label]["gross_margin_pct"] = ModelCell(value=value + expense_drag, source="driver")
             else:
-                cell.value = value
+                cell.value = value + expense_drag
         return recompute(s)
     if dimension == "revenue_growth_pct":
         for p in forecast:
@@ -153,8 +157,18 @@ def thesis_vs_priced_in(state: ModelState, *, target_per_share: float) -> list[d
         nums = [c.value for c in vals if c is not None and c.value is not None]
         return sum(nums) / len(nums) if nums else 0.0
 
+    def avg_ebit_margin() -> float:
+        margins = []
+        for p in forecast:
+            revenue = (state.income_statement.get("revenue", {}).get(p.label) or None)
+            ebit = (state.income_statement.get("ebit", {}).get(p.label) or None)
+            if revenue is None or ebit is None or not revenue.value:
+                continue
+            margins.append((ebit.value or 0.0) / revenue.value)
+        return sum(margins) / len(margins) if margins else 0.0
+
     thesis_growth = avg_driver("revenue_growth_pct")
-    thesis_margin = avg_driver("gross_margin_pct")
+    thesis_margin = avg_ebit_margin()
     thesis_multiple = state.assumptions.terminal_multiple.value or 0.0
 
     rows = []

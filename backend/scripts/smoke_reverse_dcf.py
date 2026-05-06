@@ -101,11 +101,30 @@ def test_implied_growth_uses_recompute():
     print(f"OK: implied growth via recompute: {implied:.4f} for target {target:.4f}")
 
 
+def test_ebit_margin_dimension_sets_ebit_margin_not_gross_margin():
+    """The ebit_margin_pct reverse-DCF dimension should target EBIT/revenue, not gross margin."""
+    from backend.app.services.reverse_dcf import _apply_uniform_override
+
+    state = _make_recompute_state()
+    target_margin = 0.30
+    out = _apply_uniform_override(state, "ebit_margin_pct", target_margin)
+    period = next(p.label for p in out.periods if not p.is_historical)
+    revenue = out.income_statement["revenue"][period].value or 0.0
+    ebit = out.income_statement["ebit"][period].value or 0.0
+    gross_margin = out.drivers[period]["gross_margin_pct"].value
+
+    assert revenue != 0.0
+    assert abs((ebit / revenue) - target_margin) < 1e-6
+    assert gross_margin != target_margin, "gross margin should be derived from the target EBIT margin"
+    print("OK: ebit_margin_pct override produces the requested EBIT/revenue margin")
+
+
 if __name__ == "__main__":
     test_implied_terminal_multiple_round_trip()
     test_implied_irr_round_trip()
     test_sensitivity_grid_shape()
     test_thesis_vs_priced_in_shape()
     test_implied_growth_uses_recompute()
+    test_ebit_margin_dimension_sets_ebit_margin_not_gross_margin()
     print("OK: smoke_reverse_dcf (Tasks 7-13) passed")
     sys.exit(0)

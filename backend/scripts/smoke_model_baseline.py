@@ -79,6 +79,36 @@ async def test_initialize_model_for_ticker_with_mocks():
     print(f"OK: build_baseline_state produces ModelState (discount={state.assumptions.discount_rate.value:.4f})")
 
 
+def test_seed_historicals_infers_share_count_from_market_cap():
+    """CuratedFinancials lacks diluted shares, so baseline seeding should infer a usable share seed."""
+    from backend.app.models.model_state import ModelState, ModelCell, Period, ModelAssumptions
+    from backend.app.models.model_state import DRIVER_KEYS, LINE_ITEMS_PNL, LINE_ITEMS_BS, LINE_ITEMS_CF
+    from backend.app.services.model_baseline import _seed_historicals
+
+    periods = [Period(label=f"2025Q{i}", kind="Q", is_historical=True, quarter_index=i) for i in range(1, 5)]
+    state = ModelState(
+        periods=periods,
+        drivers={p.label: {k: ModelCell(value=None, source="driver") for k in DRIVER_KEYS} for p in periods},
+        income_statement={li: {} for li in LINE_ITEMS_PNL},
+        balance_sheet={li: {} for li in LINE_ITEMS_BS},
+        cash_flow={li: {} for li in LINE_ITEMS_CF},
+        assumptions=ModelAssumptions(
+            discount_rate=ModelCell(value=0.10, source="driver"),
+            terminal_method="exit_multiple",
+            terminal_multiple=ModelCell(value=12.0, source="driver"),
+            perpetuity_growth=ModelCell(value=0.025, source="driver"),
+            tax_rate=ModelCell(value=0.21, source="driver"),
+        ),
+    )
+    _seed_historicals(state, {"curated_financials": {"market_cap": 1000.0, "current_price": 10.0}})
+
+    latest_hist = periods[-1].label
+    shares = state.income_statement["shares_diluted"][latest_hist]
+    assert shares.value == 100.0
+    assert shares.source == "historical"
+    print("OK: historical share count inferred from market cap / current price")
+
+
 async def test_initialize_or_get_model_synthetic_ticker():
     """Use synthetic ticker 'ZMODEL'. Cleans up after test. Requires DB up."""
     from unittest.mock import patch, AsyncMock
@@ -124,6 +154,7 @@ async def test_initialize_or_get_model_synthetic_ticker():
 if __name__ == "__main__":
     test_generate_baseline_drivers_with_mock()
     asyncio.run(test_initialize_model_for_ticker_with_mocks())
+    test_seed_historicals_infers_share_count_from_market_cap()
     asyncio.run(test_initialize_or_get_model_synthetic_ticker())
     print("OK: smoke_model_baseline (Tasks 15+16+17) passed")
     sys.exit(0)

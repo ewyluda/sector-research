@@ -309,7 +309,7 @@ async def get_reverse_dcf(
                 x_dim="revenue_growth_pct",
                 x_range=(-0.05, 0.20),
                 y_dim="ebit_margin_pct",
-                y_range=(-0.10, 0.10),
+                y_range=(-0.10, 0.40),
             ),
             "growth_multiple": sensitivity_grid(
                 state,
@@ -321,7 +321,7 @@ async def get_reverse_dcf(
             "margin_multiple": sensitivity_grid(
                 state,
                 x_dim="ebit_margin_pct",
-                x_range=(-0.10, 0.10),
+                x_range=(-0.10, 0.40),
                 y_dim="terminal_multiple",
                 y_range=(5.0, 25.0),
             ),

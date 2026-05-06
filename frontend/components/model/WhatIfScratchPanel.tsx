@@ -26,7 +26,7 @@ export function WhatIfScratchPanel({ baseline }: { baseline: { growth: number; m
           />
         </label>
         <label className="block text-xs">
-          Gross margin: {(margin * 100).toFixed(1)}%
+          EBIT margin: {(margin * 100).toFixed(1)}%
           <input
             type="range"
             min={-50}
