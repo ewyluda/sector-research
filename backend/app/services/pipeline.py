@@ -34,6 +34,7 @@ from backend.app.services.relationship_context import (
     CounterpartyContext,
     get_counterparty_context,
 )
+from backend.app.services.run_timestamps import mark_terminal_completed_at
 from backend.app.graph.nodes import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
@@ -193,6 +194,9 @@ class PipelineService:
                     state = await nodes.node_risk_stress_test(state)
                 elif phase == "position_monitor":
                     state = await nodes.node_position_monitor(state)
+
+                if state.status in ("completed", "watchlist", "pass"):
+                    mark_terminal_completed_at(state)
 
                 # Persist state after phase execution
                 async with db.begin():

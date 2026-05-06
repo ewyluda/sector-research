@@ -14,6 +14,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     const text = await res.text().catch(() => "");
     throw new Error(`API ${res.status}: ${text}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -857,6 +858,7 @@ export interface ReportResponse {
     date_researched: string;
     loop_count: number;
   };
+  kill_criterion_states?: KillCriterionStateOut[];
 }
 
 // ── SSE event types ────────────────────────────────────────────────────────────
@@ -986,3 +988,127 @@ export async function getCatalystsForRun(runId: string): Promise<CatalystListRes
 export async function getCatalyst(id: string): Promise<CatalystRow> {
   return apiFetch<CatalystRow>(`/api/catalysts/${encodeURIComponent(id)}`);
 }
+
+// ── Status board ─────────────────────────────────────────────────────────────
+
+export type Health = "healthy" | "imminent" | "stale" | "triggered" | "broken";
+
+export interface NextCatalyst {
+  description: string;
+  type: string | null;
+  expected_date: string | null;
+  expected_window_end: string | null;
+  days_until: number | null;
+}
+
+export interface KillCriteriaSummary {
+  total: number;
+  triggered: number;
+}
+
+export interface StatusBoardEntry {
+  ticker: string;
+  theme_id: string;
+  theme_name: string;
+  run_id: string;
+  thesis_status: string;
+  conviction_score: number | null;
+  completed_at: string;
+  days_since_update: number;
+  health: Health;
+  health_reasons: string[];
+  next_catalyst: NextCatalyst | null;
+  kill_criteria_summary: KillCriteriaSummary;
+}
+
+export interface StatusBoardResponse {
+  entries: StatusBoardEntry[];
+  total: number;
+  generated_at: string;
+}
+
+export interface KillCriterionStateOut {
+  ordinal: number;
+  status: "armed" | "triggered";
+  flipped_at: string;
+  note: string | null;
+}
+
+export interface RelationshipLink {
+  relationship_type: string;
+  direction: "outbound" | "inbound";
+  verbatim_quote?: string | null;
+  magnitude_pct?: number | null;
+}
+
+export interface ReadThroughItem {
+  event_key: string;
+  peer_ticker: string;
+  event_type: "earnings" | "run_complete";
+  event_date: string;
+  payload: Record<string, unknown>;
+  links: RelationshipLink[];
+}
+
+export type ReadThroughsByRun = Record<string, ReadThroughItem[]>;
+
+export const status = {
+  board: (opts?: { theme_id?: string; include_archived?: boolean }) => {
+    const qs = new URLSearchParams();
+    if (opts?.theme_id) qs.set("theme_id", opts.theme_id);
+    if (opts?.include_archived) qs.set("include_archived", "true");
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiFetch<StatusBoardResponse>(`/api/status/board${suffix}`);
+  },
+  archive: (run_id: string) =>
+    apiFetch<void>(`/api/runs/${encodeURIComponent(run_id)}/archive`, {
+      method: "POST",
+    }),
+  unarchive: (run_id: string) =>
+    apiFetch<void>(`/api/runs/${encodeURIComponent(run_id)}/unarchive`, {
+      method: "POST",
+    }),
+};
+
+export const killCriteria = {
+  list: (run_id: string) =>
+    apiFetch<KillCriterionStateOut[]>(
+      `/api/runs/${encodeURIComponent(run_id)}/kill-criteria`,
+    ),
+  set: (
+    run_id: string,
+    ordinal: number,
+    body: { status: "armed" | "triggered"; note?: string },
+  ) =>
+    apiFetch<KillCriterionStateOut>(
+      `/api/runs/${encodeURIComponent(run_id)}/kill-criteria/${ordinal}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      },
+    ),
+};
+
+export const readThroughs = {
+  async list(params?: { since?: string; until?: string }): Promise<ReadThroughsByRun> {
+    const qs = new URLSearchParams();
+    if (params?.since) qs.set("since", params.since);
+    if (params?.until) qs.set("until", params.until);
+    const url = `/api/status/read-throughs${qs.toString() ? `?${qs}` : ""}`;
+    return apiFetch<ReadThroughsByRun>(url);
+  },
+
+  async dismiss(run_id: string, event_key: string): Promise<void> {
+    await apiFetch<void>("/api/status/read-throughs/dismiss", {
+      method: "POST",
+      body: JSON.stringify({ run_id, event_key }),
+    });
+  },
+
+  async summarize(run_id: string, event_key: string): Promise<{ summary: string }> {
+    return apiFetch<{ summary: string }>("/api/status/read-throughs/summary", {
+      method: "POST",
+      body: JSON.stringify({ run_id, event_key }),
+    });
+  },
+};
