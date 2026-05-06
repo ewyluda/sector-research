@@ -5,6 +5,7 @@ from copy import deepcopy
 
 from backend.app.models.model_state import ModelState
 from backend.app.services.dcf import dcf
+from backend.app.services.model_balancing import recompute
 
 ImpliedDimension = Literal["revenue_growth_pct", "ebit_margin_pct", "terminal_multiple"]
 
@@ -18,35 +19,36 @@ BOUNDS: dict[str, tuple[float, float]] = {
 
 def _apply_uniform_override(state: ModelState, dimension: ImpliedDimension, value: float) -> ModelState:
     """Return a deep-copied state with the chosen dimension overridden uniformly across forecast periods.
-    For terminal_multiple, this overrides assumptions.terminal_multiple.
-    For driver-style dimensions, the dimension is rewired into every forecast period's drivers — but the
-    full driver→IS→CF recompute lives in model_balancing (Task 11+). For Task 7, we override directly
-    on the line items the dcf() engine reads (ebitda for margin, free_cash_flow scaling for growth).
-    This keeps the solver provable against the flat fixture; full integration with the recompute pipeline
-    happens in Task 13."""
+    For terminal_multiple, overrides assumptions.terminal_multiple directly.
+    For driver-style dimensions (revenue_growth_pct, ebit_margin_pct), sets the driver on every
+    forecast period and re-runs recompute() so the IS/CF/BS are fully consistent."""
     s = deepcopy(state)
     forecast = [p for p in s.periods if not p.is_historical]
     if dimension == "terminal_multiple":
         s.assumptions.terminal_multiple.value = value
         return s
     if dimension == "ebit_margin_pct":
-        # For the flat fixture EBITDA proxy: scale EBITDA by (1 + value).
-        # When recompute is integrated (Task 13), this branch will be replaced by:
-        #   for p in forecast: s.drivers[p.label]["gross_margin_pct"].value = value
-        #   then call services.model_balancing.recompute(s)
         for p in forecast:
-            cell = s.income_statement["ebitda"][p.label]
-            base = cell.value or 0.0
-            cell.value = base * (1.0 + value)   # treat `value` as a delta to baseline margin
-        return s
+            cell = s.drivers[p.label].get("gross_margin_pct")
+            if cell is None:
+                from backend.app.models.model_state import ModelCell
+                s.drivers[p.label]["gross_margin_pct"] = ModelCell(value=value, source="driver")
+            else:
+                cell.value = value
+        return recompute(s)
     if dimension == "revenue_growth_pct":
-        # For the flat fixture: scale FCF by (1 + value)^t to simulate growth.
-        # When recompute is integrated (Task 13), this branch sets the per-period revenue_growth_pct driver.
-        for i, p in enumerate(forecast, start=1):
-            cell = s.cash_flow["free_cash_flow"][p.label]
-            base = cell.value or 0.0
-            cell.value = base * ((1.0 + value) ** i)
-        return s
+        for p in forecast:
+            cell = s.drivers[p.label].get("revenue_growth_pct")
+            if cell is None:
+                from backend.app.models.model_state import ModelCell
+                s.drivers[p.label]["revenue_growth_pct"] = ModelCell(value=value, source="driver")
+            else:
+                cell.value = value
+            # Disable absolute-revenue override if previously set
+            abs_cell = s.drivers[p.label].get("revenue_absolute")
+            if abs_cell:
+                abs_cell.value = None
+        return recompute(s)
     raise ValueError(f"unknown dimension {dimension}")
 
 
