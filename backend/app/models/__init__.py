@@ -4,6 +4,7 @@ from backend.app.models.citation import Citation, CitationRecord
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship, XBRLFact
 from backend.app.models.kill_criterion_state import KillCriterionState
+from backend.app.models.question import Question  # noqa: F401
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
 from backend.app.models.theme import Theme
 from backend.app.models.thesis_print_verdict import ThesisPrintVerdict
@@ -22,6 +23,7 @@ __all__ = [
     "Filing",
     "FilingSection",
     "KillCriterionState",
+    "Question",
     "ReadThroughDismissal",
     "Relationship",
     "XBRLFact",
