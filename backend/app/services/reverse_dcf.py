@@ -138,3 +138,37 @@ def sensitivity_grid(
             row.append(dcf(s_xy).intrinsic_per_share)
         values.append(row)
     return {"x_dim": x_dim, "y_dim": y_dim, "x_values": xs, "y_values": ys, "values": values}
+
+
+def thesis_vs_priced_in(state: ModelState, *, target_per_share: float) -> list[dict]:
+    """For each of the three dimensions, return {thesis, priced_in, delta}.
+    `thesis` = current value in `state` (revenue growth: average across forecast; margin: avg gross_margin_pct;
+    multiple: assumptions.terminal_multiple). `priced_in` = solver output."""
+    forecast = [p for p in state.periods if not p.is_historical]
+
+    def avg_driver(key: str) -> float:
+        vals = [state.drivers.get(p.label, {}).get(key, None) for p in forecast]
+        nums = [c.value for c in vals if c is not None and c.value is not None]
+        return sum(nums) / len(nums) if nums else 0.0
+
+    thesis_growth = avg_driver("revenue_growth_pct")
+    thesis_margin = avg_driver("gross_margin_pct")
+    thesis_multiple = state.assumptions.terminal_multiple.value or 0.0
+
+    rows = []
+    for dim, thesis in [
+        ("revenue_growth_pct", thesis_growth),
+        ("ebit_margin_pct", thesis_margin),
+        ("terminal_multiple", thesis_multiple),
+    ]:
+        try:
+            priced_in = solve_implied_driver(state, dimension=dim, target_per_share=target_per_share)
+        except ValueError:
+            priced_in = None
+        rows.append({
+            "dimension": dim,
+            "thesis": thesis,
+            "priced_in": priced_in,
+            "delta": (thesis - priced_in) if priced_in is not None else None,
+        })
+    return rows

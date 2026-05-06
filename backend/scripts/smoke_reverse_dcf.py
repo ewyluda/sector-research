@@ -49,9 +49,23 @@ def test_sensitivity_grid_shape():
     print(f"OK: 21x21 grid; baseline={baseline:.2f}, top-right={grid['values'][-1][-1]:.2f}")
 
 
+def test_thesis_vs_priced_in_shape():
+    state = make_flat_fixture(fcf_per_year=100.0, share_count=100.0, discount=0.10, exit_mult=12.0, ebitda=150.0)
+    from backend.app.services.reverse_dcf import thesis_vs_priced_in
+    target = 12.0   # below baseline of 14.97 → market less optimistic than thesis
+    out = thesis_vs_priced_in(state, target_per_share=target)
+    assert len(out) == 3
+    dimensions = {row["dimension"] for row in out}
+    assert dimensions == {"revenue_growth_pct", "ebit_margin_pct", "terminal_multiple"}
+    for row in out:
+        assert "thesis" in row and "priced_in" in row and "delta" in row
+    print(f"OK: thesis_vs_priced_in: {out}")
+
+
 if __name__ == "__main__":
     test_implied_terminal_multiple_round_trip()
     test_implied_irr_round_trip()
     test_sensitivity_grid_shape()
+    test_thesis_vs_priced_in_shape()
     print("OK: smoke_reverse_dcf (Task 7) passed")
     sys.exit(0)
