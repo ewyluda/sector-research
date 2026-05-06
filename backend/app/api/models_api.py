@@ -328,3 +328,57 @@ async def get_reverse_dcf(
         },
         "thesis_vs_priced_in": thesis_vs_priced_in(state, target_per_share=target),
     }
+
+
+# ---------------------------------------------------------------------------
+# Version history + diff
+# ---------------------------------------------------------------------------
+from backend.app.services.model_diff import diff_states  # noqa: E402
+
+
+@router.get("/{ticker}/versions")
+async def list_versions(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
+    rows = (
+        await db.execute(
+            select(TickerModel)
+            .where(TickerModel.ticker == ticker)
+            .order_by(desc(TickerModel.version))
+        )
+    ).scalars().all()
+    return {
+        "versions": [
+            {
+                "id": r.id,
+                "version": r.version,
+                "label": r.label,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/{ticker}/versions/{version}/diff")
+async def version_diff(
+    ticker: str,
+    version: int,
+    against: int,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    a = (
+        await db.execute(
+            select(TickerModel).where(
+                TickerModel.ticker == ticker, TickerModel.version == against
+            )
+        )
+    ).scalar_one_or_none()
+    b = (
+        await db.execute(
+            select(TickerModel).where(
+                TickerModel.ticker == ticker, TickerModel.version == version
+            )
+        )
+    ).scalar_one_or_none()
+    if a is None or b is None:
+        raise HTTPException(status_code=404, detail="version not found")
+    return diff_states(ModelState.model_validate(a.state), ModelState.model_validate(b.state))

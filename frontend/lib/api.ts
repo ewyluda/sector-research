@@ -1384,3 +1384,13 @@ export async function getReverseDcf(ticker: string, opts: { price?: number; from
   if (opts.from_draft) qs.set("from_draft", "true");
   return apiFetch<ReverseDcfResponse>(`/api/models/${ticker}/reverse-dcf?${qs}`);
 }
+export async function getModelVersions(ticker: string) {
+  return apiFetch<{ versions: Array<{ id: string; version: number; label: string | null; created_at: string }> }>(
+    `/api/models/${ticker}/versions`
+  );
+}
+export async function getModelDiff(ticker: string, version: number, against: number) {
+  return apiFetch<{ added: string[]; removed: string[]; changed: Array<{ cell_path: string; before: { value: number | null; source: string } | null; after: { value: number | null; source: string } | null }> }>(
+    `/api/models/${ticker}/versions/${version}/diff?against=${against}`
+  );
+}

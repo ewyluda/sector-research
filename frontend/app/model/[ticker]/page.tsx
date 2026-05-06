@@ -8,6 +8,7 @@ import { ForecastGrid } from "@/components/model/ForecastGrid";
 import { FormulaBar } from "@/components/model/FormulaBar";
 import { putModelDraft, saveModelVersion, discardModelDraft, type ModelState as MS, type TickerModelDraft as TMD, type TickerModelVersion as TMV } from "@/lib/api";
 import { ReverseDcfPanel } from "@/components/model/ReverseDcfPanel";
+import { HistoryDiffViewer } from "@/components/model/HistoryDiffViewer";
 
 export default function ModelPage() {
   const params = useParams<{ ticker: string }>();
@@ -109,8 +110,6 @@ export default function ModelPage() {
   );
 }
 
-// Stubs for the next tasks — props typed for call-site TS safety; param intentionally unused
-/* eslint-disable @typescript-eslint/no-unused-vars */
 function ForecastTabContent({
   state, draft, latest, ticker, onDraftChange, onSaved,
 }: {
@@ -180,7 +179,6 @@ function ForecastTabContent({
 function ReverseDcfTabContent({ ticker, hasDraft }: { ticker: string; hasDraft: boolean }) {
   return <ReverseDcfPanel ticker={ticker} hasDraft={hasDraft} />;
 }
-function HistoryTabContent(_props: { ticker: string }) {
-  return <div className="p-6 text-slate-500">History tab — see Task 27</div>;
+function HistoryTabContent({ ticker }: { ticker: string }) {
+  return <HistoryDiffViewer ticker={ticker} />;
 }
-/* eslint-enable @typescript-eslint/no-unused-vars */
