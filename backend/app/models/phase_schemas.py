@@ -187,9 +187,38 @@ class DeepDiveFinding(BaseModel):
     evidence: str = Field(..., min_length=1, max_length=400)
 
 
+class ExtractedQuestion(BaseModel):
+    """One question Sonnet didn't have enough info to answer in this category."""
+    question_text: str = Field(
+        description="Specific question whose answer would materially change your analysis."
+    )
+    priority: Literal[1, 2, 3] = Field(
+        description="1=thesis-load-bearing, 2=important context, 3=nice-to-have"
+    )
+    auto_answerable: bool = Field(
+        description="True only if answerable from data already in the payload "
+        "(financials, transcripts, filing excerpts, EDGAR facts, counterparty context) "
+        "without external research."
+    )
+
+
+class ResolvedQuestion(BaseModel):
+    """A previously-open question that the current run has now answered."""
+    question_id: str = Field(description="UUID of the previously-open question.")
+    answer_text: str = Field(description="Concise answer using current data.")
+
+
 class DeepDiveCategoryOutput(BaseModel):
     score: int = Field(..., ge=0, le=100)
     score_rationale: str = Field(..., min_length=1, max_length=600)
     key_findings: list[DeepDiveFinding] = Field(..., min_length=3, max_length=5)
     analysis: str = Field(..., min_length=1, max_length=5000)
     data_gaps: list[str] = Field(default_factory=list, max_length=3)
+    questions: list[ExtractedQuestion] = Field(
+        default_factory=list,
+        description="Up to 3 unresolved questions for this pillar.",
+    )
+    resolved_questions: list[ResolvedQuestion] = Field(
+        default_factory=list,
+        description="Previously-unresolved questions that current data lets you answer.",
+    )
