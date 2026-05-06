@@ -6,12 +6,16 @@ import {
   status as statusApi,
   themes as themesApi,
   readThroughs,
+  earnings as earningsApi,
   type Health,
   type ReadThroughsByRun,
   type StatusBoardEntry,
   type Theme,
+  type EarningsBoardEntry,
+  type ThesisPrintVerdictRow,
 } from "@/lib/api";
 import { ReadThroughDrawer } from "@/components/status/ReadThroughDrawer";
+import { EarningsDrawer } from "@/components/status/EarningsDrawer";
 
 const HEALTH_PILL: Record<Health, string> = {
   healthy:   "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
@@ -32,6 +36,27 @@ const HEALTH_LABEL: Record<Health, string> = {
 const HEALTH_ORDER: (Health | "all")[] = [
   "all", "broken", "triggered", "stale", "imminent", "healthy",
 ];
+
+const VERDICT_BADGE: Record<"confirms" | "threatens" | "neutral" | "insufficient", string> = {
+  confirms:     "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+  threatens:    "border-red-500/30 bg-red-500/10 text-red-400",
+  neutral:      "border-slate-500/30 bg-slate-500/10 text-slate-400",
+  insufficient: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+};
+
+function daysUntil(isoDate: string): number {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const target = new Date(`${isoDate}T00:00:00Z`);
+  return Math.max(0, Math.round((target.getTime() - today.getTime()) / 86400000));
+}
+
+function daysSince(isoDate: string): number {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const target = new Date(`${isoDate}T00:00:00Z`);
+  return Math.max(0, Math.round((today.getTime() - target.getTime()) / 86400000));
+}
 
 function fmtDays(d: number): string {
   if (d === 0) return "today";
@@ -197,6 +222,8 @@ export default function StatusPage() {
   const [error, setError] = useState<string | null>(null);
   const [rtByRun, setRtByRun] = useState<ReadThroughsByRun>({});
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [earningsByRun, setEarningsByRun] = useState<Record<string, EarningsBoardEntry>>({});
+  const [earningsExpanded, setEarningsExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     themesApi.list().then(setThemes).catch(() => {});
@@ -267,6 +294,37 @@ export default function StatusPage() {
     }, 60_000);
     const onVis = () => {
       if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function refresh() {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const out = await earningsApi.board(14);
+        if (cancelled) return;
+        const next: Record<string, EarningsBoardEntry> = {};
+        for (const e of out.entries) {
+          next[e.run_id] = e;
+        }
+        setEarningsByRun(next);
+      } catch {
+        // soft fail; do not unmount the rest of the page
+      }
+    }
+    refresh();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") refresh();
+    }, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -429,6 +487,51 @@ export default function StatusPage() {
                       ⟿ {items.length}
                     </button>
                   )}
+                  {(() => {
+                    const eb = earningsByRun[e.run_id];
+                    if (!eb || !eb.print) return null;
+                    const onClick = (ev: React.MouseEvent) => {
+                      ev.stopPropagation();
+                      setEarningsExpanded((m) => ({ ...m, [e.run_id]: !m[e.run_id] }));
+                    };
+                    if (eb.verdict) {
+                      const colors = VERDICT_BADGE[eb.verdict.verdict];
+                      return (
+                        <button
+                          onClick={onClick}
+                          data-print-hide="true"
+                          className={`absolute right-20 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${colors}`}
+                        >
+                          📊 {eb.verdict.verdict}
+                        </button>
+                      );
+                    }
+                    if (eb.phase === "post") {
+                      const days = daysSince(eb.print.earnings_date);
+                      return (
+                        <button
+                          onClick={onClick}
+                          data-print-hide="true"
+                          className="absolute right-20 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-[11px] font-semibold"
+                        >
+                          📊 reported {days}d ago
+                        </button>
+                      );
+                    }
+                    if (eb.phase === "pre") {
+                      const days = daysUntil(eb.print.earnings_date);
+                      return (
+                        <button
+                          onClick={onClick}
+                          data-print-hide="true"
+                          className="absolute right-20 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[11px] font-semibold"
+                        >
+                          📅 T-{days}d
+                        </button>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 {isExpanded && items.length > 0 && (
                   <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)]">
@@ -438,6 +541,17 @@ export default function StatusPage() {
                       onDismissed={(ek) => handleReadThroughDismissed(e.run_id, ek)}
                     />
                   </div>
+                )}
+                {earningsExpanded[e.run_id] && earningsByRun[e.run_id] && (
+                  <EarningsDrawer
+                    entry={earningsByRun[e.run_id]}
+                    onVerdictGenerated={(v: ThesisPrintVerdictRow) => {
+                      setEarningsByRun((m) => ({
+                        ...m,
+                        [e.run_id]: { ...m[e.run_id], verdict: v },
+                      }));
+                    }}
+                  />
                 )}
               </div>
             );

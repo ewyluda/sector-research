@@ -20,6 +20,7 @@ from backend.app.api.fanouts import router as fanouts_router
 from backend.app.api.catalysts import router as catalysts_router
 from backend.app.api.status import router as status_router
 from backend.app.api.read_through import router as read_through_router
+from backend.app.api.earnings import router as earnings_router
 from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
 
@@ -63,9 +64,17 @@ async def lifespan(app: FastAPI):
         name="Daily X Signal Refresh",
         replace_existing=True,
     )
+    scheduler.add_job(
+        _daily_earnings_refresh_job,
+        trigger=CronTrigger(hour=21, minute=0),
+        args=[app],
+        id="daily_earnings_refresh",
+        name="Daily Earnings Prints Refresh",
+        replace_existing=True,
+    )
     scheduler.start()
     app.state.scheduler = scheduler
-    logger.info("Signal scheduler started (daily @ 02:00)")
+    logger.info("Schedulers started: X signals @ 02:00 UTC, earnings @ 21:00 UTC")
 
     yield
 
@@ -82,6 +91,16 @@ async def _daily_refresh_job(app: FastAPI) -> None:
     """APScheduler job wrapper for the daily signal refresh."""
     from backend.app.services.signal_scheduler import run_daily_refresh
     await run_daily_refresh(fmp=app.state.fmp, x_client=app.state.x_client)
+
+
+async def _daily_earnings_refresh_job(app: FastAPI) -> None:
+    """APScheduler entry point — wraps run_daily_earnings_refresh with logging."""
+    from backend.app.services.earnings_scheduler import run_daily_earnings_refresh
+    try:
+        summary = await run_daily_earnings_refresh()
+        logger.info("Daily earnings refresh: %s", summary)
+    except Exception:
+        logger.exception("Daily earnings refresh crashed")
 
 
 app = FastAPI(
@@ -109,3 +128,4 @@ app.include_router(fanouts_router, prefix="/api")
 app.include_router(catalysts_router, prefix="/api")
 app.include_router(status_router, prefix="/api")
 app.include_router(read_through_router, prefix="/api")
+app.include_router(earnings_router, prefix="/api")
