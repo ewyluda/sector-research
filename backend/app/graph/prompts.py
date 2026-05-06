@@ -69,7 +69,11 @@ Your output will be one section of a full institutional-grade research report.
     ... 3-5 findings
   ],
   "analysis": "<full 300-600 word prose analysis — detailed, specific, no boilerplate>",
-  "data_gaps": ["<explicitly flagged missing data>", ... 0-3 items]
+  "data_gaps": ["<explicitly flagged missing data>", ... 0-3 items],
+  "questions": [
+    {{"question_text": "<specific question>", "priority": <1|2|3>, "auto_answerable": <true|false>}},
+    ... 0-3 items
+  ]
 }}
 
 ## Rules
@@ -78,7 +82,8 @@ Your output will be one section of a full institutional-grade research report.
 - Tier 1 sources (FMP/SEC filings) are authoritative. Tier 2 (X signals) are directional only.
 - Be calibrated. A score of 70 means genuinely good, not great. 85+ is exceptional.
 - Flag data gaps explicitly rather than extrapolating — put them in "data_gaps".
-- Be direct and specific in the analysis. No boilerplate. Write as if for a portfolio manager."""
+- Be direct and specific in the analysis. No boilerplate. Write as if for a portfolio manager.
+- Emit up to 3 unresolved questions whose answers would materially change your analysis as "questions[]". Mark "auto_answerable": true only if the answer can be derived from the data payload above (financials, transcripts, filing excerpts, EDGAR facts, counterparty context) without external research. Priority 1 = thesis-load-bearing; 2 = important context; 3 = nice-to-have. Empty list is fine if nothing is unresolved."""
 
 DEEP_DIVE_USER = """Ticker: {ticker}
 Theme: {theme}

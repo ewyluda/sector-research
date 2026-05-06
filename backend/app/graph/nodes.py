@@ -38,7 +38,7 @@ from backend.app.graph.prompts import (
     TRANSCRIPT_PASS5_SYSTEM, TRANSCRIPT_PASS6_SYSTEM,
 )
 from backend.app.graph.state import (
-    ResearchState, CategoryResult, CategoryError, StateCitation
+    ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion
 )
 
 logger = logging.getLogger(__name__)
@@ -1211,6 +1211,21 @@ async def node_deep_dive(
     logger.info("[%s] deep_dive complete: %d/%d succeeded, failed: %s",
                 state.ticker, succeeded, len(results), failed)
 
+    # Tier 1.2 — stage extracted questions for DB persistence
+    for result in results:
+        if not isinstance(result, CategoryResult):
+            continue
+        structured = result.structured or {}
+        for raw_q in structured.get("questions", []) or []:
+            state.questions_extracted.append(StateQuestion(
+                category=result.category,
+                question_text=raw_q["question_text"],
+                priority=int(raw_q["priority"]),
+                auto_answerable=bool(raw_q["auto_answerable"]),
+            ).to_dict())
+
+    await _persist_extracted_questions(state)
+
     state.status = "in_progress"
     return state
 
@@ -1550,3 +1565,32 @@ async def run_transcript_analysis(
         results["pass6_bom"] = None
 
     return results
+
+
+# ── Tier 1.2 — question persistence ──────────────────────────────────────────
+
+async def _persist_extracted_questions(state: ResearchState) -> None:
+    """After deep_dive merges, write staged questions to the DB.
+
+    All UUID(as_uuid=False) columns store strings at Python level."""
+    from backend.app.db import async_session
+    from backend.app.models.question import Question
+
+    if not state.questions_extracted:
+        return
+
+    async with async_session() as db:
+        for staged in state.questions_extracted:
+            q = Question(
+                ticker=state.ticker,
+                theme_id=state.theme_id or None,
+                category=staged["category"],
+                question_text=staged["question_text"],
+                priority=staged["priority"],
+                auto_answerable=staged["auto_answerable"],
+                status="open",
+                created_run_id=state.run_id,
+            )
+            db.add(q)
+        await db.commit()
+    state.questions_extracted = []
