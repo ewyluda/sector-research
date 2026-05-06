@@ -106,6 +106,8 @@ Available data:
 
 {counterparty_context}
 
+{prior_questions}
+
 {loop_context}
 
 Produce a rigorous {category} analysis. Output the JSON described above."""

@@ -38,7 +38,7 @@ from backend.app.graph.prompts import (
     TRANSCRIPT_PASS5_SYSTEM, TRANSCRIPT_PASS6_SYSTEM,
 )
 from backend.app.graph.state import (
-    ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion
+    ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
 
 logger = logging.getLogger(__name__)
@@ -535,6 +535,7 @@ async def _run_one_category(
     edgar_context: str = "",
     filing_excerpts_context: str = "",
     counterparty_context_text: str = "",
+    prior_questions_text: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
@@ -553,6 +554,7 @@ async def _run_one_category(
                     edgar_data=edgar_context,
                     filing_excerpts=filing_excerpts_context,
                     counterparty_context=counterparty_context_text,
+                    prior_questions=prior_questions_text,
                     loop_context=loop_context,
                 ),
                 model=SONNET,
@@ -1189,6 +1191,15 @@ async def node_deep_dive(
 
         return "\n".join(lines).rstrip() + "\n"
 
+    # Fetch prior open questions for each category (cross-run resurfacing)
+    prior_q_lists = await asyncio.gather(
+        *[_fetch_prior_open_questions(state.ticker, cat) for cat in categories_to_run],
+        return_exceptions=True,
+    )
+    prior_q_map: dict[str, list[dict]] = {}
+    for cat, pq in zip(categories_to_run, prior_q_lists):
+        prior_q_map[cat] = pq if isinstance(pq, list) else []
+
     # Run all categories in parallel
     tasks = [
         _run_one_category(
@@ -1198,6 +1209,7 @@ async def node_deep_dive(
             _build_edgar_context(cat),
             _build_filing_excerpt_context(cat),
             _build_counterparty_context(cat),
+            _render_prior_questions_slot(prior_q_map[cat]),
         )
         for cat in categories_to_run
     ]
@@ -1223,8 +1235,15 @@ async def node_deep_dive(
                 priority=int(raw_q["priority"]),
                 auto_answerable=bool(raw_q["auto_answerable"]),
             ).to_dict())
+        for raw_rq in structured.get("resolved_questions", []) or []:
+            state.questions_resolved_this_run.append(StateResolvedQuestion(
+                question_text=f"[{raw_rq['question_id']}] (resurfaced)",
+                answer_text=raw_rq["answer_text"],
+                source="deep_dive_resurfaced",
+            ).to_dict())
 
     await _persist_extracted_questions(state)
+    await _apply_resurfaced_resolutions(state)
 
     state.status = "in_progress"
     return state
@@ -1594,3 +1613,103 @@ async def _persist_extracted_questions(state: ResearchState) -> None:
             db.add(q)
         await db.commit()
     state.questions_extracted = []
+
+
+async def _fetch_prior_open_questions(
+    ticker: str,
+    category: str,
+    limit: int = 5,
+) -> list[dict]:
+    """Top open priority-1/2 questions for (ticker, category) ordered most-recent first.
+
+    Returns list of {id, question_text, priority, created_at_iso} dicts.
+    Caller renders these into the {prior_questions} slot."""
+    from backend.app.db import async_session
+    from backend.app.models.question import Question
+    from sqlalchemy import select
+
+    async with async_session() as db:
+        stmt = (
+            select(Question)
+            .where(Question.ticker == ticker)
+            .where(Question.category == category)
+            .where(Question.status == "open")
+            .where(Question.priority.in_([1, 2]))
+            .order_by(Question.created_at.desc())
+            .limit(limit)
+        )
+        rows = (await db.execute(stmt)).scalars().all()
+
+    return [
+        {
+            "id": str(r.id),
+            "question_text": r.question_text,
+            "priority": r.priority,
+            "created_at_iso": r.created_at.isoformat() if r.created_at else "",
+        }
+        for r in rows
+    ]
+
+
+def _render_prior_questions_slot(prior: list[dict]) -> str:
+    """Render the {prior_questions} prompt block. Empty string when no priors."""
+    if not prior:
+        return ""
+    lines = [
+        "PREVIOUSLY UNRESOLVED QUESTIONS FOR THIS PILLAR.",
+        "If the current data permits answering them, emit them in `resolved_questions` "
+        "with `question_id` and `answer_text`. Otherwise, you may restate them — "
+        "that's signal they're genuinely hard.",
+        "",
+    ]
+    for q in prior:
+        lines.append(f"- [{q['id']}] (P{q['priority']}) {q['question_text']}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+async def _apply_resurfaced_resolutions(state: ResearchState) -> None:
+    """Mark resurfaced questions as resolved_inline in the DB.
+
+    Reads the freshly-merged state.phase_outputs to find each category's
+    resolved_questions list, then updates the corresponding question rows.
+    Question IDs and run IDs are strings (UUID(as_uuid=False))."""
+    from backend.app.db import async_session
+    from backend.app.models.question import Question
+    from sqlalchemy import update
+    from uuid import UUID
+    from datetime import datetime, timezone
+
+    resolutions: list[tuple[str, str]] = []  # (question_id, answer_text)
+    for category, payload in state.phase_outputs.items():
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("__type__") != "CategoryResult":
+            continue
+        structured = payload.get("structured") or {}
+        for rq in structured.get("resolved_questions", []) or []:
+            resolutions.append((rq["question_id"], rq["answer_text"]))
+
+    if not resolutions:
+        return
+
+    async with async_session() as db:
+        for qid_str, answer in resolutions:
+            try:
+                UUID(qid_str)  # validate; skip junk if LLM hallucinated a non-UUID
+            except (ValueError, TypeError):
+                continue
+            stmt = (
+                update(Question)
+                .where(Question.id == qid_str)
+                .where(Question.status == "open")
+                .values(
+                    status="resolved_inline",
+                    answer_text=answer,
+                    answer_source="deep_dive_resurfaced",
+                    resolved_run_id=state.run_id,
+                    resolved_at=datetime.now(timezone.utc),
+                )
+            )
+            await db.execute(stmt)
+        await db.commit()
