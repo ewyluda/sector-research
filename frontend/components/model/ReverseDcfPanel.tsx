@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { getReverseDcf, type ReverseDcfResponse } from "@/lib/api";
 import { ThesisVsPricedTable } from "./ThesisVsPricedTable";
 import { SensitivityHeatmap } from "./SensitivityHeatmap";
+import { WhatIfScratchPanel } from "./WhatIfScratchPanel";
 
 export function ReverseDcfPanel({ ticker, hasDraft }: { ticker: string; hasDraft: boolean }) {
   const [data, setData] = useState<ReverseDcfResponse | null>(null);
@@ -73,6 +74,17 @@ export function ReverseDcfPanel({ ticker, hasDraft }: { ticker: string; hasDraft
           <SensitivityHeatmap grid={data.sensitivity_grids.growth_multiple} currentPrice={data.price_used} />
           <SensitivityHeatmap grid={data.sensitivity_grids.margin_multiple} currentPrice={data.price_used} />
         </div>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold text-slate-300 mb-2">What-if (illustrative)</h2>
+        <WhatIfScratchPanel
+          baseline={{
+            growth: data.thesis_vs_priced_in.find((r) => r.dimension === "revenue_growth_pct")?.thesis ?? 0.05,
+            margin: data.thesis_vs_priced_in.find((r) => r.dimension === "ebit_margin_pct")?.thesis ?? 0.20,
+            multiple: data.thesis_vs_priced_in.find((r) => r.dimension === "terminal_multiple")?.thesis ?? 12.0,
+          }}
+        />
       </section>
     </div>
   );
