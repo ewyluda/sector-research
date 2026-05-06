@@ -50,6 +50,59 @@ class CategoryResult:
                    structured=d.get("structured"))
 
 
+# ── Tier 1.2 — Question staging ───────────────────────────────────────────────
+
+@dataclass
+class StateQuestion:
+    """Question extracted by a deep-dive category, staged in state for
+    persistence after the deep_dive merge."""
+    category: str
+    question_text: str
+    priority: int  # 1 | 2 | 3
+    auto_answerable: bool
+
+    def to_dict(self) -> dict:
+        return {
+            "category": self.category,
+            "question_text": self.question_text,
+            "priority": self.priority,
+            "auto_answerable": self.auto_answerable,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "StateQuestion":
+        return cls(
+            category=d["category"],
+            question_text=d["question_text"],
+            priority=int(d["priority"]),
+            auto_answerable=bool(d["auto_answerable"]),
+        )
+
+
+@dataclass
+class StateResolvedQuestion:
+    """Question resolved this run — used by node_thesis_construction to
+    surface answered context in its prompt."""
+    question_text: str
+    answer_text: str
+    source: str  # "targeted_followup" | "deep_dive_resurfaced"
+
+    def to_dict(self) -> dict:
+        return {
+            "question_text": self.question_text,
+            "answer_text": self.answer_text,
+            "source": self.source,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "StateResolvedQuestion":
+        return cls(
+            question_text=d["question_text"],
+            answer_text=d["answer_text"],
+            source=d["source"],
+        )
+
+
 # ── Citation (portable version for state) ─────────────────────────────────────
 
 @dataclass
@@ -308,6 +361,12 @@ class ResearchState:
 
     # Earnings transcript analysis (6-pass LLM output, stored as dict for JSON)
     transcript_analysis: dict | None = None
+
+    # Tier 1.2 — questions staged this run, written to DB at deep_dive merge
+    questions_extracted: list[dict] = field(default_factory=list)
+
+    # Tier 1.2 — questions resolved this run (auto + resurfaced), used by thesis prompt
+    questions_resolved_this_run: list[dict] = field(default_factory=list)
 
     # Metadata
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
