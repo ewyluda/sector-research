@@ -284,6 +284,9 @@ Failed categories (treat as data gaps):
 Loop context (if re-run):
 {loop_context}
 
+## Questions answered this run (use as supporting evidence; don't re-derive)
+{questions_resolved}
+
 Synthesize these findings into an investment thesis. Reference categories by name. Output the JSON described above."""
 
 

@@ -1349,6 +1349,19 @@ async def node_targeted_followup(state: ResearchState) -> ResearchState:
     return state
 
 
+def _render_questions_resolved(staged: list[dict]) -> str:
+    """Render state.questions_resolved_this_run for the thesis prompt slot."""
+    if not staged:
+        return "(none this run)"
+    lines = []
+    for entry in staged:
+        src = entry.get("source", "?")
+        text = entry.get("question_text", "?")
+        ans = entry.get("answer_text", "?")
+        lines.append(f"- [{src}] Q: {text}\n  A: {ans}")
+    return "\n".join(lines)
+
+
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────
 
 async def node_thesis_construction(state: ResearchState) -> ResearchState:
@@ -1402,6 +1415,7 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
                 category_results=results_text,
                 failed_categories=", ".join(failed) if failed else "None",
                 loop_context=loop_ctx,
+                questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
             ),
             model=SONNET,
             max_tokens=6000,
