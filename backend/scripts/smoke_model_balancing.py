@@ -73,7 +73,44 @@ def test_compute_income_statement_minimal():
     print(f"OK: P&L compute: rev={rev} gp={gp} ebit={ebit} ni={ni}")
 
 
+def test_full_rollforward_balances():
+    s = make_minimal_state()
+    # Add minimal historical BS for rollforward seed
+    s.balance_sheet["cash_and_equivalents"]["2025Y"] = ModelCell(value=200.0, source="historical")
+    s.balance_sheet["accounts_receivable"]["2025Y"] = ModelCell(value=120.0, source="historical")
+    s.balance_sheet["inventory"]["2025Y"] = ModelCell(value=80.0, source="historical")
+    s.balance_sheet["other_current_assets"]["2025Y"] = ModelCell(value=0.0, source="historical")
+    s.balance_sheet["ppe_net"]["2025Y"] = ModelCell(value=400.0, source="historical")
+    s.balance_sheet["goodwill"]["2025Y"] = ModelCell(value=0.0, source="historical")
+    s.balance_sheet["other_long_term_assets"]["2025Y"] = ModelCell(value=0.0, source="historical")
+    s.balance_sheet["accounts_payable"]["2025Y"] = ModelCell(value=110.0, source="historical")
+    s.balance_sheet["short_term_debt"]["2025Y"] = ModelCell(value=0.0, source="historical")
+    s.balance_sheet["other_current_liabilities"]["2025Y"] = ModelCell(value=0.0, source="historical")
+    s.balance_sheet["long_term_debt"]["2025Y"] = ModelCell(value=200.0, source="historical")
+    s.balance_sheet["other_long_term_liabilities"]["2025Y"] = ModelCell(value=0.0, source="historical")
+    s.balance_sheet["common_equity"]["2025Y"] = ModelCell(value=200.0, source="historical")
+    s.balance_sheet["retained_earnings"]["2025Y"] = ModelCell(value=290.0, source="historical")
+    # 2025 BS check: assets = 800; liabilities = 310; equity = 490 → balances ✓
+
+    from backend.app.services.model_balancing import recompute
+    s2 = recompute(s)
+
+    assets = sum((s2.balance_sheet[li]["2026Y"].value or 0.0) for li in [
+        "cash_and_equivalents", "accounts_receivable", "inventory", "other_current_assets",
+        "ppe_net", "goodwill", "other_long_term_assets",
+    ])
+    liab = sum((s2.balance_sheet[li]["2026Y"].value or 0.0) for li in [
+        "accounts_payable", "short_term_debt", "other_current_liabilities",
+        "long_term_debt", "other_long_term_liabilities",
+    ])
+    eq = sum((s2.balance_sheet[li]["2026Y"].value or 0.0) for li in ["common_equity", "retained_earnings"])
+    diff = assets - (liab + eq)
+    assert abs(diff) < 1.0, f"BS imbalance: assets={assets}, liab+eq={liab+eq}, diff={diff}"
+    print(f"OK: BS balances at 2026Y: assets={assets:.2f}, liab+eq={liab+eq:.2f}")
+
+
 if __name__ == "__main__":
     test_compute_income_statement_minimal()
-    print("OK: smoke_model_balancing (Task 11) passed")
+    test_full_rollforward_balances()
+    print("OK: smoke_model_balancing (Task 11+12) passed")
     sys.exit(0)
