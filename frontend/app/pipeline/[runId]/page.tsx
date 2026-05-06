@@ -28,6 +28,7 @@ import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 import { CommandPalette } from "@/components/deep-dive/CommandPalette";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
+import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -715,6 +716,13 @@ export default function PipelineRunnerPage() {
                   <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{riskContent}</p>
                 </div>
               )}
+            </section>
+          )}
+
+          {/* Open Questions (Tier 1.2) */}
+          {report?.questions && report.questions.length > 0 && (
+            <section id="questions_section">
+              <OpenQuestionsPanel questions={report.questions} />
             </section>
           )}
 
