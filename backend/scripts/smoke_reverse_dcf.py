@@ -30,8 +30,28 @@ def test_implied_irr_round_trip():
     print(f"OK: implied IRR={irr:.4f}")
 
 
+def test_sensitivity_grid_shape():
+    state = make_flat_fixture(fcf_per_year=100.0, share_count=100.0, discount=0.10, exit_mult=12.0, ebitda=150.0)
+    from backend.app.services.reverse_dcf import sensitivity_grid
+    grid = sensitivity_grid(
+        state,
+        x_dim="revenue_growth_pct", x_range=(-0.05, 0.15),
+        y_dim="ebit_margin_pct",    y_range=(-0.10, 0.10),
+        size=21,
+    )
+    assert len(grid["x_values"]) == 21
+    assert len(grid["y_values"]) == 21
+    assert len(grid["values"]) == 21
+    assert len(grid["values"][0]) == 21
+    # Top-right corner (highest growth + margin) should exceed baseline
+    baseline = dcf(state).intrinsic_per_share
+    assert grid["values"][-1][-1] > baseline
+    print(f"OK: 21x21 grid; baseline={baseline:.2f}, top-right={grid['values'][-1][-1]:.2f}")
+
+
 if __name__ == "__main__":
     test_implied_terminal_multiple_round_trip()
     test_implied_irr_round_trip()
+    test_sensitivity_grid_shape()
     print("OK: smoke_reverse_dcf (Task 7) passed")
     sys.exit(0)

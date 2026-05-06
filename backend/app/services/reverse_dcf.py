@@ -113,3 +113,28 @@ def solve_implied_irr(
         else:
             lo = mid; f_lo = f_mid
     return 0.5 * (lo + hi)
+
+
+def sensitivity_grid(
+    state: ModelState,
+    *,
+    x_dim: ImpliedDimension,
+    x_range: tuple[float, float],
+    y_dim: ImpliedDimension,
+    y_range: tuple[float, float],
+    size: int = 21,
+) -> dict:
+    """Evaluate intrinsic_per_share over a size x size grid of (x_dim, y_dim) overrides."""
+    if x_dim == y_dim:
+        raise ValueError("sensitivity_grid: x_dim and y_dim must differ")
+    xs = [x_range[0] + (x_range[1] - x_range[0]) * i / (size - 1) for i in range(size)]
+    ys = [y_range[0] + (y_range[1] - y_range[0]) * i / (size - 1) for i in range(size)]
+    values: list[list[float]] = []
+    for y in ys:
+        row: list[float] = []
+        s_y = _apply_uniform_override(state, y_dim, y)
+        for x in xs:
+            s_xy = _apply_uniform_override(s_y, x_dim, x)
+            row.append(dcf(s_xy).intrinsic_per_share)
+        values.append(row)
+    return {"x_dim": x_dim, "y_dim": y_dim, "x_values": xs, "y_values": ys, "values": values}
