@@ -141,6 +141,7 @@ async def index_earnings_prints(
         row_id = result.scalar_one()
         loaded = await db.get(EarningsPrint, row_id)
         if loaded is not None:
+            await db.refresh(loaded)
             affected.append(loaded)
 
     return affected
