@@ -94,6 +94,12 @@ class ResolveBody(BaseModel):
     answer_text: str = Field(min_length=1, max_length=10000)
 
 
+def _normalize_status_filter(status: Optional[str]) -> Optional[str]:
+    if status == "all":
+        return None
+    return status or "open"
+
+
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 
@@ -111,7 +117,7 @@ async def list_questions_endpoint(
         db,
         ticker=ticker,
         theme_id=theme_id,
-        status=status,
+        status=_normalize_status_filter(status),
         priority=priority,
         category=category,
         limit=min(limit, 500),

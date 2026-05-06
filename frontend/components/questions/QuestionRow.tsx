@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Question } from "@/lib/api";
 import { questions as questionsApi } from "@/lib/api";
+import { dismissPromptToAction } from "@/lib/questions-ui";
 
 const PRIORITY_CHIP: Record<1 | 2 | 3, string> = {
   1: "bg-rose-900/40 text-rose-200 border-rose-700/60",
@@ -37,10 +38,11 @@ export function QuestionRow({ question, onChange }: Props) {
 
   const handleDismiss = async () => {
     if (busy) return;
-    const note = window.prompt("Optional note:") ?? undefined;
+    const action = dismissPromptToAction(window.prompt("Optional note:"));
+    if (action.cancelled) return;
     setBusy(true);
     try {
-      const updated = await questionsApi.dismiss(question.id, note);
+      const updated = await questionsApi.dismiss(question.id, action.note);
       onChange?.(updated);
     } finally {
       setBusy(false);

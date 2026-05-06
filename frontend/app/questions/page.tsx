@@ -10,19 +10,26 @@ import {
 } from "@/lib/api";
 import { QuestionRow } from "@/components/questions/QuestionRow";
 import { QuestionTickerRollupTable } from "@/components/questions/QuestionTickerRollupTable";
-
-type Tab = "by_ticker" | "by_question";
+import {
+  initialQuestionsTab,
+  syncQuestionsTabForTickerFilter,
+  type QuestionsTab,
+} from "@/lib/questions-ui";
 
 function QuestionsPageInner() {
   const searchParams = useSearchParams();
   const tickerFilter = searchParams.get("ticker") ?? undefined;
 
-  const [tab, setTab] = useState<Tab>(tickerFilter ? "by_question" : "by_ticker");
+  const [tab, setTab] = useState<QuestionsTab>(initialQuestionsTab(tickerFilter));
   const [rollup, setRollup] = useState<QuestionTickerRollup[]>([]);
   const [list, setList] = useState<Question[]>([]);
   const [statusFilter, setStatusFilter] = useState<QuestionStatus | "all">("open");
   const [priorityFilter, setPriorityFilter] = useState<1 | 2 | 3 | "all">("all");
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setTab((current) => syncQuestionsTabForTickerFilter(current, tickerFilter));
+  }, [tickerFilter]);
 
   useEffect(() => {
     let mounted = true;
@@ -36,7 +43,7 @@ function QuestionsPageInner() {
         } else {
           const r = await questionsApi.list({
             ticker: tickerFilter,
-            status: statusFilter === "all" ? undefined : statusFilter,
+            status: statusFilter,
             priority: priorityFilter === "all" ? undefined : priorityFilter,
             limit: 200,
           });

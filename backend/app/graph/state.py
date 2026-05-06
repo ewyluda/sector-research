@@ -368,6 +368,9 @@ class ResearchState:
     # Tier 1.2 — questions resolved this run (auto + resurfaced), used by thesis prompt
     questions_resolved_this_run: list[dict] = field(default_factory=list)
 
+    # Tier 1.2 — per-category routed payload for targeted follow-up and retry
+    targeted_followup_context: dict[str, str] = field(default_factory=dict)
+
     # Metadata
     created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())

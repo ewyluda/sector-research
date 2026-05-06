@@ -14,6 +14,7 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.graph.llm import SONNET, complete
+from backend.app.graph.nodes import _build_targeted_followup_user_msg
 from backend.app.graph.state import ResearchState
 from backend.app.models.question import Question
 from backend.app.models.research_run import ResearchRun
@@ -111,20 +112,23 @@ async def retry_auto_answer(
 
     # Pull category findings from the run's persisted state
     rs = ResearchState.from_dict(run.state) if isinstance(run.state, dict) else None
-    findings_block = "(no findings on file)"
+    key_findings: list[str] = []
     content = ""
+    routed_context = ""
     if rs is not None:
         deep = rs.get_deep_dive_results()
         result = deep.get(question.category)
         if result is not None and hasattr(result, "key_findings"):
-            findings_block = "\n".join(f"- {f}" for f in (result.key_findings or [])) or "(none)"
+            key_findings = list(result.key_findings or [])
             content = (getattr(result, "content", "") or "")[:6000]
+        routed_context = (rs.targeted_followup_context or {}).get(question.category, "")
 
-    user_msg = (
-        f"Question: {question.question_text}\n\n"
-        f"Originating category: {question.category}\n\n"
-        f"Key findings from that category's deep-dive:\n{findings_block}\n\n"
-        f"Full category analysis:\n{content}\n"
+    user_msg = _build_targeted_followup_user_msg(
+        question_text=question.question_text,
+        category=question.category,
+        key_findings=key_findings,
+        analysis=content,
+        routed_context=routed_context,
     )
 
     try:

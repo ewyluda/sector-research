@@ -3,6 +3,8 @@
  * All fetches go through here. SSE streaming handled separately.
  */
 
+import { buildQuestionListPath, type QuestionStatusFilter } from "./questions-ui";
+
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -1243,20 +1245,12 @@ export const questions = {
   list: async (params: {
     ticker?: string;
     theme_id?: string;
-    status?: QuestionStatus;
+    status?: QuestionStatusFilter;
     priority?: 1 | 2 | 3;
     category?: string;
     limit?: number;
   } = {}): Promise<{ questions: Question[] }> => {
-    const qs = new URLSearchParams();
-    if (params.ticker) qs.set("ticker", params.ticker);
-    if (params.theme_id) qs.set("theme_id", params.theme_id);
-    if (params.status) qs.set("status", params.status);
-    if (params.priority !== undefined) qs.set("priority", String(params.priority));
-    if (params.category) qs.set("category", params.category);
-    if (params.limit !== undefined) qs.set("limit", String(params.limit));
-    const url = `/api/questions${qs.toString() ? `?${qs}` : ""}`;
-    return apiFetch<{ questions: Question[] }>(url);
+    return apiFetch<{ questions: Question[] }>(buildQuestionListPath(params));
   },
 
   byTicker: async (params: { theme_id?: string } = {}): Promise<{ tickers: QuestionTickerRollup[] }> => {

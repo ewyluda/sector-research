@@ -45,6 +45,7 @@ from backend.app.graph.state import (
 logger = logging.getLogger(__name__)
 
 CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
+TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
 
 TRANSCRIPT_ROUTING: dict[str, list[str]] = {
     "Management & Governance": ["pass1_claims", "pass2_tiers", "pass3_qa_tensions", "pass4_validation", "pass5_consistency"],
@@ -1192,6 +1193,34 @@ async def node_deep_dive(
 
         return "\n".join(lines).rstrip() + "\n"
 
+    category_contexts: dict[str, dict[str, str]] = {}
+    for cat in categories_to_run:
+        category_contexts[cat] = {
+            "transcript": _build_transcript_context(cat),
+            "macro": _build_macro_context(cat),
+            "technical": _build_technical_context(cat),
+            "sentiment": _build_sentiment_context(cat),
+            "edgar": _build_edgar_context(cat),
+            "filing": _build_filing_excerpt_context(cat),
+            "counterparty": _build_counterparty_context(cat),
+        }
+
+    def _build_targeted_context_for_category(category: str) -> str:
+        parts = [f"Fundamental data:\n{data_text}"]
+        ctx = category_contexts.get(category, {})
+        for label, text in [
+            ("Transcript context", ctx.get("transcript", "")),
+            ("Macro context", ctx.get("macro", "")),
+            ("Technical context", ctx.get("technical", "")),
+            ("Sentiment context", ctx.get("sentiment", "")),
+            ("EDGAR XBRL context", ctx.get("edgar", "")),
+            ("Filing excerpt context", ctx.get("filing", "")),
+            ("Counterparty context", ctx.get("counterparty", "")),
+        ]:
+            if text:
+                parts.append(f"{label}:\n{text}")
+        return "\n\n".join(parts)[:TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS]
+
     # Fetch prior open questions for each category (cross-run resurfacing)
     prior_q_lists = await asyncio.gather(
         *[_fetch_prior_open_questions(state.ticker, cat) for cat in categories_to_run],
@@ -1205,11 +1234,11 @@ async def node_deep_dive(
     tasks = [
         _run_one_category(
             cat, state.ticker, state.theme_id, data_text, loop_ctx_str,
-            _build_transcript_context(cat), _build_macro_context(cat),
-            _build_technical_context(cat), _build_sentiment_context(cat),
-            _build_edgar_context(cat),
-            _build_filing_excerpt_context(cat),
-            _build_counterparty_context(cat),
+            category_contexts[cat]["transcript"], category_contexts[cat]["macro"],
+            category_contexts[cat]["technical"], category_contexts[cat]["sentiment"],
+            category_contexts[cat]["edgar"],
+            category_contexts[cat]["filing"],
+            category_contexts[cat]["counterparty"],
             _render_prior_questions_slot(prior_q_map[cat]),
         )
         for cat in categories_to_run
@@ -1225,11 +1254,13 @@ async def node_deep_dive(
                 state.ticker, succeeded, len(results), failed)
 
     # Tier 1.2 — stage extracted questions for DB persistence
+    question_categories: set[str] = set()
     for result in results:
         if not isinstance(result, CategoryResult):
             continue
         structured = result.structured or {}
         for raw_q in structured.get("questions", []) or []:
+            question_categories.add(result.category)
             state.questions_extracted.append(StateQuestion(
                 category=result.category,
                 question_text=raw_q["question_text"],
@@ -1250,6 +1281,11 @@ async def node_deep_dive(
                 source="deep_dive_resurfaced",
             ).to_dict())
 
+    state.targeted_followup_context = {
+        cat: _build_targeted_context_for_category(cat)
+        for cat in sorted(question_categories)
+    }
+
     await _persist_extracted_questions(state)
     await _apply_resurfaced_resolutions(state)
 
@@ -1258,6 +1294,26 @@ async def node_deep_dive(
 
 
 # ── Tier 1.2 targeted followup ────────────────────────────────────────────────
+
+def _build_targeted_followup_user_msg(
+    *,
+    question_text: str,
+    category: str,
+    key_findings: list[str],
+    analysis: str,
+    routed_context: str = "",
+) -> str:
+    findings_block = "\n".join(f"- {f}" for f in key_findings or []) or "(none)"
+    parts = [
+        f"Question: {question_text}",
+        f"Originating category: {category}",
+        f"Key findings from that category's deep-dive:\n{findings_block}",
+        f"Full category analysis:\n{analysis}",
+    ]
+    if routed_context:
+        parts.append(f"Original data payload and routed context:\n{routed_context}")
+    return "\n\n".join(parts)
+
 
 async def node_targeted_followup(state: ResearchState) -> ResearchState:
     """Tier 1.2 targeted second-pass.
@@ -1298,17 +1354,16 @@ async def node_targeted_followup(state: ResearchState) -> ResearchState:
     async def _answer_one(snap: dict) -> tuple[str, str | None]:
         cat = snap["category"]
         result = deep.get(cat)
-        findings_block = ""
         content = ""
         if result is not None and hasattr(result, "key_findings"):
-            findings_block = "\n".join(f"- {f}" for f in result.key_findings or [])
             content = (getattr(result, "content", "") or "")[:6000]
 
-        user_msg = (
-            f"Question: {snap['question_text']}\n\n"
-            f"Originating category: {cat}\n\n"
-            f"Key findings from that category's deep-dive:\n{findings_block or '(none)'}\n\n"
-            f"Full category analysis:\n{content}\n"
+        user_msg = _build_targeted_followup_user_msg(
+            question_text=snap["question_text"],
+            category=cat,
+            key_findings=list(getattr(result, "key_findings", []) or []) if result is not None else [],
+            analysis=content,
+            routed_context=(state.targeted_followup_context or {}).get(cat, ""),
         )
 
         try:
