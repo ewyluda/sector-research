@@ -82,10 +82,23 @@ def test_save_with_no_draft_returns_404():
     print("OK: POST /save returns 404 when no draft exists")
 
 
+# ---------------------------------------------------------------------------
+# Task 21 tests
+# ---------------------------------------------------------------------------
+
+def test_reverse_dcf_no_model_returns_404():
+    c = _patched_client()
+    r = c.get("/api/models/NOMODELHERE/reverse-dcf?price=100.0")
+    app.dependency_overrides.clear()
+    assert r.status_code == 404, f"expected 404, got {r.status_code}"
+    print("OK: GET /reverse-dcf returns 404 when no model exists")
+
+
 if __name__ == "__main__":
     test_get_model_for_unknown_ticker()
     test_apply_edit_driver()
     test_apply_edit_unknown_shape_raises()
     test_save_with_no_draft_returns_404()
-    print("OK: smoke_models_api (Task 20) passed")
+    test_reverse_dcf_no_model_returns_404()
+    print("OK: smoke_models_api (Tasks 18-21) passed")
     sys.exit(0)

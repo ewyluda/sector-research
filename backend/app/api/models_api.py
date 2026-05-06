@@ -224,3 +224,107 @@ async def discard_draft(ticker: str, db: AsyncSession = Depends(get_db)) -> dict
         await db.delete(draft)
         await db.commit()
     return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Task 21: GET /reverse-dcf
+# ---------------------------------------------------------------------------
+
+from backend.app.services.reverse_dcf import (  # noqa: E402
+    solve_implied_driver,
+    solve_implied_irr,
+    sensitivity_grid,
+    thesis_vs_priced_in,
+)
+
+
+async def _fetch_live_price(ticker: str) -> float:
+    """Pulls current price from FMP. Returns 0.0 on any error so caller can fall back to user override."""
+    try:
+        from backend.app.clients.fmp import FMPClient
+        client = FMPClient()
+        quote, _citation = await client.get_quote(ticker)
+        return float((quote.get("price") if quote else 0.0) or 0.0)
+    except Exception:
+        return 0.0
+
+
+def _safe_solve(state: ModelState, dim: str, target: float):
+    try:
+        return solve_implied_driver(state, dimension=dim, target_per_share=target)
+    except (ValueError, Exception):
+        return None
+
+
+def _safe_solve_irr(state: ModelState, target: float):
+    try:
+        return solve_implied_irr(state, target_per_share=target)
+    except (ValueError, Exception):
+        return None
+
+
+@router.get("/{ticker}/reverse-dcf")
+async def get_reverse_dcf(
+    ticker: str,
+    price: float | None = None,
+    from_draft: bool = False,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    state_dict: dict | None = None
+    if from_draft:
+        draft = (
+            await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
+        ).scalar_one_or_none()
+        state_dict = draft.state if draft else None
+    if state_dict is None:
+        latest = (
+            await db.execute(
+                select(TickerModel)
+                .where(TickerModel.ticker == ticker)
+                .order_by(desc(TickerModel.version))
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        if latest is None:
+            raise HTTPException(status_code=404, detail="no model exists")
+        state_dict = latest.state
+
+    state = ModelState.model_validate(state_dict)
+    target = price if price is not None else await _fetch_live_price(ticker)
+    if not target:
+        raise HTTPException(status_code=502, detail="no live price available")
+
+    return {
+        "price_used": target,
+        "price_source": "user_override" if price is not None else "fmp_live",
+        "implied_drivers": {
+            "revenue_growth_pct": _safe_solve(state, "revenue_growth_pct", target),
+            "ebit_margin_pct": _safe_solve(state, "ebit_margin_pct", target),
+            "terminal_multiple": _safe_solve(state, "terminal_multiple", target),
+        },
+        "implied_irr": _safe_solve_irr(state, target),
+        "sensitivity_grids": {
+            "growth_margin": sensitivity_grid(
+                state,
+                x_dim="revenue_growth_pct",
+                x_range=(-0.05, 0.20),
+                y_dim="ebit_margin_pct",
+                y_range=(-0.10, 0.10),
+            ),
+            "growth_multiple": sensitivity_grid(
+                state,
+                x_dim="revenue_growth_pct",
+                x_range=(-0.05, 0.20),
+                y_dim="terminal_multiple",
+                y_range=(5.0, 25.0),
+            ),
+            "margin_multiple": sensitivity_grid(
+                state,
+                x_dim="ebit_margin_pct",
+                x_range=(-0.10, 0.10),
+                y_dim="terminal_multiple",
+                y_range=(5.0, 25.0),
+            ),
+        },
+        "thesis_vs_priced_in": thesis_vs_priced_in(state, target_per_share=target),
+    }
