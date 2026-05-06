@@ -45,6 +45,15 @@ async def generate_baseline_drivers(
     raw = await llm.complete(
         system=SYSTEM_PROMPT,
         user=user,
-        assistant_prefill='{"drivers":',
+        max_tokens=8192,
     )
-    return BaselineDriversResponse.model_validate_json(raw)
+    # Strip markdown code fences if the model wraps the JSON
+    stripped = raw.strip()
+    if stripped.startswith("```"):
+        lines = stripped.splitlines()
+        # Drop opening fence (```json or ```) and closing fence (```)
+        inner = lines[1:] if lines[0].startswith("```") else lines
+        if inner and inner[-1].strip() == "```":
+            inner = inner[:-1]
+        stripped = "\n".join(inner)
+    return BaselineDriversResponse.model_validate_json(stripped)
