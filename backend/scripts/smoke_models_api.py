@@ -36,7 +36,43 @@ def test_get_model_for_unknown_ticker():
     print("OK: GET unknown ticker returns null payload")
 
 
+# ---------------------------------------------------------------------------
+# Task 19 tests
+# ---------------------------------------------------------------------------
+
+def test_apply_edit_driver():
+    from backend.app.api.models_api import _apply_edit, DraftEditRequest
+    state_dict = {
+        "drivers": {"2026Y": {"gross_margin_pct": {"value": 0.50, "source": "driver"}}},
+        "income_statement": {},
+        "balance_sheet": {},
+        "cash_flow": {},
+        "assumptions": {},
+    }
+    edit = DraftEditRequest(cell_path="drivers.2026Y.gross_margin_pct", value=0.55, source="driver")
+    out = _apply_edit(state_dict, edit)
+    assert out["drivers"]["2026Y"]["gross_margin_pct"]["value"] == 0.55
+    assert out["drivers"]["2026Y"]["gross_margin_pct"]["source"] == "driver"
+    print("OK: _apply_edit on driver cell")
+
+
+def test_apply_edit_unknown_shape_raises():
+    from backend.app.api.models_api import _apply_edit, DraftEditRequest
+    edit = DraftEditRequest(cell_path="bogus.path", value=1.0)
+    try:
+        _apply_edit(
+            {"drivers": {}, "income_statement": {}, "balance_sheet": {}, "cash_flow": {}, "assumptions": {}},
+            edit,
+        )
+        assert False, "expected ValueError"
+    except ValueError:
+        pass
+    print("OK: _apply_edit rejects unknown cell_path shape")
+
+
 if __name__ == "__main__":
     test_get_model_for_unknown_ticker()
-    print("OK: smoke_models_api (Task 18) passed")
+    test_apply_edit_driver()
+    test_apply_edit_unknown_shape_raises()
+    print("OK: smoke_models_api (Task 19) passed")
     sys.exit(0)
