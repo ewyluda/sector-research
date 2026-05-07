@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { FindingsTable } from "./FindingsTable";
 import { scoreBadge } from "../scoreColors";
+import { MarkdownProse } from "../renderMarkdown";
 
 interface AICompanionPanelProps {
   structured: DeepDiveCategoryStructured | null;
@@ -74,9 +75,7 @@ export function AICompanionPanel({ structured, categoryLabel, expandAnalysis = f
             <summary className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text-primary)]">
               Full Analysis
             </summary>
-            <p className="mt-2 text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-              {fallback.content}
-            </p>
+            <MarkdownProse text={fallback.content} className="mt-2 space-y-2 text-xs text-[var(--color-text-secondary)] leading-relaxed" />
           </details>
         )}
       </div>
@@ -102,18 +101,14 @@ export function AICompanionPanel({ structured, categoryLabel, expandAnalysis = f
         expandAnalysis ? (
           <div>
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Analysis</h4>
-            <p className="text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-              {structured.analysis}
-            </p>
+            <MarkdownProse text={structured.analysis} className="space-y-2 text-xs text-[var(--color-text-secondary)] leading-relaxed" />
           </div>
         ) : (
           <details open={analysisOpen} onToggle={(e) => setAnalysisOpen((e.target as HTMLDetailsElement).open)}>
             <summary className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider cursor-pointer hover:text-[var(--color-text-primary)]">
               Full Analysis
             </summary>
-            <p className="mt-2 text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap leading-relaxed">
-              {structured.analysis}
-            </p>
+            <MarkdownProse text={structured.analysis} className="mt-2 space-y-2 text-xs text-[var(--color-text-secondary)] leading-relaxed" />
           </details>
         )
       )}

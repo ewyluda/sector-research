@@ -29,6 +29,7 @@ import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 import { CommandPalette } from "@/components/deep-dive/CommandPalette";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
 import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
+import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
 import { PHASE_ETA_SECONDS, PHASE_LABELS, PHASE_ORDER } from "@/lib/pipeline-progress";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -52,6 +53,55 @@ interface CategoryState {
   score: number | null;
   key_findings: string[];
   structured: DeepDiveCategoryStructured | null;
+}
+
+// ── Thesis fallback (when Pydantic validation fails) ──────────────────────────
+
+function parseThesisFallback(content: string | null) {
+  if (!content) return null;
+  try {
+    const obj = JSON.parse(content);
+    return {
+      thesis: (obj.core_thesis || obj.thesis || "") as string,
+      conviction: obj.conviction_score as number | undefined,
+      bulls: (obj.bull_case ?? []) as { title?: string }[],
+      bears: (obj.bear_case ?? []) as { title?: string }[],
+    };
+  } catch {
+    return null;
+  }
+}
+
+function ThesisFallback({ content, parseError }: { content: string | null; parseError: string | null }) {
+  const parsed = useMemo(() => parseThesisFallback(content), [content]);
+  return (
+    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+      <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Thesis Construction</h2>
+      {parseError && <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({parseError})</p>}
+      {parsed ? (
+        <div className="space-y-3">
+          {parsed.thesis && <MarkdownProse text={parsed.thesis} className="space-y-2 text-sm text-[var(--color-text-secondary)] leading-relaxed" />}
+          {parsed.conviction != null && (
+            <p className="text-xs text-[var(--color-text-muted)]">Conviction: <span className="font-mono font-semibold">{parsed.conviction}/100</span></p>
+          )}
+          {parsed.bulls.length > 0 && (
+            <div>
+              <h4 className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400 mb-1">Bull Case</h4>
+              <ul className="space-y-1">{parsed.bulls.map((b, i) => <li key={i} className="text-xs text-[var(--color-text-secondary)]">· {b.title}</li>)}</ul>
+            </div>
+          )}
+          {parsed.bears.length > 0 && (
+            <div>
+              <h4 className="text-[10px] uppercase tracking-wider font-semibold text-red-400 mb-1">Bear Case</h4>
+              <ul className="space-y-1">{parsed.bears.map((b, i) => <li key={i} className="text-xs text-[var(--color-text-secondary)]">· {b.title}</li>)}</ul>
+            </div>
+          )}
+        </div>
+      ) : content ? (
+        <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{content}</p>
+      ) : null}
+    </div>
+  );
 }
 
 // ── Live Progress Bar (inline) ────────────────────────────────────────────────
@@ -664,13 +714,7 @@ export default function PipelineRunnerPage() {
                   killCriterionStates={report?.kill_criterion_states ?? []}
                 />
               ) : (
-                <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
-                  <h2 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-3">Thesis Construction</h2>
-                  {thesisParseError && (
-                    <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({thesisParseError})</p>
-                  )}
-                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{thesisContent}</p>
-                </div>
+                <ThesisFallback content={thesisContent} parseError={thesisParseError} />
               )}
             </section>
           )}
@@ -691,7 +735,7 @@ export default function PipelineRunnerPage() {
                   {riskParseError && (
                     <p className="text-xs text-amber-400 mb-2">Structured format unavailable ({riskParseError})</p>
                   )}
-                  <p className="text-sm text-[var(--color-text-muted)] whitespace-pre-wrap leading-relaxed">{riskContent}</p>
+                  <MarkdownProse text={riskContent ?? ""} className="space-y-2 text-sm text-[var(--color-text-muted)] leading-relaxed" />
                 </div>
               )}
             </section>
