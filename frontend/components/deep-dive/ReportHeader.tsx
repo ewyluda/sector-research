@@ -1,4 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { CuratedFinancials, QuickScreenStructured } from "@/lib/api";
+import { getModel } from "@/lib/api";
 import ScoreRing from "@/components/ScoreRing";
 
 interface ReportHeaderProps {
@@ -21,6 +25,50 @@ function convictionTier(score: number): string {
   if (score >= 55) return "Moderate";
   if (score >= 35) return "Low";
   return "Very Low";
+}
+
+function relativeTime(iso: string): string {
+  const d = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  if (d < 86400) return `${Math.floor(d / 3600)}h ago`;
+  return `${Math.floor(d / 86400)}d ago`;
+}
+
+function ModelStatusBadge({ ticker }: { ticker: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const [info, setInfo] = useState<{ version: number; saved_at: string } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await getModel(ticker);
+        if (cancelled) return;
+        if (r.latest_version) {
+          setInfo({ version: r.latest_version.version, saved_at: r.latest_version.created_at });
+        }
+      } catch {
+        // model not found or fetch error; show Create link
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ticker]);
+
+  if (!loaded) return null;
+  if (!info) {
+    return (
+      <a href={`/model/${ticker}#forecast`} className="text-xs text-blue-400 hover:underline">
+        Create model →
+      </a>
+    );
+  }
+  const ago = relativeTime(info.saved_at);
+  return (
+    <a href={`/model/${ticker}#forecast`} className="text-xs text-slate-300 hover:text-white">
+      Model v{info.version} · saved {ago}
+    </a>
+  );
 }
 
 function VerdictBadge({ recommendation }: { recommendation: "GO" | "WATCHLIST" | "PASS" }) {
@@ -47,6 +95,9 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">{ticker}</h1>
               {quickScreen && <VerdictBadge recommendation={quickScreen.recommendation} />}
+              <span data-print-hide="true">
+                <ModelStatusBadge ticker={ticker} />
+              </span>
             </div>
             {financials && (
               <>
