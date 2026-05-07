@@ -72,7 +72,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with human-in-the-loop interrupts and citations on every data point). No auth — local-only tool.
 
-Three-pane split: **Discovery** (ranked companies per theme), **Pipeline** (6-phase due diligence), and **Filings** (SEC EDGAR filing extraction, relationship graph, and counterparty resolution).
+Four top-level workspaces: **Discovery** (ranked companies per theme), **Pipeline** (6-phase due diligence), **Filings** (SEC EDGAR filing extraction, relationship graph, and counterparty resolution), and **Model** (editable AI-seeded 5-year financial model with versioning + reverse-DCF engine).
 
 Two deployables in a flat layout:
 
@@ -225,13 +225,57 @@ Database tables (all in `models/filing.py`):
 - `relationships` — LLM-extracted counterparty relationships
 - `counterparty_aliases` — normalized name → canonical CIK/ticker resolution
 
+### Financial model + reverse DCF (read this before touching `backend/app/services/model_*.py`, `backend/app/api/models_api.py`, or `frontend/components/model/`)
+
+Editable 5-year financial model per ticker, AI-seeded from the latest completed `research_run`, with version history and a reverse-DCF engine. All on-demand — no automatic trigger from the LangGraph pipeline. The **`ModelState`** Pydantic model (`backend/app/models/model_state.py`) is the in-memory and JSONB-on-disk shape: `periods` (8 historical Q + 8 forecast Q + 5 forecast Y), `drivers[period][key]`, three statements (`income_statement`, `balance_sheet`, `cash_flow`) keyed `[line_item][period] -> ModelCell`, and an `assumptions` block (WACC, terminal growth, terminal multiple, share counts). Every `ModelCell` carries `value`, `source` (`historical` / `ai_baseline` / `driver` / `formula` / `override`), `formula`, `citation_id`, and edit-audit fields.
+
+**Pipeline (services):**
+
+- `model_baseline.py::build_baseline_state(ticker)` — orchestrator: load latest `research_run` + risk-free rate (FRED `DGS10`) → call Sonnet baseline-drivers node → seed historical cells from `CuratedFinancials` → seed forecast drivers → call `recompute()` → return state.
+- `graph/model_baseline_node.py::generate_baseline_drivers(...)` — Sonnet pass that emits the forecast driver template (annual, then cloned to quarterly to stay in token budget). Uses markdown-fence stripping (no `assistant_prefill`) and `max_tokens=8192`.
+- `model_balancing.py::recompute(state)` — pure synchronous: rebuilds P&L from drivers, then cash flow, then balance sheet rollforward; plugs the BS imbalance into `retained_earnings` so A=L+E holds. Cell-level overrides flow through: any non-null `source="override"` cell is preserved, downstream calculations consume the overridden value. Raises `ModelBalanceError` if the plug exceeds tolerance.
+- `dcf.py::dcf(state, overrides=None)` — discounted cash flow over forecast periods + terminal value (Gordon growth or EV/EBITDA multiple, whichever the assumptions set). Reads `cash_flow.free_cash_flow` straight from state — caller must call `recompute()` first. Raises `ValueError` if any forecast FCF cell is missing.
+- `reverse_dcf.py::solve_implied_driver(...)` / `solve_implied_irr(...)` / `sensitivity_grid(...)` / `thesis_vs_priced_in(...)` — bisection solvers and 21x21 grid evaluation. Driver overrides go through `_apply_uniform_override(state, dim, value)` + `deepcopy(state)` + `recompute()`, NOT the unused `overrides=` parameter on `dcf()`. `terminal_multiple` overrides skip recompute (only affects terminal value).
+- `model_diff.py::diff_states(a, b)` — cell-path-keyed JSON diff between two `ModelState`s for the history viewer.
+- `model_baseline.py::initialize_or_get_model(ticker, force=False)` — service-layer entry point used by `POST /api/models/{ticker}/initialize`. Uses its own `async_session()` with explicit `await db.commit()`.
+
+**API surface** (`backend/app/api/models_api.py`, prefix `/api/models`, registered in `main.py` without a second prefix):
+
+- `GET /{ticker}` — latest version + draft (or both null).
+- `POST /{ticker}/initialize?force=` — seed (or re-seed) baseline. 400 on no completed `research_run`.
+- `PUT /{ticker}/draft` — apply one cell edit (`cell_path` = `drivers.<period>.<key>` or `<stmt>.<line>.<period>` or `assumptions.<key>`), recompute, persist into `ticker_model_drafts` (idempotent per ticker — at most one draft row). 422 on bad `cell_path`, 409 on `ModelBalanceError`.
+- `POST /{ticker}/save` — promote draft → new `ticker_models` version, delete draft.
+- `DELETE /{ticker}/draft` — discard.
+- `GET /{ticker}/reverse-dcf?price=&from_draft=` — single payload: `implied_drivers` (3 scalar bisection solves), `implied_irr`, `sensitivity_grids` (3 × 21×21), `thesis_vs_priced_in`. `price` defaults to a live FMP quote via the shared `app.state.fmp` singleton (do NOT instantiate `FMPClient()` here). Wraps `Request` to access `request.app.state.fmp`.
+- `GET /{ticker}/versions` — list. `GET /{ticker}/versions/{version}/diff?against=` — cell-keyed diff payload.
+
+**Convention:** every endpoint normalizes `ticker = ticker.upper()` at entry — `ticker_models`, `ticker_model_drafts`, and `research_runs` all store tickers upper-case (matches `api/filings.py` and `api/earnings.py`). Skipping this normalization breaks lookup against existing rows and risks duplicate-identity drafts.
+
+**Frontend (`/model/[ticker]`):** App-router page with three hash tabs (`#forecast` / `#reverse-dcf` / `#history`). Components in `frontend/components/model/`:
+
+- `ForecastGrid.tsx` (the spreadsheet — sticky title h2 + sticky left line-item column, cells wired to `PUT /draft` via `CellRenderer.tsx`)
+- `DriverPanel.tsx` (annual + quarterly driver inputs; some keys like `interest_income_yield` / `revolver_rate` are surfaced for future use but currently no-op'd by `model_balancing.py`)
+- `FormulaBar.tsx` (active-cell readout)
+- `ReverseDcfPanel.tsx`, `SensitivityHeatmap.tsx`, `ThesisVsPricedTable.tsx`, `WhatIfScratchPanel.tsx` — reverse-DCF tab UI
+- `HistoryDiffViewer.tsx` — version-list + diff for the history tab
+- `heatmapColors.ts` — diverging palette for the sensitivity grid (value-relative coloring; do not replace with `scoreColors.ts` which is for score-tier coloring)
+
+The deep-dive `ReportHeader.tsx` carries a small `ModelStatusBadge` that links to `/model/{ticker}#forecast`. It calls `getModel(ticker)` only — it does NOT call `getReverseDcf` (which would trigger a live FMP quote on every report-page open). A `loaded` sentinel suppresses the initial render so users with a saved model don't see a "Create model →" flicker.
+
+Database tables:
+
+- `ticker_models` — saved versions. `(ticker, version)` unique. JSONB `state` column. `parent_research_run_id` FK to seeding run.
+- `ticker_model_drafts` — at most one row per ticker (the unsaved working copy). `base_version_id` FK to the `ticker_models` row it forked from.
+
+`StateCitation` (`graph/state.py`) gained a `cell_path` field so research-run citations can deep-link to specific model cells (migration `2db2e8812418`). Existing JSONB rows return as raw dicts so the new optional field doesn't break round-trip.
+
 ### Import conventions
 
 Backend uses **absolute imports rooted at project root**: `from backend.app.config import get_settings`. That's why uvicorn must be launched from project root. `backend/migrations/env.py` also imports from `backend.app.*`, so Alembic commands need project root on `PYTHONPATH` (running `alembic` from inside `backend/` works if you've activated the venv and `pip install -e .`'d — otherwise use `PYTHONPATH=.. alembic ...`).
 
 ### Frontend layout
 
-- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports). `/report/[runId]` redirects here.
+- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports), `/model/[ticker]` (editable financial model + reverse-DCF tabs). `/report/[runId]` redirects here.
 - `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
 - `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
 - `components/filings/` — `ThemeFilingsPanel`, `TickerFilingsCard`, `SectionReader` (modal), `CurationPanel` (counterparty resolution queue)

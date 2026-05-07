@@ -6,13 +6,15 @@ A personal stock research application combining structured equity data with soci
 
 ## What It Does
 
-Three core workflows:
+Four core workflows:
 
 **Discovery** — Open a curated investment theme (e.g., "AI Power Infrastructure") and see every company in that space ranked by signal strength. FMP screener data and X mention velocity surface unknown players alongside known ones. Combined signal score = 40% X velocity + 40% FMP fundamental quality + 20% discovery score.
 
 **Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. AI automation on each phase, human-in-the-loop validation at three interrupt gates, citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
 
 **Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a supply-chain graph card in the deep-dive dashboard, a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
+
+**Model** — Editable 5-year financial model per ticker, AI-seeded from the latest completed research run. Sonnet emits forecast drivers, the balancing engine recomputes the full 3-statement P&L / BS / CF on every cell edit (plug into `retained_earnings` keeps A=L+E), versions persist to `ticker_models` with a single working draft per ticker. The reverse-DCF tab solves implied revenue growth / EBIT margin / terminal multiple from the live FMP quote, computes the implied IRR, and renders three 21×21 sensitivity heatmaps plus a thesis-vs-priced-in summary. Cell edits, history diff (cell-path-keyed), and a what-if scratch panel (illustrative sliders).
 
 ---
 
@@ -40,7 +42,7 @@ Three core workflows:
 ```
 ┌─────────────────────────────────────────┐
 │            Next.js 16 Frontend          │
-│  Theme Dashboard │ Filings │ Pipeline │ Library │
+│  Themes │ Filings │ Pipeline │ Model │ Library │
 └────────────────────┬────────────────────┘
                      │ HTTP / SSE streaming
 ┌────────────────────▼────────────────────┐
@@ -63,6 +65,7 @@ Three core workflows:
 │  signals · watchlist                    │
 │  filings · xbrl_facts · filing_sections │
 │  relationships · counterparty_aliases   │
+│  ticker_models · ticker_model_drafts    │
 └─────────────────────────────────────────┘
 ```
 
@@ -155,6 +158,48 @@ Beyond the card, the resolved counterparty list is routed into the Business Qual
 
 ---
 
+## Financial Model + Reverse DCF
+
+Per-ticker editable 3-statement model with versioning and a reverse-DCF engine. Lives at `/model/{ticker}`. All on-demand — no automatic trigger from the LangGraph pipeline.
+
+```
+POST /api/models/{ticker}/initialize?force=
+  ↓  Loads latest completed research_run + risk-free rate (FRED DGS10)
+  ↓  Sonnet emits forecast drivers (annual, cloned to quarterly)
+  ↓  Seeds historical cells from CuratedFinancials, runs recompute()
+  ↓  Persists v1 to ticker_models (idempotent unless force=true)
+
+GET /api/models/{ticker}
+  ↓  Returns latest_version + draft (or both null)
+
+PUT /api/models/{ticker}/draft
+  ↓  Apply one cell edit (cell_path = drivers.<period>.<key>
+  ↓    | <stmt>.<line>.<period> | assumptions.<key>)
+  ↓  Recompute: P&L → CF → BS rollforward (plug into retained_earnings)
+  ↓  Persist into ticker_model_drafts (one row per ticker)
+  ↓  422 on bad cell_path, 409 on imbalance > tolerance
+
+POST /api/models/{ticker}/save
+  ↓  Promote draft → next ticker_models version, delete draft
+
+GET /api/models/{ticker}/reverse-dcf?price=&from_draft=
+  ↓  Single payload with four blocks:
+  ↓    implied_drivers (3 scalar bisection solves: revenue_growth_pct,
+  ↓      ebit_margin_pct, terminal_multiple)
+  ↓    implied_irr (solve discount rate that produces target_per_share)
+  ↓    sensitivity_grids (3 × 21×21 grids for each driver pair)
+  ↓    thesis_vs_priced_in (delta between user-saved drivers and implieds)
+  ↓  price defaults to live FMP /quote via shared singleton
+
+GET /api/models/{ticker}/versions
+GET /api/models/{ticker}/versions/{version}/diff?against=
+  ↓  Cell-path-keyed JSON diff for the history viewer
+```
+
+Frontend has three hash-routed tabs: `#forecast` (the spreadsheet + driver panel + formula bar), `#reverse-dcf` (IRR + thesis-vs-priced + heatmaps + what-if sliders), `#history` (version list + diff viewer). The deep-dive `ReportHeader` carries a small Model badge that links into `/model/{ticker}`.
+
+---
+
 ### Structured Phase Outputs
 
 Every pipeline phase produces validated JSON output via Pydantic schemas, parsed with a generic `parse_structured_output` function that handles LLM quirks (prose preamble, markdown fences). Each phase has a dedicated React dashboard component with prose fallback for old runs or parse failures.
@@ -236,6 +281,14 @@ No auth system — personal local tool.
 | `backend/app/services/fanout.py` | FanoutService — orchestrates ingest → extract → resolve across a theme or a single ticker; in-memory status tracker wired through `app.state.fanout` |
 | `backend/app/services/relationship_context.py` | Read-path query layer: builds the `CounterpartyContext` (outbound + inbound, grouped by type) consumed by the deep-dive prompt routing |
 | `backend/app/api/fanouts.py` | Fan-out endpoints (theme, ticker, status polling) |
+| `backend/app/models/model_state.py` | `ModelState` Pydantic + `ModelCell` (drivers/statements/assumptions) |
+| `backend/app/services/model_baseline.py` | Sonnet-seeded baseline orchestrator (`build_baseline_state`, `initialize_or_get_model`) |
+| `backend/app/services/model_balancing.py` | Pure recompute pipeline: P&L → CF → BS plug into `retained_earnings` |
+| `backend/app/services/dcf.py` | DCF over forecast FCF + terminal value (Gordon growth or EV/EBITDA multiple) |
+| `backend/app/services/reverse_dcf.py` | Bisection solvers + 21×21 sensitivity grids + thesis-vs-priced-in |
+| `backend/app/services/model_diff.py` | Cell-path-keyed JSON diff between two `ModelState`s |
+| `backend/app/api/models_api.py` | Model REST surface (`/api/models/{ticker}/...`) |
 | `frontend/lib/api.ts` | Typed API client + all TypeScript interfaces |
 | `frontend/components/deep-dive/` | 30+ component financial dashboard (charts, sections, panels, skeletons) |
 | `frontend/components/filings/` | Filing ingest, section reader, curation panel |
+| `frontend/components/model/` | Forecast grid, driver panel, formula bar, reverse-DCF panel, heatmaps, history diff |
