@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { CuratedFinancials, QuickScreenStructured } from "@/lib/api";
-import { getModel, getReverseDcf } from "@/lib/api";
+import { getModel } from "@/lib/api";
 import ScoreRing from "@/components/ScoreRing";
 
 interface ReportHeaderProps {
@@ -35,31 +35,27 @@ function relativeTime(iso: string): string {
 }
 
 function ModelStatusBadge({ ticker }: { ticker: string }) {
-  const [info, setInfo] = useState<{ version: number; irr: number | null; saved_at: string } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const [info, setInfo] = useState<{ version: number; saved_at: string } | null>(null);
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const r = await getModel(ticker);
         if (cancelled) return;
-        if (!r.latest_version) return;
-        let irr: number | null = null;
-        try {
-          const rev = await getReverseDcf(ticker);
-          irr = rev.implied_irr ?? null;
-        } catch {
-          // reverse-dcf may be unavailable; IRR stays null
-        }
-        if (!cancelled) {
-          setInfo({ version: r.latest_version.version, irr, saved_at: r.latest_version.created_at });
+        if (r.latest_version) {
+          setInfo({ version: r.latest_version.version, saved_at: r.latest_version.created_at });
         }
       } catch {
         // model not found or fetch error; show Create link
+      } finally {
+        if (!cancelled) setLoaded(true);
       }
     })();
     return () => { cancelled = true; };
   }, [ticker]);
 
+  if (!loaded) return null;
   if (!info) {
     return (
       <a href={`/model/${ticker}#forecast`} className="text-xs text-blue-400 hover:underline">
@@ -71,7 +67,6 @@ function ModelStatusBadge({ ticker }: { ticker: string }) {
   return (
     <a href={`/model/${ticker}#forecast`} className="text-xs text-slate-300 hover:text-white">
       Model v{info.version} · saved {ago}
-      {info.irr !== null && ` · IRR ${(info.irr * 100).toFixed(1)}%`}
     </a>
   );
 }

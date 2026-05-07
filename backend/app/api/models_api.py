@@ -1,7 +1,7 @@
 # backend/app/api/models_api.py
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/api/models", tags=["models"])
 
 @router.get("/{ticker}")
 async def get_model(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
+    ticker = ticker.upper()
     stmt = (
         select(TickerModel)
         .where(TickerModel.ticker == ticker)
@@ -57,6 +58,7 @@ async def get_model(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
 @router.post("/{ticker}/initialize")
 async def initialize(ticker: str, force: bool = False) -> dict:
     """Seed (or re-seed if force=true) a model for the ticker."""
+    ticker = ticker.upper()
     try:
         row = await initialize_or_get_model(ticker, force=force)
     except ValueError as e:
@@ -123,6 +125,7 @@ def _apply_edit(state_dict: dict, edit: DraftEditRequest) -> dict:
 
 @router.put("/{ticker}/draft")
 async def put_draft(ticker: str, edit: DraftEditRequest, db: AsyncSession = Depends(get_db)) -> dict:
+    ticker = ticker.upper()
     # Get current state: existing draft, else latest version
     draft = (
         await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
@@ -144,7 +147,10 @@ async def put_draft(ticker: str, edit: DraftEditRequest, db: AsyncSession = Depe
         state_dict = dict(draft.state)
         base_version_id = draft.base_version_id
 
-    state_dict = _apply_edit(state_dict, edit)
+    try:
+        state_dict = _apply_edit(state_dict, edit)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     # Recompute
     try:
         state = ModelState.model_validate(state_dict)
@@ -182,6 +188,7 @@ class SaveVersionRequest(_BM):
 async def save_version(
     ticker: str, body: SaveVersionRequest, db: AsyncSession = Depends(get_db)
 ) -> dict:
+    ticker = ticker.upper()
     draft = (
         await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
     ).scalar_one_or_none()
@@ -217,6 +224,7 @@ async def save_version(
 
 @router.delete("/{ticker}/draft")
 async def discard_draft(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
+    ticker = ticker.upper()
     draft = (
         await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
     ).scalar_one_or_none()
@@ -238,12 +246,10 @@ from backend.app.services.reverse_dcf import (  # noqa: E402
 )
 
 
-async def _fetch_live_price(ticker: str) -> float:
+async def _fetch_live_price(fmp, ticker: str) -> float:
     """Pulls current price from FMP. Returns 0.0 on any error so caller can fall back to user override."""
     try:
-        from backend.app.clients.fmp import FMPClient
-        client = FMPClient()
-        quote, _citation = await client.get_quote(ticker)
+        quote, _citation = await fmp.get_quote(ticker)
         return float((quote.get("price") if quote else 0.0) or 0.0)
     except Exception:
         return 0.0
@@ -266,10 +272,12 @@ def _safe_solve_irr(state: ModelState, target: float):
 @router.get("/{ticker}/reverse-dcf")
 async def get_reverse_dcf(
     ticker: str,
+    request: Request,
     price: float | None = None,
     from_draft: bool = False,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    ticker = ticker.upper()
     state_dict: dict | None = None
     if from_draft:
         draft = (
@@ -290,7 +298,7 @@ async def get_reverse_dcf(
         state_dict = latest.state
 
     state = ModelState.model_validate(state_dict)
-    target = price if price is not None else await _fetch_live_price(ticker)
+    target = price if price is not None else await _fetch_live_price(request.app.state.fmp, ticker)
     if not target:
         raise HTTPException(status_code=502, detail="no live price available")
 
@@ -338,6 +346,7 @@ from backend.app.services.model_diff import diff_states  # noqa: E402
 
 @router.get("/{ticker}/versions")
 async def list_versions(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
+    ticker = ticker.upper()
     rows = (
         await db.execute(
             select(TickerModel)
@@ -365,6 +374,7 @@ async def version_diff(
     against: int,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
+    ticker = ticker.upper()
     a = (
         await db.execute(
             select(TickerModel).where(
