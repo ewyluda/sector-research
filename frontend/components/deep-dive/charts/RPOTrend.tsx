@@ -12,13 +12,11 @@ interface RPOTrendProps {
 
 export function RPOTrend({ edgarFacts }: RPOTrendProps) {
   const facts = edgarFacts[RPO_CONCEPT] ?? [];
-  if (facts.length === 0) {
-    return (
-      <p className="text-[11px] text-[var(--color-text-faint)] italic px-1 py-1">
-        Not disclosed in SEC XBRL filings.
-      </p>
-    );
-  }
+  if (facts.length === 0) return null;
+
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+  if (new Date(facts[0].period_end) < twoYearsAgo) return null;
 
   // API returns most-recent-first; chart reads left→right oldest→newest.
   const data = [...facts]
@@ -41,6 +39,9 @@ export function RPOTrend({ edgarFacts }: RPOTrendProps) {
 
   return (
     <div>
+      <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+        RPO Trend <span className="text-[9px] text-[var(--color-text-muted)] normal-case">(SEC XBRL)</span>
+      </h4>
       <div className="flex items-center justify-between mb-1 px-1">
         <span className="text-[10px] text-[var(--color-text-muted)]">
           Remaining Performance Obligation (contracted backlog)

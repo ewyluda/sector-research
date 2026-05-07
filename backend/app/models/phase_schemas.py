@@ -98,8 +98,8 @@ class KillCriterion(BaseModel):
 
 class FailureMode(BaseModel):
     """A specific way the thesis could be killed in the next 18 months."""
-    mode: str = Field(..., min_length=1, max_length=300)
-    leading_indicator: str = Field(..., min_length=1, max_length=300)
+    mode: str = Field(..., min_length=1, max_length=600)
+    leading_indicator: str = Field(..., min_length=1, max_length=600)
     probability: Literal["Low", "Medium", "High"]
 
 

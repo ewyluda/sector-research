@@ -617,7 +617,9 @@ def _build_curated_financials(
         metrics = []
         for i, stmt in enumerate(statements):
             val = stmt.get(field_name, 0) or 0
-            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            q = stmt.get("period", "")
+            cy = stmt.get("calendarYear", "")
+            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
             prev_val = statements[i + 1].get(field_name, 0) if i + 1 < len(statements) else None
             yoy = pct(val, prev_val) if prev_val else None
             metrics.append(QuarterlyMetric(period=period, value=float(val), yoy_growth=yoy))
@@ -630,7 +632,9 @@ def _build_curated_financials(
             rev = stmt.get(denominator, 0) or 0
             num = stmt.get(numerator, 0) or 0
             margin = (num / rev * 100) if rev else 0
-            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            q = stmt.get("period", "")
+            cy = stmt.get("calendarYear", "")
+            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
             metrics.append(QuarterlyMetric(period=period, value=round(margin, 2), yoy_growth=None))
         return metrics
 
@@ -679,7 +683,9 @@ def _build_curated_financials(
             ca = float(stmt.get("totalCurrentAssets", 0) or 0)
             cl = float(stmt.get("totalCurrentLiabilities", 0) or 0)
             cr = round(ca / cl, 2) if cl else 0
-            period = stmt.get("period", "") or stmt.get("date", "")[:7]
+            q = stmt.get("period", "")
+            cy = stmt.get("calendarYear", "")
+            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
             metrics.append(QuarterlyMetric(period=period, value=cr, yoy_growth=None))
         return metrics
 

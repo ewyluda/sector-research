@@ -28,14 +28,7 @@ export function GrowthEarnings({ financials, structured, score, fallback, isLive
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Revenue</h4>
             <GroupedBarChart metrics={financials.quarterly_revenue} label="Revenue" />
           </div>
-          {edgarFacts && (
-            <div>
-              <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-                RPO Trend <span className="text-[9px] text-[var(--color-text-muted)] normal-case">(SEC XBRL)</span>
-              </h4>
-              <RPOTrend edgarFacts={edgarFacts} />
-            </div>
-          )}
+          {edgarFacts && <RPOTrend edgarFacts={edgarFacts} />}
           <div>
             <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Margin Trends</h4>
             <TrendLineChart
