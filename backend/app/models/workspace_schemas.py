@@ -221,6 +221,10 @@ class CatalystUpdate(BaseModel):
     note: str | None = Field(
         default=None, description="Optional context."
     )
+    description: str | None = Field(
+        default=None,
+        description="Catalyst description (looked up from the catalysts table; surfaced for UI rendering — the LLM does not produce this).",
+    )
 
 
 class ChallengeOutput(BaseModel):

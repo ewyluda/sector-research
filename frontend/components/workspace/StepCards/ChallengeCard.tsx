@@ -55,7 +55,7 @@ export function ChallengeCard({ output }: { output: ChallengeOutput }) {
                   {cu.new_status.replace(/_/g, " ")}
                 </span>
                 <span className="text-[var(--text)] flex-1">
-                  <span className="text-[var(--text-muted)]">{cu.catalyst_id}</span>
+                  <span className="text-[var(--text)]">{cu.description ?? cu.catalyst_id}</span>
                   {cu.note && <span className="block text-xs text-[var(--text-muted)] mt-0.5">{cu.note}</span>}
                 </span>
               </li>

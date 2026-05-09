@@ -1464,6 +1464,7 @@ export interface CatalystUpdate {
   catalyst_id: string;
   new_status: "still_pending" | "resolved" | "missed";
   note: string | null;
+  description: string | null;
 }
 export interface ChallengeOutput {
   stress_test_summary: string;
