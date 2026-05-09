@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CuratedFinancials, QuickScreenStructured } from "@/lib/api";
-import { getModel } from "@/lib/api";
+import { getModel, workspaceApi } from "@/lib/api";
 import ScoreRing from "@/components/ScoreRing";
 
 interface ReportHeaderProps {
@@ -11,6 +12,7 @@ interface ReportHeaderProps {
   convictionScore: number | null;
   ticker: string;
   isLive?: boolean;
+  runStatus?: "completed" | "watchlist" | "error" | "in_progress";
 }
 
 function fmtMarketCap(value: number): string {
@@ -85,7 +87,22 @@ function VerdictBadge({ recommendation }: { recommendation: "GO" | "WATCHLIST" |
   );
 }
 
-export function ReportHeader({ financials, quickScreen, convictionScore, ticker, isLive }: ReportHeaderProps) {
+export function ReportHeader({ financials, quickScreen, convictionScore, ticker, isLive, runStatus }: ReportHeaderProps) {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+
+  const handleWorkspaceRefresh = async () => {
+    try {
+      setLoading(true);
+      const { run_id } = await workspaceApi.kickOff(ticker);
+      router.push(`/workspace/${run_id}`);
+    } catch (err) {
+      alert(`Workspace kick-off failed: ${err instanceof Error ? err.message : err}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <section id="report_header" className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
       {/* Top row: identity + conviction ring */}
@@ -95,8 +112,19 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">{ticker}</h1>
               {quickScreen && <VerdictBadge recommendation={quickScreen.recommendation} />}
-              <span data-print-hide="true">
+              <span data-print-hide="true" className="flex items-center gap-2">
                 <ModelStatusBadge ticker={ticker} />
+                {runStatus === "completed" && (
+                  <button
+                    type="button"
+                    onClick={handleWorkspaceRefresh}
+                    disabled={loading}
+                    className="text-xs px-2 py-1 rounded border border-slate-700 hover:border-slate-500 disabled:opacity-50 text-slate-300 hover:text-slate-100 transition-colors"
+                    title="Run a workspace refresh for this ticker"
+                  >
+                    {loading ? "Launching..." : "Refresh workspace →"}
+                  </button>
+                )}
               </span>
             </div>
             {financials && (

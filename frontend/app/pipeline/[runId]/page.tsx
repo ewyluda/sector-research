@@ -671,6 +671,7 @@ export default function PipelineRunnerPage() {
               convictionScore={convictionScore}
               ticker={ticker}
               isLive={isLive}
+              runStatus={run.status}
             />
           )}
 
