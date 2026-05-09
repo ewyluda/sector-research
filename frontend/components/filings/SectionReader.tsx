@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { filings } from "@/lib/api";
-import type { FilingSectionText } from "@/lib/api";
+import { filings, relationships as relationshipsApi } from "@/lib/api";
+import type { FilingSectionText, RelationshipRecord } from "@/lib/api";
 
 interface Props {
   ticker: string;
@@ -28,6 +28,7 @@ export default function SectionReader({
   const [data, setData] = useState<FilingSectionText | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [allRelationships, setAllRelationships] = useState<RelationshipRecord[]>([]);
   const contentRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -44,6 +45,44 @@ export default function SectionReader({
       cancelled = true;
     };
   }, [ticker, accession, sectionKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    relationshipsApi
+      .listForTicker(ticker)
+      .then((rows) => {
+        if (!cancelled) setAllRelationships(rows);
+      })
+      .catch(() => {
+        // Non-fatal — relationships are an enhancement, not a hard dependency.
+        if (!cancelled) setAllRelationships([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ticker]);
+
+  const sectionRelationships = useMemo(
+    () =>
+      allRelationships.filter(
+        (r) => r.accession_number === accession && r.section_key === sectionKey,
+      ),
+    [allRelationships, accession, sectionKey],
+  );
+
+  const quotes = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const r of sectionRelationships) {
+      const q = (r.verbatim_quote ?? "").trim();
+      if (q.length >= 12 && !seen.has(q)) {
+        seen.add(q);
+        out.push(q);
+      }
+    }
+    // Longest-first so overlapping substrings highlight the larger match.
+    return out.sort((a, b) => b.length - a.length);
+  }, [sectionRelationships]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -204,8 +243,11 @@ export default function SectionReader({
             )}
             {data && (
               <article className="max-w-2xl mx-auto text-[var(--text)]">
+                {sectionRelationships.length > 0 && (
+                  <RelationshipsBanner relationships={sectionRelationships} />
+                )}
                 {blocks.map((b, i) => (
-                  <BlockView key={i} block={b} />
+                  <BlockView key={i} block={b} quotes={quotes} />
                 ))}
               </article>
             )}
@@ -216,7 +258,7 @@ export default function SectionReader({
   );
 }
 
-function BlockView({ block }: { block: Block }) {
+function BlockView({ block, quotes }: { block: Block; quotes: string[] }) {
   switch (block.kind) {
     case "heading":
       return block.level === 2 ? (
@@ -236,19 +278,168 @@ function BlockView({ block }: { block: Block }) {
       );
     case "paragraph":
       return (
-        <p className="text-[15px] leading-7 text-[var(--text)] my-3">{block.text}</p>
+        <p className="text-[15px] leading-7 text-[var(--text)] my-3">
+          {renderWithHighlights(block.text, quotes)}
+        </p>
       );
     case "list":
       return (
         <ul className="list-disc pl-6 my-3 space-y-1.5 text-[15px] leading-7 text-[var(--text)] marker:text-[var(--text-faint)]">
           {block.items.map((it, i) => (
-            <li key={i}>{it}</li>
+            <li key={i}>{renderWithHighlights(it, quotes)}</li>
           ))}
         </ul>
       );
     case "boilerplate":
       return <BoilerplateCallout title={block.title} paragraphs={block.paragraphs} />;
   }
+}
+
+// Build alternating spans of plain-text + <mark>-wrapped quote matches.
+// Quote list is longest-first to prefer the broadest match when two quotes
+// overlap. Whitespace runs in the source are normalized to single spaces in
+// our parsed paragraphs, so a literal substring match is reliable enough.
+function renderWithHighlights(text: string, quotes: string[]): React.ReactNode {
+  if (!quotes.length) return text;
+  const escaped = quotes.map((q) => q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  let pattern: RegExp;
+  try {
+    pattern = new RegExp(`(${escaped.join("|")})`, "gi");
+  } catch {
+    return text;
+  }
+  const parts = text.split(pattern);
+  if (parts.length === 1) return text;
+  return parts.map((p, i) =>
+    i % 2 === 1 ? (
+      <mark
+        key={i}
+        title="Verbatim quote — used by the relationship extractor"
+        className="bg-[var(--accent-bg)] text-[var(--text)] px-0.5 rounded-sm"
+      >
+        {p}
+      </mark>
+    ) : (
+      <span key={i}>{p}</span>
+    ),
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Relationships banner — surfaces extracted counterparty relationships
+// at the top of the reader, grouped by relationship_type. Each card
+// shows the counterparty name (with $TICKER chip if resolved), magnitude
+// % when available, bilateral/unnamed badges, and the verbatim quote on
+// hover/expansion.
+
+const RELATIONSHIP_TYPE_LABEL: Record<string, string> = {
+  customer: "Customers",
+  supplier: "Suppliers",
+  partner: "Partners",
+  competitor: "Competitors",
+  licensor: "Licensors",
+  licensee: "Licensees",
+  distributor: "Distributors",
+  reseller: "Resellers",
+  joint_venture: "Joint Ventures",
+  other: "Other",
+};
+
+function RelationshipsBanner({ relationships }: { relationships: RelationshipRecord[] }) {
+  const groups = useMemo(() => {
+    const map = new Map<string, RelationshipRecord[]>();
+    for (const r of relationships) {
+      const key = r.relationship_type || "other";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(r);
+    }
+    // Stable display order: types listed in RELATIONSHIP_TYPE_LABEL first, then alpha.
+    const ordered = Array.from(map.entries()).sort(([a], [b]) => {
+      const ai = Object.keys(RELATIONSHIP_TYPE_LABEL).indexOf(a);
+      const bi = Object.keys(RELATIONSHIP_TYPE_LABEL).indexOf(b);
+      if (ai !== -1 && bi !== -1) return ai - bi;
+      if (ai !== -1) return -1;
+      if (bi !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    return ordered;
+  }, [relationships]);
+
+  return (
+    <section
+      className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] p-4"
+      aria-label="Counterparty relationships extracted from this section"
+    >
+      <header className="flex items-baseline justify-between mb-3">
+        <h4 className="text-sm font-semibold text-[var(--text)]">
+          Counterparties extracted
+        </h4>
+        <span className="text-[10px] uppercase tracking-wider text-[var(--text-faint)]">
+          {relationships.length} {relationships.length === 1 ? "relationship" : "relationships"}
+        </span>
+      </header>
+      <div className="space-y-3">
+        {groups.map(([type, items]) => (
+          <div key={type}>
+            <div className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] mb-1.5">
+              {RELATIONSHIP_TYPE_LABEL[type] ?? type}
+              <span className="ml-1 text-[var(--text-faint)]">· {items.length}</span>
+            </div>
+            <ul className="flex flex-wrap gap-1.5">
+              {items.map((r) => (
+                <li key={r.id}>
+                  <CounterpartyChip rec={r} />
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CounterpartyChip({ rec }: { rec: RelationshipRecord }) {
+  const tooltip = rec.verbatim_quote
+    ? `"${rec.verbatim_quote}"`
+    : "Counterparty extracted from this section";
+  return (
+    <span
+      title={tooltip}
+      className="inline-flex items-center gap-1 px-2 py-1 rounded-md border border-[var(--border)] bg-[var(--surface)] text-xs text-[var(--text)] hover:border-[var(--primary)] transition-colors"
+    >
+      {rec.unnamed && (
+        <span
+          className="text-[10px] uppercase tracking-wider text-[var(--text-faint)] mr-0.5"
+          title="Counterparty is unnamed in the filing"
+        >
+          unnamed ·
+        </span>
+      )}
+      <span className="font-medium">{rec.counterparty_name}</span>
+      {rec.resolved_to_ticker && (
+        <span
+          className="font-mono text-[10px] px-1 rounded bg-[var(--accent-bg)] text-[var(--primary)]"
+          title="Resolved to a tracked ticker"
+        >
+          ${rec.resolved_to_ticker}
+        </span>
+      )}
+      {rec.magnitude_pct !== null && rec.magnitude_pct !== undefined && (
+        <span className="font-mono tabular-nums text-[10px] text-[var(--text-muted)]">
+          {rec.magnitude_pct.toFixed(0)}%
+        </span>
+      )}
+      {rec.confirmed_bilateral && (
+        <span
+          className="text-[10px] text-[var(--success)]"
+          title="Confirmed by reciprocal mention in another filing"
+        >
+          ↔
+        </span>
+      )}
+    </span>
+  );
 }
 
 function BoilerplateCallout({ title, paragraphs }: { title: string; paragraphs: string[] }) {
