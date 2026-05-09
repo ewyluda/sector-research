@@ -28,47 +28,47 @@ export function ReverseDcfPanel({ ticker, hasDraft }: { ticker: string; hasDraft
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker]);
 
-  if (err) return <div className="p-6 text-rose-400">Error: {err}</div>;
-  if (!data) return <div className="p-6 text-slate-400">Loading reverse DCF&hellip;</div>;
+  if (err) return <div className="p-6 text-[var(--error)]">Error: {err}</div>;
+  if (!data) return <div className="p-6 text-[var(--text-muted)]">Loading reverse DCF&hellip;</div>;
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 text-[var(--text)]">
       <div className="flex gap-3 items-center text-sm" data-print-hide="true">
-        <label>
+        <label className="text-[var(--text-muted)]">
           Price override:{" "}
           <input
             value={priceOverride}
             onChange={(e) => setPriceOverride(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 w-24"
+            className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] rounded px-2 py-0.5 w-24"
           />
         </label>
         {hasDraft && (
-          <label>
+          <label className="text-[var(--text-muted)]">
             <input type="checkbox" checked={fromDraft} onChange={(e) => setFromDraft(e.target.checked)} /> Use draft
           </label>
         )}
-        <button onClick={load} className="px-3 py-0.5 rounded bg-blue-600 text-white text-sm">
+        <button onClick={load} className="px-3 py-0.5 rounded-md bg-[var(--primary)] hover:bg-[var(--primary-dk)] text-white text-sm">
           Recompute
         </button>
       </div>
 
       <section className="grid grid-cols-2 gap-6">
         <div>
-          <div className="text-xs uppercase text-slate-500">Implied IRR</div>
-          <div className="text-4xl font-semibold">
+          <div className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Implied IRR</div>
+          <div className="text-4xl font-semibold text-[var(--text)]">
             {data.implied_irr === null ? "—" : `${(data.implied_irr * 100).toFixed(2)}%`}
           </div>
-          <div className="text-xs text-slate-500 mt-1">
+          <div className="text-xs text-[var(--text-muted)] mt-1">
             at {data.price_used.toFixed(2)} ({data.price_source})
           </div>
         </div>
         <div>
-          <div className="text-xs uppercase text-slate-500 mb-1">Thesis vs priced in</div>
+          <div className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-1">Thesis vs priced in</div>
           <ThesisVsPricedTable rows={data.thesis_vs_priced_in} />
         </div>
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-slate-300 mb-2">Sensitivity grids</h2>
+        <h2 className="text-sm font-semibold text-[var(--text)] mb-2">Sensitivity grids</h2>
         <div className="grid grid-cols-3 gap-6">
           <SensitivityHeatmap grid={data.sensitivity_grids.growth_margin} currentPrice={data.price_used} />
           <SensitivityHeatmap grid={data.sensitivity_grids.growth_multiple} currentPrice={data.price_used} />
@@ -77,7 +77,7 @@ export function ReverseDcfPanel({ ticker, hasDraft }: { ticker: string; hasDraft
       </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-slate-300 mb-2">What-if (illustrative)</h2>
+        <h2 className="text-sm font-semibold text-[var(--text)] mb-2">What-if (illustrative)</h2>
         <WhatIfScratchPanel
           baseline={{
             growth: data.thesis_vs_priced_in.find((r) => r.dimension === "revenue_growth_pct")?.thesis ?? 0.05,

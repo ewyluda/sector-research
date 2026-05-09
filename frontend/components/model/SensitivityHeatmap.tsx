@@ -9,14 +9,14 @@ export function SensitivityHeatmap({ grid, currentPrice }: { grid: SensitivityGr
   const range = Math.max(currentPrice - min, max - currentPrice);
   return (
     <div className="text-xs">
-      <div className="mb-1 text-slate-400">{grid.x_dim} &times; {grid.y_dim}</div>
+      <div className="mb-1 text-[var(--text-muted)]">{grid.x_dim} &times; {grid.y_dim}</div>
       <table className="border-collapse">
         <thead>
           <tr>
             <th></th>
             {grid.x_values.map((v, i) =>
               i % 4 === 0 ? (
-                <th key={i} className="text-center text-slate-500 px-0.5">{v.toFixed(2)}</th>
+                <th key={i} className="text-center text-[var(--text-muted)] px-0.5">{v.toFixed(2)}</th>
               ) : (
                 <th key={i}></th>
               )
@@ -26,7 +26,7 @@ export function SensitivityHeatmap({ grid, currentPrice }: { grid: SensitivityGr
         <tbody>
           {grid.values.map((row, ri) => (
             <tr key={ri}>
-              <td className="text-right text-slate-500 pr-1">
+              <td className="text-right text-[var(--text-muted)] pr-1">
                 {ri % 4 === 0 ? grid.y_values[ri].toFixed(2) : ""}
               </td>
               {row.map((v, ci) => (

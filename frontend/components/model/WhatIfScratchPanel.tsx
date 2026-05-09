@@ -6,9 +6,9 @@ export function WhatIfScratchPanel({ baseline }: { baseline: { growth: number; m
   const [margin, setMargin] = useState(baseline.margin);
   const [multiple, setMultiple] = useState(baseline.multiple);
   return (
-    <section className="border border-slate-800 rounded p-4">
-      <h3 className="text-sm font-semibold text-slate-300 mb-2">What-if scratch</h3>
-      <p className="text-xs text-slate-500 mb-3">
+    <section className="border border-[var(--border)] bg-[var(--surface)] rounded-md p-4">
+      <h3 className="text-sm font-semibold text-[var(--text)] mb-2">What-if scratch</h3>
+      <p className="text-xs text-[var(--text-muted)] mb-3">
         Move the sliders; nothing is saved. Re-evaluation is illustrative only — for full recompute, edit drivers in the
         Forecast tab.
       </p>

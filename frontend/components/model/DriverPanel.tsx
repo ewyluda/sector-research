@@ -23,26 +23,26 @@ export function DriverPanel({
   const periods = state.periods.filter((p) => !p.is_historical);
   const [open, setOpen] = useState(true);
   return (
-    <section className="border-b border-slate-800">
-      <button onClick={() => setOpen(!open)} className="w-full text-left px-6 py-2 text-sm text-slate-400 hover:text-white">
+    <section className="border-b border-[var(--border)] bg-[var(--surface)]">
+      <button onClick={() => setOpen(!open)} className="w-full text-left px-6 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text)]">
         {open ? "▾" : "▸"} Drivers
       </button>
       {open && (
         <div className="px-6 pb-3 overflow-x-auto">
           {GROUPS.map((g) => (
             <div key={g.label} className="mb-3">
-              <div className="text-xs uppercase text-slate-500 mb-1">{g.label}</div>
+              <div className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-1">{g.label}</div>
               <table className="w-full border-collapse">
                 <thead>
                   <tr>
-                    <th className="text-left text-xs text-slate-500 pr-2 py-0.5">Driver</th>
-                    {periods.map((p) => <th key={p.label} className="text-right text-xs text-slate-500 px-1 py-0.5">{p.label}</th>)}
+                    <th className="text-left text-xs text-[var(--text-muted)] pr-2 py-0.5">Driver</th>
+                    {periods.map((p) => <th key={p.label} className="text-right text-xs text-[var(--text-muted)] px-1 py-0.5">{p.label}</th>)}
                   </tr>
                 </thead>
                 <tbody>
                   {g.keys.map((k) => (
-                    <tr key={k} className="border-t border-slate-900">
-                      <td className="text-left text-xs text-slate-300 pr-2 py-0.5">{k}</td>
+                    <tr key={k} className="border-t border-[var(--border)]">
+                      <td className="text-left text-xs text-[var(--text)] pr-2 py-0.5">{k}</td>
                       {periods.map((p) => {
                         const path = `drivers.${p.label}.${k}`;
                         return <CellRenderer key={path} cell={state.drivers[p.label]?.[k]} cellPath={path}

@@ -27,12 +27,12 @@ export function HistoryDiffViewer({ ticker }: { ticker: string }) {
   }, [a, b, ticker]);
 
   return (
-    <div className="p-6">
+    <div className="p-6 text-[var(--text)]">
       <div className="flex gap-3 items-end mb-4">
         <select
           value={a ?? ""}
           onChange={(e) => setA(Number(e.target.value))}
-          className="bg-slate-900 border border-slate-700 px-2 py-0.5 rounded text-sm"
+          className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] px-2 py-0.5 rounded text-sm"
         >
           {versions.map((v) => (
             <option key={v.version} value={v.version}>
@@ -40,11 +40,11 @@ export function HistoryDiffViewer({ ticker }: { ticker: string }) {
             </option>
           ))}
         </select>
-        <span className="text-slate-500">vs</span>
+        <span className="text-[var(--text-muted)]">vs</span>
         <select
           value={b ?? ""}
           onChange={(e) => setB(Number(e.target.value))}
-          className="bg-slate-900 border border-slate-700 px-2 py-0.5 rounded text-sm"
+          className="bg-[var(--surface)] border border-[var(--border)] text-[var(--text)] px-2 py-0.5 rounded text-sm"
         >
           {versions.map((v) => (
             <option key={v.version} value={v.version}>
@@ -56,11 +56,11 @@ export function HistoryDiffViewer({ ticker }: { ticker: string }) {
       {diff && (
         <div className="space-y-3 text-sm">
           <div>
-            <span className="text-slate-400">Changed cells:</span> {diff.changed.length}
+            <span className="text-[var(--text-muted)]">Changed cells:</span> {diff.changed.length}
           </div>
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-slate-500">
+              <tr className="text-[var(--text-muted)]">
                 <th className="text-left">Cell</th>
                 <th className="text-right">Before</th>
                 <th className="text-right">After</th>
@@ -68,12 +68,12 @@ export function HistoryDiffViewer({ ticker }: { ticker: string }) {
             </thead>
             <tbody>
               {diff.changed.slice(0, 200).map((c) => (
-                <tr key={c.cell_path} className="border-t border-slate-900">
-                  <td className="text-left text-slate-300">{c.cell_path}</td>
-                  <td className="text-right text-slate-500">
+                <tr key={c.cell_path} className="border-t border-[var(--border)]">
+                  <td className="text-left text-[var(--text)]">{c.cell_path}</td>
+                  <td className="text-right text-[var(--text-muted)]">
                     {c.before?.value?.toLocaleString(undefined, { maximumFractionDigits: 4 }) ?? "—"}
                   </td>
-                  <td className="text-right">
+                  <td className="text-right text-[var(--text)]">
                     {c.after?.value?.toLocaleString(undefined, { maximumFractionDigits: 4 }) ?? "—"}
                   </td>
                 </tr>
@@ -81,7 +81,7 @@ export function HistoryDiffViewer({ ticker }: { ticker: string }) {
             </tbody>
           </table>
           {diff.changed.length > 200 && (
-            <div className="text-slate-500">…showing first 200 changes.</div>
+            <div className="text-[var(--text-muted)]">…showing first 200 changes.</div>
           )}
         </div>
       )}

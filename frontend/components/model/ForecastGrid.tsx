@@ -23,14 +23,14 @@ function StmtTable({ title, lines, stmt, state, focused, onFocus, onEdit }: {
 }) {
   return (
     <div className="mb-6">
-      <h2 className="px-6 py-1 text-sm font-semibold text-slate-300 sticky top-0 bg-slate-950 z-10">{title}</h2>
+      <h2 className="px-6 py-1 text-sm font-semibold text-[var(--text)] sticky top-0 bg-[var(--surface)] border-b border-[var(--border)] z-10">{title}</h2>
       <div className="overflow-x-auto">
         <table className="border-collapse w-max">
           <thead>
             <tr>
-              <th className="sticky left-0 bg-slate-950 text-left text-xs text-slate-500 px-6 py-1">Line item</th>
+              <th className="sticky left-0 bg-[var(--surface)] text-left text-xs text-[var(--text-muted)] px-6 py-1 border-b border-[var(--border)]">Line item</th>
               {state.periods.map((p) => (
-                <th key={p.label} className={`text-right text-xs px-2 py-1 ${p.is_historical ? "text-slate-600" : "text-slate-400"}`}>
+                <th key={p.label} className={`text-right text-xs px-2 py-1 border-b border-[var(--border)] ${p.is_historical ? "text-[var(--text-faint)]" : "text-[var(--text-muted)]"}`}>
                   {p.label}
                 </th>
               ))}
@@ -38,8 +38,8 @@ function StmtTable({ title, lines, stmt, state, focused, onFocus, onEdit }: {
           </thead>
           <tbody>
             {lines.map((li) => (
-              <tr key={li} className="border-t border-slate-900">
-                <td className="sticky left-0 bg-slate-950 text-left text-xs text-slate-300 px-6 py-1">{li}</td>
+              <tr key={li} className="border-t border-[var(--border)]">
+                <td className="sticky left-0 bg-[var(--surface)] text-left text-xs text-[var(--text)] px-6 py-1">{li}</td>
                 {state.periods.map((p) => {
                   const path = `${stmt}.${li}.${p.label}`;
                   return <CellRenderer key={path} cell={state[stmt][li]?.[p.label]} cellPath={path}

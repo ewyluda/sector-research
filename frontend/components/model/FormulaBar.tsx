@@ -16,15 +16,15 @@ function lookupCell(state: ModelState, path: string): ModelCell | undefined {
 }
 
 export function FormulaBar({ state, focused }: { state: ModelState; focused: string | null }) {
-  if (!focused) return <div className="px-6 py-1 text-xs text-slate-600 border-b border-slate-900" data-print-hide="true">Click a cell to inspect.</div>;
+  if (!focused) return <div className="px-6 py-1 text-xs text-[var(--text-faint)] border-b border-[var(--border)] bg-[var(--surface-alt)]" data-print-hide="true">Click a cell to inspect.</div>;
   const cell = lookupCell(state, focused);
   return (
-    <div className="px-6 py-1 text-xs text-slate-300 border-b border-slate-900 flex gap-3" data-print-hide="true">
-      <span className="text-slate-500">{focused}</span>
-      <span className="text-slate-400">{cell?.source ?? "—"}</span>
+    <div className="px-6 py-1 text-xs text-[var(--text)] border-b border-[var(--border)] bg-[var(--surface-alt)] flex gap-3" data-print-hide="true">
+      <span className="text-[var(--text-muted)]">{focused}</span>
+      <span className="text-[var(--text-muted)]">{cell?.source ?? "—"}</span>
       <span>{cell?.value === null || cell?.value === undefined ? "—" : cell.value.toLocaleString()}</span>
-      {cell?.formula && <span className="text-slate-500">· {cell.formula}</span>}
-      {cell?.citation_id && <a href={`#citation-${cell.citation_id}`} className="text-blue-400 hover:underline">citation</a>}
+      {cell?.formula && <span className="text-[var(--text-muted)]">· {cell.formula}</span>}
+      {cell?.citation_id && <a href={`#citation-${cell.citation_id}`} className="text-[var(--primary)] hover:underline">citation</a>}
     </div>
   );
 }

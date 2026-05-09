@@ -306,3 +306,17 @@ The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balan
 ## State-of-repo notes
 
 `TODO.md` at the repo root is the live rolling tracker for in-progress work, backlog, and a "Done (recent)" log — read it before starting anything substantive so you know what's already shipped. The `skills/due-diligence/` + `BACKLOG.md` design-phase artifacts are gone; active specs live in `docs/superpowers/specs/` (which is itself `.gitignore`d, so it's local-only). If you need old plans or the due-diligence methodology, recover from git history (`git log --all --diff-filter=D -- docs/`).
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `ewyluda/sector-research` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

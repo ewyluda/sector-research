@@ -54,13 +54,13 @@ export default function ModelPage() {
     }
   }
 
-  if (loading) return <div className="p-6 text-slate-400">Loading model…</div>;
-  if (err) return <div className="p-6 text-red-400">Error: {err}</div>;
+  if (loading) return <div className="p-6 text-[var(--text-muted)]">Loading model…</div>;
+  if (err) return <div className="p-6 text-[var(--error)]">Error: {err}</div>;
   if (!latest) {
     return (
       <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-semibold">{ticker} — no model yet</h1>
-        <button onClick={handleCreate} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-white">
+        <h1 className="text-2xl font-semibold text-[var(--text)]">{ticker} — no model yet</h1>
+        <button onClick={handleCreate} className="px-3 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-dk)] rounded text-white">
           Create AI baseline
         </button>
       </div>
@@ -71,17 +71,19 @@ export default function ModelPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <header className="border-b border-slate-800 px-6 py-3 flex items-center gap-4" data-print-hide="true">
-        <h1 className="text-xl font-semibold">
-          {ticker} <span className="text-slate-500 text-sm">v{latest.version} · {latest.label}</span>
+      <header className="border-b border-[var(--border)] bg-[var(--surface)] px-6 py-3 flex items-center gap-4" data-print-hide="true">
+        <h1 className="text-xl font-semibold text-[var(--text)]">
+          {ticker} <span className="text-[var(--text-muted)] text-sm font-normal">v{latest.version} · {latest.label}</span>
         </h1>
-        <nav className="flex gap-2 ml-auto">
+        <nav className="flex gap-1 ml-auto">
           {MODEL_TABS.map((t) => (
             <a
               key={t.id}
               href={t.hash}
-              className={`px-3 py-1.5 rounded text-sm ${
-                tab === t.id ? "bg-slate-800 text-white" : "text-slate-400 hover:text-white"
+              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                tab === t.id
+                  ? "bg-[var(--accent-bg)] text-[var(--primary-dk)] font-medium"
+                  : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-alt)]"
               }`}
             >
               {t.label}
@@ -165,11 +167,11 @@ function ForecastTabContent({
       <FormulaBar state={state} focused={focused} />
       <DriverPanel state={state} focused={focused} onFocus={setFocused} onEdit={handleEdit} />
       <ForecastGrid state={state} focused={focused} onFocus={setFocused} onEdit={handleEdit} />
-      <div className="sticky bottom-0 left-0 right-0 bg-slate-950 border-t border-slate-800 px-6 py-2 flex gap-2 justify-end" data-print-hide="true">
-        <button onClick={handleDiscard} disabled={!draft || busy} className="px-3 py-1 text-sm rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">
+      <div className="sticky bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] px-6 py-2 flex gap-2 justify-end" data-print-hide="true">
+        <button onClick={handleDiscard} disabled={!draft || busy} className="px-3 py-1 text-sm rounded-md border border-[var(--border)] bg-[var(--surface-alt)] hover:bg-[var(--accent-bg)] text-[var(--text)] disabled:opacity-40">
           Discard draft
         </button>
-        <button onClick={handleSave} disabled={!draft || busy} className="px-3 py-1 text-sm rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white">
+        <button onClick={handleSave} disabled={!draft || busy} className="px-3 py-1 text-sm rounded-md bg-[var(--primary)] hover:bg-[var(--primary-dk)] disabled:opacity-40 text-white">
           Save Version
         </button>
       </div>

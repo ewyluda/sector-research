@@ -2,11 +2,11 @@
 import type { ModelCell } from "@/lib/api";
 
 const CLS: Record<string, string> = {
-  historical:  "bg-slate-800 text-slate-300",
-  ai_baseline: "bg-yellow-900/30 text-yellow-100",
-  driver:      "bg-yellow-700/40 text-yellow-50",
-  computed:    "bg-transparent text-slate-100",
-  override:    "border border-orange-400 bg-orange-900/20 text-orange-100",
+  historical:  "bg-[var(--surface-alt)] text-[var(--text-muted)]",
+  ai_baseline: "bg-amber-50 text-[var(--text)]",
+  driver:      "bg-amber-100 text-[var(--text)] font-medium",
+  computed:    "bg-transparent text-[var(--text)]",
+  override:    "border border-[var(--warning)] bg-orange-50 text-[var(--warning)]",
 };
 
 export function CellRenderer({
@@ -21,7 +21,7 @@ export function CellRenderer({
 }) {
   const value = cell?.value ?? null;
   const source = cell?.source ?? "computed";
-  const ringCls = focused ? "ring-2 ring-blue-400" : "";
+  const ringCls = focused ? "ring-2 ring-[var(--primary)]" : "";
   return (
     <td
       onClick={() => onFocus(cellPath)}
