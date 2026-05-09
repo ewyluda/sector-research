@@ -14,6 +14,7 @@ from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
 from backend.app.models.watchlist import WatchlistItem
 from backend.app.models.surprise_alert import SurpriseAlert
+from backend.app.models.workspace_run import WorkspaceRun  # noqa: F401
 
 __all__ = [
     "Base",
@@ -37,4 +38,5 @@ __all__ = [
     "SurpriseAlert",
     "TickerModel",
     "TickerModelDraft",
+    "WorkspaceRun",
 ]
