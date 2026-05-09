@@ -11,15 +11,31 @@ from backend.app.models.workspace_schemas import ChallengeOutput, WorkspaceVerdi
 def _make_ctx(kill_criteria=None, catalysts=None):
     rr = MagicMock()
     rr.id = "rr-1"
+    # Kill criteria DEFINITIONS live at phase_outputs.thesis.structured.kill_criteria.
+    # Each entry uses the KillCriterion shape (condition/threshold/monitoring_source),
+    # but step_challenge also accepts 'description' as a fallback key.
+    kc_defs = [
+        {"condition": kc.get("description", ""), "threshold": "", "monitoring_source": ""}
+        if isinstance(kc, dict) else kc
+        for kc in (kill_criteria or [])
+    ]
     rr.state = {
-        "thesis": {"summary_markdown": "Long NVDA on AI capex supercycle"},
-        "kill_criteria": kill_criteria or [],
-        "catalysts": catalysts or [],
+        "phase_outputs": {
+            "thesis": {
+                "content": "Long NVDA on AI capex supercycle",
+                "structured": {"kill_criteria": kc_defs},
+            }
+        },
     }
+    # DB returns no KillCriterionState rows and no Catalyst rows by default.
+    db = AsyncMock()
+    _empty_result = MagicMock()
+    _empty_result.scalars.return_value.all.return_value = []
+    db.execute = AsyncMock(return_value=_empty_result)
     return WorkspaceContext(
         run_id="r",
         ticker="NVDA",
-        db=AsyncMock(),
+        db=db,
         fmp=AsyncMock(),
         edgar=AsyncMock(),
         anthropic=AsyncMock(),
