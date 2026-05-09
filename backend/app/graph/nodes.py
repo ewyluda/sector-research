@@ -22,7 +22,7 @@ from typing import Any
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
-from backend.app.db import async_session
+from backend.app.db import async_session, unit_of_work
 from backend.app.graph.llm import complete, SONNET, HAIKU
 from backend.app.services.catalyst_promotion import promote_catalysts
 from backend.app.services.edgar_transcripts_relationships import (
@@ -1526,9 +1526,8 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
             try:
                 fmp = FMPClient()
                 try:
-                    async with async_session() as cat_db:
+                    async with unit_of_work() as cat_db:
                         await promote_catalysts(state, parsed, fmp, cat_db)
-                        await cat_db.commit()
                 finally:
                     await fmp.close()
             except Exception as cat_err:

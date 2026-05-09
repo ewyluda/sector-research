@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
-from backend.app.db import async_session
+from backend.app.db import async_session, unit_of_work
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.services.earnings_prints import (
     fetch_active_board_tickers,
@@ -96,7 +96,7 @@ async def run_daily_earnings_refresh() -> dict:
 
         for ticker in tickers:
             try:
-                async with async_session() as db:
+                async with unit_of_work() as db:
                     rows = await index_earnings_prints(ticker, fmp, db)
                     summary["prints_upserted"] += len(rows)
                     enriched = 0
@@ -104,7 +104,6 @@ async def run_daily_earnings_refresh() -> dict:
                         if await _enrich_one_print_with_guidance(r, fmp, db):
                             enriched += 1
                     summary["guidance_enriched"] += enriched
-                    await db.commit()
                 summary["tickers_processed"] += 1
             except Exception as e:
                 logger.exception("[%s] earnings refresh failed", ticker)

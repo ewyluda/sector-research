@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
 from backend.app.clients.fmp import FMPClient
-from backend.app.db import async_session
+from backend.app.db import unit_of_work
 from backend.app.models.theme import Theme
 from backend.app.services import (
     counterparty_resolver,
@@ -226,11 +226,10 @@ class FanoutService:
         # we do the same here. async_session uses expire_on_commit=False.
         status.current_stage = "ingest"
         try:
-            async with async_session() as db:
+            async with unit_of_work() as db:
                 summary = await edgar_sections_ingest.ingest_ticker_sections(
                     ticker, db=db, edgar=self._edgar
                 )
-                await db.commit()
             # `ingest_ticker_sections` returns a summary with `errors: []`
             # rather than raising on per-form problems (e.g., no CIK, no
             # recent filings). Surface those so the status endpoint shows
@@ -249,11 +248,10 @@ class FanoutService:
         # Stage 2: extract
         status.current_stage = "extract"
         try:
-            async with async_session() as db:
+            async with unit_of_work() as db:
                 await edgar_relationships.extract_ticker_relationships(
                     ticker, db=db, force=force
                 )
-                await db.commit()
         except Exception as exc:
             logger.warning("Fanout extract failed for %s: %r", ticker, exc)
             status.errors.append(
@@ -266,11 +264,10 @@ class FanoutService:
         # same `relationships` table with source_type='transcript'.
         status.current_stage = "extract_transcripts"
         try:
-            async with async_session() as db:
+            async with unit_of_work() as db:
                 await edgar_transcripts_relationships.extract_ticker_transcript_relationships(
                     ticker, fmp=self._fmp, db=db, force=force
                 )
-                await db.commit()
         except Exception as exc:
             logger.warning("Fanout extract_transcripts failed for %s: %r", ticker, exc)
             status.errors.append(
@@ -282,11 +279,10 @@ class FanoutService:
         # Stage 4: resolve
         status.current_stage = "resolve"
         try:
-            async with async_session() as db:
+            async with unit_of_work() as db:
                 await counterparty_resolver.resolve_ticker_relationships(
                     ticker, db=db
                 )
-                await db.commit()
         except Exception as exc:
             logger.warning("Fanout resolve failed for %s: %r", ticker, exc)
             status.errors.append(
