@@ -310,11 +310,15 @@ def _gather_new_sources_text(ctx: WorkspaceContext) -> str:
 async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
     # Pull prior thesis
     prior_state = ctx.prior_research_run.state or {}
-    prior_thesis = (prior_state.get("thesis") or {}).get("summary_markdown") or "(no prior thesis available)"
+    phase_outputs = prior_state.get("phase_outputs") or {}
+    prior_thesis = (phase_outputs.get("thesis") or {}).get("content") or "(no prior thesis available)"
 
     # Pull existing open questions (Tier 1.2)
-    existing_qs = (prior_state.get("question_log") or {}).get("questions", [])
-    existing_qs_text = "\n".join(f"- {q.get('question', '')}" for q in existing_qs[:20]) or "(none)"
+    existing_qs = prior_state.get("questions_extracted") or []
+    existing_qs_text = "\n".join(
+        f"- {q.get('question', q) if isinstance(q, dict) else q}"
+        for q in existing_qs[:20]
+    ) or "(none)"
 
     # New sources: latest filing section excerpts + transcript paragraphs
     # For v1, pass the prior research_run's own filing-excerpt summary (lightweight).
@@ -447,23 +451,62 @@ async def step_validation(ctx: WorkspaceContext) -> ValidationOutput:
 
 async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
     import logging
+    from sqlalchemy import select
     from backend.app.models.workspace_schemas import KillCriterionWrite, CatalystUpdate, WorkspaceVerdict
+    from backend.app.models.kill_criterion_state import KillCriterionState
+    from backend.app.models.catalyst import Catalyst
 
     log = logging.getLogger(__name__)
 
     prior_state = ctx.prior_research_run.state or {}
-    prior_thesis = (prior_state.get("thesis") or {}).get("summary_markdown") or "(no prior thesis)"
-    kill_criteria = prior_state.get("kill_criteria") or []
-    catalysts = prior_state.get("catalysts") or []
+    phase_outputs = prior_state.get("phase_outputs") or {}
+    thesis_block = phase_outputs.get("thesis") or {}
+    prior_thesis = thesis_block.get("content") or "(no prior thesis)"
+
+    # Kill criteria DEFINITIONS from thesis structured output
+    kc_defs = (thesis_block.get("structured") or {}).get("kill_criteria") or []
+    # Current states from ORM
+    states_rows = (await ctx.db.execute(
+        select(KillCriterionState).where(KillCriterionState.run_id == ctx.prior_research_run.id)
+    )).scalars().all()
+    states_by_ordinal = {s.ordinal: s.status for s in states_rows}
+
+    kill_criteria_payload = []
+    for i, kc in enumerate(kc_defs):
+        if isinstance(kc, dict):
+            desc = kc.get("condition") or kc.get("criterion") or kc.get("description") or kc.get("text") or str(kc)
+        else:
+            desc = str(kc)
+        ordinal = i + 1
+        kill_criteria_payload.append({
+            "ordinal": ordinal,
+            "description": desc,
+            "current_status": states_by_ordinal.get(ordinal, "armed"),
+        })
+
+    # Catalysts from ORM
+    cats_rows = (await ctx.db.execute(
+        select(Catalyst).where(Catalyst.run_id == ctx.prior_research_run.id)
+    )).scalars().all()
+    catalysts_payload = [
+        {
+            "id": str(c.id),
+            "type": c.type,
+            "description": c.description,
+            "expected_window_start": str(c.expected_window_start) if c.expected_window_start else None,
+            "expected_window_end": str(c.expected_window_end) if c.expected_window_end else None,
+        }
+        for c in cats_rows
+    ]
 
     kill_text = "\n".join(
-        f"  ordinal {kc.get('ordinal')}: {kc.get('description', '')}"
-        for kc in kill_criteria
+        f"  ordinal {kc['ordinal']} [{kc['current_status']}]: {kc['description']}"
+        for kc in kill_criteria_payload
     ) or "(none)"
     cat_text = "\n".join(
-        f"  id {c.get('id')}: {c.get('description', '')} "
-        f"(window: {c.get('expected_window_start', '?')} → {c.get('expected_window_end', '?')})"
-        for c in catalysts
+        f"  id {c['id']} [{c['type'] or 'other'}]: {c['description']} "
+        f"(window: {c['expected_window_start'] or '?'} → {c['expected_window_end'] or '?'})"
+        for c in catalysts_payload
     ) or "(none)"
 
     user = CHALLENGE_USER_TEMPLATE.format(
@@ -540,9 +583,11 @@ async def _fetch_resolved_peers(ctx: WorkspaceContext) -> list[str]:
 
 async def _fetch_read_throughs_for_ticker(ctx: WorkspaceContext) -> list[dict]:
     """Use the existing read-through service, filtered to this ticker's research run."""
+    from datetime import timedelta
     from backend.app.services.read_through import resolve_read_throughs, compute_peer_events
 
-    events = await compute_peer_events(ctx.db, window_days=30)
+    now = datetime.now(timezone.utc)
+    events = await compute_peer_events(ctx.db, since=now - timedelta(days=30), until=now + timedelta(days=30))
     run_id = ctx.prior_research_run.id
     result = await resolve_read_throughs(ctx.db, status_run_ids=[run_id], peer_events=events)
     items = result.get(run_id, [])
