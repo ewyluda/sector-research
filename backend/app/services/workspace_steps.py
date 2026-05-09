@@ -521,7 +521,12 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
     payload = _parse_json_lenient(raw)
 
     writes = [KillCriterionWrite(**w) for w in payload.get("kill_criterion_writes", [])]
-    updates = [CatalystUpdate(**u) for u in payload.get("catalyst_updates", [])]
+    cat_id_to_desc = {c["id"]: c["description"] for c in catalysts_payload}
+    updates = []
+    for u in payload.get("catalyst_updates", []):
+        cu = CatalystUpdate(**u)
+        cu.description = cat_id_to_desc.get(cu.catalyst_id)
+        updates.append(cu)
 
     verdict_str = payload.get("proposed_verdict", "healthy")
     try:
@@ -586,13 +591,16 @@ async def _fetch_read_throughs_for_ticker(ctx: WorkspaceContext) -> list[dict]:
     from datetime import timedelta
     from backend.app.services.read_through import resolve_read_throughs, compute_peer_events
 
+    from fastapi.encoders import jsonable_encoder
+
     now = datetime.now(timezone.utc)
     events = await compute_peer_events(ctx.db, since=now - timedelta(days=30), until=now + timedelta(days=30))
     run_id = ctx.prior_research_run.id
     result = await resolve_read_throughs(ctx.db, status_run_ids=[run_id], peer_events=events)
     items = result.get(run_id, [])
-    # Serialize each ReadThroughItem to dict.
-    return [i.model_dump(mode="json") if hasattr(i, "model_dump") else dict(i) for i in items]
+    # ReadThroughItem is a @dataclass (not Pydantic); jsonable_encoder handles
+    # nested dataclasses + date fields → JSON-safe dicts.
+    return jsonable_encoder(items)
 
 
 async def step_differentiation(ctx: WorkspaceContext) -> DifferentiationOutput:
