@@ -13,8 +13,11 @@ from backend.app.models.workspace_schemas import (
     Highlight, OpenQuestionDelta,
     ImpliedDriver, SensitivityGrid as WSSensitivityGrid, ThesisVsPriced,
 )
-from backend.app.graph.llm import complete as anthropic_complete, HAIKU
-from backend.app.graph.workspace_prompts import RESEARCH_SYSTEM, RESEARCH_USER_TEMPLATE
+from backend.app.graph.llm import complete as anthropic_complete, HAIKU, SONNET
+from backend.app.graph.workspace_prompts import (
+    RESEARCH_SYSTEM, RESEARCH_USER_TEMPLATE,
+    CHALLENGE_SYSTEM, CHALLENGE_USER_TEMPLATE,
+)
 from backend.app.services.reverse_dcf import (
     solve_implied_driver,
     solve_implied_irr,
@@ -264,6 +267,20 @@ async def haiku_complete(*, system: str, user: str, anthropic) -> str:
     )
 
 
+async def sonnet_complete(*, system: str, user: str, anthropic) -> str:
+    """Thin wrapper around graph.llm.complete using Sonnet; named for easy patching in tests."""
+    return await anthropic_complete(
+        system=system, user=user, model=SONNET,
+        max_tokens=4096,
+    )
+
+
+async def upsert_kill_criterion_state(db, run_id: str, ordinal: int, status: str, note: str | None) -> None:
+    """Re-exports the canonical helper so tests can patch this name directly."""
+    from backend.app.services.status_board import upsert_kill_criterion_state as impl
+    await impl(db, run_id=run_id, ordinal=ordinal, status=status, note=note)
+
+
 def _parse_json_lenient(raw: str) -> dict:
     """Strip code fences and parse. Returns {} on parse failure rather than raising."""
     txt = raw.strip()
@@ -428,7 +445,87 @@ async def step_validation(ctx: WorkspaceContext) -> ValidationOutput:
 
 
 async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
-    raise NotImplementedError("Phase 5")
+    import logging
+    from backend.app.models.workspace_schemas import KillCriterionWrite, CatalystUpdate, WorkspaceVerdict
+
+    log = logging.getLogger(__name__)
+
+    prior_state = ctx.prior_research_run.state or {}
+    prior_thesis = (prior_state.get("thesis") or {}).get("summary_markdown") or "(no prior thesis)"
+    kill_criteria = prior_state.get("kill_criteria") or []
+    catalysts = prior_state.get("catalysts") or []
+
+    kill_text = "\n".join(
+        f"  ordinal {kc.get('ordinal')}: {kc.get('description', '')}"
+        for kc in kill_criteria
+    ) or "(none)"
+    cat_text = "\n".join(
+        f"  id {c.get('id')}: {c.get('description', '')} "
+        f"(window: {c.get('expected_window_start', '?')} → {c.get('expected_window_end', '?')})"
+        for c in catalysts
+    ) or "(none)"
+
+    user = CHALLENGE_USER_TEMPLATE.format(
+        prior_thesis=prior_thesis,
+        kill_criteria=kill_text,
+        catalysts=cat_text,
+        model_deltas="(see step_outputs.update_refresh.changed_cells)",
+        new_sources="(no new excerpts)",
+    )
+
+    raw = await sonnet_complete(system=CHALLENGE_SYSTEM, user=user, anthropic=ctx.anthropic)
+    payload = _parse_json_lenient(raw)
+
+    writes = [KillCriterionWrite(**w) for w in payload.get("kill_criterion_writes", [])]
+    updates = [CatalystUpdate(**u) for u in payload.get("catalyst_updates", [])]
+
+    verdict_str = payload.get("proposed_verdict", "healthy")
+    try:
+        verdict = WorkspaceVerdict(verdict_str)
+    except ValueError:
+        verdict = WorkspaceVerdict.HEALTHY
+
+    # Apply kill-criterion writebacks (best-effort per row).
+    for w in writes:
+        try:
+            await upsert_kill_criterion_state(
+                ctx.db,
+                run_id=ctx.prior_research_run.id,
+                ordinal=w.ordinal,
+                status=w.status,
+                note=w.note,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("kill_criterion writeback failed for ordinal %s: %s", w.ordinal, exc)
+
+    # Apply catalyst status updates (best-effort per row).
+    if updates:
+        await _apply_catalyst_updates(ctx.db, updates)
+
+    return ChallengeOutput(
+        stress_test_summary=payload.get("stress_test_summary", "(no summary)"),
+        kill_criterion_writes=writes,
+        catalyst_updates=updates,
+        proposed_verdict=verdict,
+    )
+
+
+async def _apply_catalyst_updates(db, updates) -> None:
+    """Update catalyst status rows. Best-effort: per-row exceptions log and continue."""
+    import logging
+    from sqlalchemy import update as sql_update
+    from backend.app.models.catalyst import Catalyst
+
+    log = logging.getLogger(__name__)
+    for u in updates:
+        try:
+            await db.execute(
+                sql_update(Catalyst)
+                .where(Catalyst.id == u.catalyst_id)
+                .values(status=u.new_status)
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.exception("catalyst update failed for %s: %s", u.catalyst_id, exc)
 
 
 async def step_differentiation(ctx: WorkspaceContext) -> DifferentiationOutput:

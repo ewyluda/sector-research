@@ -20,6 +20,7 @@ from backend.app.services.status_board import (
     NextCatalyst as ServiceNextCatalyst,
     StatusBoardEntry as ServiceEntry,
     build_status_board,
+    upsert_kill_criterion_state as _upsert_kill_criterion_state,
 )
 
 router = APIRouter()
@@ -180,33 +181,22 @@ async def list_kill_criterion_states(
     "/runs/{run_id}/kill-criteria/{ordinal}",
     response_model=KillCriterionStateOut,
 )
-async def upsert_kill_criterion_state(
+async def upsert_kill_criterion_state_endpoint(
     run_id: str,
     ordinal: int,
     body: KillCriterionPutBody,
     db: AsyncSession = Depends(get_db),
 ) -> KillCriterionStateOut:
     await _get_run_or_404(db, run_id)
+    await _upsert_kill_criterion_state(
+        db, run_id=run_id, ordinal=ordinal, status=body.status, note=body.note
+    )
+    await db.commit()
     result = await db.execute(
         select(KillCriterionState).where(
             KillCriterionState.run_id == run_id,
             KillCriterionState.ordinal == ordinal,
         )
     )
-    state = result.scalar_one_or_none()
-    if state is None:
-        state = KillCriterionState(
-            run_id=run_id,
-            ordinal=ordinal,
-            status=body.status,
-            note=body.note,
-            flipped_at=datetime.now(timezone.utc),
-        )
-        db.add(state)
-    else:
-        state.status = body.status
-        state.note = body.note
-        state.flipped_at = datetime.now(timezone.utc)
-    await db.commit()
-    await db.refresh(state)
+    state = result.scalar_one()
     return _serialize_kc_state(state)

@@ -301,3 +301,39 @@ async def build_status_board(
     )
 
     return StatusBoardResponse(entries=entries, total=len(entries), generated_at=now)
+
+
+async def upsert_kill_criterion_state(
+    db: AsyncSession,
+    *,
+    run_id: str,
+    ordinal: int,
+    status: str,
+    note: str | None,
+) -> None:
+    """Insert or update a KillCriterionState row for (run_id, ordinal).
+
+    Shared by the API PUT handler and the workspace challenge step so both
+    paths go through the same storage logic.
+    """
+    result = await db.execute(
+        select(KillCriterionState).where(
+            KillCriterionState.run_id == run_id,
+            KillCriterionState.ordinal == ordinal,
+        )
+    )
+    state = result.scalar_one_or_none()
+    if state is None:
+        state = KillCriterionState(
+            run_id=run_id,
+            ordinal=ordinal,
+            status=status,
+            note=note,
+            flipped_at=datetime.now(timezone.utc),
+        )
+        db.add(state)
+    else:
+        state.status = status
+        state.note = note
+        state.flipped_at = datetime.now(timezone.utc)
+    await db.flush()
