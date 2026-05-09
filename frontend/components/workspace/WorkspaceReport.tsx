@@ -8,6 +8,7 @@ import {
 } from "@/lib/api";
 import { VerdictBadge } from "./VerdictBadge";
 import { UpdateRefreshCard } from "./StepCards/UpdateRefreshCard";
+import { ResearchCard } from "./StepCards/ResearchCard";
 
 const STEP_LABELS: Record<WorkspaceStep, string> = {
   update_refresh:  "1. Update / Refresh",
@@ -159,6 +160,7 @@ function StepBody({ step, output }: { step: WorkspaceStep; output: any }) {
     );
   }
   if (step === "update_refresh") return <UpdateRefreshCard output={output} />;
+  if (step === "research") return <ResearchCard output={output} />;
   return (
     <pre className="mt-2 text-xs text-[var(--text-muted)] overflow-x-auto">
       {JSON.stringify(output, null, 2)}
