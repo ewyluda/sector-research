@@ -1438,7 +1438,7 @@ export interface ImpliedDriver {
   implied_value: number;
   baseline_value: number;
 }
-export interface SensitivityGrid {
+export interface WorkspaceSensitivityGrid {
   dim_x: string; dim_y: string;
   x_axis: number[]; y_axis: number[];
   values: number[][];
@@ -1449,7 +1449,7 @@ export interface ThesisVsPriced {
 export interface ValidationOutput {
   implied_drivers: ImpliedDriver[];
   implied_irr: number | null;
-  sensitivity_grids: SensitivityGrid[];
+  sensitivity_grids: WorkspaceSensitivityGrid[];
   thesis_vs_priced_in: ThesisVsPriced[];
   current_price: number;
   citation_ids: string[];

@@ -1,16 +1,18 @@
 "use client";
 import Link from "next/link";
-import type { ValidationOutput } from "@/lib/api";
-// Shape transforms are needed because api.ts has two SensitivityGrid interfaces
-// (model: x_dim/x_values and workspace: dim_x/x_axis) and two ThesisVsPriced shapes.
-// SensitivityHeatmap accesses x_dim, y_dim, x_values, y_values at runtime.
-// ThesisVsPricedTable accesses dimension, thesis, priced_in, delta at runtime.
-// We cast to `any` to bridge the shapes without modifying the model components.
+import type { ValidationOutput, WorkspaceSensitivityGrid } from "@/lib/api";
+// Shape transforms: WorkspaceSensitivityGrid (dim_x/x_axis) → model SensitivityGrid (x_dim/x_values)
+// required by SensitivityHeatmap. ThesisVsPricedTable expects dimension/thesis/priced_in/delta.
+// We cast to `any` to bridge shapes without modifying the shared model components.
+//
+// Note: if the heatmap renders as solid red, it means all DCF-implied per-share values
+// are below the current market price — the model sees the stock as overvalued at every
+// parameter combination. This is correct behavior, not a rendering bug.
 import { SensitivityHeatmap } from "@/components/model/SensitivityHeatmap";
 import { ThesisVsPricedTable } from "@/components/model/ThesisVsPricedTable";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toModelGrid(g: ValidationOutput["sensitivity_grids"][number]): any {
+function toModelGrid(g: WorkspaceSensitivityGrid): any {
   return {
     x_dim: g.dim_x,
     y_dim: g.dim_y,
@@ -43,17 +45,17 @@ export function ValidationCard({
     <div className="space-y-4 mt-2">
       {/* Header: current price + implied IRR */}
       <div className="flex items-baseline gap-4">
-        <span className="text-sm text-slate-300">
+        <span className="text-sm text-[var(--text-muted)]">
           Price{" "}
-          <span className="font-semibold text-slate-100">
+          <span className="font-semibold text-[var(--text)]">
             ${output.current_price.toFixed(2)}
           </span>
         </span>
         {irr != null && (
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-[var(--text-muted)]">
             Implied IRR{" "}
             <span
-              className={`font-semibold ${irr >= 0 ? "text-green-400" : "text-red-400"}`}
+              className={`font-semibold ${irr >= 0 ? "text-[var(--success)]" : "text-[var(--error)]"}`}
             >
               {(irr * 100).toFixed(1)}%
             </span>
@@ -67,13 +69,13 @@ export function ValidationCard({
           {output.implied_drivers.map((d) => (
             <div
               key={d.dimension}
-              className="rounded border border-slate-700 bg-slate-900/50 p-3"
+              className="rounded border border-[var(--border)] bg-[var(--surface)] p-3"
             >
-              <div className="text-xs text-slate-400 mb-1">{d.dimension}</div>
-              <div className="text-lg font-semibold text-slate-100">
+              <div className="text-xs text-[var(--text-muted)] mb-1">{d.dimension}</div>
+              <div className="text-lg font-semibold text-[var(--text)]">
                 {(d.implied_value * 100).toFixed(1)}%
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-[var(--text-faint)]">
                 baseline {(d.baseline_value * 100).toFixed(1)}%
               </div>
             </div>
@@ -83,8 +85,8 @@ export function ValidationCard({
 
       {/* Thesis vs priced-in table */}
       {output.thesis_vs_priced_in.length > 0 && (
-        <div className="rounded border border-slate-700 bg-slate-900/50 p-3">
-          <div className="text-xs font-medium text-slate-400 mb-2">
+        <div className="rounded border border-[var(--border)] bg-[var(--surface)] p-3">
+          <div className="text-xs font-medium text-[var(--text-muted)] mb-2">
             Thesis vs. Priced In
           </div>
           <ThesisVsPricedTable rows={toModelThesisRows(output.thesis_vs_priced_in)} />
@@ -93,8 +95,8 @@ export function ValidationCard({
 
       {/* Sensitivity heatmaps */}
       {output.sensitivity_grids.length > 0 && (
-        <div className="rounded border border-slate-700 bg-slate-900/50 p-3">
-          <div className="text-xs font-medium text-slate-400 mb-3">
+        <div className="rounded border border-[var(--border)] bg-[var(--surface)] p-3">
+          <div className="text-xs font-medium text-[var(--text-muted)] mb-3">
             Sensitivity Grids
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 overflow-x-auto">
@@ -110,10 +112,10 @@ export function ValidationCard({
       )}
 
       {/* Footer link */}
-      <div className="text-xs text-slate-500">
+      <div className="text-xs text-[var(--text-faint)]">
         <Link
           href={`/model/${ticker}#reverse-dcf`}
-          className="underline hover:text-slate-300"
+          className="underline hover:text-[var(--text-muted)]"
         >
           Open full reverse-DCF →
         </Link>
