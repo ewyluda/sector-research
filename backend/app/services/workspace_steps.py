@@ -24,6 +24,7 @@ from backend.app.services.reverse_dcf import (
     sensitivity_grid,
     thesis_vs_priced_in,
 )
+from backend.app.services.peer_comp import build_peer_comp_table
 
 
 def _fmp_period_label(row: dict) -> str | None:
@@ -509,8 +510,57 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
     )
 
 
+# ── Step 5: Differentiation ────────────────────────────────────────────
+
+PEER_CAP = 8
+
+
+async def _fetch_resolved_peers(ctx: WorkspaceContext) -> list[str]:
+    """Pull resolved competitor tickers from competitor_landscape for this ticker.
+    Cap at PEER_CAP. De-dup. Excludes the focus ticker itself."""
+    from sqlalchemy import select
+    from backend.app.models.filing import CompetitorLandscape
+
+    rows = (await ctx.db.execute(
+        select(CompetitorLandscape).where(CompetitorLandscape.ticker == ctx.ticker)
+    )).scalars().all()
+
+    seen: set[str] = set()
+    peers: list[str] = []
+    for row in rows:
+        for c in (row.competitors or []):
+            t = (c.get("resolved_to_ticker") or "").upper()
+            if t and t != ctx.ticker.upper() and t not in seen:
+                seen.add(t)
+                peers.append(t)
+                if len(peers) >= PEER_CAP:
+                    return peers
+    return peers
+
+
+async def _fetch_read_throughs_for_ticker(ctx: WorkspaceContext) -> list[dict]:
+    """Use the existing read-through service, filtered to this ticker's research run."""
+    from backend.app.services.read_through import resolve_read_throughs, compute_peer_events
+
+    events = await compute_peer_events(ctx.db, window_days=30)
+    run_id = ctx.prior_research_run.id
+    result = await resolve_read_throughs(ctx.db, status_run_ids=[run_id], peer_events=events)
+    items = result.get(run_id, [])
+    # Serialize each ReadThroughItem to dict.
+    return [i.model_dump(mode="json") if hasattr(i, "model_dump") else dict(i) for i in items]
+
+
 async def step_differentiation(ctx: WorkspaceContext) -> DifferentiationOutput:
-    raise NotImplementedError("Phase 6")
+    peers = await _fetch_resolved_peers(ctx)
+    table, errors = await build_peer_comp_table(
+        focus_ticker=ctx.ticker, peer_tickers=peers, fmp=ctx.fmp,
+    ) if peers else (None, [])
+    read_throughs = await _fetch_read_throughs_for_ticker(ctx)
+    return DifferentiationOutput(
+        peer_comp=table,
+        read_throughs=read_throughs,
+        per_peer_errors=errors,
+    )
 
 
 STEP_NAMES = ["update_refresh", "research", "validation", "challenge", "differentiation"]
