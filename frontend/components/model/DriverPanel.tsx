@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import type { ModelState } from "@/lib/api";
+import { driverPath, toWire } from "@/lib/cellPath";
 import { CellRenderer } from "./CellRenderer";
 
 const GROUPS: Array<{ label: string; keys: string[] }> = [
@@ -44,7 +45,7 @@ export function DriverPanel({
                     <tr key={k} className="border-t border-[var(--border)]">
                       <td className="text-left text-xs text-[var(--text)] pr-2 py-0.5">{k}</td>
                       {periods.map((p) => {
-                        const path = `drivers.${p.label}.${k}`;
+                        const path = toWire(driverPath(p.label, k));
                         return <CellRenderer key={path} cell={state.drivers[p.label]?.[k]} cellPath={path}
                                              focused={focused === path} onFocus={onFocus} onCommitEdit={onEdit} />;
                       })}

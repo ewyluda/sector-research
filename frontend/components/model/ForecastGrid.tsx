@@ -1,5 +1,6 @@
 "use client";
 import type { ModelState } from "@/lib/api";
+import { statementPath, toWire, type Statement } from "@/lib/cellPath";
 import { CellRenderer } from "./CellRenderer";
 
 const PNL_LINES = ["revenue", "cost_of_revenue", "gross_profit", "sga", "rd", "other_opex", "operating_expenses",
@@ -15,7 +16,7 @@ const CF_LINES = ["net_income_cf", "depreciation_amortization_cf", "delta_accoun
                   "free_cash_flow", "debt_issued", "debt_repaid", "dividends_paid", "buybacks", "net_change_in_cash"];
 
 function StmtTable({ title, lines, stmt, state, focused, onFocus, onEdit }: {
-  title: string; lines: string[]; stmt: "income_statement" | "balance_sheet" | "cash_flow";
+  title: string; lines: string[]; stmt: Statement;
   state: ModelState;
   focused: string | null;
   onFocus: (path: string) => void;
@@ -41,7 +42,7 @@ function StmtTable({ title, lines, stmt, state, focused, onFocus, onEdit }: {
               <tr key={li} className="border-t border-[var(--border)]">
                 <td className="sticky left-0 bg-[var(--surface)] text-left text-xs text-[var(--text)] px-6 py-1">{li}</td>
                 {state.periods.map((p) => {
-                  const path = `${stmt}.${li}.${p.label}`;
+                  const path = toWire(statementPath(stmt, li, p.label));
                   return <CellRenderer key={path} cell={state[stmt][li]?.[p.label]} cellPath={path}
                                        focused={focused === path} onFocus={onFocus} onCommitEdit={onEdit}
                                        editable={!p.is_historical} />;

@@ -6,6 +6,12 @@ from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
+from backend.app.models.cell_path import (
+    AssumptionPath,
+    DriverPath,
+    StatementCellPath,
+    parse as parse_cell_path,
+)
 from backend.app.models.ticker_model import TickerModel
 from backend.app.models.ticker_model_draft import TickerModelDraft
 from backend.app.models.model_state import ModelState
@@ -87,39 +93,36 @@ class DraftEditRequest(_BM):
 
 
 def _apply_edit(state_dict: dict, edit: DraftEditRequest) -> dict:
-    """Mutate state JSON dict in place, returning the mutated dict."""
-    parts = edit.cell_path.split(".")
-    if parts[0] == "drivers" and len(parts) == 3:
-        period, key = parts[1], parts[2]
-        state_dict["drivers"][period][key] = {
+    """Mutate state JSON dict in place, returning the mutated dict.
+
+    Raises ValueError on unknown cell_path shapes or registry keys.
+    """
+    path = parse_cell_path(edit.cell_path)
+    now = datetime.utcnow().isoformat()
+    if isinstance(path, DriverPath):
+        state_dict["drivers"][path.period][path.key] = {
             "value": edit.value,
             "source": edit.source or "driver",
             "formula": None,
             "citation_id": None,
-            "last_edited_at": datetime.utcnow().isoformat(),
+            "last_edited_at": now,
             "last_edited_by": "user",
         }
-    elif parts[0] in ("income_statement", "balance_sheet", "cash_flow") and len(parts) == 3:
-        stmt, line, period = parts
-        state_dict[stmt][line][period] = {
+    elif isinstance(path, StatementCellPath):
+        state_dict[path.statement.value][path.line][path.period] = {
             "value": edit.value,
             "source": edit.source or "override",
             "formula": None,
             "citation_id": None,
-            "last_edited_at": datetime.utcnow().isoformat(),
+            "last_edited_at": now,
             "last_edited_by": "user",
         }
-    elif parts[0] == "assumptions" and len(parts) == 2:
-        key = parts[1]
-        cur = state_dict["assumptions"][key]
-        if isinstance(cur, dict):
-            cur["value"] = edit.value
-            cur["last_edited_at"] = datetime.utcnow().isoformat()
-            cur["last_edited_by"] = "user"
-        else:
-            state_dict["assumptions"][key] = edit.value
-    else:
-        raise ValueError(f"unknown cell_path shape: {edit.cell_path}")
+    elif isinstance(path, AssumptionPath):
+        # AssumptionPath only accepts ModelCell-shaped keys (validated at parse).
+        cur = state_dict["assumptions"][path.key]
+        cur["value"] = edit.value
+        cur["last_edited_at"] = now
+        cur["last_edited_by"] = "user"
     return state_dict
 
 

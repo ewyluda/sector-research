@@ -98,20 +98,25 @@ class ModelState(BaseModel):
 # ---- Helpers used by services -----------------------------------------------
 
 def cell_path_pnl(line_item: str, period: str) -> str:
-    return f"income_statement.{line_item}.{period}"
+    from backend.app.models.cell_path import Statement, StatementCellPath
+    return str(StatementCellPath(Statement.INCOME, line_item, period))
 
 
 def cell_path_bs(line_item: str, period: str) -> str:
-    return f"balance_sheet.{line_item}.{period}"
+    from backend.app.models.cell_path import Statement, StatementCellPath
+    return str(StatementCellPath(Statement.BALANCE, line_item, period))
 
 
 def cell_path_cf(line_item: str, period: str) -> str:
-    return f"cash_flow.{line_item}.{period}"
+    from backend.app.models.cell_path import Statement, StatementCellPath
+    return str(StatementCellPath(Statement.CASH_FLOW, line_item, period))
 
 
 def cell_path_driver(period: str, driver_key: str) -> str:
-    return f"drivers.{period}.{driver_key}"
+    from backend.app.models.cell_path import DriverPath
+    return str(DriverPath(period, driver_key))
 
 
 def cell_path_assumption(key: str) -> str:
-    return f"assumptions.{key}"
+    from backend.app.models.cell_path import AssumptionPath
+    return str(AssumptionPath(key))
