@@ -7,6 +7,7 @@ import {
   themes as themesApi,
   readThroughs,
   earnings as earningsApi,
+  workspaceApi,
   type Health,
   type ReadThroughsByRun,
   type StatusBoardEntry,
@@ -474,6 +475,23 @@ export default function StatusPage() {
                     onArchive={() => archiveEntry(e.run_id)}
                     onUnarchive={() => unarchiveEntry(e.run_id)}
                   />
+                  <button
+                    type="button"
+                    onClick={async (ev) => {
+                      ev.stopPropagation();
+                      try {
+                        const { run_id } = await workspaceApi.kickOff(e.ticker);
+                        router.push(`/workspace/${run_id}`);
+                      } catch (err) {
+                        alert(`Workspace kick-off failed: ${err instanceof Error ? err.message : err}`);
+                      }
+                    }}
+                    title="Run workspace refresh for this ticker"
+                    className="absolute top-1/2 -translate-y-1/2 rounded bg-slate-700/40 px-2 py-0.5 text-xs text-slate-300 ring-1 ring-slate-600 hover:bg-slate-700/60 hover:ring-slate-500"
+                    style={{ right: items.length > 0 ? "8rem" : "3rem" }}
+                  >
+                    ↻ Workspace
+                  </button>
                   {items.length > 0 && (
                     <button
                       type="button"
