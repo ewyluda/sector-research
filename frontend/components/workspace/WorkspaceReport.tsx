@@ -10,6 +10,8 @@ import { VerdictBadge } from "./VerdictBadge";
 import { UpdateRefreshCard } from "./StepCards/UpdateRefreshCard";
 import { ResearchCard } from "./StepCards/ResearchCard";
 import { ValidationCard } from "./StepCards/ValidationCard";
+import { ChallengeCard } from "./StepCards/ChallengeCard";
+import { DifferentiationCard } from "./StepCards/DifferentiationCard";
 
 const STEP_LABELS: Record<WorkspaceStep, string> = {
   update_refresh:  "1. Update / Refresh",
@@ -165,6 +167,8 @@ function StepBody({ step, output, ticker }: { step: WorkspaceStep; output: any; 
   if (step === "update_refresh") return <UpdateRefreshCard output={output} />;
   if (step === "research") return <ResearchCard output={output} />;
   if (step === "validation") return <ValidationCard output={output} ticker={ticker} />;
+  if (step === "challenge") return <ChallengeCard output={output} />;
+  if (step === "differentiation") return <DifferentiationCard output={output} />;
   return (
     <pre className="mt-2 text-xs text-[var(--text-muted)] overflow-x-auto">
       {JSON.stringify(output, null, 2)}
