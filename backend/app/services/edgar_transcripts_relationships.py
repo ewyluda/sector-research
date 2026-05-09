@@ -32,6 +32,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
+from backend.app.models.citation import Citation
 from backend.app.models.filing import Relationship, TranscriptExtraction
 from backend.app.services.edgar_relationships import (
     SECTION_CHAR_BUDGET,
@@ -48,9 +49,9 @@ TRANSCRIPT_QUARTER_LIMIT = 4
 TRANSCRIPT_LOOKBACK_CAP = 8
 
 
-async def _fetch_recent_transcripts(
+async def fetch_recent_transcripts(
     fmp: FMPClient, ticker: str, limit: int = TRANSCRIPT_QUARTER_LIMIT
-) -> list[dict]:
+) -> tuple[list[dict], Citation | None]:
     """Walk back from the current quarter calling FMP's explicit
     `(year, quarter)` endpoint until we have `limit` transcripts or we've
     tried `TRANSCRIPT_LOOKBACK_CAP` quarters.
@@ -58,19 +59,24 @@ async def _fetch_recent_transcripts(
     The "latest" endpoint ignores the symbol parameter, so we cannot rely
     on it. The explicit endpoint also returns `quarter: None` even when
     requested, so each result is stamped with the requested (year, quarter).
+
+    Returns the entries plus a representative `Citation` from the first
+    successful FMP call (None when nothing returned).
     """
     out: list[dict] = []
+    citation: Citation | None = None
     now = datetime.utcnow()
     y, q = now.year, ((now.month - 1) // 3) + 1
     tried = 0
     while len(out) < limit and tried < TRANSCRIPT_LOOKBACK_CAP:
         try:
-            data, _ = await fmp.get_earnings_transcript(ticker, year=y, quarter=q)
+            data, cit = await fmp.get_earnings_transcript(ticker, year=y, quarter=q)
         except Exception as exc:
             logger.warning(
                 "FMP transcript fetch failed for %s %dQ%d: %r", ticker, y, q, exc
             )
             data = []
+            cit = None
         if data:
             entries = data if isinstance(data, list) else [data]
             for e in entries:
@@ -79,13 +85,15 @@ async def _fetch_recent_transcripts(
                 e["year"] = y
                 e["quarter"] = q
                 out.append(e)
+            if citation is None and cit is not None:
+                citation = cit
         # Walk back one quarter.
         q -= 1
         if q == 0:
             q = 4
             y -= 1
         tried += 1
-    return out[:limit]
+    return out[:limit], citation
 
 
 async def extract_ticker_transcript_relationships(
@@ -115,7 +123,7 @@ async def extract_ticker_transcript_relationships(
         "errors": [],
     }
 
-    transcripts = await _fetch_recent_transcripts(fmp, ticker, limit=TRANSCRIPT_QUARTER_LIMIT)
+    transcripts, _ = await fetch_recent_transcripts(fmp, ticker, limit=TRANSCRIPT_QUARTER_LIMIT)
     if not transcripts:
         summary["errors"].append(f"no transcripts available for {ticker}")
         return summary

@@ -25,6 +25,10 @@ from backend.app.clients.fred import FREDClient
 from backend.app.db import async_session
 from backend.app.graph.llm import complete, SONNET, HAIKU
 from backend.app.services.catalyst_promotion import promote_catalysts
+from backend.app.services.edgar_transcripts_relationships import (
+    TRANSCRIPT_QUARTER_LIMIT,
+    fetch_recent_transcripts,
+)
 from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput, TargetedAnswer
 from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
@@ -886,7 +890,7 @@ async def node_deep_dive(
                 fmp.get_dcf(state.ticker),
                 fmp.get_analyst_estimates(state.ticker, period="quarter", limit=8),
                 fmp.get_historical_price(state.ticker, one_year_ago, today_str),
-                fmp.get_earnings_transcript(state.ticker),
+                fetch_recent_transcripts(fmp, state.ticker, limit=TRANSCRIPT_QUARTER_LIMIT),
                 fmp.get_key_metrics_ttm(state.ticker),
                 fmp.get_financial_growth(state.ticker, period="quarter", limit=8),
             )
@@ -955,7 +959,8 @@ async def node_deep_dive(
         if transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
             logger.info("[%s] Running transcript analysis (%d transcripts)", state.ticker, len(transcripts))
             state.transcript_analysis = await run_transcript_analysis(state.ticker, transcripts, fmp)
-            state.add_citation(StateCitation.from_citation(transcript_cit))
+            if transcript_cit is not None:
+                state.add_citation(StateCitation.from_citation(transcript_cit))
         else:
             logger.info("[%s] No transcripts available, skipping analysis", state.ticker)
             state.transcript_analysis = None
