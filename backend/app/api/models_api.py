@@ -12,6 +12,7 @@ from backend.app.models.cell_path import (
     StatementCellPath,
     parse as parse_cell_path,
 )
+from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.models.ticker_model import TickerModel
 from backend.app.models.ticker_model_draft import TickerModelDraft
 from backend.app.models.model_state import ModelState
@@ -26,8 +27,7 @@ router = APIRouter(prefix="/api/models", tags=["models"])
 # ---------------------------------------------------------------------------
 
 @router.get("/{ticker}")
-async def get_model(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
-    ticker = ticker.upper()
+async def get_model(ticker: Ticker = Depends(TickerPath), db: AsyncSession = Depends(get_db)) -> dict:
     stmt = (
         select(TickerModel)
         .where(TickerModel.ticker == ticker)
@@ -62,9 +62,8 @@ async def get_model(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
 
 
 @router.post("/{ticker}/initialize")
-async def initialize(ticker: str, force: bool = False) -> dict:
+async def initialize(ticker: Ticker = Depends(TickerPath), force: bool = False) -> dict:
     """Seed (or re-seed if force=true) a model for the ticker."""
-    ticker = ticker.upper()
     try:
         row = await initialize_or_get_model(ticker, force=force)
     except ValueError as e:
@@ -127,8 +126,7 @@ def _apply_edit(state_dict: dict, edit: DraftEditRequest) -> dict:
 
 
 @router.put("/{ticker}/draft")
-async def put_draft(ticker: str, edit: DraftEditRequest, db: AsyncSession = Depends(get_db)) -> dict:
-    ticker = ticker.upper()
+async def put_draft(edit: DraftEditRequest, ticker: Ticker = Depends(TickerPath), db: AsyncSession = Depends(get_db)) -> dict:
     # Get current state: existing draft, else latest version
     draft = (
         await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
@@ -189,9 +187,10 @@ class SaveVersionRequest(_BM):
 
 @router.post("/{ticker}/save")
 async def save_version(
-    ticker: str, body: SaveVersionRequest, db: AsyncSession = Depends(get_db)
+    body: SaveVersionRequest,
+    ticker: Ticker = Depends(TickerPath),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
-    ticker = ticker.upper()
     draft = (
         await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
     ).scalar_one_or_none()
@@ -226,8 +225,7 @@ async def save_version(
 
 
 @router.delete("/{ticker}/draft")
-async def discard_draft(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
-    ticker = ticker.upper()
+async def discard_draft(ticker: Ticker = Depends(TickerPath), db: AsyncSession = Depends(get_db)) -> dict:
     draft = (
         await db.execute(select(TickerModelDraft).where(TickerModelDraft.ticker == ticker))
     ).scalar_one_or_none()
@@ -274,13 +272,12 @@ def _safe_solve_irr(state: ModelState, target: float):
 
 @router.get("/{ticker}/reverse-dcf")
 async def get_reverse_dcf(
-    ticker: str,
     request: Request,
+    ticker: Ticker = Depends(TickerPath),
     price: float | None = None,
     from_draft: bool = False,
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    ticker = ticker.upper()
     state_dict: dict | None = None
     if from_draft:
         draft = (
@@ -348,8 +345,7 @@ from backend.app.services.model_diff import diff_states  # noqa: E402
 
 
 @router.get("/{ticker}/versions")
-async def list_versions(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
-    ticker = ticker.upper()
+async def list_versions(ticker: Ticker = Depends(TickerPath), db: AsyncSession = Depends(get_db)) -> dict:
     rows = (
         await db.execute(
             select(TickerModel)
@@ -372,12 +368,11 @@ async def list_versions(ticker: str, db: AsyncSession = Depends(get_db)) -> dict
 
 @router.get("/{ticker}/versions/{version}/diff")
 async def version_diff(
-    ticker: str,
     version: int,
     against: int,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    ticker = ticker.upper()
     a = (
         await db.execute(
             select(TickerModel).where(

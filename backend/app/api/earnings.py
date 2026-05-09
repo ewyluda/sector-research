@@ -20,6 +20,7 @@ from backend.app.db import get_db
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.thesis_print_verdict import ThesisPrintVerdict
+from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.services.earnings_brief import compute_brief
 from backend.app.services.earnings_prints import index_earnings_prints
 from backend.app.services.earnings_verdict import compute_verdict
@@ -262,12 +263,12 @@ async def post_verdict(
 
 @router.get("/earnings/prints/{ticker}", response_model=list[EarningsPrintRow])
 async def get_prints_by_ticker(
-    ticker: str,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> list[EarningsPrintRow]:
     q = (
         select(EarningsPrint)
-        .where(EarningsPrint.ticker == ticker.upper())
+        .where(EarningsPrint.ticker == ticker)
         .order_by(EarningsPrint.earnings_date.desc())
         .limit(8)
     )
@@ -277,8 +278,8 @@ async def get_prints_by_ticker(
 
 @router.post("/earnings/refresh/{ticker}")
 async def post_refresh(
-    ticker: str,
     request: Request,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     fmp = request.app.state.fmp
@@ -288,4 +289,4 @@ async def post_refresh(
     except Exception:
         logger.exception("manual earnings refresh failed: %s", ticker)
         raise HTTPException(status_code=502, detail="refresh failed")
-    return {"updated": len(rows), "ticker": ticker.upper()}
+    return {"updated": len(rows), "ticker": ticker}

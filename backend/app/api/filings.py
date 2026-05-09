@@ -22,6 +22,7 @@ from backend.app.models.filing import (
     Relationship,
 )
 from backend.app.models.theme import Theme
+from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.services.counterparty_resolver import (
     list_unresolved_counterparties,
     resolve_batch,
@@ -122,7 +123,7 @@ class CompetitionResponse(BaseModel):
 
 
 @router.post("/filings/ingest/{ticker}")
-async def ingest_ticker(ticker: str, db: AsyncSession = Depends(get_db)) -> dict:
+async def ingest_ticker(ticker: Ticker = Depends(TickerPath), db: AsyncSession = Depends(get_db)) -> dict:
     """Manually trigger section ingest for a single ticker.
 
     Fetches the latest 10-K, 10-Q, and DEF 14A, extracts narrative sections,
@@ -160,10 +161,10 @@ async def ingest_batch(
 
 @router.get("/filings/{ticker}")
 async def list_filings_for_ticker(
-    ticker: str, db: AsyncSession = Depends(get_db)
+    ticker: Ticker = Depends(TickerPath),
+    db: AsyncSession = Depends(get_db),
 ) -> list[FilingRecord]:
     """List filings with ingested sections for a ticker."""
-    ticker = ticker.upper()
     rows = await db.execute(
         select(Filing)
         .where(Filing.ticker == ticker)
@@ -206,8 +207,8 @@ async def list_filings_for_ticker(
 
 @router.post("/filings/extract-relationships/{ticker}")
 async def extract_relationships_for_ticker(
-    ticker: str,
     force: bool = False,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Run Haiku relationship extraction on every ingested section for the ticker.
@@ -235,9 +236,9 @@ async def extract_relationships_batch(
 
 @router.post("/transcripts/extract-relationships/{ticker}")
 async def extract_transcript_relationships_for_ticker(
-    ticker: str,
     request: Request,
     force: bool = False,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Run Haiku relationship extraction over the last 4 quarters of
@@ -255,8 +256,8 @@ async def extract_transcript_relationships_for_ticker(
 
 @router.post("/filings/extract-competition/{ticker}")
 async def extract_competition_for_ticker(
-    ticker: str,
     force: bool = False,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Run Haiku competition extraction on the latest 10-K for the ticker.
@@ -299,14 +300,14 @@ class RelationshipRecord(BaseModel):
 
 @router.get("/filings/{ticker}/relationships")
 async def list_relationships_for_ticker(
-    ticker: str,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> list[RelationshipRecord]:
     """Return all extracted relationships for a ticker, joined with filing metadata."""
     rows = await db.execute(
         select(Relationship, Filing)
         .join(Filing, Filing.id == Relationship.filing_id)
-        .where(Filing.ticker == ticker.upper())
+        .where(Filing.ticker == ticker)
         .order_by(Filing.filing_date.desc(), Relationship.counterparty_name)
     )
     out: list[RelationshipRecord] = []
@@ -332,9 +333,9 @@ async def list_relationships_for_ticker(
 
 @router.get("/filings/{ticker}/{accession_number}/sections/{section_key}")
 async def get_filing_section(
-    ticker: str,
     accession_number: str,
     section_key: str,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> FilingSectionText:
     """Fetch the full text of a single section."""
@@ -342,7 +343,7 @@ async def get_filing_section(
         select(FilingSection, Filing)
         .join(Filing, Filing.id == FilingSection.filing_id)
         .where(
-            Filing.ticker == ticker.upper(),
+            Filing.ticker == ticker,
             Filing.accession_number == accession_number,
             FilingSection.section_key == section_key,
         )
@@ -390,7 +391,8 @@ class ManualAliasRequest(BaseModel):
 
 @router.post("/relationships/resolve/{ticker}")
 async def resolve_ticker(
-    ticker: str, db: AsyncSession = Depends(get_db),
+    ticker: Ticker = Depends(TickerPath),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Resolve unresolved counterparties for a ticker via alias reuse,
     exact match, and ≥95 fuzzy match against EDGAR's company universe.
@@ -498,8 +500,8 @@ class SupplyChainGraphResponse(BaseModel):
 
 @router.get("/relationships/graph/{ticker}")
 async def get_ticker_graph(
-    ticker: str,
     direction: str = "both",
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> SupplyChainGraphResponse:
     """Return a 1-hop supply-chain graph centered on the ticker.
@@ -550,7 +552,7 @@ async def reconcile_all_bilaterals(db: AsyncSession = Depends(get_db)) -> dict:
 
 @router.get("/competition/{ticker}")
 async def get_competition(
-    ticker: str,
+    ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> CompetitionResponse:
     """Return the structured Competition view for a ticker.
@@ -558,12 +560,10 @@ async def get_competition(
     Reads from the latest 10-K's filing_segments + competitor_landscape rows.
     Returns `extracted_at: null` when extraction has never run.
     """
-    ticker_upper = ticker.upper()
-
     filing = (
         await db.execute(
             select(Filing)
-            .where(Filing.ticker == ticker_upper, Filing.form_type == "10-K")
+            .where(Filing.ticker == ticker, Filing.form_type == "10-K")
             .order_by(Filing.filing_date.desc())
             .limit(1)
         )
@@ -571,7 +571,7 @@ async def get_competition(
 
     if filing is None:
         return CompetitionResponse(
-            ticker=ticker_upper, filing=None, extracted_at=None, segments=[],
+            ticker=ticker, filing=None, extracted_at=None, segments=[],
         )
 
     section = (
@@ -603,7 +603,7 @@ async def get_competition(
 
     if extracted_at is None:
         return CompetitionResponse(
-            ticker=ticker_upper, filing=filing_response,
+            ticker=ticker, filing=filing_response,
             extracted_at=None, segments=[],
         )
 
@@ -663,7 +663,7 @@ async def get_competition(
         ))
 
     return CompetitionResponse(
-        ticker=ticker_upper,
+        ticker=ticker,
         filing=filing_response,
         extracted_at=extracted_at,
         segments=segments_out,

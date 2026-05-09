@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
+from backend.app.models.ticker import Ticker, TickerPath
 
 router = APIRouter(tags=["fanouts"])
 
@@ -34,9 +35,9 @@ async def start_theme_fanout(
 
 @router.post("/tickers/{ticker}/relationships/fanout", status_code=202)
 async def start_ticker_fanout(
-    ticker: str,
     request: Request,
     force: bool = Query(default=False),
+    ticker: Ticker = Depends(TickerPath),
 ) -> dict:
     """Kick off a single-ticker fan-out."""
     fanout = request.app.state.fanout
