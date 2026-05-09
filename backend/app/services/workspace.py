@@ -89,7 +89,7 @@ class WorkspaceService:
         rr = (await db.execute(
             select(ResearchRun)
             .where(ResearchRun.ticker == ticker, ResearchRun.status == "completed")
-            .order_by(ResearchRun.completed_at.desc())
+            .order_by(ResearchRun.updated_at.desc())
             .limit(1)
         )).scalar_one_or_none()
         if rr is None:
