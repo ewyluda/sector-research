@@ -7,6 +7,7 @@ import {
   type WorkspaceStep,
 } from "@/lib/api";
 import { VerdictBadge } from "./VerdictBadge";
+import { UpdateRefreshCard } from "./StepCards/UpdateRefreshCard";
 
 const STEP_LABELS: Record<WorkspaceStep, string> = {
   update_refresh:  "1. Update / Refresh",
@@ -148,7 +149,7 @@ function StepShell({
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function StepBody({ output }: { step: WorkspaceStep; output: any }) {
+function StepBody({ step, output }: { step: WorkspaceStep; output: any }) {
   // Step-specific cards land in Tasks 8.3–8.6. For now: JSON dump.
   if (output?.error) {
     return (
@@ -157,6 +158,7 @@ function StepBody({ output }: { step: WorkspaceStep; output: any }) {
       </pre>
     );
   }
+  if (step === "update_refresh") return <UpdateRefreshCard output={output} />;
   return (
     <pre className="mt-2 text-xs text-[var(--text-muted)] overflow-x-auto">
       {JSON.stringify(output, null, 2)}
