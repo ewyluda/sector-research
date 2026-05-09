@@ -9,6 +9,7 @@ import {
 import { VerdictBadge } from "./VerdictBadge";
 import { UpdateRefreshCard } from "./StepCards/UpdateRefreshCard";
 import { ResearchCard } from "./StepCards/ResearchCard";
+import { ValidationCard } from "./StepCards/ValidationCard";
 
 const STEP_LABELS: Record<WorkspaceStep, string> = {
   update_refresh:  "1. Update / Refresh",
@@ -112,6 +113,7 @@ export function WorkspaceReport({ runId }: { runId: string }) {
             output={stepOutputs[step]}
             failure={stepFailures[step]}
             step={step}
+            ticker={run.ticker}
           />
         ))}
       </div>
@@ -125,6 +127,7 @@ function StepShell({
   output,
   failure,
   step,
+  ticker,
 }: {
   label: string;
   isActive: boolean;
@@ -132,6 +135,7 @@ function StepShell({
   output: any;
   failure?: string;
   step: WorkspaceStep;
+  ticker: string;
 }) {
   return (
     <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -144,14 +148,13 @@ function StepShell({
           <span className="text-xs text-red-400">failed: {failure}</span>
         )}
       </header>
-      {output !== undefined && <StepBody step={step} output={output} />}
+      {output !== undefined && <StepBody step={step} output={output} ticker={ticker} />}
     </section>
   );
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function StepBody({ step, output }: { step: WorkspaceStep; output: any }) {
-  // Step-specific cards land in Tasks 8.3–8.6. For now: JSON dump.
+function StepBody({ step, output, ticker }: { step: WorkspaceStep; output: any; ticker: string }) {
   if (output?.error) {
     return (
       <pre className="mt-2 text-xs text-red-400 overflow-x-auto">
@@ -161,6 +164,7 @@ function StepBody({ step, output }: { step: WorkspaceStep; output: any }) {
   }
   if (step === "update_refresh") return <UpdateRefreshCard output={output} />;
   if (step === "research") return <ResearchCard output={output} />;
+  if (step === "validation") return <ValidationCard output={output} ticker={ticker} />;
   return (
     <pre className="mt-2 text-xs text-[var(--text-muted)] overflow-x-auto">
       {JSON.stringify(output, null, 2)}
