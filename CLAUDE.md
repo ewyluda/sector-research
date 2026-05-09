@@ -100,7 +100,7 @@ cd backend && alembic upgrade head
 cd backend && alembic revision --autogenerate -m "description"
 ```
 
-No test framework is configured for the backend.
+Backend tests live in `backend/tests/` and run via Python's stdlib `unittest`. Invoke as `python -m unittest backend.tests.<module>` from project root with the venv active. No pytest, no coverage harness.
 
 **Frontend:**
 
@@ -243,7 +243,7 @@ Editable 5-year financial model per ticker, AI-seeded from the latest completed 
 
 - `GET /{ticker}` — latest version + draft (or both null).
 - `POST /{ticker}/initialize?force=` — seed (or re-seed) baseline. 400 on no completed `research_run`.
-- `PUT /{ticker}/draft` — apply one cell edit (`cell_path` = `drivers.<period>.<key>` or `<stmt>.<line>.<period>` or `assumptions.<key>`), recompute, persist into `ticker_model_drafts` (idempotent per ticker — at most one draft row). 422 on bad `cell_path`, 409 on `ModelBalanceError`.
+- `PUT /{ticker}/draft` — apply one cell edit (`cell_path` = `drivers.<period>.<key>` or `<stmt>.<line>.<period>` or `assumptions.<key>`), recompute, persist into `ticker_model_drafts` (idempotent per ticker — at most one draft row). 422 on bad `cell_path`, 409 on `ModelBalanceError`. The `cell_path` string is parsed/validated by `backend/app/models/cell_path.py` (typed `CellPath` discriminated union — `DriverPath` | `StatementCellPath` | `AssumptionPath`); frontend builds the string via `frontend/lib/cellPath.ts`. `AssumptionPath` is intentionally restricted to ModelCell-shaped keys (`discount_rate`, `terminal_multiple`, `perpetuity_growth`, `tax_rate`); the categorical assumptions (`terminal_method`, `plug_priority`) are not editable through this endpoint and need a separate typed surface.
 - `POST /{ticker}/save` — promote draft → new `ticker_models` version, delete draft.
 - `DELETE /{ticker}/draft` — discard.
 - `GET /{ticker}/reverse-dcf?price=&from_draft=` — single payload: `implied_drivers` (3 scalar bisection solves), `implied_irr`, `sensitivity_grids` (3 × 21×21), `thesis_vs_priced_in`. `price` defaults to a live FMP quote via the shared `app.state.fmp` singleton (do NOT instantiate `FMPClient()` here). Wraps `Request` to access `request.app.state.fmp`.

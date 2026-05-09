@@ -6,15 +6,17 @@ A personal stock research application combining structured equity data with soci
 
 ## What It Does
 
-Four core workflows:
+Five core workflows:
 
 **Discovery** — Open a curated investment theme (e.g., "AI Power Infrastructure") and see every company in that space ranked by signal strength. FMP screener data and X mention velocity surface unknown players alongside known ones. Combined signal score = 40% X velocity + 40% FMP fundamental quality + 20% discovery score.
 
-**Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. AI automation on each phase, human-in-the-loop validation at three interrupt gates, citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
+**Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. Phases 1-5 (quick_screen → deep_dive → thesis_construction → risk_stress_test) run continuously after `POST /api/runs`; risk_stress_test can loop back to deep_dive when `loop_required` is set (capped at 2 loops). Phase 6 (position_monitor) is the only manually-gated step — triggered via `POST /api/runs/{id}/advance` once the prior phases complete. Citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
 
 **Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a supply-chain graph card in the deep-dive dashboard, a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
 
 **Model** — Editable 5-year financial model per ticker, AI-seeded from the latest completed research run. Sonnet emits forecast drivers, the balancing engine recomputes the full 3-statement P&L / BS / CF on every cell edit (plug into `retained_earnings` keeps A=L+E), versions persist to `ticker_models` with a single working draft per ticker. The reverse-DCF tab solves implied revenue growth / EBIT margin / terminal multiple from the live FMP quote, computes the implied IRR, and renders three 21×21 sensitivity heatmaps plus a thesis-vs-priced-in summary. Cell edits, history diff (cell-path-keyed), and a what-if scratch panel (illustrative sliders).
+
+**Status Board** — Live tracker of every active thesis across all themes. Aggregates the latest completed run per `(ticker, theme)` with health badges (Healthy / Imminent / Stale / Triggered / Broken), nearest-catalyst proximity, and a kill-criteria summary you can toggle armed/triggered inline. Polls every 60s while the tab is visible. The post-thesis fleet-management view — what to pay attention to and what's quietly aging out. Companion `/catalysts` and `/questions` pages surface the calendar and open-question log feeding the same data.
 
 ---
 
@@ -74,39 +76,36 @@ Four core workflows:
 ## The Pipeline
 
 ```
-START
+START (POST /api/runs)
   │
   ▼
-[quick_screen]          ← Phases 1+2: FMP data pull + scoring
+[quick_screen]          ← Phase 1: FMP data pull + scoring (Haiku)
   │
   ▼
-⚡ INTERRUPT             ← GO / WATCHLIST / PASS
-  │ (GO)
-  ▼
-[deep_dive]             ← Phase 3: 9 categories in parallel
+[deep_dive]             ← Phase 2: 9 categories in parallel (Sonnet)
   │
   ▼
-⚡ INTERRUPT             ← Review category reports
+[thesis_construction]   ← Phase 3 (Sonnet)
   │
   ▼
-[thesis_construction]   ← Phase 4
+[risk_stress_test]      ← Phase 4 (Sonnet)
+  │
+  ├──(loop_required & loop_count ≤ 2)──► [deep_dive] ← targeted loop back
   │
   ▼
-[risk_stress_test]      ← Phase 5
-  │
-  ├──(risk/reward < 2:1)──► [deep_dive] ← targeted loop back
+COMPLETED  ← phases 1-5 run continuously, no interrupts
   │
   ▼
-⚡ INTERRUPT             ← Approve thesis + risk register
+⚡ MANUAL ADVANCE       ← POST /api/runs/{id}/advance (action="approve")
   │
   ▼
-[position_monitor]      ← Phase 6: entry zones, sizing, stops
+[position_monitor]      ← Phase 6: entry zones, sizing, stops (Haiku)
   │
   ▼
 END
 ```
 
-Phases 1–2 use Claude Haiku. Phases 3–5 use Claude Sonnet. Phase 6 uses Claude Haiku. Every data point carries a `Citation` — source name, URL, tier (1 = authoritative, 2 = qualitative), and retrieval timestamp.
+Every data point carries a `Citation` — source name, URL, tier (1 = authoritative, 2 = qualitative), and retrieval timestamp.
 
 ---
 
