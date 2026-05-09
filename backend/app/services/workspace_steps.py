@@ -498,9 +498,8 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
         except Exception as exc:  # noqa: BLE001
             log.exception("kill_criterion writeback failed for ordinal %s: %s", w.ordinal, exc)
 
-    # Apply catalyst status updates (best-effort per row).
-    if updates:
-        await _apply_catalyst_updates(ctx.db, updates)
+    # Catalyst writebacks deferred to v1.5 (Catalyst.status column not yet present);
+    # recommendations surface in catalyst_updates output for UI.
 
     return ChallengeOutput(
         stress_test_summary=payload.get("stress_test_summary", "(no summary)"),
@@ -508,24 +507,6 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
         catalyst_updates=updates,
         proposed_verdict=verdict,
     )
-
-
-async def _apply_catalyst_updates(db, updates) -> None:
-    """Update catalyst status rows. Best-effort: per-row exceptions log and continue."""
-    import logging
-    from sqlalchemy import update as sql_update
-    from backend.app.models.catalyst import Catalyst
-
-    log = logging.getLogger(__name__)
-    for u in updates:
-        try:
-            await db.execute(
-                sql_update(Catalyst)
-                .where(Catalyst.id == u.catalyst_id)
-                .values(status=u.new_status)
-            )
-        except Exception as exc:  # noqa: BLE001
-            log.exception("catalyst update failed for %s: %s", u.catalyst_id, exc)
 
 
 async def step_differentiation(ctx: WorkspaceContext) -> DifferentiationOutput:
