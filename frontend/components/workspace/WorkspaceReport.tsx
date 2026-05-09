@@ -101,7 +101,7 @@ export function WorkspaceReport({ runId }: { runId: string }) {
       </header>
 
       {error && (
-        <div className="rounded border border-red-500/30 bg-red-500/10 text-red-400 p-3 text-sm">
+        <div className="rounded border border-[var(--error-border)] bg-[var(--error-bg)] text-[var(--error)] p-3 text-sm">
           Run failed: {error}
         </div>
       )}
@@ -147,7 +147,7 @@ function StepShell({
           <span className="text-xs text-[var(--text-muted)]">running…</span>
         )}
         {failure && (
-          <span className="text-xs text-red-400">failed: {failure}</span>
+          <span className="text-xs text-[var(--error)]">failed: {failure}</span>
         )}
       </header>
       {output !== undefined && <StepBody step={step} output={output} ticker={ticker} />}
@@ -159,7 +159,7 @@ function StepShell({
 function StepBody({ step, output, ticker }: { step: WorkspaceStep; output: any; ticker: string }) {
   if (output?.error) {
     return (
-      <pre className="mt-2 text-xs text-red-400 overflow-x-auto">
+      <pre className="mt-2 text-xs text-[var(--error)] overflow-x-auto">
         {output.error}
       </pre>
     );

@@ -1,11 +1,11 @@
 import type { WorkspaceVerdict } from "@/lib/api";
 
-// Mirrors the HealthPill palette in frontend/app/status/page.tsx
+// Uses app CSS variable tokens to match the warm light palette.
 const PALETTE: Record<WorkspaceVerdict, string> = {
-  healthy:   "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-  imminent:  "bg-blue-500/10 text-blue-400 border-blue-500/30",
-  triggered: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-  broken:    "bg-red-500/10 text-red-400 border-red-500/30",
+  healthy:   "bg-[var(--accent-bg)] text-[var(--success)] border-[var(--success)]",
+  imminent:  "bg-[var(--accent-bg)] text-[var(--primary)] border-[var(--primary)]",
+  triggered: "bg-[var(--accent-bg)] text-[var(--warning)] border-[var(--warning)]",
+  broken:    "bg-[var(--error-bg)] text-[var(--error)] border-[var(--error-border)]",
 };
 
 const LABEL: Record<WorkspaceVerdict, string> = {

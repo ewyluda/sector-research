@@ -6,14 +6,14 @@ export function UpdateRefreshCard({ output }: { output: UpdateRefreshOutput }) {
 
   return (
     <div className="space-y-3 mt-2">
-      <p className="text-sm text-slate-300">{output.summary}</p>
+      <p className="text-sm text-[var(--text)]">{output.summary}</p>
 
-      <div className="text-xs text-slate-400">
+      <div className="text-xs text-[var(--text-muted)]">
         v{output.version_before} → v{output.version_after ?? "—"} · {output.changed_cells.length} cells changed · {output.new_filings.length} new filings
       </div>
 
       {output.new_filings.length > 0 && (
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-[var(--text-muted)]">
           New filings:{" "}
           {output.new_filings
             .map((f) => `${f.form} ${f.accession}`)
@@ -30,23 +30,23 @@ export function UpdateRefreshCard({ output }: { output: UpdateRefreshOutput }) {
             return (
               <details
                 key={sec}
-                className="rounded border border-slate-700 bg-slate-900/50 p-2"
+                className="rounded border border-[var(--border)] bg-[var(--surface)] p-2"
               >
-                <summary className="cursor-pointer text-sm font-medium text-slate-200 hover:text-slate-100">
+                <summary className="cursor-pointer text-sm font-medium text-[var(--text)] hover:text-[var(--primary)]">
                   {sec} ({rows.length})
                 </summary>
-                <table className="mt-2 w-full text-xs text-slate-300">
+                <table className="mt-2 w-full text-xs text-[var(--text)]">
                   <thead>
-                    <tr className="border-b border-slate-700">
-                      <th className="text-left py-1 px-1 font-semibold text-slate-400">cell</th>
-                      <th className="text-right py-1 px-1 font-semibold text-slate-400">prior</th>
-                      <th className="text-right py-1 px-1 font-semibold text-slate-400">new</th>
-                      <th className="text-right py-1 px-1 font-semibold text-slate-400">Δ</th>
+                    <tr className="border-b border-[var(--border)]">
+                      <th className="text-left py-1 px-1 font-semibold text-[var(--text-muted)]">cell</th>
+                      <th className="text-right py-1 px-1 font-semibold text-[var(--text-muted)]">prior</th>
+                      <th className="text-right py-1 px-1 font-semibold text-[var(--text-muted)]">new</th>
+                      <th className="text-right py-1 px-1 font-semibold text-[var(--text-muted)]">Δ</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r) => (
-                      <tr key={r.cell_path} className="border-b border-slate-800">
+                      <tr key={r.cell_path} className="border-b border-[var(--border)]">
                         <td className="font-mono py-1 px-1">{r.cell_path}</td>
                         <td className="text-right py-1 px-1">{fmt(r.prior_value)}</td>
                         <td className="text-right py-1 px-1">{fmt(r.new_value)}</td>

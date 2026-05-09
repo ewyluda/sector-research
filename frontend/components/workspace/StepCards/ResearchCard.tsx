@@ -3,15 +3,15 @@
 import type { ResearchOutput } from "@/lib/api";
 
 const CLASS_COLOR: Record<string, string> = {
-  confirms_thesis: "text-emerald-400",
-  threatens_thesis: "text-red-400",
-  new_unknown: "text-amber-400",
+  confirms_thesis: "text-[var(--success)]",
+  threatens_thesis: "text-[var(--error)]",
+  new_unknown: "text-[var(--warning)]",
 };
 
 export function ResearchCard({ output }: { output: ResearchOutput }) {
   return (
     <div className="space-y-3 mt-2">
-      <p className="text-sm text-slate-300 whitespace-pre-line">{output.summary}</p>
+      <p className="text-sm text-[var(--text)] whitespace-pre-line">{output.summary}</p>
 
       {output.highlights.length > 0 && (
         <ul className="space-y-1">
@@ -20,21 +20,21 @@ export function ResearchCard({ output }: { output: ResearchOutput }) {
               <span className={`text-xs uppercase font-semibold ${CLASS_COLOR[h.classification]}`}>
                 {h.classification.replace(/_/g, " ")}
               </span>
-              <span className="text-slate-300">{h.text}</span>
+              <span className="text-[var(--text)]">{h.text}</span>
             </li>
           ))}
         </ul>
       )}
 
       {output.new_open_questions.length > 0 && (
-        <details className="rounded border border-slate-700 bg-slate-900/50 p-2">
-          <summary className="text-sm font-medium text-slate-200 hover:text-slate-100 cursor-pointer">
+        <details className="rounded border border-[var(--border)] bg-[var(--surface)] p-2">
+          <summary className="text-sm font-medium text-[var(--text)] hover:text-[var(--primary)] cursor-pointer">
             New open questions ({output.new_open_questions.length})
           </summary>
           <ul className="mt-2 space-y-1">
             {output.new_open_questions.map((q, i) => (
-              <li key={i} className="text-sm text-slate-300">
-                <span className="text-xs px-1 rounded mr-2 bg-slate-800 text-slate-400">
+              <li key={i} className="text-sm text-[var(--text)]">
+                <span className="text-xs px-1 rounded mr-2 bg-[var(--surface-alt)] text-[var(--text-muted)]">
                   {q.classification}
                 </span>
                 {q.question}
