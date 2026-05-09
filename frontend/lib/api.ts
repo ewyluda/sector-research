@@ -1394,3 +1394,157 @@ export async function getModelDiff(ticker: string, version: number, against: num
     `/api/models/${ticker}/versions/${version}/diff?against=${against}`
   );
 }
+
+// ----- Workspace -------------------------------------------------------
+
+export type WorkspaceVerdict = "healthy" | "imminent" | "triggered" | "broken";
+export type WorkspaceStep =
+  | "update_refresh"
+  | "research"
+  | "validation"
+  | "challenge"
+  | "differentiation";
+
+export interface ChangedCell {
+  cell_path: string;
+  prior_value: number | null;
+  new_value: number | null;
+  source: string;
+  citation_id: string | null;
+}
+
+export interface UpdateRefreshOutput {
+  version_before: number;
+  version_after: number | null;
+  changed_cells: ChangedCell[];
+  new_filings: { form: string; accession: string; fetched_at: string }[];
+  consensus_delta: null | { metric: string; period: string; prior_consensus: number | null; new_consensus: number | null; delta_pct: number | null }[];
+  summary: string;
+}
+
+export interface Highlight {
+  text: string;
+  classification: "confirms_thesis" | "threatens_thesis" | "new_unknown";
+  citation_id: string | null;
+}
+export interface ResearchOutput {
+  highlights: Highlight[];
+  new_open_questions: { question: string; surfaced_by: string; classification: string }[];
+  summary: string;
+}
+
+export interface ImpliedDriver {
+  dimension: string;
+  implied_value: number;
+  baseline_value: number;
+}
+export interface SensitivityGrid {
+  dim_x: string; dim_y: string;
+  x_axis: number[]; y_axis: number[];
+  values: number[][];
+}
+export interface ThesisVsPriced {
+  metric: string; thesis_value: number; priced_in_value: number; delta_pct: number;
+}
+export interface ValidationOutput {
+  implied_drivers: ImpliedDriver[];
+  implied_irr: number | null;
+  sensitivity_grids: SensitivityGrid[];
+  thesis_vs_priced_in: ThesisVsPriced[];
+  current_price: number;
+  citation_ids: string[];
+}
+
+export interface KillCriterionWrite {
+  ordinal: number;
+  status: "armed" | "triggered" | "resolved";
+  note: string | null;
+}
+export interface CatalystUpdate {
+  catalyst_id: string;
+  new_status: "still_pending" | "resolved" | "missed";
+  note: string | null;
+}
+export interface ChallengeOutput {
+  stress_test_summary: string;
+  kill_criterion_writes: KillCriterionWrite[];
+  catalyst_updates: CatalystUpdate[];
+  proposed_verdict: WorkspaceVerdict;
+}
+
+export interface PeerCompRow {
+  ticker: string;
+  pe: number | null; ev_ebitda: number | null; p_b: number | null;
+  p_fcf: number | null; p_s: number | null; roe: number | null;
+  revenue_yoy: number | null; eps_yoy: number | null;
+  gross_margin: number | null; ebitda_margin: number | null;
+}
+export interface PeerCompTable {
+  focus_ticker: string;
+  rows: PeerCompRow[];
+  median: PeerCompRow;
+  delta_vs_median_pct: PeerCompRow;
+}
+export interface DifferentiationOutput {
+  peer_comp: PeerCompTable | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  read_throughs: any[];
+  per_peer_errors: { peer_ticker: string; error_message: string }[];
+}
+
+export interface WorkspaceRun {
+  id: string;
+  ticker: string;
+  parent_research_run_id: string | null;
+  ticker_model_version_before: number;
+  ticker_model_version_after: number | null;
+  status: "running" | "complete" | "failed";
+  verdict: WorkspaceVerdict | null;
+  step_outputs: {
+    update_refresh?: UpdateRefreshOutput | { error: string };
+    research?: ResearchOutput | { error: string };
+    validation?: ValidationOutput | { error: string };
+    challenge?: ChallengeOutput | { error: string };
+    differentiation?: DifferentiationOutput | { error: string };
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  citations: any[];
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type WorkspaceSSE =
+  | { type: "workspace_run_start"; run_id: string; ticker: string }
+  | { type: "step_start"; step: WorkspaceStep }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  | { type: "step_complete"; step: WorkspaceStep; output: any }
+  | { type: "step_failed"; step: WorkspaceStep; error: string }
+  | { type: "workspace_run_complete"; verdict: WorkspaceVerdict | null; version_after: number | null }
+  | { type: "workspace_run_failed"; error: string };
+
+export const workspaceApi = {
+  kickOff: async (ticker: string): Promise<{ run_id: string }> => {
+    const r = await fetch(`${BASE}/api/workspace/${encodeURIComponent(ticker)}/runs`, {
+      method: "POST",
+    });
+    if (!r.ok) throw new Error(`workspace kick-off failed: ${r.status} ${await r.text()}`);
+    return r.json();
+  },
+  get: async (runId: string): Promise<WorkspaceRun> => {
+    const r = await fetch(`${BASE}/api/workspace/runs/${runId}`);
+    if (!r.ok) throw new Error(`workspace get failed: ${r.status}`);
+    return r.json();
+  },
+  history: async (ticker: string): Promise<WorkspaceRun[]> => {
+    const r = await fetch(`${BASE}/api/workspace/${encodeURIComponent(ticker)}/history`);
+    if (!r.ok) throw new Error(`workspace history failed: ${r.status}`);
+    return r.json();
+  },
+  recent: async (): Promise<WorkspaceRun[]> => {
+    const r = await fetch(`${BASE}/api/workspace/recent`);
+    if (!r.ok) throw new Error(`workspace recent failed: ${r.status}`);
+    return r.json();
+  },
+  streamUrl: (runId: string) => `${BASE}/api/workspace/runs/${runId}/stream`,
+};
