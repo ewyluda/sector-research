@@ -11,9 +11,16 @@ from backend.app.models.workspace_schemas import (
     ResearchOutput, ValidationOutput,
     ChallengeOutput, DifferentiationOutput,
     Highlight, OpenQuestionDelta,
+    ImpliedDriver, SensitivityGrid as WSSensitivityGrid, ThesisVsPriced,
 )
 from backend.app.graph.llm import complete as anthropic_complete, HAIKU
 from backend.app.graph.workspace_prompts import RESEARCH_SYSTEM, RESEARCH_USER_TEMPLATE
+from backend.app.services.reverse_dcf import (
+    solve_implied_driver,
+    solve_implied_irr,
+    sensitivity_grid,
+    thesis_vs_priced_in,
+)
 
 
 def _fmp_period_label(row: dict) -> str | None:
@@ -94,6 +101,30 @@ _CF_FIELD_MAP: dict[str, str] = {
     "capitalExpenditure": "capex",
     "freeCashFlow": "free_cash_flow",
 }
+
+
+async def _fetch_live_price(fmp, ticker: str) -> float:
+    """Pull current price from FMP. Returns 0.0 on any error so callers can fall back gracefully."""
+    try:
+        quote, _citation = await fmp.get_quote(ticker)
+        return float((quote.get("price") if quote else 0.0) or 0.0)
+    except Exception:
+        return 0.0
+
+
+def _baseline_value_for_dim(state, dim: str) -> float:
+    """Return the average forecast value for dim, or 0.0 if unavailable."""
+    from backend.app.models.model_state import ModelState
+    forecast = [p for p in state.periods if not p.is_historical]
+    if dim == "terminal_multiple":
+        cell = state.assumptions.terminal_multiple
+        return cell.value or 0.0 if cell is not None else 0.0
+    vals = [
+        state.drivers.get(p.label, {}).get(dim, None)
+        for p in forecast
+    ]
+    nums = [c.value for c in vals if c is not None and c.value is not None]
+    return sum(nums) / len(nums) if nums else 0.0
 
 
 async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
@@ -299,7 +330,101 @@ async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
 
 
 async def step_validation(ctx: WorkspaceContext) -> ValidationOutput:
-    raise NotImplementedError("Phase 4")
+    """Step 3: re-run reverse-DCF against the freshly updated model (post-Step-1 version)."""
+    from backend.app.models.model_state import ModelState
+    from backend.app.models.ticker_model import TickerModel
+    from sqlalchemy import select, desc
+
+    # 1. Load the LATEST ticker_models row (post-Step-1 if it created a new version).
+    row = (
+        await ctx.db.execute(
+            select(TickerModel)
+            .where(TickerModel.ticker == ctx.ticker)
+            .order_by(desc(TickerModel.version))
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if row is None:
+        return ValidationOutput(current_price=0.0)
+
+    state = ModelState.model_validate(row.state)
+
+    # 2. Fetch live price.
+    price = await _fetch_live_price(ctx.fmp, ctx.ticker)
+    if not price:
+        return ValidationOutput(current_price=0.0)
+
+    # 3. Implied drivers (safe — returns 0.0 on ValueError).
+    _DIMS = ["revenue_growth_pct", "ebit_margin_pct", "terminal_multiple"]
+
+    def _safe_solve_driver(dim: str) -> float:
+        try:
+            return solve_implied_driver(state, dimension=dim, target_per_share=price)
+        except (ValueError, Exception):
+            return 0.0
+
+    implied_drivers = [
+        ImpliedDriver(
+            dimension=dim,
+            implied_value=_safe_solve_driver(dim),
+            baseline_value=_baseline_value_for_dim(state, dim),
+        )
+        for dim in _DIMS
+    ]
+
+    # 4. Implied IRR.
+    try:
+        implied_irr: float | None = solve_implied_irr(state, target_per_share=price)
+    except (ValueError, Exception):
+        implied_irr = None
+
+    # 5. Sensitivity grids — same axes as the model page.
+    _GRID_SPECS = [
+        ("revenue_growth_pct", (-0.05, 0.20), "ebit_margin_pct",   (-0.10, 0.40)),
+        ("revenue_growth_pct", (-0.05, 0.20), "terminal_multiple", (5.0,  25.0)),
+        ("ebit_margin_pct",    (-0.10, 0.40), "terminal_multiple", (5.0,  25.0)),
+    ]
+    grids: list[WSSensitivityGrid] = []
+    for x_dim, x_range, y_dim, y_range in _GRID_SPECS:
+        raw = sensitivity_grid(
+            state,
+            x_dim=x_dim,
+            x_range=x_range,
+            y_dim=y_dim,
+            y_range=y_range,
+        )
+        grids.append(WSSensitivityGrid(
+            dim_x=raw["x_dim"],
+            dim_y=raw["y_dim"],
+            x_axis=raw["x_values"],
+            y_axis=raw["y_values"],
+            values=raw["values"],
+        ))
+
+    # 6. Thesis-vs-priced-in rows.
+    # reverse_dcf returns {dimension, thesis, priced_in, delta}; schema wants metric/thesis_value/…
+    raw_thesis = thesis_vs_priced_in(state, target_per_share=price)
+    thesis_rows: list[ThesisVsPriced] = []
+    for row_t in raw_thesis:
+        priced_in = row_t.get("priced_in") or 0.0
+        thesis_val = row_t.get("thesis") or 0.0
+        delta = thesis_val - priced_in if priced_in else 0.0
+        delta_pct = delta / abs(priced_in) if priced_in else 0.0
+        thesis_rows.append(ThesisVsPriced(
+            metric=row_t["dimension"],
+            thesis_value=thesis_val,
+            priced_in_value=priced_in,
+            delta_pct=delta_pct,
+        ))
+
+    return ValidationOutput(
+        implied_drivers=implied_drivers,
+        implied_irr=implied_irr,
+        sensitivity_grids=grids,
+        thesis_vs_priced_in=thesis_rows,
+        current_price=price,
+    )
 
 
 async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
