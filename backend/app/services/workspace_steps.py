@@ -1,6 +1,7 @@
 """Five workspace step functions. Stubs for Phase 1; real implementations land in Phases 2-6."""
 from __future__ import annotations
 import copy
+import json
 from datetime import datetime, timezone
 from typing import Callable
 
@@ -9,7 +10,10 @@ from backend.app.models.workspace_schemas import (
     UpdateRefreshOutput, ChangedCell, FilingRef,
     ResearchOutput, ValidationOutput,
     ChallengeOutput, DifferentiationOutput,
+    Highlight, OpenQuestionDelta,
 )
+from backend.app.graph.llm import complete as anthropic_complete, HAIKU
+from backend.app.graph.workspace_prompts import RESEARCH_SYSTEM, RESEARCH_USER_TEMPLATE
 
 
 def _fmp_period_label(row: dict) -> str | None:
@@ -221,8 +225,77 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
     )
 
 
+async def haiku_complete(*, system: str, user: str, anthropic) -> str:
+    """Thin wrapper around graph.llm.complete; named for easy patching in tests."""
+    return await anthropic_complete(
+        system=system, user=user, model=HAIKU,
+        max_tokens=2048,
+    )
+
+
+def _parse_json_lenient(raw: str) -> dict:
+    """Strip code fences and parse. Returns {} on parse failure rather than raising."""
+    txt = raw.strip()
+    if txt.startswith("```"):
+        # Trim leading fence
+        idx = txt.find("\n")
+        if idx >= 0:
+            txt = txt[idx + 1:]
+        if txt.endswith("```"):
+            txt = txt[:-3]
+    try:
+        return json.loads(txt)
+    except json.JSONDecodeError:
+        return {}
+
+
+def _gather_new_sources_text(ctx: WorkspaceContext) -> str:
+    """Best-effort concatenation of new filing excerpts pulled by Step 1.
+    Reads from the ticker_model's state if Step 1 stashed text there;
+    otherwise returns an empty string and the prompt operates on prior thesis only."""
+    # v1: rely on whatever Step 1 already pulled into the new ticker_model.
+    # Step 1 doesn't currently stash filing text; this is a slot for v1.5.
+    return ""
+
+
 async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
-    raise NotImplementedError("Phase 3")
+    # Pull prior thesis
+    prior_state = ctx.prior_research_run.state or {}
+    prior_thesis = (prior_state.get("thesis") or {}).get("summary_markdown") or "(no prior thesis available)"
+
+    # Pull existing open questions (Tier 1.2)
+    existing_qs = (prior_state.get("question_log") or {}).get("questions", [])
+    existing_qs_text = "\n".join(f"- {q.get('question', '')}" for q in existing_qs[:20]) or "(none)"
+
+    # New sources: latest filing section excerpts + transcript paragraphs
+    # For v1, pass the prior research_run's own filing-excerpt summary (lightweight).
+    # Real ingest happens in Step 1; here we just summarize what Step 1 surfaced.
+    new_sources = _gather_new_sources_text(ctx)[:8000]
+
+    user = RESEARCH_USER_TEMPLATE.format(
+        prior_thesis=prior_thesis,
+        new_sources=new_sources or "(no new filing/transcript text available)",
+        existing_open_questions=existing_qs_text,
+    )
+
+    raw = await haiku_complete(system=RESEARCH_SYSTEM, user=user, anthropic=ctx.anthropic)
+    payload = _parse_json_lenient(raw)
+
+    highlights = [Highlight.model_validate(h) for h in payload.get("highlights", [])]
+    open_qs = [
+        OpenQuestionDelta(
+            question=q.get("question", ""),
+            surfaced_by=ctx.run_id,
+            classification=q.get("classification", "general"),
+        )
+        for q in payload.get("new_open_questions", [])
+    ]
+
+    return ResearchOutput(
+        highlights=highlights,
+        new_open_questions=open_qs,
+        summary=payload.get("summary", "(no summary returned)"),
+    )
 
 
 async def step_validation(ctx: WorkspaceContext) -> ValidationOutput:
