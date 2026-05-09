@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { CuratedFinancials, QuickScreenStructured } from "@/lib/api";
+import type { CuratedFinancials, QuickScreenStructured, PhaseStatus } from "@/lib/api";
 import { getModel, workspaceApi } from "@/lib/api";
 import ScoreRing from "@/components/ScoreRing";
 
@@ -12,7 +12,7 @@ interface ReportHeaderProps {
   convictionScore: number | null;
   ticker: string;
   isLive?: boolean;
-  runStatus?: "completed" | "watchlist" | "error" | "in_progress";
+  runStatus?: PhaseStatus;
 }
 
 function fmtMarketCap(value: number): string {
