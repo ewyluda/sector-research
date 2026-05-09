@@ -38,7 +38,10 @@ class TestStepResearch(unittest.IsolatedAsyncioTestCase):
 
 def _make_ctx():
     rr = MagicMock()
-    rr.state = {"thesis": {"summary_markdown": "Long NVDA on data center demand."}}
+    rr.state = {
+        "phase_outputs": {"thesis": {"content": "Long NVDA on data center demand."}},
+        "questions_extracted": [{"question": "What is the HBM contract runway?"}],
+    }
     return WorkspaceContext(
         run_id="r", ticker="NVDA",
         db=AsyncMock(), fmp=AsyncMock(), edgar=AsyncMock(), anthropic=AsyncMock(),
