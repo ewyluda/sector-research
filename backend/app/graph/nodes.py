@@ -51,81 +51,23 @@ logger = logging.getLogger(__name__)
 CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
 TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
 
-TRANSCRIPT_ROUTING: dict[str, list[str]] = {
-    "Management & Governance": ["pass1_claims", "pass2_tiers", "pass3_qa_tensions", "pass4_validation", "pass5_consistency"],
-    "Business Quality": ["pass3_qa_tensions", "pass5_consistency"],
-    "Growth & Earnings": ["pass1_claims", "pass4_validation", "pass6_bom"],
-    "Sentiment & Narrative": ["pass3_qa_tensions", "pass5_consistency"],
-    "Risk Assessment": ["pass1_claims", "pass4_validation"],
-    "Future Durability": ["pass1_claims", "pass5_consistency"],
-}
-
-_ALL_MACRO = ["fed_funds_rate", "treasury_10y", "treasury_2y", "yield_curve_spread", "cpi", "unemployment", "gdp_growth", "m2_money_supply", "nonfarm_payrolls"]
-
-MACRO_ROUTING: dict[str, list[str]] = {
-    "Macro & Regime": _ALL_MACRO,
-    "Risk Assessment": _ALL_MACRO,
-    "Future Durability": ["gdp_growth", "cpi", "m2_money_supply", "fed_funds_rate", "treasury_10y"],
-    "Financial Health": ["fed_funds_rate", "treasury_10y", "yield_curve_spread"],
-}
-
-# EDGAR XBRL concept routing — which concepts each deep-dive category should see.
-# When a routed concept has no facts in xbrl_facts, the helper explicitly notes
-# "not disclosed in XBRL" so the LLM distinguishes unrouted from unavailable.
-_DEBT_MATURITY_CONCEPTS = [
-    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths",
-    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearTwo",
-    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearThree",
-    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFour",
-    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFive",
-    "us-gaap:LongTermDebtMaturitiesRepaymentsOfPrincipalAfterYearFive",
-]
-_RPO_CONCEPTS = [
-    "us-gaap:RevenueRemainingPerformanceObligation",
-    "us-gaap:RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage",
-]
-_CONCENTRATION_CONCEPTS = ["us-gaap:ConcentrationRiskPercentage1"]
-_CREDIT_CONCEPTS = [
-    "us-gaap:WeightedAverageInterestRate",
-    "us-gaap:LongTermDebt",
-    "us-gaap:LineOfCreditFacilityCurrentBorrowingCapacity",
-]
-
-EDGAR_ROUTING: dict[str, list[str]] = {
-    "Growth & Earnings": _RPO_CONCEPTS,
-    "Future Durability": _RPO_CONCEPTS,
-    "Financial Health": _DEBT_MATURITY_CONCEPTS + _CREDIT_CONCEPTS,
-    "Risk Assessment": _DEBT_MATURITY_CONCEPTS + _CONCENTRATION_CONCEPTS + _CREDIT_CONCEPTS,
-    "Business Quality": _CONCENTRATION_CONCEPTS,
-}
-
-# Filing narrative section routing. Each category receives verbatim excerpts
-# from the most recently ingested 10-K / 10-Q / DEF 14A for the ticker.
-# Section text is stored in filing_sections by the Phase A ingest pipeline.
-# Truncated to FILING_EXCERPT_BUDGET_CHARS at prompt build time.
-FILING_EXCERPT_ROUTING: dict[str, list[str]] = {
-    "Business Quality": ["item_1_business"],
-    "Risk Assessment": ["item_1a_risk_factors"],
-    "Growth & Earnings": ["item_7_mda", "item_2_mda_10q"],
-    "Future Durability": ["item_7_mda", "item_1_business"],
-    "Management & Governance": ["def14a_governance"],
-}
-
-# Per-section character budget when routing excerpts into a prompt.
-# ~5K chars ≈ 1.2K tokens, so a category seeing two sections burns ~2.4K
-# input tokens of filings context on top of its fundamentals payload.
-FILING_EXCERPT_BUDGET_CHARS = 5000
-
-
-# Categories that receive the counterparty (supply-chain) context in
-# their deep-dive prompt. Uses DISPLAY NAMES to match FILING_EXCERPT_ROUTING.
-# Structured as a set (no per-section sub-list needed — relationship
-# data is already aggregated per-ticker, not per-filing-section).
-RELATIONSHIP_ROUTING: set[str] = {
-    "Business Quality",
-    "Risk Assessment",
-    "Future Durability",
-}
+# Per-category routing tables (transcript / macro / EDGAR / filing / relationship).
+# Source of truth lives in `deep_dive_routing`; re-exported here so the
+# context-builder closures inside `node_deep_dive` keep working unchanged.
+# New code should reach for `routing_for(category) -> CategoryRouting` instead
+# of poking each table individually.
+from backend.app.graph.deep_dive_routing import (  # noqa: E402
+    EDGAR_ROUTING,
+    FILING_EXCERPT_BUDGET_CHARS,
+    FILING_EXCERPT_ROUTING,
+    MACRO_ROUTING,
+    RELATIONSHIP_ROUTING,
+    TRANSCRIPT_ROUTING,
+)
+from backend.app.graph.deep_dive_helpers import (  # noqa: E402
+    format_fact_value as _fmt_fact_value,
+    unwrap_gather_result as _unwrap,
+)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -898,12 +840,8 @@ async def node_deep_dive(
 
         # Tier 2 secondary fetch: analyst ratings + price targets + insider Form 4s.
         # Each call degrades independently via return_exceptions — a single 404
-        # or rate-limit doesn't collapse the whole set.
-        def _unwrap(result, default):
-            if isinstance(result, BaseException):
-                return default
-            return result[0]  # each FMP method returns (data, citation)
-
+        # or rate-limit doesn't collapse the whole set. _unwrap is imported
+        # from deep_dive_helpers (lifted out for unit-test reach).
         secondary = await asyncio.gather(
             fmp.get_analyst_grades_consensus(state.ticker),
             fmp.get_price_target_consensus(state.ticker),
@@ -1076,17 +1014,7 @@ async def node_deep_dive(
             return ""
         return "\n".join(parts)
 
-    def _fmt_fact_value(value: float, unit: str) -> str:
-        if unit.upper() == "USD":
-            if abs(value) >= 1e9:
-                return f"${value/1e9:.2f}B"
-            if abs(value) >= 1e6:
-                return f"${value/1e6:.2f}M"
-            return f"${value:,.0f}"
-        if unit.lower() == "pure":
-            return f"{value*100:.2f}%" if abs(value) <= 1 else f"{value:.2f}"
-        return f"{value:,.0f} {unit}"
-
+    # _fmt_fact_value is imported from deep_dive_helpers (lifted for tests).
     def _build_edgar_context(category: str) -> str:
         concepts = EDGAR_ROUTING.get(category)
         if not concepts:
