@@ -18,7 +18,7 @@ class SurpriseAlert(Base):
     )
     ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     theme_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("themes.id"), nullable=False, index=True
+        UUID(as_uuid=False), ForeignKey("themes.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     prior_velocity_ratio: Mapped[float] = mapped_column(Float, nullable=False)

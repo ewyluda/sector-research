@@ -20,7 +20,7 @@ class Theme(Base, TimestampMixin):
 
     # Sub-secular grouping: nullable parent_theme_id
     parent_theme_id: Mapped[str | None] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("themes.id"), nullable=True, index=True
+        UUID(as_uuid=False), ForeignKey("themes.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     # JSONB columns for flexible theme configuration

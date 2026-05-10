@@ -17,8 +17,8 @@ class ResearchRun(Base, TimestampMixin):
         UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())
     )
     ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
-    theme_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("themes.id"), nullable=False, index=True
+    theme_id: Mapped[str | None] = mapped_column(
+        UUID(as_uuid=False), ForeignKey("themes.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     # Pipeline state

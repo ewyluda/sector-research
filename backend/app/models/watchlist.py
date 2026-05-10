@@ -18,7 +18,7 @@ class WatchlistItem(Base):
     )
     ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     theme_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("themes.id"), nullable=False, index=True
+        UUID(as_uuid=False), ForeignKey("themes.id", ondelete="CASCADE"), nullable=False, index=True
     )
     trigger_condition: Mapped[str | None] = mapped_column(Text, nullable=True)
     run_id: Mapped[str | None] = mapped_column(

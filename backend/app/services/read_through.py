@@ -182,6 +182,7 @@ async def compute_peer_events(
         FROM research_runs r
         WHERE r.status = 'completed'
           AND r.archived_at IS NULL
+          AND r.theme_id IS NOT NULL
           AND {completed_expr} >= :since
           AND {completed_expr} <= :until
         """

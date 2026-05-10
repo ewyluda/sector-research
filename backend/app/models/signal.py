@@ -18,7 +18,7 @@ class Signal(Base):
     )
     ticker: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
     theme_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("themes.id"), nullable=False, index=True
+        UUID(as_uuid=False), ForeignKey("themes.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
     # velocity | narrative | discovery

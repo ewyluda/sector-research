@@ -35,7 +35,7 @@ from backend.app.services.relationship_context import (
     get_counterparty_context,
 )
 from backend.app.services.run_timestamps import mark_terminal_completed_at
-from backend.app.graph.nodes import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
+from backend.app.graph.deep_dive_routing import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
 

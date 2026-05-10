@@ -496,7 +496,7 @@ export type AdvanceAction = "approve" | "flag" | "stop";
 export interface RunSummary {
   id: string;
   ticker: string;
-  theme_id: string;
+  theme_id: string | null;
   theme_name: string | null;
   phase: string;
   status: PhaseStatus;
@@ -855,7 +855,7 @@ export interface SignalHistoryResponse {
 export interface ReportResponse {
   run_id: string;
   ticker: string;
-  theme_id: string;
+  theme_id: string | null;
   status: PhaseStatus;
   conviction_score: number;
   thesis_status: ThesisStatus;
@@ -876,7 +876,7 @@ export interface ReportResponse {
   updated_at: string | null;
   obsidian: {
     ticker: string;
-    theme_id: string;
+    theme_id: string | null;
     conviction_score: number;
     thesis_status: string;
     phase_reached: string;
