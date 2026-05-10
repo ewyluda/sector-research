@@ -1010,10 +1010,8 @@ export async function getSignalHistory(
   if (opts.signalType) params.set("signal_type", opts.signalType);
   if (opts.days != null) params.set("days", String(opts.days));
   const qs = params.toString();
-  const url = `${BASE}/api/themes/${encodeURIComponent(themeId)}/signals/${encodeURIComponent(ticker)}/history${qs ? `?${qs}` : ""}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`getSignalHistory ${res.status}`);
-  return res.json();
+  const path = `/api/themes/${encodeURIComponent(themeId)}/signals/${encodeURIComponent(ticker)}/history${qs ? `?${qs}` : ""}`;
+  return apiFetch<SignalHistoryResponse>(path);
 }
 
 export async function getCatalyst(id: string): Promise<CatalystRow> {

@@ -44,9 +44,7 @@ class SignalHistoryEndpointTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_400_when_signal_type_invalid(self):
         db = MagicMock()
-        scalar_result = MagicMock()
-        scalar_result.scalar_one_or_none.return_value = _theme()
-        db.execute = AsyncMock(return_value=scalar_result)
+        db.execute = AsyncMock()  # should never be called
 
         with self.assertRaises(HTTPException) as ctx:
             await get_signal_history_endpoint(
@@ -57,6 +55,7 @@ class SignalHistoryEndpointTests(unittest.IsolatedAsyncioTestCase):
                 db=db,
             )
         self.assertEqual(ctx.exception.status_code, 400)
+        db.execute.assert_not_called()
 
     async def test_returns_serialized_rows(self):
         db = MagicMock()

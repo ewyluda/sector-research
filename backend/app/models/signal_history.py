@@ -34,8 +34,8 @@ class SignalHistory(Base):
     )
 
     __table_args__ = (
-        # Time-series read pattern: pick the latest N rows for one
-        # (ticker, theme_id, signal_type) ordered by computed_at desc.
+        # Time-series read pattern: filter by (ticker, theme_id, signal_type)
+        # and order by computed_at. The B-tree serves both directions.
         Index(
             "ix_signal_history_lookup",
             "ticker", "theme_id", "signal_type", "computed_at",
