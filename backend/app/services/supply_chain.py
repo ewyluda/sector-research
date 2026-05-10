@@ -54,8 +54,15 @@ class GraphNode:
     cik: str | None
     name: str
     is_root: bool
-    tracked: bool  # True if the CIK/ticker is in a theme's seed_tickers
+    tracked: bool  # True if the CIK/ticker is in any theme's seed_tickers
     unnamed: bool  # True for the synthetic "disclosed but unnamed" bucket
+    # Shortest-path hop distance from the root node (0 for root, 1 for direct
+    # neighbours, 2 for two hops away).
+    hop: int = 0
+    # True iff a `theme_id` was provided to get_graph AND the node's ticker is
+    # in that theme's seed_tickers. False otherwise (including when no theme
+    # was specified). The root node is NOT auto-flagged.
+    in_selected_theme: bool = False
 
 
 @dataclass
@@ -74,6 +81,9 @@ class GraphEdge:
     accession_number: str
     filing_date: str
     section_key: str
+    # The BFS hop at which this edge was discovered (1 for root's neighbours,
+    # 2 for hop-2 expansions). No edges carry hop=0.
+    hop: int = 1
 
 
 @dataclass
@@ -99,6 +109,15 @@ async def _load_tracked_set(db: AsyncSession) -> set[str]:
     return tracked
 
 
+async def _load_theme_seeds(db: AsyncSession, theme_id: str) -> set[str]:
+    """Return uppercase tickers in a specific theme's seed_tickers, or empty."""
+    result = await db.execute(
+        select(Theme.seed_tickers).where(Theme.id == theme_id)
+    )
+    seeds = result.scalar_one_or_none() or []
+    return {t.upper() for t in seeds if isinstance(t, str) and t.strip()}
+
+
 # ── Graph traversal ───────────────────────────────────────────────────────────
 
 
@@ -114,17 +133,45 @@ def _node_id_for_counterparty(rel: Relationship) -> str:
     return f"unresolved:{normalize_name(rel.counterparty_name)}"
 
 
+MAX_DEPTH = 2
+
+
 async def get_graph(
     ticker: str,
     *,
     direction: Literal["out", "in", "both"] = "both",
+    depth: int = 1,
+    theme_id: str | None = None,
     db: AsyncSession,
 ) -> SupplyChainGraph:
-    """Build a 1-hop supply-chain graph centered on `ticker`."""
+    """Build a supply-chain graph centered on `ticker`.
+
+    At depth=1, queries the root's direct neighbours (matches the original
+    1-hop behaviour byte-for-byte aside from the new `hop` and
+    `in_selected_theme` fields).
+
+    At depth=2, runs a BFS frontier expansion: the root's full hop-1
+    neighbourhood is always rendered, but hop-1 nodes are only expanded into
+    hop-2 if they're in the expansion set:
+      - theme_id provided → the theme's seed_tickers
+      - theme_id omitted → the tracked-union (any theme's seed_tickers)
+
+    Unresolved and unnamed counterparties are terminal (no `ticker` to query
+    from). Direction is inherited at every hop. Edges are deduplicated by
+    Relationship.id so the same DB row never appears twice in the output —
+    matters at depth=2 with direction=both.
+    """
+    if depth < 1 or depth > MAX_DEPTH:
+        raise ValueError(f"depth must be in [1, {MAX_DEPTH}], got {depth}")
+
     root = ticker.upper()
     graph = SupplyChainGraph(root_ticker=root)
 
     tracked = await _load_tracked_set(db)
+    selected_seeds: set[str] = (
+        await _load_theme_seeds(db, theme_id) if theme_id is not None else set()
+    )
+    expansion_set: set[str] = selected_seeds if theme_id is not None else tracked
 
     root_node = GraphNode(
         id=f"root:{root}",
@@ -134,9 +181,12 @@ async def get_graph(
         is_root=True,
         tracked=root in tracked,
         unnamed=False,
+        hop=0,
+        in_selected_theme=False,
     )
     graph.nodes.append(root_node)
     node_index: dict[str, GraphNode] = {root_node.id: root_node}
+    emitted_edge_ids: set[str] = set()
 
     def upsert_node(node: GraphNode) -> GraphNode:
         existing = node_index.get(node.id)
@@ -150,84 +200,144 @@ async def get_graph(
             if not existing.name and node.name:
                 existing.name = node.name
             existing.tracked = existing.tracked or node.tracked
+            existing.in_selected_theme = (
+                existing.in_selected_theme or node.in_selected_theme
+            )
+            # hop is the shortest-path distance — keep the smaller value.
+            if node.hop < existing.hop:
+                existing.hop = node.hop
             return existing
         node_index[node.id] = node
         graph.nodes.append(node)
         return node
 
-    # Outbound edges — root's filings name these counterparties.
-    if direction in ("out", "both"):
-        out_rows = await db.execute(
-            select(Relationship, Filing)
-            .join(Filing, Filing.id == Relationship.filing_id)
-            .where(Relationship.ticker == root)
-        )
-        for rel, filing in out_rows.all():
-            cp_id = _node_id_for_counterparty(rel)
-            cp_ticker = rel.resolved_to_ticker
-            cp_node = GraphNode(
-                id=cp_id,
-                ticker=cp_ticker,
-                cik=rel.resolved_to_cik,
-                name=(
-                    f"[unnamed {rel.relationship_type}]" if rel.unnamed
-                    else rel.counterparty_name
-                ),
-                is_root=False,
-                tracked=(cp_ticker.upper() in tracked) if cp_ticker else False,
-                unnamed=rel.unnamed,
-            )
-            upsert_node(cp_node)
-            graph.edges.append(GraphEdge(
-                from_id=root_node.id,
-                to_id=cp_node.id,
-                relationship_type=rel.relationship_type,
-                direction="out",
-                magnitude_pct=float(rel.magnitude_pct) if rel.magnitude_pct is not None else None,
-                unnamed=rel.unnamed,
-                confirmed_bilateral=rel.confirmed_bilateral,
-                verbatim_quote=rel.verbatim_quote,
-                source_ticker=rel.ticker,
-                accession_number=filing.accession_number,
-                filing_date=filing.filing_date.isoformat(),
-                section_key=rel.section_key,
-            ))
+    async def expand_node(node: GraphNode, current_hop: int) -> list[GraphNode]:
+        """Query relationships from `node` and return newly-introduced nodes
+        (caller decides whether they enter the next frontier)."""
+        new_hop = current_hop + 1
+        new_nodes: list[GraphNode] = []
 
-    # Inbound edges — other tickers' filings resolve back to root.
-    if direction in ("in", "both"):
-        in_rows = await db.execute(
-            select(Relationship, Filing)
-            .join(Filing, Filing.id == Relationship.filing_id)
-            .where(Relationship.resolved_to_ticker == root)
-            .where(Relationship.ticker != root)
-        )
-        for rel, filing in in_rows.all():
-            # Source is the OTHER ticker's node (the filer). Use ticker-based
-            # id so it co-indexes cleanly with out-nodes for the same company.
-            src_node = GraphNode(
-                id=f"ticker:{rel.ticker}",
-                ticker=rel.ticker,
-                cik=None,  # we don't store the filer's CIK on the row
-                name=rel.ticker,
-                is_root=False,
-                tracked=rel.ticker.upper() in tracked,
-                unnamed=False,
+        # Outbound — filings authored by node.ticker name these counterparties.
+        if direction in ("out", "both") and node.ticker:
+            rows = await db.execute(
+                select(Relationship, Filing)
+                .join(Filing, Filing.id == Relationship.filing_id)
+                .where(Relationship.ticker == node.ticker)
             )
-            upsert_node(src_node)
-            graph.edges.append(GraphEdge(
-                from_id=src_node.id,
-                to_id=root_node.id,
-                relationship_type=rel.relationship_type,
-                direction="in",
-                magnitude_pct=float(rel.magnitude_pct) if rel.magnitude_pct is not None else None,
-                unnamed=rel.unnamed,
-                confirmed_bilateral=rel.confirmed_bilateral,
-                verbatim_quote=rel.verbatim_quote,
-                source_ticker=rel.ticker,
-                accession_number=filing.accession_number,
-                filing_date=filing.filing_date.isoformat(),
-                section_key=rel.section_key,
-            ))
+            for rel, filing in rows.all():
+                if rel.id in emitted_edge_ids:
+                    continue
+                cp_ticker = rel.resolved_to_ticker
+                # Back-edge to root: reuse root_node so the cycle is visible
+                # as a single node rather than a duplicate.
+                if cp_ticker and cp_ticker.upper() == root:
+                    cp_node = root_node
+                else:
+                    cp_node = upsert_node(GraphNode(
+                        id=_node_id_for_counterparty(rel),
+                        ticker=cp_ticker,
+                        cik=rel.resolved_to_cik,
+                        name=(
+                            f"[unnamed {rel.relationship_type}]" if rel.unnamed
+                            else rel.counterparty_name
+                        ),
+                        is_root=False,
+                        tracked=(cp_ticker.upper() in tracked) if cp_ticker else False,
+                        unnamed=rel.unnamed,
+                        hop=new_hop,
+                        in_selected_theme=(
+                            cp_ticker is not None
+                            and theme_id is not None
+                            and cp_ticker.upper() in selected_seeds
+                        ),
+                    ))
+                graph.edges.append(GraphEdge(
+                    from_id=node.id,
+                    to_id=cp_node.id,
+                    relationship_type=rel.relationship_type,
+                    direction="out",
+                    magnitude_pct=float(rel.magnitude_pct) if rel.magnitude_pct is not None else None,
+                    unnamed=rel.unnamed,
+                    confirmed_bilateral=rel.confirmed_bilateral,
+                    verbatim_quote=rel.verbatim_quote,
+                    source_ticker=rel.ticker,
+                    accession_number=filing.accession_number,
+                    filing_date=filing.filing_date.isoformat(),
+                    section_key=rel.section_key,
+                    hop=new_hop,
+                ))
+                emitted_edge_ids.add(rel.id)
+                new_nodes.append(cp_node)
+
+        # Inbound — other tickers' filings name `node` as a counterparty.
+        if direction in ("in", "both") and node.ticker:
+            rows = await db.execute(
+                select(Relationship, Filing)
+                .join(Filing, Filing.id == Relationship.filing_id)
+                .where(Relationship.resolved_to_ticker == node.ticker)
+                .where(Relationship.ticker != node.ticker)
+            )
+            for rel, filing in rows.all():
+                if rel.id in emitted_edge_ids:
+                    continue
+                # If the filer IS root (e.g. expanding MSFT inbound and the
+                # filer is NVDA), reuse root_node — same cycle dedup as
+                # outbound.
+                if rel.ticker.upper() == root:
+                    src_node = root_node
+                else:
+                    src_node = upsert_node(GraphNode(
+                        id=f"ticker:{rel.ticker}",
+                        ticker=rel.ticker,
+                        cik=None,
+                        name=rel.ticker,
+                        is_root=False,
+                        tracked=rel.ticker.upper() in tracked,
+                        unnamed=False,
+                        hop=new_hop,
+                        in_selected_theme=(
+                            theme_id is not None
+                            and rel.ticker.upper() in selected_seeds
+                        ),
+                    ))
+                graph.edges.append(GraphEdge(
+                    from_id=src_node.id,
+                    to_id=node.id,
+                    relationship_type=rel.relationship_type,
+                    direction="in",
+                    magnitude_pct=float(rel.magnitude_pct) if rel.magnitude_pct is not None else None,
+                    unnamed=rel.unnamed,
+                    confirmed_bilateral=rel.confirmed_bilateral,
+                    verbatim_quote=rel.verbatim_quote,
+                    source_ticker=rel.ticker,
+                    accession_number=filing.accession_number,
+                    filing_date=filing.filing_date.isoformat(),
+                    section_key=rel.section_key,
+                    hop=new_hop,
+                ))
+                emitted_edge_ids.add(rel.id)
+                new_nodes.append(src_node)
+
+        return new_nodes
+
+    # BFS: hop 0 (always expand root), hop 1 (expand only in-expansion-set).
+    frontier: list[GraphNode] = [root_node]
+    expanded: set[str] = set()
+    for current_hop in range(depth):
+        next_frontier: list[GraphNode] = []
+        for node in frontier:
+            if node.id in expanded:
+                continue
+            expanded.add(node.id)
+            # Root (current_hop=0) is always expanded. Beyond hop 0, gate on
+            # the expansion set. Terminal nodes (unresolved/unnamed/no ticker)
+            # are naturally skipped by expand_node's `if node.ticker` guards.
+            if current_hop > 0:
+                if not node.ticker or node.ticker.upper() not in expansion_set:
+                    continue
+            new_nodes = await expand_node(node, current_hop)
+            next_frontier.extend(new_nodes)
+        frontier = next_frontier
 
     return graph
 

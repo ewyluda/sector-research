@@ -94,7 +94,7 @@ export function SupplyChainEcosystem({ ticker }: Props) {
     setLoading(true);
     setError(null);
     relationships
-      .getGraph(ticker, "both")
+      .getGraph(ticker, { direction: "both" })
       .then((g) => {
         if (!cancelled) setGraph(g);
       })
@@ -155,6 +155,14 @@ export function SupplyChainEcosystem({ ticker }: Props) {
       stat={`${totalOut} disclosed · ${totalIn} reciprocal`}
     >
       <div className="space-y-3">
+        <div className="flex justify-end">
+          <Link
+            href={`/filings/graph?root=${encodeURIComponent(ticker)}`}
+            className="text-[11px] text-[var(--color-primary)] hover:underline font-medium"
+          >
+            Explore 2-hop graph →
+          </Link>
+        </div>
         {typesPresent.map((type) => {
           const bucket = graph.summary[type];
           const named = bucket.out_named;

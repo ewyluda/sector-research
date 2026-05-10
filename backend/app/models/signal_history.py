@@ -25,7 +25,7 @@ class SignalHistory(Base):
     )
     ticker: Mapped[str] = mapped_column(String(16), nullable=False)
     theme_id: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), ForeignKey("themes.id"), nullable=False
+        UUID(as_uuid=False), ForeignKey("themes.id", ondelete="CASCADE"), nullable=False
     )
     signal_type: Mapped[str] = mapped_column(String(32), nullable=False)
     value: Mapped[dict] = mapped_column(JSONB, nullable=False)

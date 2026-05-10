@@ -139,6 +139,7 @@ def _build_latest_runs_sql(
                 {completed_expr} AS completed_at
             FROM research_runs r
             WHERE r.status IN ('completed', 'watchlist')
+              AND r.theme_id IS NOT NULL
               {where_theme}
             ORDER BY r.ticker, r.theme_id, {completed_expr} DESC, r.created_at DESC
         )

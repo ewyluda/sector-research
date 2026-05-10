@@ -44,7 +44,7 @@ class AdvanceRunRequest(BaseModel):
 class RunSummary(BaseModel):
     id: str
     ticker: str
-    theme_id: str
+    theme_id: str | None = None
     theme_name: str | None = None
     phase: str
     status: str

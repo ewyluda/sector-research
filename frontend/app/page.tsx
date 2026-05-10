@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { themes } from "@/lib/api";
 import type { Theme } from "@/lib/api";
+import { DeleteThemeButton } from "@/components/themes/DeleteThemeButton";
 
 export const dynamic = "force-dynamic";
 
@@ -16,67 +17,68 @@ function ThemeCard({ theme }: { theme: Theme }) {
   const hasParent = !!theme.parent_theme_id;
 
   return (
-    <Link
-      href={`/theme/${theme.id}`}
-      className="group block rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/50 hover:shadow-sm transition-all overflow-hidden"
-    >
-      {/* Card header */}
-      <div className="bg-[var(--teal-dark)] px-5 py-4">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-white font-semibold text-sm leading-snug">{theme.name}</h2>
-          {hasParent && (
-            <span className="shrink-0 text-[10px] text-[var(--teal-light)] border border-[var(--teal-light)]/40 rounded-full px-2 py-0.5">
-              sub-theme
-            </span>
+    <div className="group relative">
+      <DeleteThemeButton themeId={theme.id} themeName={theme.name} seedCount={seedCount} />
+      <Link
+        href={`/theme/${theme.id}`}
+        className="block rounded-xl border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--primary)]/50 hover:shadow-sm transition-all overflow-hidden"
+      >
+        {/* Card header */}
+        <div className="bg-[var(--teal-dark)] px-5 py-4">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-white font-semibold text-sm leading-snug">{theme.name}</h2>
+            {hasParent && (
+              <span className="shrink-0 text-[10px] text-[var(--teal-light)] border border-[var(--teal-light)]/40 rounded-full px-2 py-0.5">
+                sub-theme
+              </span>
+            )}
+          </div>
+          {theme.description && (
+            <p className="text-[var(--teal-lighter)] text-xs mt-1 line-clamp-2">{theme.description}</p>
           )}
         </div>
-        {theme.description && (
-          <p className="text-[var(--teal-lighter)] text-xs mt-1 line-clamp-2">{theme.description}</p>
-        )}
-      </div>
 
-      {/* Card body */}
-      <div className="px-5 py-4 space-y-3">
-        {/* Signal building state when no seed tickers */}
-        {seedCount === 0 ? (
-          <div className="flex items-center gap-2 text-xs text-[var(--text-faint)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-faint)] animate-pulse" />
-            Signal building…
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-[10px] text-[var(--text-faint)] uppercase tracking-wide font-medium">
-              Seed tickers
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {(Array.isArray(theme.seed_tickers) ? theme.seed_tickers : [])
-                .slice(0, 6)
-                .map((t: string) => (
-                  <span
-                    key={t}
-                    className="text-[11px] font-mono font-medium text-[var(--primary-dk)] bg-[var(--accent-bg)] px-1.5 py-0.5 rounded"
-                  >
-                    {t}
-                  </span>
-                ))}
-              {seedCount > 6 && (
-                <span className="text-[11px] text-[var(--text-faint)]">+{seedCount - 6}</span>
-              )}
+        {/* Card body */}
+        <div className="px-5 py-4 space-y-3">
+          {seedCount === 0 ? (
+            <div className="flex items-center gap-2 text-xs text-[var(--text-faint)]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-faint)] animate-pulse" />
+              Signal building…
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="space-y-1">
+              <p className="text-[10px] text-[var(--text-faint)] uppercase tracking-wide font-medium">
+                Seed tickers
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {(Array.isArray(theme.seed_tickers) ? theme.seed_tickers : [])
+                  .slice(0, 6)
+                  .map((t: string) => (
+                    <span
+                      key={t}
+                      className="text-[11px] font-mono font-medium text-[var(--primary-dk)] bg-[var(--accent-bg)] px-1.5 py-0.5 rounded"
+                    >
+                      {t}
+                    </span>
+                  ))}
+                {seedCount > 6 && (
+                  <span className="text-[11px] text-[var(--text-faint)]">+{seedCount - 6}</span>
+                )}
+              </div>
+            </div>
+          )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
-          <span className="text-[11px] text-[var(--text-muted)]">
-            {seedCount} tracked ticker{seedCount !== 1 ? "s" : ""}
-          </span>
-          <span className="text-[11px] text-[var(--primary)] group-hover:underline font-medium">
-            Open →
-          </span>
+          <div className="flex items-center justify-between pt-1 border-t border-[var(--border)]">
+            <span className="text-[11px] text-[var(--text-muted)]">
+              {seedCount} tracked ticker{seedCount !== 1 ? "s" : ""}
+            </span>
+            <span className="text-[11px] text-[var(--primary)] group-hover:underline font-medium">
+              Open →
+            </span>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </div>
   );
 }
 

@@ -135,7 +135,7 @@ async def get_earnings_board(
         SELECT DISTINCT ON (ticker, theme_id)
             id, ticker, theme_id
         FROM research_runs
-        WHERE status = 'completed' AND archived_at IS NULL
+        WHERE status = 'completed' AND archived_at IS NULL AND theme_id IS NOT NULL
         ORDER BY ticker, theme_id, updated_at DESC
         """
     )
