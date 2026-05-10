@@ -11,6 +11,30 @@ from backend.app.models.theme import Theme
 router = APIRouter(tags=["themes"])
 
 
+def _normalize_tickers(raw) -> list[str]:
+    """Uppercase, strip, drop empties, dedupe (order-preserving).
+
+    Tolerates list-of-strings or the legacy list-of-dicts shape (entries
+    with a ``"ticker"`` key) — mirrors ``fanout.py``'s defensive read.
+    """
+    if not raw:
+        return []
+    out: list[str] = []
+    seen: set[str] = set()
+    for entry in raw:
+        if isinstance(entry, str):
+            value = entry
+        elif isinstance(entry, dict) and entry.get("ticker"):
+            value = str(entry["ticker"])
+        else:
+            continue
+        norm = value.strip().upper()
+        if norm and norm not in seen:
+            seen.add(norm)
+            out.append(norm)
+    return out
+
+
 # ── Pydantic schemas ──────────────────────────────────────────────────────────
 
 
@@ -42,6 +66,10 @@ class ThemeResponse(BaseModel):
         from_attributes = True
 
 
+class TickerPayload(BaseModel):
+    ticker: str
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 
@@ -57,7 +85,7 @@ async def create_theme(payload: ThemeCreate, db: AsyncSession = Depends(get_db))
         name=payload.name,
         description=payload.description,
         parent_theme_id=payload.parent_theme_id,
-        seed_tickers=payload.seed_tickers,
+        seed_tickers=_normalize_tickers(payload.seed_tickers),
         screener_criteria=payload.screener_criteria,
         x_search_terms=payload.x_search_terms,
         signal_weights=payload.signal_weights,
@@ -89,7 +117,7 @@ async def update_theme(
     theme.name = payload.name
     theme.description = payload.description
     theme.parent_theme_id = payload.parent_theme_id
-    theme.seed_tickers = payload.seed_tickers
+    theme.seed_tickers = _normalize_tickers(payload.seed_tickers)
     theme.screener_criteria = payload.screener_criteria
     theme.x_search_terms = payload.x_search_terms
     theme.signal_weights = payload.signal_weights
@@ -107,3 +135,54 @@ async def delete_theme(theme_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Theme not found")
     await db.delete(theme)
     await db.commit()
+
+
+@router.post("/themes/{theme_id}/tickers", response_model=ThemeResponse)
+async def add_theme_ticker(
+    theme_id: str,
+    payload: TickerPayload,
+    db: AsyncSession = Depends(get_db),
+):
+    """Append a ticker to ``seed_tickers`` (idempotent on duplicate)."""
+    norm = payload.ticker.strip().upper()
+    if not norm:
+        raise HTTPException(status_code=400, detail="ticker must not be empty")
+
+    result = await db.execute(select(Theme).where(Theme.id == theme_id))
+    theme = result.scalar_one_or_none()
+    if not theme:
+        raise HTTPException(status_code=404, detail="Theme not found")
+
+    current = _normalize_tickers(theme.seed_tickers)
+    if norm not in current:
+        # Reassign — JSONB mutations are not auto-detected by SQLAlchemy.
+        theme.seed_tickers = current + [norm]
+        await db.commit()
+        await db.refresh(theme)
+    return theme
+
+
+@router.delete("/themes/{theme_id}/tickers/{ticker}", response_model=ThemeResponse)
+async def remove_theme_ticker(
+    theme_id: str,
+    ticker: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Drop a ticker from ``seed_tickers`` (idempotent on absent).
+
+    Does NOT cascade-delete signals or signal_history rows for that ticker
+    — historical data is preserved by design.
+    """
+    norm = ticker.strip().upper()
+
+    result = await db.execute(select(Theme).where(Theme.id == theme_id))
+    theme = result.scalar_one_or_none()
+    if not theme:
+        raise HTTPException(status_code=404, detail="Theme not found")
+
+    current = _normalize_tickers(theme.seed_tickers)
+    if norm in current:
+        theme.seed_tickers = [t for t in current if t != norm]
+        await db.commit()
+        await db.refresh(theme)
+    return theme
