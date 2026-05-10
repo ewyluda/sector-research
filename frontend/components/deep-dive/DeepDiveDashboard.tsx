@@ -17,6 +17,7 @@ import { normalizeScoreKeys } from "./scoreKeys";
 
 export interface DeepDiveDashboardProps {
   ticker: string;
+  themeId?: string;
   financials: CuratedFinancials | null;
   categories: Record<string, CategoryOutput | null>;
   scores: Record<string, number>;
@@ -35,7 +36,7 @@ function getScore(cat: CategoryOutput | null, scores: Record<string, number>, ke
   return scores[key] ?? cat?.score ?? null;
 }
 
-export function DeepDiveDashboard({ ticker, financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis, xSignalVelocity, edgarFacts }: DeepDiveDashboardProps) {
+export function DeepDiveDashboard({ ticker, themeId, financials, categories: rawCategories, scores: rawScores, isLive, transcriptAnalysis, xSignalVelocity, edgarFacts }: DeepDiveDashboardProps) {
   const scores = normalizeScoreKeys(rawScores);
   const categories = normalizeScoreKeys(rawCategories);
   return (
@@ -117,6 +118,8 @@ export function DeepDiveDashboard({ ticker, financials, categories: rawCategorie
             fallback={categories["sentiment_narrative"] ?? null}
             isLive={isLive}
             xSignalVelocity={xSignalVelocity}
+            themeId={themeId}
+            ticker={ticker}
           />
         </div>
         <FutureDurability

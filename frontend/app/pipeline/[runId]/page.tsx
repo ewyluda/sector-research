@@ -680,6 +680,7 @@ export default function PipelineRunnerPage() {
           {(curatedFinancials || Object.keys(categories).length > 0) && (
             <DeepDiveDashboard
               ticker={ticker}
+              themeId={run.theme_id ?? undefined}
               financials={curatedFinancials}
               categories={dashboardCategories}
               scores={scores}

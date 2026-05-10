@@ -8,9 +8,11 @@ interface SentimentNarrativeProps {
   fallback?: CategoryOutput | null;
   isLive?: boolean;
   xSignalVelocity?: XSignalVelocity | null;
+  themeId?: string;
+  ticker?: string;
 }
 
-export function SentimentNarrative({ structured, score, fallback, isLive, xSignalVelocity }: SentimentNarrativeProps) {
+export function SentimentNarrative({ structured, score, fallback, isLive, xSignalVelocity, themeId, ticker }: SentimentNarrativeProps) {
   return (
     <QualitativeCard
       id="sentiment_narrative"
@@ -19,7 +21,11 @@ export function SentimentNarrative({ structured, score, fallback, isLive, xSigna
       structured={structured}
       fallback={fallback}
       isLive={isLive}
-      headerAddon={xSignalVelocity ? <VelocitySparkline velocity={xSignalVelocity} /> : undefined}
+      headerAddon={
+        xSignalVelocity ? (
+          <VelocitySparkline velocity={xSignalVelocity} themeId={themeId} ticker={ticker} />
+        ) : undefined
+      }
     />
   );
 }
