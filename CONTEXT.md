@@ -9,6 +9,8 @@ The persistent per-ticker analytical surface: the latest completed `research_run
 
 A workspace exists for a ticker iff there is at least one completed `research_run` AND at least one `ticker_models` row for that ticker. Both prerequisites are checked in `WorkspaceService._preflight`.
 
+Workspace runs require a clean saved model state. If a ticker has an unsaved model draft, the run is rejected until the user either saves or discards the draft. This prevents a later draft save from overwriting freshly promoted actuals from the workspace refresh.
+
 **At most one workspace run with status `running` per ticker.** Kicking off a second run while one is in flight returns HTTP 409 with the in-flight run's id; the frontend navigates to that run instead. This invariant prevents two parallel runs from racing on the `ticker_models.(ticker, version)` unique constraint and silently producing a verdict against stale state.
 
 ### Workspace run

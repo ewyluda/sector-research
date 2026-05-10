@@ -7,6 +7,7 @@ from typing import Any, AsyncIterator, Callable
 from uuid import uuid4
 
 from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import unit_of_work
@@ -76,28 +77,34 @@ class WorkspaceService:
 
         Raises WorkspaceRunInFlight if a run for this ticker is already running.
         """
-        async with unit_of_work() as db:
-            in_flight = (await db.execute(
-                select(WorkspaceRun)
-                .where(WorkspaceRun.ticker == ticker, WorkspaceRun.status == "running")
-                .order_by(WorkspaceRun.created_at.desc())
-                .limit(1)
-            )).scalar_one_or_none()
-            if in_flight is not None:
-                raise WorkspaceRunInFlight(run_id=str(in_flight.id))
+        try:
+            async with unit_of_work() as db:
+                in_flight = (await db.execute(
+                    select(WorkspaceRun)
+                    .where(WorkspaceRun.ticker == ticker, WorkspaceRun.status == "running")
+                    .order_by(WorkspaceRun.created_at.desc())
+                    .limit(1)
+                )).scalar_one_or_none()
+                if in_flight is not None:
+                    raise WorkspaceRunInFlight(run_id=str(in_flight.id))
 
-            ctx_data = await self._preflight(db, ticker, research_run_id=research_run_id)
-            run_id = str(uuid4())
-            row = WorkspaceRun(
-                id=run_id,
-                ticker=ticker,
-                parent_research_run_id=str(ctx_data["research_run"].id),
-                ticker_model_version_before=ctx_data["ticker_model"].version,
-                status="running",
-                step_outputs={},
-                citations=[],
-            )
-            db.add(row)
+                ctx_data = await self._preflight(db, ticker, research_run_id=research_run_id)
+                run_id = str(uuid4())
+                row = WorkspaceRun(
+                    id=run_id,
+                    ticker=ticker,
+                    parent_research_run_id=str(ctx_data["research_run"].id),
+                    ticker_model_version_before=ctx_data["ticker_model"].version,
+                    status="running",
+                    step_outputs={},
+                    citations=[],
+                )
+                db.add(row)
+        except IntegrityError:
+            in_flight_id = await self._find_in_flight_run_id(ticker)
+            if in_flight_id is not None:
+                raise WorkspaceRunInFlight(run_id=in_flight_id)
+            raise
 
         asyncio.create_task(
             self._run_workspace(
@@ -108,6 +115,16 @@ class WorkspaceService:
             )
         )
         return run_id
+
+    async def _find_in_flight_run_id(self, ticker: str) -> str | None:
+        async with unit_of_work() as db:
+            row = (await db.execute(
+                select(WorkspaceRun)
+                .where(WorkspaceRun.ticker == ticker, WorkspaceRun.status == "running")
+                .order_by(WorkspaceRun.created_at.desc())
+                .limit(1)
+            )).scalar_one_or_none()
+            return str(row.id) if row is not None else None
 
     async def _preflight(
         self,
@@ -124,7 +141,7 @@ class WorkspaceService:
 
         Raises ValueError on missing prerequisites — caller maps to HTTP 400.
         """
-        from backend.app.models import ResearchRun, TickerModel  # local import to avoid cycles
+        from backend.app.models import ResearchRun, TickerModel, TickerModelDraft  # local import to avoid cycles
 
         if research_run_id is not None:
             rr = (await db.execute(
@@ -158,6 +175,16 @@ class WorkspaceService:
         )).scalar_one_or_none()
         if tm is None:
             raise ValueError(f"no ticker_model exists for ticker {ticker}; initialize one first")
+
+        draft = (await db.execute(
+            select(TickerModelDraft)
+            .where(TickerModelDraft.ticker == ticker)
+            .limit(1)
+        )).scalar_one_or_none()
+        if draft is not None:
+            raise ValueError(
+                f"unsaved model draft exists for ticker {ticker}; save or discard it before workspace refresh"
+            )
 
         return {"research_run": rr, "ticker_model": tm}
 

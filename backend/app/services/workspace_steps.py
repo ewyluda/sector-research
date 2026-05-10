@@ -577,11 +577,13 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
         cu.description = cat_id_to_desc.get(cu.catalyst_id)
         updates.append(cu)
 
-    verdict_str = payload.get("proposed_verdict", "healthy")
+    if "proposed_verdict" not in payload:
+        raise ValueError("missing proposed_verdict in challenge response")
+    verdict_str = payload.get("proposed_verdict")
     try:
         verdict = WorkspaceVerdict(verdict_str)
-    except ValueError:
-        verdict = WorkspaceVerdict.HEALTHY
+    except ValueError as exc:
+        raise ValueError(f"invalid proposed_verdict: {verdict_str}") from exc
 
     # Apply kill-criterion writebacks (best-effort per row).
     for w in writes:

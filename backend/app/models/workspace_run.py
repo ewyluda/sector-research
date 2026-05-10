@@ -27,7 +27,7 @@ class WorkspaceRun(Base, TimestampMixin):
     # Execution state
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="running"
-    )  # running | completed | failed | watchlist
+    )  # running | completed | partial | failed
 
     # Final verdict (if completed)
     verdict: Mapped[str | None] = mapped_column(String(1024), nullable=True)

@@ -2,10 +2,68 @@
 import asyncio
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
+from sqlalchemy.exc import IntegrityError
 from backend.app.services.workspace import WorkspaceService
+from backend.app.services.workspace import WorkspaceRunInFlight
 
 
 class TestWorkspaceServiceSkeleton(unittest.IsolatedAsyncioTestCase):
+    async def test_preflight_rejects_unsaved_model_draft(self):
+        service = WorkspaceService(
+            fmp=AsyncMock(), edgar=AsyncMock(), anthropic=AsyncMock(),
+        )
+
+        rr = MagicMock()
+        rr.id = "rr-1"
+        rr.ticker = "NVDA"
+        rr.status = "completed"
+        tm = MagicMock()
+        tm.version = 4
+        draft = MagicMock()
+
+        def result(value):
+            r = MagicMock()
+            r.scalar_one_or_none.return_value = value
+            return r
+
+        db = AsyncMock()
+        db.execute = AsyncMock(side_effect=[result(rr), result(tm), result(draft)])
+
+        with self.assertRaisesRegex(ValueError, "unsaved model draft"):
+            await service._preflight(db, "NVDA", research_run_id="rr-1")
+
+    async def test_kick_off_maps_running_unique_violation_to_409_signal(self):
+        service = WorkspaceService(
+            fmp=AsyncMock(), edgar=AsyncMock(), anthropic=AsyncMock(),
+        )
+        db = MagicMock()
+        cm = MagicMock()
+        cm.__aenter__ = AsyncMock(return_value=db)
+        cm.__aexit__ = AsyncMock(
+            side_effect=IntegrityError(
+                "insert into workspace_runs", {}, Exception("duplicate running ticker")
+            )
+        )
+
+        rr = MagicMock()
+        rr.id = "rr-1"
+        tm = MagicMock()
+        tm.version = 1
+
+        with patch("backend.app.services.workspace.unit_of_work", return_value=cm), \
+             patch.object(service, "_preflight", new=AsyncMock(return_value={
+                 "research_run": rr,
+                 "ticker_model": tm,
+             })), \
+             patch.object(
+                 service, "_find_in_flight_run_id",
+                 new=AsyncMock(return_value="existing-run"),
+             ):
+            with self.assertRaises(WorkspaceRunInFlight) as ctx:
+                await service.kick_off("NVDA")
+
+        self.assertEqual(ctx.exception.run_id, "existing-run")
+
     async def test_run_emits_start_and_complete(self):
         service = WorkspaceService(
             fmp=AsyncMock(), edgar=AsyncMock(), anthropic=AsyncMock(),

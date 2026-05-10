@@ -1458,7 +1458,7 @@ export interface ValidationOutput {
 
 export interface KillCriterionWrite {
   ordinal: number;
-  status: "armed" | "triggered" | "resolved";
+  status: "armed" | "triggered";
   note: string | null;
 }
 export interface CatalystUpdate {

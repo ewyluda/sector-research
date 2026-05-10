@@ -7,27 +7,9 @@
 
 import Link from "next/link";
 import { workspaceApi, type WorkspaceRun } from "@/lib/api";
+import { VerdictBadge } from "@/components/workspace/VerdictBadge";
 
 export const dynamic = "force-dynamic";
-
-function VerdictBadge({ verdict }: { verdict: string | null }) {
-  if (!verdict) return <span className="text-[var(--text-muted)]">—</span>;
-
-  const colorMap: Record<string, string> = {
-    buy: "bg-emerald-950 text-emerald-300",
-    hold: "bg-amber-950 text-amber-300",
-    sell: "bg-red-950 text-red-300",
-    watch: "bg-blue-950 text-blue-300",
-  };
-
-  const color = colorMap[verdict.toLowerCase()] || "bg-slate-800 text-slate-300";
-
-  return (
-    <span className={`px-2.5 py-1 rounded-md text-xs font-medium ${color}`}>
-      {verdict}
-    </span>
-  );
-}
 
 function VersionBadge({ before, after }: { before: number; after: number | null }) {
   if (after === null) {

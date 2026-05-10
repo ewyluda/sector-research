@@ -102,3 +102,39 @@ class TestStepChallenge(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(out.proposed_verdict, WorkspaceVerdict.HEALTHY)
         upsert_mock.assert_not_called()
         self.assertEqual(out.stress_test_summary, "no material changes")
+
+    async def test_invalid_verdict_fails_loudly(self):
+        """Valid JSON with an invalid verdict must not silently become healthy."""
+        sonnet_response = json.dumps({
+            "stress_test_summary": "ambiguous output",
+            "kill_criterion_writes": [],
+            "catalyst_updates": [],
+            "proposed_verdict": "watchlist",
+        })
+        with patch(
+            "backend.app.services.workspace_steps.sonnet_complete",
+            new=AsyncMock(return_value=sonnet_response),
+        ), patch(
+            "backend.app.services.workspace_steps.upsert_kill_criterion_state",
+            new=AsyncMock(),
+        ) as upsert_mock:
+            ctx = _make_ctx()
+            with self.assertRaisesRegex(ValueError, "invalid proposed_verdict"):
+                await step_challenge(ctx)
+
+        upsert_mock.assert_not_called()
+
+    async def test_missing_verdict_fails_loudly(self):
+        """A challenge response without proposed_verdict should mark the step errored."""
+        sonnet_response = json.dumps({
+            "stress_test_summary": "missing verdict",
+            "kill_criterion_writes": [],
+            "catalyst_updates": [],
+        })
+        with patch(
+            "backend.app.services.workspace_steps.sonnet_complete",
+            new=AsyncMock(return_value=sonnet_response),
+        ):
+            ctx = _make_ctx()
+            with self.assertRaisesRegex(ValueError, "missing proposed_verdict"):
+                await step_challenge(ctx)
