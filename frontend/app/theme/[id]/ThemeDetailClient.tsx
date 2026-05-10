@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import clsx from "clsx";
 import type { Theme, DiscoverResponse, CompanySignalCard } from "@/lib/api";
-import { fmtMarketCap, fmtPct, fmtScore } from "@/lib/api";
+import { fmtMarketCap, fmtPct, fmtScore, themes as themesApi } from "@/lib/api";
 import VelocityBadge from "@/components/VelocityBadge";
 import SourceBadge from "@/components/SourceBadge";
 import ScoreRing from "@/components/ScoreRing";
+import { VelocitySparkline } from "@/components/deep-dive/VelocitySparkline";
 
 interface Props {
   theme: Theme;
@@ -133,12 +135,22 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
 
       {/* X Signal */}
       <div>
-        <h3 className="text-xs font-semibold text-[var(--text-faint)] uppercase tracking-wide mb-2">
-          X Signal
-          <span className="ml-1.5 text-[9px] font-normal text-[var(--warning)] border border-[var(--warning)]/30 rounded px-1">
-            T2
-          </span>
-        </h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-xs font-semibold text-[var(--text-faint)] uppercase tracking-wide">
+            X Signal
+            <span className="ml-1.5 text-[9px] font-normal text-[var(--warning)] border border-[var(--warning)]/30 rounded px-1">
+              T2
+            </span>
+          </h3>
+          <VelocitySparkline
+            velocity={card.x_signal}
+            themeId={themeId}
+            ticker={card.ticker}
+            days={30}
+            width={120}
+            height={26}
+          />
+        </div>
         <div className="rounded-lg border border-[var(--border)] overflow-hidden">
           <MetricRow label="Velocity direction" value={card.x_signal.direction} />
           <MetricRow label="7d/30d ratio" value={card.x_signal.ratio?.toFixed(2) ?? "—"} />
@@ -232,6 +244,160 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
   );
 }
 
+// ── Tracked-ticker editor ─────────────────────────────────────────────────────
+// Optimistic chips + input. Mutations call the atomic add/remove sub-routes;
+// on success we router.refresh() so the server component re-fetches the theme
+// + discovery data and re-flows everything (is_seed flags, scheduler scope).
+function TickerEditor({
+  themeId,
+  tickers,
+  onClose,
+}: {
+  themeId: string;
+  tickers: string[];
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [local, setLocal] = useState<string[]>(tickers);
+  const [draft, setDraft] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  // Re-sync local state if props change (after a successful refresh).
+  useEffect(() => {
+    setLocal(tickers);
+  }, [tickers]);
+
+  const parseDraft = (raw: string): string[] =>
+    raw
+      .split(/[\s,]+/)
+      .map((t) => t.trim().toUpperCase())
+      .filter(Boolean);
+
+  async function handleAdd() {
+    const candidates = parseDraft(draft);
+    if (candidates.length === 0) return;
+
+    const toAdd = candidates.filter((t) => !local.includes(t));
+    if (toAdd.length === 0) {
+      setDraft("");
+      return;
+    }
+
+    setError(null);
+    setLocal((prev) => [...prev, ...toAdd]);
+    setDraft("");
+
+    // Serial — backend is idempotent on duplicates so this is safe.
+    // Track which tickers actually persisted so a mid-loop failure only
+    // rolls back the un-persisted tail; the prefix is reconciled by
+    // router.refresh() in the finally block.
+    const persisted: string[] = [];
+    try {
+      for (const ticker of toAdd) {
+        await themesApi.addTicker(themeId, ticker);
+        persisted.push(ticker);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add ticker");
+      const failed = toAdd.filter((t) => !persisted.includes(t));
+      setLocal((prev) => prev.filter((t) => !failed.includes(t)));
+    } finally {
+      startTransition(() => router.refresh());
+    }
+  }
+
+  async function handleRemove(ticker: string) {
+    setError(null);
+    setLocal((prev) => prev.filter((t) => t !== ticker));
+    try {
+      await themesApi.removeTicker(themeId, ticker);
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to remove ticker");
+      setLocal((prev) => [...prev, ticker]);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-[var(--text)]">
+            Tracked tickers
+          </h3>
+          <p className="text-xs text-[var(--text-faint)] mt-0.5">
+            Seed tickers always appear in discovery results and drive daily
+            signal refresh. Removing a ticker preserves its historical signals.
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
+        >
+          Done
+        </button>
+      </div>
+
+      {/* Chip list */}
+      <div className="flex flex-wrap gap-1.5">
+        {local.length === 0 ? (
+          <span className="text-xs text-[var(--text-faint)] italic">
+            No tracked tickers yet — add some below.
+          </span>
+        ) : (
+          local.map((ticker) => (
+            <span
+              key={ticker}
+              className="inline-flex items-center gap-1 text-xs font-mono font-medium text-[var(--primary-dk)] bg-[var(--accent-bg)] border border-[var(--border)] rounded-full pl-2.5 pr-1 py-0.5"
+            >
+              ${ticker}
+              <button
+                onClick={() => handleRemove(ticker)}
+                disabled={pending}
+                aria-label={`Remove ${ticker}`}
+                className="ml-0.5 w-4 h-4 inline-flex items-center justify-center rounded-full text-[var(--text-faint)] hover:text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-50"
+              >
+                ×
+              </button>
+            </span>
+          ))
+        )}
+      </div>
+
+      {/* Add input */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleAdd();
+        }}
+        className="flex items-center gap-2"
+      >
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="Add tickers (e.g. NVDA, AMD)"
+          className="flex-1 text-xs font-mono bg-[var(--surface-alt)] border border-[var(--border)] rounded-md px-2.5 py-1.5 focus:outline-none focus:border-[var(--primary)]"
+        />
+        <button
+          type="submit"
+          disabled={pending || draft.trim().length === 0}
+          className="text-xs font-medium px-3 py-1.5 rounded-md bg-[var(--primary)] text-white hover:bg-[var(--primary-dk)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+        >
+          Add
+        </button>
+      </form>
+
+      {error && (
+        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1.5">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ── Main client component ─────────────────────────────────────────────────────
 export default function ThemeDetailClient({ theme, initialData }: Props) {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(
@@ -239,6 +405,15 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
   );
   const [sortBy, setSortBy] = useState<SortKey>("combined_score");
   const [filter, setFilter] = useState<FilterKey>("all");
+  const [editingTickers, setEditingTickers] = useState(false);
+
+  const seedTickers = useMemo(
+    () =>
+      Array.isArray(theme.seed_tickers)
+        ? (theme.seed_tickers as string[])
+        : [],
+    [theme.seed_tickers],
+  );
 
   // Stable reference so the downstream useMemo doesn't re-run on every
   // render when the fallback empty array is the value in play.
@@ -296,14 +471,32 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
           )}
         </div>
 
-        {/* Signal status — stacks below header on small screens, floats right on md+ */}
-        {isStale && (
-          <div className="shrink-0 self-start inline-flex items-center gap-2 text-xs text-[var(--warning)] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-            Signal data stale — last updated &gt;36h ago
-          </div>
-        )}
+        <div className="shrink-0 self-start flex items-center gap-2">
+          {!editingTickers && (
+            <button
+              onClick={() => setEditingTickers(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] border border-[var(--border)] rounded-lg px-3 py-2 hover:border-[var(--primary)] hover:text-[var(--text)] cursor-pointer whitespace-nowrap"
+            >
+              <span>✎</span> Edit tickers ({seedTickers.length})
+            </button>
+          )}
+          {/* Signal status — stacks below header on small screens, floats right on md+ */}
+          {isStale && (
+            <div className="inline-flex items-center gap-2 text-xs text-[var(--warning)] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 whitespace-nowrap">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+              Signal data stale — last updated &gt;36h ago
+            </div>
+          )}
+        </div>
       </div>
+
+      {editingTickers && (
+        <TickerEditor
+          themeId={theme.id}
+          tickers={seedTickers}
+          onClose={() => setEditingTickers(false)}
+        />
+      )}
 
       {/* Two-panel layout — stacks vertically below lg breakpoint */}
       <div className="flex flex-col lg:flex-row gap-4 lg:h-[calc(100vh-180px)] lg:min-h-[600px]">

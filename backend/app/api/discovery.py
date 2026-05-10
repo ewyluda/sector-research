@@ -21,6 +21,7 @@ from backend.app.db import get_db
 from backend.app.models.theme import Theme
 from backend.app.services.discovery import DiscoveryEngine, CompanySignalCard
 from backend.app.services.signal_history import list_signal_history
+from backend.app.services.signal_scheduler import refresh_theme_signals
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["discovery"])
@@ -128,6 +129,35 @@ async def discover_theme(
         "signal_status": "stale" if has_stale else "fresh",
         "companies": [_card_to_dict(c) for c in cards],
     }
+
+
+@router.post("/themes/{theme_id}/signals/refresh")
+async def refresh_theme_signals_endpoint(
+    theme_id: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """Manually trigger an X-signal refresh for one theme.
+
+    Synchronous: blocks until all tickers in the theme finish (X API calls
+    sleep 2s between each). Wraps `refresh_theme_signals` from the daily
+    scheduler — same write path, same dual-write into `signal_history`,
+    same surprise-alert logic. Returns the per-theme summary dict.
+
+    For admin / on-demand use; the daily 2 AM cron is the normal cadence.
+    """
+    result = await db.execute(select(Theme).where(Theme.id == theme_id))
+    theme = result.scalar_one_or_none()
+    if not theme:
+        raise HTTPException(status_code=404, detail="Theme not found")
+
+    summary = await refresh_theme_signals(
+        theme=theme,
+        fmp=request.app.state.fmp,
+        x_client=request.app.state.x_client,
+        db=db,
+    )
+    return summary
 
 
 @router.get("/themes/{theme_id}/signals/{ticker}/history")

@@ -97,6 +97,16 @@ export const themes = {
     apiFetch<Theme>(`/api/themes/${id}`, { method: "PUT", body: JSON.stringify(body) }),
   delete: (id: string) =>
     apiFetch<void>(`/api/themes/${id}`, { method: "DELETE" }),
+  addTicker: (id: string, ticker: string) =>
+    apiFetch<Theme>(`/api/themes/${id}/tickers`, {
+      method: "POST",
+      body: JSON.stringify({ ticker }),
+    }),
+  removeTicker: (id: string, ticker: string) =>
+    apiFetch<Theme>(
+      `/api/themes/${id}/tickers/${encodeURIComponent(ticker)}`,
+      { method: "DELETE" },
+    ),
 };
 
 // ── Filings (SEC EDGAR narrative section extracts) ────────────────────────────

@@ -22,6 +22,13 @@ One execution of the 5-step refresh loop against a workspace. Persisted as one r
 - `partial` — orchestrator finished but at least one step's `step_outputs[name]` carries an `error` key. The run is readable but the verdict (if present) was derived from incomplete inputs. The index page renders these with a warning treatment.
 - `failed` — the orchestrator itself crashed (uncaught exception or cancellation). `step_outputs` may be empty.
 
+### Theme membership
+A theme's `seed_tickers` (JSONB list on the `themes` row) is the curated tracked-ticker list. It is **not** the full set of companies that appear in discovery — discovery additionally surfaces FMP screener matches and flags seeds with `is_seed=true`. Seeds are also the iteration set for daily signal refresh and theme-level fanout, with the scheduler taking the union of `seed_tickers` and any ticker that already has a row in `signals` for the theme.
+
+Membership is mutated through three endpoints in `api/themes.py`: full-payload `PUT /api/themes/{id}` (replaces the list) and the atomic `POST /api/themes/{id}/tickers` / `DELETE /api/themes/{id}/tickers/{ticker}` sub-routes. All three normalize tickers (uppercase, strip, dedupe order-preserving) via the shared `_normalize_tickers` helper, which also tolerates the legacy list-of-dicts shape (entries with a `"ticker"` key) — mirroring `services/fanout.py`'s defensive read.
+
+Removing a ticker from `seed_tickers` does **not** cascade-delete its `signals` or `signal_history` rows: historical readings are preserved, and the scheduler's union-with-previously-signalled rule means an ex-seed ticker keeps refreshing until its `signals` row is manually cleared.
+
 ### Signal
 A computed reading of one of three X-derived metrics — `velocity`, `narrative`, `discovery` — for a `(ticker, theme_id)` pair at a point in time. Written by the daily `signal_scheduler`.
 
