@@ -51,21 +51,14 @@ logger = logging.getLogger(__name__)
 CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
 TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
 
-# Per-category routing tables (transcript / macro / EDGAR / filing / relationship).
-# Source of truth lives in `deep_dive_routing`; re-exported here so the
-# context-builder closures inside `node_deep_dive` keep working unchanged.
-# New code should reach for `routing_for(category) -> CategoryRouting` instead
-# of poking each table individually.
-from backend.app.graph.deep_dive_routing import (  # noqa: E402
-    EDGAR_ROUTING,
-    FILING_EXCERPT_BUDGET_CHARS,
-    FILING_EXCERPT_ROUTING,
-    MACRO_ROUTING,
-    RELATIONSHIP_ROUTING,
-    TRANSCRIPT_ROUTING,
+# Per-category context builders live in `deep_dive_context`. The routing
+# tables and `format_fact_value` are now consumed there directly; this file
+# only imports the dataclass + dispatcher.
+from backend.app.graph.deep_dive_context import (  # noqa: E402
+    DeepDiveContext,
+    build_all_contexts,
 )
 from backend.app.graph.deep_dive_helpers import (  # noqa: E402
-    format_fact_value as _fmt_fact_value,
     unwrap_gather_result as _unwrap,
 )
 
@@ -933,221 +926,22 @@ async def node_deep_dive(
     if state.loop_context:
         loop_ctx_str = f"\n\nNOTE: This is a loop-back run (attempt {state.loop_count}/2). Focus particularly on: {state.loop_context.get('reason', '')}"
 
-    # Build per-category transcript context
-    def _build_transcript_context(category: str) -> str:
-        if not state.transcript_analysis or isinstance(state.transcript_analysis, str):
-            return ""
-        passes = TRANSCRIPT_ROUTING.get(category)
-        if not passes:
-            return ""
-        sections = []
-        for pass_key in passes:
-            val = state.transcript_analysis.get(pass_key)
-            if val is not None and not isinstance(val, str):
-                sections.append(f"[Transcript: {pass_key}]\n{json.dumps(val, indent=2)}")
-        if not sections:
-            return ""
-        return "Earnings transcript analysis:\n" + "\n\n".join(sections)
-
-    def _build_macro_context(category: str) -> str:
-        macro = (state.curated_financials or {}).get("macro_indicators")
-        if not macro or not isinstance(macro, dict):
-            return ""
-        series_keys = MACRO_ROUTING.get(category)
-        if not series_keys:
-            return ""
-        sections = []
-        for key in series_keys:
-            points = macro.get(key)
-            if points and isinstance(points, list) and len(points) > 0:
-                latest = points[-1]
-                recent = points[-6:] if len(points) >= 6 else points
-                trend_str = ", ".join(f"{p['date']}: {p['value']}" for p in recent)
-                sections.append(f"{key}: latest={latest['value']} ({latest['date']}), trend=[{trend_str}]")
-        if not sections:
-            return ""
-        return "Macro economic indicators (FRED):\n" + "\n".join(sections)
-
-    def _build_technical_context(category: str) -> str:
-        if category != "Technical & Market Structure":
-            return ""
-        prices = (state.curated_financials or {}).get("daily_prices")
-        if not prices or not isinstance(prices, list) or len(prices) == 0:
-            return ""
-        # Latest 20 sessions, newest last (chronological already)
-        recent = prices[-20:]
-        lines = ["date | close | volume | sma_9 | sma_20 | sma_50 | sma_200 | rsi"]
-        for p in recent:
-            lines.append(
-                f"{p.get('date')} | {p.get('close')} | {p.get('volume')} | "
-                f"{p.get('sma_9')} | {p.get('sma_20')} | {p.get('sma_50')} | "
-                f"{p.get('sma_200')} | {p.get('rsi')}"
-            )
-        latest = prices[-1]
-        summary = (
-            f"Latest close: {latest.get('close')} | "
-            f"RSI(14): {latest.get('rsi')} | "
-            f"SMA50: {latest.get('sma_50')} | SMA200: {latest.get('sma_200')}"
-        )
-        return (
-            "Technical indicators (computed from 1Y daily OHLCV):\n"
-            f"{summary}\n\nLast 20 sessions:\n" + "\n".join(lines)
-        )
-
-    def _build_sentiment_context(category: str) -> str:
-        if category != "Sentiment & Narrative":
-            return ""
-        if not signals:
-            return ""
-        parts = ["X social signal (Tier 2, directional only):"]
-        vel = signals.get("velocity")
-        if isinstance(vel, dict):
-            parts.append(
-                f"Velocity: ratio={vel.get('ratio')} direction={vel.get('direction')} "
-                f"count_7d={vel.get('count_7d')} count_30d_approx={vel.get('count_30d_approx')}"
-            )
-        narr = signals.get("narrative")
-        if isinstance(narr, dict):
-            parts.append(f"Narrative: post_count={narr.get('post_count')} summary={narr.get('summary') or 'N/A'}")
-        disc = signals.get("discovery")
-        if isinstance(disc, dict):
-            parts.append(
-                f"Discovery: score={disc.get('score')} co_mentions_7d={disc.get('co_mentions_7d')} "
-                f"total_theme_mentions_7d={disc.get('total_theme_mentions_7d')}"
-            )
-        if len(parts) == 1:
-            return ""
-        return "\n".join(parts)
-
-    # _fmt_fact_value is imported from deep_dive_helpers (lifted for tests).
-    def _build_edgar_context(category: str) -> str:
-        concepts = EDGAR_ROUTING.get(category)
-        if not concepts:
-            return ""
-        present_lines: list[str] = []
-        missing: list[str] = []
-        facts = edgar_facts or {}
-        for concept in concepts:
-            entries = facts.get(concept)
-            short = concept.split(":", 1)[-1]
-            if not entries:
-                missing.append(short)
-                continue
-            # Most recent first, show up to 4
-            for e in entries[:4]:
-                present_lines.append(
-                    f"  {short} [{e.get('fiscal_year')} {e.get('fiscal_period') or ''}] "
-                    f"{e.get('period_start')} → {e.get('period_end')}: "
-                    f"{_fmt_fact_value(e['value'], e.get('unit') or '')}"
-                )
-        if not present_lines and not missing:
-            return ""
-        sections = ["SEC EDGAR XBRL facts (Tier 1, authoritative from 10-K/10-Q filings):"]
-        if present_lines:
-            sections.append("\n".join(present_lines))
-        if missing:
-            sections.append("Not disclosed in XBRL: " + ", ".join(missing))
-        return "\n".join(sections)
-
-    def _build_filing_excerpt_context(category: str) -> str:
-        section_keys = FILING_EXCERPT_ROUTING.get(category)
-        if not section_keys:
-            return ""
-        sections = filing_sections or {}
-        blocks: list[str] = []
-        for key in section_keys:
-            payload = sections.get(key)
-            if not payload:
-                continue
-            text = (payload.get("text") or "")[:FILING_EXCERPT_BUDGET_CHARS]
-            if not text:
-                continue
-            truncated = len(payload.get("text") or "") > FILING_EXCERPT_BUDGET_CHARS
-            header = (
-                f"[{payload.get('form_type', '?')} · {payload.get('filing_date', '?')} · "
-                f"{payload.get('heading') or key}]"
-            )
-            if truncated:
-                header += f" (truncated to {FILING_EXCERPT_BUDGET_CHARS} chars)"
-            blocks.append(f"{header}\n{text}")
-        if not blocks:
-            return ""
-        return (
-            "SEC filing excerpts (Tier 1, verbatim narrative from latest 10-K / 10-Q / DEF 14A):\n"
-            + "\n\n".join(blocks)
-        )
-
-    def _build_counterparty_context(category: str) -> str:
-        """Render the relationship graph payload for the deep-dive prompt.
-        Returns '' when the category is not routed, or when we have no
-        extracted relationships for this ticker."""
-        if category not in RELATIONSHIP_ROUTING:
-            return ""
-        if not counterparty_context or not counterparty_context.has_data:
-            return ""
-
-        ctx = counterparty_context  # alias for brevity
-
-        lines: list[str] = [
-            "RESOLVED COUNTERPARTIES",
-            "(pre-extracted from the filing excerpts above; use these as anchors when",
-            "referring to named customers, suppliers, or partners.",
-            "For resolved entities, use the $TICKER notation exactly as shown below",
-            "on first mention — do not refer to them by product/vendor name alone.",
-            "Do NOT re-quote verbatim text from the filings for these entities.)",
-            "",
-        ]
-
-        def _fmt_entry(e) -> str:
-            # e: CounterpartyEntry
-            label = f"${e.resolved_ticker} — {e.name}" if e.resolved_ticker else e.name
-            parts = [label, e.relationship_type]
-            if e.magnitude_pct is not None:
-                parts.append(f"{e.magnitude_pct:.1f}%")
-            return "    - " + " — ".join(parts)
-
-        if ctx.outbound:
-            lines.append(f"Outbound — {state.ticker}'s disclosed relationships:")
-            # Stable type order — show concentration-relevant buckets first.
-            type_order = [
-                "customer", "supplier", "partner", "joint_venture",
-                "licensor", "licensee", "distributor", "reseller",
-                "other",
-            ]
-            for t in type_order:
-                entries = ctx.outbound.get(t)
-                if not entries:
-                    continue
-                lines.append(f"  {t.replace('_', ' ').title()}s:")
-                for e in entries:
-                    lines.append(_fmt_entry(e))
-            lines.append("")
-
-        if ctx.inbound:
-            lines.append(f"Mentioned by others — who named {state.ticker} in their own filings:")
-            for t, entries in sorted(ctx.inbound.items()):
-                if not entries:
-                    continue
-                lines.append(f"  As a {t.replace('_', ' ')} ({len(entries)} mention(s)):")
-                for e in entries:
-                    # e.resolved_ticker is the author ticker here
-                    # Bucket header already states the relationship_type; don't repeat.
-                    lines.append(f"    - ${e.resolved_ticker}")
-            lines.append("")
-
-        return "\n".join(lines).rstrip() + "\n"
-
-    category_contexts: dict[str, dict[str, str]] = {}
-    for cat in categories_to_run:
-        category_contexts[cat] = {
-            "transcript": _build_transcript_context(cat),
-            "macro": _build_macro_context(cat),
-            "technical": _build_technical_context(cat),
-            "sentiment": _build_sentiment_context(cat),
-            "edgar": _build_edgar_context(cat),
-            "filing": _build_filing_excerpt_context(cat),
-            "counterparty": _build_counterparty_context(cat),
-        }
+    # Per-category context builders live in deep_dive_context; the seven
+    # nested closures that used to be here were a hidden dependency surface
+    # on state/signals/edgar_facts/filing_sections/counterparty_context.
+    # Build the dataclass AFTER the FRED block above — that block mutates
+    # state.curated_financials which two of the builders read.
+    deep_dive_ctx = DeepDiveContext(
+        ticker=state.ticker,
+        categories=categories_to_run,
+        transcript_analysis=state.transcript_analysis,
+        curated_financials=state.curated_financials,
+        signals=signals,
+        edgar_facts=edgar_facts,
+        filing_sections=filing_sections,
+        counterparty_context=counterparty_context,
+    )
+    category_contexts = build_all_contexts(deep_dive_ctx)
 
     def _build_targeted_context_for_category(category: str) -> str:
         parts = [f"Fundamental data:\n{data_text}"]
