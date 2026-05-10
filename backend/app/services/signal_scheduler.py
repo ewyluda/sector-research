@@ -18,6 +18,7 @@ from backend.app.clients.fmp import FMPClient
 from backend.app.clients.x_client import XClient, VELOCITY_SURPRISE_MULTIPLIER
 from backend.app.db import async_session
 from backend.app.models.signal import Signal
+from backend.app.models.signal_history import SignalHistory
 from backend.app.models.surprise_alert import SurpriseAlert
 from backend.app.models.theme import Theme
 
@@ -37,6 +38,8 @@ async def _persist_signal_set(
 
     `results` is a dict keyed by signal_type (`velocity`, `narrative`,
     `discovery`) → JSONB-safe payload. All writes share `computed_at`.
+    A SignalHistory row is appended on every refresh so multi-month
+    sparklines and surprise-threshold tuning have a real time series.
     """
     for signal_type, value in results.items():
         await db.execute(
@@ -54,6 +57,15 @@ async def _persist_signal_set(
                 value=value,
                 computed_at=computed_at,
                 is_stale=False,
+            )
+        )
+        db.add(
+            SignalHistory(
+                ticker=ticker,
+                theme_id=theme_id,
+                signal_type=signal_type,
+                value=value,
+                computed_at=computed_at,
             )
         )
 
