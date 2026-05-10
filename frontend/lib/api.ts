@@ -829,6 +829,19 @@ export interface XSignalVelocity {
   computed_at: string | null;
 }
 
+export interface SignalHistoryPoint {
+  computed_at: string;
+  value: Record<string, unknown>;
+}
+
+export interface SignalHistoryResponse {
+  theme_id: string;
+  ticker: string;
+  signal_type: "velocity" | "narrative" | "discovery";
+  days: number;
+  points: SignalHistoryPoint[];
+}
+
 export interface ReportResponse {
   run_id: string;
   ticker: string;
@@ -986,6 +999,19 @@ export async function getCatalystsForRun(runId: string): Promise<CatalystListRes
   return apiFetch<CatalystListResponse>(
     `/api/catalysts?run_id=${encodeURIComponent(runId)}`
   );
+}
+
+export async function getSignalHistory(
+  themeId: string,
+  ticker: string,
+  opts: { signalType?: "velocity" | "narrative" | "discovery"; days?: number } = {},
+): Promise<SignalHistoryResponse> {
+  const params = new URLSearchParams();
+  if (opts.signalType) params.set("signal_type", opts.signalType);
+  if (opts.days != null) params.set("days", String(opts.days));
+  const qs = params.toString();
+  const path = `/api/themes/${encodeURIComponent(themeId)}/signals/${encodeURIComponent(ticker)}/history${qs ? `?${qs}` : ""}`;
+  return apiFetch<SignalHistoryResponse>(path);
 }
 
 export async function getCatalyst(id: string): Promise<CatalystRow> {

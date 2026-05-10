@@ -203,8 +203,14 @@ CONCEPT_WHITELIST: dict[str, list[str]] = {
         "LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFour",
         "LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFive",
         "LongTermDebtMaturitiesRepaymentsOfPrincipalAfterYearFive",
-        # Customer concentration (requires axis handling — best-effort in v1)
-        "ConcentrationRiskPercentage1",
+        # NOTE: `ConcentrationRiskPercentage1` was previously listed here.
+        # The SEC `companyfacts` endpoint only returns un-dimensioned parent
+        # facts and this concept is always disclosed with axes
+        # (`CustomerAxis`, `ProductAxis`), so it never returns data via this
+        # API. Structured concentration intel comes from Phase B narrative
+        # extraction (`Relationship.unnamed=true` rows). To recover it from
+        # XBRL we'd need to parse the original instance documents — out of
+        # scope for v1.
         # Credit bonuses
         "WeightedAverageInterestRate",
         "LongTermDebt",

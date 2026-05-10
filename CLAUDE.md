@@ -155,6 +155,8 @@ Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU 
 
 Combined score = 40% X velocity + 40% fundamental quality + 20% discovery score when X data is fresh. When X is missing or stale, the weights collapse to 80% fundamental + 20% discovery. Staleness threshold lives in `clients/x_client.py::STALE_THRESHOLD_HOURS`.
 
+The scheduler also dual-writes a `signal_history` row per signal_type per refresh — read it via `services/signal_history.list_signal_history()` or `GET /api/themes/{id}/signals/{ticker}/history?signal_type=velocity&days=N` (days clamped to [1, 365]). The current-value `signals` table semantics are unchanged.
+
 ### Citations as a first-class primitive
 
 Every data-client method returns `tuple[data, Citation]`, not just data. `models/citation.py` defines two shapes: the `Citation` dataclass (in-memory / embedded in `CompanySignalCard` / etc.) and `CitationRecord` ORM (persisted rows). Inside the LangGraph state, use `StateCitation` (in `graph/state.py`) — it's the JSON-serializable form with an ISO-string timestamp. When adding a new data source, preserve this convention or the report endpoint and frontend's `Citation[]` typing break silently.
@@ -220,7 +222,7 @@ Five-phase pipeline for extracting and consuming SEC filing narrative. All on-de
 Database tables (all in `models/filing.py`):
 
 - `filings` — one row per accession_number (10-K, 10-Q, DEF 14A, etc.)
-- `xbrl_facts` — XBRL numeric facts (RPO, debt maturity, concentration, credit)
+- `xbrl_facts` — XBRL numeric facts (RPO, debt maturity, credit). Customer concentration is NOT here: `ConcentrationRiskPercentage1` is always disclosed dimensionally and the SEC `companyfacts` API only exposes un-dimensioned parent facts. Concentration intel comes from Phase B narrative extraction (`Relationship.unnamed=true`).
 - `filing_sections` — extracted narrative text per section per filing
 - `relationships` — LLM-extracted counterparty relationships
 - `counterparty_aliases` — normalized name → canonical CIK/ticker resolution
@@ -299,7 +301,7 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 
 - **Filing excerpt routing** (`FILING_EXCERPT_ROUTING` in `nodes.py`): Business Quality (Item 1), Risk Assessment (Item 1A), Growth & Earnings (Item 7 + Item 2), Future Durability (Item 7 + Item 1), Management & Governance (DEF 14A). Truncated to `FILING_EXCERPT_BUDGET_CHARS` (5000) per section.
 - **Relationship routing** (`RELATIONSHIP_ROUTING` in `nodes.py`): Business Quality, Risk Assessment, Future Durability. Uses display-name keys. Rendered by the `_build_counterparty_context` closure in `node_deep_dive` from the `CounterpartyContext` fetched in `PipelineService._fetch_counterparty_context`. Positioned in `DEEP_DIVE_USER` right after `{filing_excerpts}` so the "anchors not re-quotes" instruction reads against the filing text. Empty payload → empty string → slot drops out cleanly.
-- **EDGAR XBRL routing** (`EDGAR_ROUTING`): Growth & Earnings (RPO), Future Durability (RPO), Financial Health (debt maturity + credit), Risk Assessment (debt maturity + concentration + credit), Business Quality (concentration).
+- **EDGAR XBRL routing** (`EDGAR_ROUTING`): Growth & Earnings (RPO), Future Durability (RPO), Financial Health (debt maturity + credit), Risk Assessment (debt maturity + credit). Customer concentration is intentionally absent — see the `xbrl_facts` note above; concentration arrives via the relationship-routing path instead.
 
 The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q). It also pulls ingested filing sections (if any) via `PipelineService._fetch_filing_sections()`, XBRL facts via `_fetch_edgar_facts()`, and the counterparty graph via `_fetch_counterparty_context()`.
 

@@ -10,12 +10,19 @@ Status is tracked in memory per-process (no persistence across server
 restarts). Mirrors the pattern of `PipelineService`'s in-memory SSE
 queues. If the server restarts mid-run, the client polling the status
 endpoint will see a 404 — acceptable for a personal tool.
+
+The status dict is bounded (`DEFAULT_MAX_STATUSES`) — once full, the
+oldest entries are evicted in insertion order. Terminal entries
+(completed/failed) are by construction the oldest, so eviction targets
+them first; a still-running fanout would only be evicted after 128
+concurrent runs, which can't happen in practice.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
 import secrets
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
@@ -39,6 +46,15 @@ logger = logging.getLogger(__name__)
 
 FanoutStatusLiteral = Literal["running", "completed", "failed"]
 FanoutStageLiteral = Literal["ingest", "extract", "extract_transcripts", "resolve"]
+
+# Cap on the in-memory status dict. Insertion-order eviction once the cap is
+# exceeded — running entries are the most recently inserted in any normal
+# flow, so terminal (completed/failed) entries are evicted first. A client
+# still polling an evicted status sees a 404, which the UI already handles
+# (same response as a server restart). 128 is a generous bound for a
+# personal tool — to evict a running entry you'd need 128+ concurrent
+# fanouts, which can't happen in practice.
+DEFAULT_MAX_STATUSES = 128
 
 
 @dataclass
@@ -97,14 +113,31 @@ class FanoutService:
     PipelineService. `edgar` is the process-wide shared EdgarClient,
     so the service does NOT own its lifecycle (no close on exit)."""
 
-    def __init__(self, *, edgar: EdgarClient, fmp: FMPClient) -> None:
-        self._statuses: dict[str, FanoutStatus] = {}
+    def __init__(
+        self,
+        *,
+        edgar: EdgarClient,
+        fmp: FMPClient,
+        max_statuses: int = DEFAULT_MAX_STATUSES,
+    ) -> None:
+        self._statuses: "OrderedDict[str, FanoutStatus]" = OrderedDict()
         self._edgar = edgar
         self._fmp = fmp
+        self._max_statuses = max_statuses
 
     @staticmethod
     def _new_id() -> str:
         return f"fo_{secrets.token_hex(6)}"
+
+    def _record(self, status: FanoutStatus) -> None:
+        """Register a new status and evict the oldest if we exceed the cap.
+
+        Insertion order is preserved by `OrderedDict`, so the oldest entries
+        — which in normal flow are completed/failed — are evicted first.
+        """
+        self._statuses[status.fanout_id] = status
+        while len(self._statuses) > self._max_statuses:
+            self._statuses.popitem(last=False)
 
     def get(self, fanout_id: str) -> FanoutStatus | None:
         return self._statuses.get(fanout_id)
@@ -118,7 +151,7 @@ class FanoutService:
             scope=FanoutScope(kind="ticker", ticker=ticker.upper()),
             total_tickers=1,
         )
-        self._statuses[status.fanout_id] = status
+        self._record(status)
         asyncio.create_task(self._run([ticker.upper()], status, force=force))
         return status
 
@@ -163,7 +196,7 @@ class FanoutService:
             scope=FanoutScope(kind="theme", theme_id=theme_id),
             total_tickers=len(tickers),
         )
-        self._statuses[status.fanout_id] = status
+        self._record(status)
 
         if not tickers:
             status.status = "completed"

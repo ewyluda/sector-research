@@ -59,7 +59,13 @@ _RPO_CONCEPTS = [
     "us-gaap:RevenueRemainingPerformanceObligation",
     "us-gaap:RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage",
 ]
-_CONCENTRATION_CONCEPTS = ["us-gaap:ConcentrationRiskPercentage1"]
+# NOTE: customer concentration intentionally absent. The SEC
+# `companyfacts` endpoint only exposes un-dimensioned parent facts and
+# `ConcentrationRiskPercentage1` is always disclosed with axes
+# (`CustomerAxis`, `ProductAxis`), so the API returns nothing for it.
+# Structured concentration arrives via Phase B narrative extraction
+# (`Relationship.unnamed=true` rows) and is rendered through the
+# RELATIONSHIP_ROUTING path below.
 _CREDIT_CONCEPTS = [
     "us-gaap:WeightedAverageInterestRate",
     "us-gaap:LongTermDebt",
@@ -70,8 +76,7 @@ EDGAR_ROUTING: dict[str, list[str]] = {
     "Growth & Earnings": _RPO_CONCEPTS,
     "Future Durability": _RPO_CONCEPTS,
     "Financial Health": _DEBT_MATURITY_CONCEPTS + _CREDIT_CONCEPTS,
-    "Risk Assessment": _DEBT_MATURITY_CONCEPTS + _CONCENTRATION_CONCEPTS + _CREDIT_CONCEPTS,
-    "Business Quality": _CONCENTRATION_CONCEPTS,
+    "Risk Assessment": _DEBT_MATURITY_CONCEPTS + _CREDIT_CONCEPTS,
 }
 
 # Filing narrative excerpts. Section text is stored in filing_sections by

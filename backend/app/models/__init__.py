@@ -12,6 +12,7 @@ from backend.app.models.theme import Theme
 from backend.app.models.thesis_print_verdict import ThesisPrintVerdict
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
+from backend.app.models.signal_history import SignalHistory  # noqa: F401
 from backend.app.models.watchlist import WatchlistItem
 from backend.app.models.surprise_alert import SurpriseAlert
 from backend.app.models.workspace_run import WorkspaceRun  # noqa: F401
@@ -34,6 +35,7 @@ __all__ = [
     "ThesisPrintVerdict",
     "ResearchRun",
     "Signal",
+    "SignalHistory",
     "WatchlistItem",
     "SurpriseAlert",
     "TickerModel",

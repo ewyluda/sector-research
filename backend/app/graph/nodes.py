@@ -790,8 +790,13 @@ async def node_deep_dive(
 
     `edgar_facts` is an optional {concept: [fact_dict, ...]} dict of XBRL
     facts pre-fetched by the caller from the xbrl_facts table, used to
-    route filings data (RPO, debt maturity, customer concentration) into
-    the relevant category prompts.
+    route filings data (RPO, debt maturity, credit metrics) into the
+    relevant category prompts. Customer concentration is NOT routed here
+    — the SEC `companyfacts` endpoint only returns un-dimensioned parent
+    facts and `ConcentrationRiskPercentage1` is always disclosed with
+    axes (`CustomerAxis`, `ProductAxis`), so structured concentration
+    intel arrives via Phase B narrative extraction (`Relationship`
+    rows with `unnamed=true`).
 
     `filing_sections` is an optional {section_key: {text, heading, form_type,
     filing_date, accession_number}} dict pre-fetched from filing_sections

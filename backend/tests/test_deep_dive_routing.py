@@ -22,9 +22,35 @@ class RoutingTableTests(unittest.TestCase):
         r = routing_for("Business Quality")
         self.assertIn("pass3_qa_tensions", r.transcript_passes)
         self.assertEqual(r.macro_indicators, [])
-        self.assertEqual(r.edgar_concepts, ["us-gaap:ConcentrationRiskPercentage1"])
+        # Business Quality intentionally has no XBRL concepts routed —
+        # `ConcentrationRiskPercentage1` was the only one and it was
+        # dropped because the SEC `companyfacts` API doesn't expose
+        # dimensional facts. See deep_dive_routing.py.
+        self.assertEqual(r.edgar_concepts, [])
         self.assertEqual(r.filing_sections, ["item_1_business"])
         self.assertTrue(r.relationships)
+
+    def test_concentration_concept_not_routed_anywhere(self):
+        # Pin the dropped concept so it doesn't sneak back into the
+        # whitelist without an explicit decision.
+        for cat, concepts in EDGAR_ROUTING.items():
+            self.assertNotIn(
+                "us-gaap:ConcentrationRiskPercentage1",
+                concepts,
+                f"{cat} routes ConcentrationRiskPercentage1 — companyfacts doesn't expose it",
+            )
+
+    def test_concentration_concept_not_in_client_whitelist(self):
+        # The companyfacts ingest pipeline filters to CONCEPT_WHITELIST,
+        # so adding a concept here costs DB writes for every ticker.
+        # ConcentrationRiskPercentage1 returns nothing → don't ingest it.
+        from backend.app.clients.edgar import CONCEPT_WHITELIST
+        for taxonomy, concepts in CONCEPT_WHITELIST.items():
+            self.assertNotIn(
+                "ConcentrationRiskPercentage1",
+                concepts,
+                f"{taxonomy} whitelists ConcentrationRiskPercentage1 — companyfacts never returns it",
+            )
 
     def test_macro_regime_routes_full_macro_set(self):
         r = routing_for("Macro & Regime")
