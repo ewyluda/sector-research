@@ -125,11 +125,43 @@ class XClient:
         return f"({' OR '.join(parts)}) -is:retweet lang:en"
 
     def _build_theme_query(self, x_search_terms: list[str]) -> str:
-        """Build an X search query for a full theme."""
+        """Build an X search query for a full theme.
+
+        Each term becomes one alternative in an OR list. Themes can mix:
+        - bare keywords (`SMR`)              → emitted as-is
+        - plain phrases (`AI capex`)         → wrapped in quotes
+        - hashtags (`#DataCenterPower`)      → emitted as-is
+        - cashtags (`$BE`)                   → emitted as-is
+        - pre-quoted phrases (`"Grid Cliff"`)→ emitted as-is, no double-quote
+        - rich expressions (`A OR "B"`)      → wrapped in `()` for precedence
+
+        Naive double-quoting (the previous implementation) breaks themes
+        that intentionally use X-search syntax — see Power & Energy theme
+        which mixes quoted phrases, cashtags, and embedded OR operators.
+        """
         if not x_search_terms:
             return ""
-        terms = [f'"{t}"' if " " in t else t for t in x_search_terms[:10]]
-        return f"({' OR '.join(terms)}) -is:retweet lang:en"
+
+        parts: list[str] = []
+        for raw in x_search_terms[:10]:
+            t = (raw or "").strip()
+            if not t:
+                continue
+            has_quote = '"' in t
+            has_or = " OR " in f" {t.upper()} "
+            starts_special = t[0] in ("#", "$", "(")
+            if has_or:
+                parts.append(f"({t})")
+            elif has_quote or starts_special:
+                parts.append(t)
+            elif " " in t:
+                parts.append(f'"{t}"')
+            else:
+                parts.append(t)
+
+        if not parts:
+            return ""
+        return f"({' OR '.join(parts)}) -is:retweet lang:en"
 
     # ── Public signal computation ─────────────────────────────────────────────
 
