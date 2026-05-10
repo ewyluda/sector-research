@@ -142,6 +142,16 @@ async def get_signal_history_endpoint(
 
     Ordered oldest → newest. `days` clamped to [1, 365].
     `signal_type` ∈ {velocity, narrative, discovery}.
+
+    Each `points[].value` is the JSONB payload written by the X client and
+    is returned opaquely. Per `signal_type`, consumers can rely on:
+    - `velocity`: `{"ratio": float, "direction": str}` — see `XSignalVelocity`
+      in `frontend/lib/api.ts` for the canonical shape.
+    - `narrative`: `{"summary": str, ...}`
+    - `discovery`: `{"score": float, ...}`
+    Source of truth for these shapes is `clients/x_client.py`. If a payload
+    key changes, this docstring and any consumer indexing into `value` must
+    be updated together.
     """
     if signal_type not in ALLOWED_SIGNAL_TYPES:
         raise HTTPException(

@@ -22,6 +22,19 @@ One execution of the 5-step refresh loop against a workspace. Persisted as one r
 - `partial` — orchestrator finished but at least one step's `step_outputs[name]` carries an `error` key. The run is readable but the verdict (if present) was derived from incomplete inputs. The index page renders these with a warning treatment.
 - `failed` — the orchestrator itself crashed (uncaught exception or cancellation). `step_outputs` may be empty.
 
+### Signal
+A computed reading of one of three X-derived metrics — `velocity`, `narrative`, `discovery` — for a `(ticker, theme_id)` pair at a point in time. Written by the daily `signal_scheduler`.
+
+Persisted in two shapes:
+- **`signal_history`** is the append-only source of truth — one row per refresh per `(ticker, theme_id, signal_type)`.
+- **`signals`** is a denormalized read-cache holding only the latest reading per `(ticker, theme_id, signal_type)` (last-write-wins via delete-then-insert inside `_persist_signal_set`). It also carries the `is_stale` flag, which is a property of the *current* reading and intentionally not replicated into `signal_history`.
+
+Read paths follow the asymmetry:
+- Discovery scoring (`services/discovery._load_cached_signals`), surprise-alert prior-ratio lookup in the scheduler, deep-dive `XSignalVelocity` payload (`api/pipeline.py`, `services/pipeline.py`) — all read from `signals`.
+- Multi-period analytics — sparklines, regression checks, surprise-threshold tuning — read from `signal_history` via `services/signal_history.list_signal_history`.
+
+Either both rows land or neither does: `_persist_signal_set` adds the `Signal` and `SignalHistory` rows in the same scheduler transaction before `db.commit()`.
+
 ### The 5 steps
 The fixed sequence inside one workspace run, run continuously without human gates:
 
