@@ -43,6 +43,7 @@ from backend.app.services.edgar_sections_ingest import (
     ingest_ticker_sections,
 )
 from backend.app.services.supply_chain import (
+    SupplyChainGraph,
     get_graph,
     reconcile_bilaterals,
     summarize_for_card,
@@ -473,6 +474,8 @@ class GraphNodeResponse(BaseModel):
     is_root: bool
     tracked: bool
     unnamed: bool
+    hop: int
+    in_selected_theme: bool
 
 
 class GraphEdgeResponse(BaseModel):
@@ -488,41 +491,64 @@ class GraphEdgeResponse(BaseModel):
     accession_number: str
     filing_date: str
     section_key: str
+    hop: int
 
 
 class SupplyChainGraphResponse(BaseModel):
     root_ticker: str
     nodes: list[GraphNodeResponse]
     edges: list[GraphEdgeResponse]
-    # Pre-bucketed view that the dashboard card can render directly.
+    # Pre-bucketed view that the dashboard card can render directly. Only
+    # populated for the root's hop-1 neighbourhood — multi-hop callers
+    # bucketize from edges[] themselves.
     summary: dict
 
 
 @router.get("/relationships/graph/{ticker}")
 async def get_ticker_graph(
     direction: str = "both",
+    depth: int = 1,
+    theme_id: str | None = None,
     ticker: Ticker = Depends(TickerPath),
     db: AsyncSession = Depends(get_db),
 ) -> SupplyChainGraphResponse:
-    """Return a 1-hop supply-chain graph centered on the ticker.
+    """Return a supply-chain graph centered on the ticker.
 
-    `direction` = out | in | both.
-      - out: the ticker's filings name these counterparties
-      - in:  other tickers name this ticker as a counterparty
-      - both: union
+    `direction` = out | in | both (inherited at every hop).
+    `depth`     = 1 | 2 (default 1; 1-hop is byte-identical to the previous
+                  contract aside from the new `hop` and `in_selected_theme`
+                  fields).
+    `theme_id`  = optional. When provided, hop-1 expansion is gated on that
+                  theme's seed_tickers; otherwise it falls back to the union
+                  of all themes' seed_tickers (the "tracked" set).
     """
     if direction not in ("out", "in", "both"):
         raise HTTPException(
             status_code=400, detail="direction must be one of: out, in, both",
         )
-    graph = await get_graph(ticker, direction=direction, db=db)  # type: ignore[arg-type]
-    summary = summarize_for_card(graph)
+    if depth < 1 or depth > 2:
+        raise HTTPException(
+            status_code=400, detail="depth must be in [1, 2]",
+        )
+    graph = await get_graph(
+        ticker, direction=direction, depth=depth, theme_id=theme_id, db=db,  # type: ignore[arg-type]
+    )
+    # `summary` is the hop-1-only bucketed view the existing deep-dive card
+    # consumes. At depth=2 we filter to hop-1 edges so the card semantics are
+    # preserved; the multi-hop view bucketizes from edges[] directly.
+    hop1_only = SupplyChainGraph(
+        root_ticker=graph.root_ticker,
+        nodes=graph.nodes,
+        edges=[e for e in graph.edges if e.hop == 1],
+    )
+    summary = summarize_for_card(hop1_only)
     return SupplyChainGraphResponse(
         root_ticker=graph.root_ticker,
         nodes=[
             GraphNodeResponse(
                 id=n.id, ticker=n.ticker, cik=n.cik, name=n.name,
                 is_root=n.is_root, tracked=n.tracked, unnamed=n.unnamed,
+                hop=n.hop, in_selected_theme=n.in_selected_theme,
             ) for n in graph.nodes
         ],
         edges=[
@@ -534,6 +560,7 @@ async def get_ticker_graph(
                 verbatim_quote=e.verbatim_quote, source_ticker=e.source_ticker,
                 accession_number=e.accession_number,
                 filing_date=e.filing_date, section_key=e.section_key,
+                hop=e.hop,
             ) for e in graph.edges
         ],
         summary=summary,

@@ -367,10 +367,22 @@ export const relationships = {
       `/api/relationships/alias`,
       { method: "POST", body: JSON.stringify(body) }
     ),
-  getGraph: (ticker: string, direction: "out" | "in" | "both" = "both") =>
-    apiFetch<SupplyChainGraph>(
-      `/api/relationships/graph/${encodeURIComponent(ticker)}?direction=${direction}`
-    ),
+  getGraph: (
+    ticker: string,
+    options: {
+      direction?: "out" | "in" | "both";
+      depth?: 1 | 2;
+      themeId?: string;
+    } = {}
+  ) => {
+    const direction = options.direction ?? "both";
+    const params = new URLSearchParams({ direction });
+    if (options.depth) params.set("depth", String(options.depth));
+    if (options.themeId) params.set("theme_id", options.themeId);
+    return apiFetch<SupplyChainGraph>(
+      `/api/relationships/graph/${encodeURIComponent(ticker)}?${params.toString()}`
+    );
+  },
   reconcile: () =>
     apiFetch<{ pairs_reconciled: number; rows_flipped: number }>(
       `/api/relationships/reconcile`,
@@ -423,6 +435,8 @@ export interface SupplyChainGraphNode {
   is_root: boolean;
   tracked: boolean;
   unnamed: boolean;
+  hop: number;
+  in_selected_theme: boolean;
 }
 
 export interface SupplyChainGraphEdge {
@@ -438,6 +452,7 @@ export interface SupplyChainGraphEdge {
   accession_number: string;
   filing_date: string;
   section_key: string;
+  hop: number;
 }
 
 export interface SupplyChainEntry {
