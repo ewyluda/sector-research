@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -157,7 +157,10 @@ function Sparkline({
   width: number;
   height: number;
 }) {
-  const gradientId = `velocity-spark-${config.chartLine.replace(/[^a-z0-9]/gi, "")}`;
+  // Per-instance id; previously color-derived, which collided across
+  // multiple same-direction sparklines on the same page.
+  const reactId = useId();
+  const gradientId = `velocity-spark-${reactId.replace(/[^a-z0-9]/gi, "")}`;
 
   return (
     <div style={{ width, height }} aria-hidden="true">

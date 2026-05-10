@@ -288,16 +288,22 @@ function TickerEditor({
     setLocal((prev) => [...prev, ...toAdd]);
     setDraft("");
 
+    // Serial — backend is idempotent on duplicates so this is safe.
+    // Track which tickers actually persisted so a mid-loop failure only
+    // rolls back the un-persisted tail; the prefix is reconciled by
+    // router.refresh() in the finally block.
+    const persisted: string[] = [];
     try {
-      // Serial — backend is idempotent on duplicates so this is safe.
       for (const ticker of toAdd) {
         await themesApi.addTicker(themeId, ticker);
+        persisted.push(ticker);
       }
-      startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to add ticker");
-      // Rollback optimistic state.
-      setLocal((prev) => prev.filter((t) => !toAdd.includes(t)));
+      const failed = toAdd.filter((t) => !persisted.includes(t));
+      setLocal((prev) => prev.filter((t) => !failed.includes(t)));
+    } finally {
+      startTransition(() => router.refresh());
     }
   }
 
