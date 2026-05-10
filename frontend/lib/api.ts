@@ -1417,6 +1417,7 @@ export interface UpdateRefreshOutput {
   version_before: number;
   version_after: number | null;
   changed_cells: ChangedCell[];
+  removed_cells: string[];
   new_filings: { form: string; accession: string; fetched_at: string }[];
   consensus_delta: null | { metric: string; period: string; prior_consensus: number | null; new_consensus: number | null; delta_pct: number | null }[];
   summary: string;
@@ -1499,7 +1500,7 @@ export interface WorkspaceRun {
   parent_research_run_id: string | null;
   ticker_model_version_before: number;
   ticker_model_version_after: number | null;
-  status: "running" | "complete" | "failed";
+  status: "running" | "completed" | "partial" | "failed";
   verdict: WorkspaceVerdict | null;
   step_outputs: {
     update_refresh?: UpdateRefreshOutput | { error: string };
@@ -1521,14 +1522,21 @@ export type WorkspaceSSE =
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   | { type: "step_complete"; step: WorkspaceStep; output: any }
   | { type: "step_failed"; step: WorkspaceStep; error: string }
-  | { type: "workspace_run_complete"; verdict: WorkspaceVerdict | null; version_after: number | null }
+  | { type: "workspace_run_complete"; verdict: WorkspaceVerdict | null; version_after: number | null; status: "completed" | "partial" }
   | { type: "workspace_run_failed"; error: string };
 
 export const workspaceApi = {
-  kickOff: async (ticker: string): Promise<{ run_id: string }> => {
-    const r = await fetch(`${BASE}/api/workspace/${encodeURIComponent(ticker)}/runs`, {
-      method: "POST",
-    });
+  kickOff: async (
+    ticker: string,
+    researchRunId?: string,
+  ): Promise<{ run_id: string }> => {
+    const qs = researchRunId
+      ? `?research_run_id=${encodeURIComponent(researchRunId)}`
+      : "";
+    const r = await fetch(
+      `${BASE}/api/workspace/${encodeURIComponent(ticker)}/runs${qs}`,
+      { method: "POST" },
+    );
     if (!r.ok) throw new Error(`workspace kick-off failed: ${r.status} ${await r.text()}`);
     return r.json();
   },

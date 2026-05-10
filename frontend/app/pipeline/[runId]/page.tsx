@@ -670,6 +670,7 @@ export default function PipelineRunnerPage() {
               quickScreen={quickScreenStructured}
               convictionScore={convictionScore}
               ticker={ticker}
+              runId={runId}
               isLive={isLive}
               runStatus={run.status}
             />

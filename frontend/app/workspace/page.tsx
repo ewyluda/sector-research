@@ -109,11 +109,13 @@ export default async function WorkspaceIndex() {
                     minute: "2-digit",
                   });
 
-                  const statusColor = {
+                  const statusColor: Record<string, string> = {
                     running: "text-blue-400",
-                    complete: "text-emerald-400",
+                    completed: "text-emerald-400",
+                    partial: "text-amber-400",
                     failed: "text-red-400",
-                  }[run.status] || "text-[var(--text-muted)]";
+                  };
+                  const statusClass = statusColor[run.status] || "text-[var(--text-muted)]";
 
                   return (
                     <tr key={run.id} className="hover:bg-[var(--surface-alt)] transition-colors">
@@ -131,7 +133,7 @@ export default async function WorkspaceIndex() {
                       <td className="px-6 py-4">
                         <VersionBadge before={run.ticker_model_version_before} after={run.ticker_model_version_after} />
                       </td>
-                      <td className={`px-6 py-4 font-medium capitalize ${statusColor}`}>
+                      <td className={`px-6 py-4 font-medium capitalize ${statusClass}`}>
                         {run.status}
                       </td>
                       <td className="px-6 py-4 text-[var(--text-muted)] text-xs">{timeStr}</td>

@@ -85,6 +85,13 @@ class UpdateRefreshOutput(BaseModel):
     changed_cells: list[ChangedCell] = Field(
         default_factory=list, description="Cells that changed during refresh."
     )
+    removed_cells: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Cell paths present in the prior model state but missing from the refreshed state. "
+            "Indicates a data source stopped returning a field; surfaced as a warning, not an edit."
+        ),
+    )
     new_filings: list[FilingRef] = Field(
         default_factory=list, description="Newly-fetched SEC filings."
     )
@@ -202,9 +209,18 @@ class ValidationOutput(BaseModel):
 class KillCriterionWrite(BaseModel):
     """A kill criterion status update from challenge evaluation."""
 
-    ordinal: int = Field(description="Sequential ordinal (1-based).")
-    status: Literal["armed", "triggered", "resolved"] = Field(
-        description="Current kill criterion status."
+    ordinal: int = Field(
+        description=(
+            "Zero-based ordinal of the kill criterion in the thesis structured output. "
+            "Matches the index used by /api/runs/{run_id}/kill-criteria/{ordinal} and "
+            "the array position rendered by ThesisCard."
+        ),
+    )
+    status: Literal["armed", "triggered"] = Field(
+        description=(
+            "Current kill criterion status. Only `armed` and `triggered` are persisted; "
+            "the existing UI/API contract has no `resolved` state."
+        ),
     )
     note: str | None = Field(
         default=None, description="Optional context or observation."

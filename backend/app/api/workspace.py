@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.db import get_db
 from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.models.workspace_run import WorkspaceRun
-from backend.app.services.workspace import WorkspaceService
+from backend.app.services.workspace import WorkspaceService, WorkspaceRunInFlight
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/workspace", tags=["workspace"])
@@ -30,10 +30,16 @@ def get_workspace_service(request: Request) -> WorkspaceService:
 @router.post("/{ticker}/runs", status_code=202)
 async def kick_off_workspace(
     ticker: Ticker = Depends(TickerPath),
+    research_run_id: str | None = None,
     svc: WorkspaceService = Depends(get_workspace_service),
 ):
     try:
-        run_id = await svc.kick_off(ticker=ticker)
+        run_id = await svc.kick_off(ticker=ticker, research_run_id=research_run_id)
+    except WorkspaceRunInFlight as e:
+        raise HTTPException(
+            status_code=409,
+            detail={"run_id": e.run_id, "message": "workspace run already in flight for this ticker"},
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return {"run_id": run_id}

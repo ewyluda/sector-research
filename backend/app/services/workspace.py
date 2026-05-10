@@ -9,12 +9,20 @@ from uuid import uuid4
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.db import async_session, unit_of_work
+from backend.app.db import unit_of_work
 from backend.app.models.workspace_run import WorkspaceRun
 from backend.app.services.workspace_context import WorkspaceContext
 from backend.app.services.workspace_steps import run_steps_in_sequence
 
 logger = logging.getLogger(__name__)
+
+
+class WorkspaceRunInFlight(Exception):
+    """A workspace run is already running for this ticker."""
+
+    def __init__(self, *, run_id: str) -> None:
+        self.run_id = run_id
+        super().__init__(f"workspace run {run_id} already in flight")
 
 
 class WorkspaceService:
@@ -58,10 +66,27 @@ class WorkspaceService:
 
     # ── Run lifecycle ─────────────────────────────────────────────────────────
 
-    async def kick_off(self, ticker: str) -> str:
-        """Create the workspace_runs row and start the background task. Returns run_id."""
+    async def kick_off(self, ticker: str, *, research_run_id: str | None = None) -> str:
+        """Create the workspace_runs row and start the background task. Returns run_id.
+
+        If research_run_id is provided, that ResearchRun is pinned as the parent
+        (so a workspace button on a specific report attaches to the right thesis,
+        not whatever happens to be the latest completed run for the ticker).
+        Falls back to "latest completed for this ticker" when None.
+
+        Raises WorkspaceRunInFlight if a run for this ticker is already running.
+        """
         async with unit_of_work() as db:
-            ctx_data = await self._preflight(db, ticker)
+            in_flight = (await db.execute(
+                select(WorkspaceRun)
+                .where(WorkspaceRun.ticker == ticker, WorkspaceRun.status == "running")
+                .order_by(WorkspaceRun.created_at.desc())
+                .limit(1)
+            )).scalar_one_or_none()
+            if in_flight is not None:
+                raise WorkspaceRunInFlight(run_id=str(in_flight.id))
+
+            ctx_data = await self._preflight(db, ticker, research_run_id=research_run_id)
             run_id = str(uuid4())
             row = WorkspaceRun(
                 id=run_id,
@@ -75,25 +100,55 @@ class WorkspaceService:
             db.add(row)
 
         asyncio.create_task(
-            self._run_workspace(run_id=run_id, ticker=ticker, db_factory=async_session)
+            self._run_workspace(
+                run_id=run_id,
+                ticker=ticker,
+                db_factory=unit_of_work,
+                research_run_id=str(ctx_data["research_run"].id),
+            )
         )
         return run_id
 
-    async def _preflight(self, db: AsyncSession, ticker: str) -> dict:
+    async def _preflight(
+        self,
+        db: AsyncSession,
+        ticker: str,
+        *,
+        research_run_id: str | None = None,
+    ) -> dict:
         """Verify the ticker has a completed research_run and a ticker_models row.
+
+        When research_run_id is provided it pins the parent run; the row must
+        exist, belong to this ticker, and be completed. Otherwise we fall back
+        to the latest completed run for the ticker.
 
         Raises ValueError on missing prerequisites — caller maps to HTTP 400.
         """
         from backend.app.models import ResearchRun, TickerModel  # local import to avoid cycles
 
-        rr = (await db.execute(
-            select(ResearchRun)
-            .where(ResearchRun.ticker == ticker, ResearchRun.status == "completed")
-            .order_by(ResearchRun.updated_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
-        if rr is None:
-            raise ValueError(f"no completed research_run for ticker {ticker}")
+        if research_run_id is not None:
+            rr = (await db.execute(
+                select(ResearchRun).where(ResearchRun.id == research_run_id)
+            )).scalar_one_or_none()
+            if rr is None:
+                raise ValueError(f"research_run {research_run_id} not found")
+            if rr.ticker != ticker:
+                raise ValueError(
+                    f"research_run {research_run_id} ticker {rr.ticker} != requested ticker {ticker}"
+                )
+            if rr.status != "completed":
+                raise ValueError(
+                    f"research_run {research_run_id} status is {rr.status}; must be completed"
+                )
+        else:
+            rr = (await db.execute(
+                select(ResearchRun)
+                .where(ResearchRun.ticker == ticker, ResearchRun.status == "completed")
+                .order_by(ResearchRun.updated_at.desc())
+                .limit(1)
+            )).scalar_one_or_none()
+            if rr is None:
+                raise ValueError(f"no completed research_run for ticker {ticker}")
 
         tm = (await db.execute(
             select(TickerModel)
@@ -106,8 +161,15 @@ class WorkspaceService:
 
         return {"research_run": rr, "ticker_model": tm}
 
-    async def _build_context(self, db: AsyncSession, run_id: str, ticker: str) -> WorkspaceContext:
-        ctx_data = await self._preflight(db, ticker)
+    async def _build_context(
+        self,
+        db: AsyncSession,
+        run_id: str,
+        ticker: str,
+        *,
+        research_run_id: str | None = None,
+    ) -> WorkspaceContext:
+        ctx_data = await self._preflight(db, ticker, research_run_id=research_run_id)
         return WorkspaceContext(
             run_id=run_id,
             ticker=ticker,
@@ -145,26 +207,37 @@ class WorkspaceService:
         )
 
     async def _run_workspace(
-        self, *, run_id: str, ticker: str, db_factory: Callable
+        self,
+        *,
+        run_id: str,
+        ticker: str,
+        db_factory: Callable,
+        research_run_id: str | None = None,
     ) -> None:
         emit = lambda evt: self._emit(run_id, evt)  # noqa: E731
         emit({"type": "workspace_run_start", "run_id": run_id, "ticker": ticker})
         try:
             async with db_factory() as db:
-                ctx = await self._build_context(db, run_id, ticker)
+                ctx = await self._build_context(
+                    db, run_id, ticker, research_run_id=research_run_id
+                )
                 outputs = await run_steps_in_sequence(ctx, emit)
 
             version_after = outputs.get("update_refresh", {}).get("version_after")
             verdict_str = outputs.get("challenge", {}).get("proposed_verdict")
+            had_step_error = any(
+                isinstance(v, dict) and "error" in v for v in outputs.values()
+            )
+            final_status = "partial" if had_step_error else "completed"
 
             async with unit_of_work() as write_db:
                 await self._persist_run(
                     write_db, run_id,
-                    status="completed", verdict=verdict_str,
+                    status=final_status, verdict=verdict_str,
                     step_outputs=outputs, version_after=version_after,
                 )
             emit({"type": "workspace_run_complete", "verdict": verdict_str,
-                  "version_after": version_after})
+                  "version_after": version_after, "status": final_status})
 
         except asyncio.CancelledError:
             try:

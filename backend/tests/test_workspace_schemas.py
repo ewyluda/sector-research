@@ -37,6 +37,22 @@ class TestWorkspaceSchemas(unittest.TestCase):
         self.assertEqual(round_tripped.version_after, 4)
         self.assertEqual(round_tripped.changed_cells[0].new_value, 110.0)
 
+    def test_update_refresh_removed_cells_warning(self):
+        """removed_cells defaults to [] and accepts cell-path strings when populated."""
+        out_default = UpdateRefreshOutput(version_before=1, summary="x")
+        self.assertEqual(out_default.removed_cells, [])
+
+        out_with_removed = UpdateRefreshOutput(
+            version_before=1,
+            summary="x",
+            removed_cells=["income_statement.interest_income.2026Q1"],
+        )
+        round_tripped = UpdateRefreshOutput.model_validate(out_with_removed.model_dump())
+        self.assertEqual(
+            round_tripped.removed_cells,
+            ["income_statement.interest_income.2026Q1"],
+        )
+
     def test_challenge_writeback_shape(self):
         """Test ChallengeOutput with kill criterion and verdict."""
         out = ChallengeOutput(

@@ -21,6 +21,19 @@ export function UpdateRefreshCard({ output }: { output: UpdateRefreshOutput }) {
         </div>
       )}
 
+      {output.removed_cells.length > 0 && (
+        <details className="rounded border border-amber-500/40 bg-amber-500/5 p-2">
+          <summary className="cursor-pointer text-xs font-medium text-amber-400">
+            ⚠ {output.removed_cells.length} cell{output.removed_cells.length === 1 ? "" : "s"} dropped by source
+          </summary>
+          <ul className="mt-2 space-y-0.5 text-xs font-mono text-amber-200/80">
+            {output.removed_cells.map((path) => (
+              <li key={path}>{path}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       <div className="space-y-2">
         {(["income_statement", "balance_sheet", "cash_flow", "drivers", "assumptions"] as const).map(
           (sec) => {

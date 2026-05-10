@@ -11,6 +11,7 @@ interface ReportHeaderProps {
   quickScreen: QuickScreenStructured | null;
   convictionScore: number | null;
   ticker: string;
+  runId?: string;
   isLive?: boolean;
   runStatus?: PhaseStatus;
 }
@@ -87,14 +88,14 @@ function VerdictBadge({ recommendation }: { recommendation: "GO" | "WATCHLIST" |
   );
 }
 
-export function ReportHeader({ financials, quickScreen, convictionScore, ticker, isLive, runStatus }: ReportHeaderProps) {
+export function ReportHeader({ financials, quickScreen, convictionScore, ticker, runId, isLive, runStatus }: ReportHeaderProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleWorkspaceRefresh = async () => {
     try {
       setLoading(true);
-      const { run_id } = await workspaceApi.kickOff(ticker);
+      const { run_id } = await workspaceApi.kickOff(ticker, runId);
       router.push(`/workspace/${run_id}`);
     } catch (err) {
       alert(`Workspace kick-off failed: ${err instanceof Error ? err.message : err}`);

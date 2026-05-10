@@ -262,18 +262,24 @@ async def build_status_board(
     for s in kc_result.scalars():
         kc_by_run.setdefault(str(s.run_id), []).append(s)
 
-    # Latest completed workspace run per ticker (single bulk query)
-    tickers = list({str(row["ticker"]) for row in run_rows})
+    # Latest completed workspace run per parent research_run (NOT per ticker).
+    # Grouping by ticker would let a workspace refresh on one theme reset
+    # staleness for a different theme that happens to share the ticker.
     ws_stmt = (
         select(
-            WorkspaceRun.ticker,
+            WorkspaceRun.parent_research_run_id,
             func.max(WorkspaceRun.created_at).label("latest_created_at"),
         )
-        .where(WorkspaceRun.status == "completed", WorkspaceRun.ticker.in_(tickers))
-        .group_by(WorkspaceRun.ticker)
+        .where(
+            WorkspaceRun.status == "completed",
+            WorkspaceRun.parent_research_run_id.in_(run_ids),
+        )
+        .group_by(WorkspaceRun.parent_research_run_id)
     )
     ws_result = await db.execute(ws_stmt)
-    ws_lookup: dict[str, datetime] = {r.ticker: r.latest_created_at for r in ws_result.all()}
+    ws_lookup: dict[str, datetime] = {
+        str(r.parent_research_run_id): r.latest_created_at for r in ws_result.all()
+    }
 
     entries: list[StatusBoardEntry] = []
     for row in run_rows:
@@ -294,7 +300,7 @@ async def build_status_board(
         conviction_score = state.get("conviction_score")
         completed_at = row["completed_at"] or row["created_at"]
 
-        ws_ts = ws_lookup.get(str(row["ticker"]))
+        ws_ts = ws_lookup.get(run_id)
         ws_proxy = SimpleNamespace(created_at=ws_ts) if ws_ts is not None else None
         _is_stale, _stale_reason = _resolve_staleness(
             research_run=SimpleNamespace(completed_at=completed_at),

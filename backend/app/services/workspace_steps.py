@@ -55,16 +55,26 @@ def _patch_statement(
     field_map: dict[str, str],
     citation_id: str | None,
     historical_labels: set[str],
+    promoted_labels: set[str] | None = None,
 ) -> None:
     """Patch historical cells in a statement dict from FMP rows.
 
-    Only writes cells whose period is in the model's historical periods
-    AND whose existing source is 'historical' or the cell is missing.
-    Forecast cells and user overrides are never touched.
+    A period is patched when it's in `historical_labels` (cell already
+    historical) or in `promoted_labels` (a forecast period that just got
+    actuals reported and is being aged into historical in this refresh).
+
+    For non-promoted historical periods, existing user overrides /
+    formula / driver cells are preserved (only refreshes prior historical
+    values). For promoted periods, the FMP-reported value overwrites
+    whatever was there — that's the whole point of promotion.
     """
+    promoted_labels = promoted_labels or set()
     for row in rows:
         period = _fmp_period_label(row)
-        if not period or period not in historical_labels:
+        if not period:
+            continue
+        is_promoted = period in promoted_labels
+        if not is_promoted and period not in historical_labels:
             continue
         for fmp_key, line_item in field_map.items():
             raw = row.get(fmp_key)
@@ -76,9 +86,24 @@ def _patch_statement(
                 continue
             line_dict = statement.setdefault(line_item, {})
             existing = line_dict.get(period)
-            # Only write if cell is missing or was a previous historical value
-            if existing is None or existing.source == "historical":
+            if existing is None or existing.source == "historical" or is_promoted:
                 line_dict[period] = _make_cell(value, "historical", citation_id)
+
+
+def _promote_forecast_periods(state, fmp_period_labels: set[str]) -> set[str]:
+    """Mark forecast periods covered by FMP rows as historical and drop their drivers.
+
+    Returns the set of promoted period labels so `_patch_statement` knows to
+    overwrite computed/formula cells in those periods with reported actuals.
+    """
+    promoted: set[str] = set()
+    for p in state.periods:
+        if not p.is_historical and p.label in fmp_period_labels:
+            p.is_historical = True
+            promoted.add(p.label)
+    for label in promoted:
+        state.drivers.pop(label, None)
+    return promoted
 
 
 # FMP income statement field → ModelState line_item
@@ -184,11 +209,20 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
     balance_cit_id = fmp_cit_balance.id if fmp_cit_balance and hasattr(fmp_cit_balance, "id") else None
     cf_cit_id = fmp_cit_cf.id if fmp_cit_cf and hasattr(fmp_cit_cf, "id") else None
 
+    # Identify FMP-reported periods so any that are still in our forecast set
+    # can be promoted to historical (the "newly reported quarter" case).
+    fmp_period_labels: set[str] = set()
+    for rows in (income_rows, balance_rows, cf_rows):
+        for row in rows:
+            label = _fmp_period_label(row)
+            if label:
+                fmp_period_labels.add(label)
+    promoted_labels = _promote_forecast_periods(new_state, fmp_period_labels)
     historical_labels: set[str] = {p.label for p in new_state.periods if p.is_historical}
 
-    _patch_statement(new_state.income_statement, income_rows, _INCOME_FIELD_MAP, income_cit_id, historical_labels)
-    _patch_statement(new_state.balance_sheet, balance_rows, _BALANCE_FIELD_MAP, balance_cit_id, historical_labels)
-    _patch_statement(new_state.cash_flow, cf_rows, _CF_FIELD_MAP, cf_cit_id, historical_labels)
+    _patch_statement(new_state.income_statement, income_rows, _INCOME_FIELD_MAP, income_cit_id, historical_labels, promoted_labels)
+    _patch_statement(new_state.balance_sheet, balance_rows, _BALANCE_FIELD_MAP, balance_cit_id, historical_labels, promoted_labels)
+    _patch_statement(new_state.cash_flow, cf_rows, _CF_FIELD_MAP, cf_cit_id, historical_labels, promoted_labels)
 
     # ── 4. Recompute derived cells on both states so that computed-only cells
     #       cancel out in the diff; only genuinely new/changed actuals remain. ──
@@ -200,7 +234,8 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
 
     # "changed" = value/source shifted on existing cells
     # "added"   = brand-new cells (new quarter actuals land here)
-    # "removed" = ignored (we never remove cells in a refresh)
+    # "removed" = source data disappeared — surfaced as a warning, never persisted
+    removed_cells: list[str] = list(diff.get("removed", []))
     changed_cells: list[ChangedCell] = []
     for entry in diff.get("changed", []):
         changed_cells.append(ChangedCell(
@@ -238,22 +273,24 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
         version_after = new_row.version
 
     # ── 7. Build summary ─────────────────────────────────────────────────────
+    removed_suffix = f"; {len(removed_cells)} cells dropped by source" if removed_cells else ""
     if new_filings:
         f = new_filings[0]
         summary = (
             f"loaded latest {f.form} (filed {f.fetched_at}); "
-            f"{len(changed_cells)} cells updated"
+            f"{len(changed_cells)} cells updated{removed_suffix}"
         )
     else:
         summary = (
             f"no new EDGAR filing detected; "
-            f"{len(changed_cells)} cells updated from FMP quarterly refresh"
+            f"{len(changed_cells)} cells updated from FMP quarterly refresh{removed_suffix}"
         )
 
     return UpdateRefreshOutput(
         version_before=ctx.prior_ticker_model.version,
         version_after=version_after,
         changed_cells=changed_cells,
+        removed_cells=removed_cells,
         new_filings=new_filings,
         consensus_delta=None,
         summary=summary,
@@ -283,7 +320,13 @@ async def upsert_kill_criterion_state(db, run_id: str, ordinal: int, status: str
 
 
 def _parse_json_lenient(raw: str) -> dict:
-    """Strip code fences and parse. Returns {} on parse failure rather than raising."""
+    """Strip code fences and parse. Raises ValueError on parse failure.
+
+    Earlier this swallowed JSONDecodeError and returned {}, which let the
+    challenge step quietly default to a `healthy` verdict on malformed
+    LLM output. Failing loudly lets `run_steps_in_sequence` mark the step
+    as errored and the run as `partial`.
+    """
     txt = raw.strip()
     if txt.startswith("```"):
         # Trim leading fence
@@ -293,9 +336,14 @@ def _parse_json_lenient(raw: str) -> dict:
         if txt.endswith("```"):
             txt = txt[:-3]
     try:
-        return json.loads(txt)
-    except json.JSONDecodeError:
-        return {}
+        parsed = json.loads(txt)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"LLM response was not valid JSON: {e}") from e
+    if not isinstance(parsed, dict):
+        raise ValueError(
+            f"LLM response parsed to {type(parsed).__name__}, expected JSON object"
+        )
+    return parsed
 
 
 def _gather_new_sources_text(ctx: WorkspaceContext) -> str:
@@ -477,11 +525,12 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
             desc = kc.get("condition") or kc.get("criterion") or kc.get("description") or kc.get("text") or str(kc)
         else:
             desc = str(kc)
-        ordinal = i + 1
+        # Ordinals are 0-based to match KillCriterionState rows written by the
+        # status API and the array index rendered in ThesisCard.
         kill_criteria_payload.append({
-            "ordinal": ordinal,
+            "ordinal": i,
             "description": desc,
-            "current_status": states_by_ordinal.get(ordinal, "armed"),
+            "current_status": states_by_ordinal.get(i, "armed"),
         })
 
     # Catalysts from ORM

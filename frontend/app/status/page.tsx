@@ -544,7 +544,7 @@ export default function StatusPage() {
                         onClick={async (ev) => {
                           ev.stopPropagation();
                           try {
-                            const { run_id } = await workspaceApi.kickOff(e.ticker);
+                            const { run_id } = await workspaceApi.kickOff(e.ticker, e.run_id);
                             router.push(`/workspace/${run_id}`);
                           } catch (err) {
                             alert(`Workspace kick-off failed: ${err instanceof Error ? err.message : err}`);

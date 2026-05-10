@@ -46,13 +46,13 @@ CHALLENGE_SYSTEM = """You are an adversarial reviewer stress-testing an investme
 
 You have access to:
 - the existing thesis,
-- the existing kill criteria (each with an ordinal),
+- the existing kill criteria (each with a zero-based ordinal),
 - the existing open catalysts,
 - the model deltas from the latest update (selected cells with prior/new values),
 - new filing/transcript excerpts,
 - selected risk-adjacent metrics.
 
-For each kill criterion, output one of {armed, triggered, resolved}. armed = unchanged; triggered = the new data crosses the kill threshold; resolved = the criterion is no longer relevant.
+For each kill criterion, output one of {armed, triggered}. armed = unchanged; triggered = the new data crosses the kill threshold. Use the SAME zero-based ordinal you were given in the input — do not renumber.
 
 For each open catalyst, output one of {still_pending, resolved, missed}. still_pending = window unchanged or yet to occur; resolved = catalyst played out positively; missed = window passed without the expected event.
 
@@ -61,7 +61,7 @@ You will return JSON with exactly this shape:
 {
   "stress_test_summary": "<short markdown paragraph: what stresses now>",
   "kill_criterion_writes": [
-    {"ordinal": <int>, "status": "armed" | "triggered" | "resolved", "note": "<one sentence reason>"}
+    {"ordinal": <int>, "status": "armed" | "triggered", "note": "<one sentence reason>"}
   ],
   "catalyst_updates": [
     {"catalyst_id": "<uuid string>", "new_status": "still_pending" | "resolved" | "missed", "note": "<one sentence reason>"}
