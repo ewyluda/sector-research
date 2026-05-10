@@ -20,9 +20,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.db import get_db
 from backend.app.models.theme import Theme
 from backend.app.services.discovery import DiscoveryEngine, CompanySignalCard
+from backend.app.services.signal_history import list_signal_history
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["discovery"])
+
+ALLOWED_SIGNAL_TYPES = {"velocity", "narrative", "discovery"}
+MAX_HISTORY_DAYS = 365
 
 
 def _card_to_dict(card: CompanySignalCard) -> dict[str, Any]:
@@ -123,4 +127,53 @@ async def discover_theme(
         "accelerating_count": accelerating_count,
         "signal_status": "stale" if has_stale else "fresh",
         "companies": [_card_to_dict(c) for c in cards],
+    }
+
+
+@router.get("/themes/{theme_id}/signals/{ticker}/history")
+async def get_signal_history_endpoint(
+    theme_id: str,
+    ticker: str,
+    signal_type: str = "velocity",
+    days: int = 90,
+    db: AsyncSession = Depends(get_db),
+):
+    """Return time-series rows for one (ticker, theme_id, signal_type).
+
+    Ordered oldest → newest. `days` clamped to [1, 365].
+    `signal_type` ∈ {velocity, narrative, discovery}.
+    """
+    if signal_type not in ALLOWED_SIGNAL_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"signal_type must be one of {sorted(ALLOWED_SIGNAL_TYPES)}",
+        )
+    days = max(1, min(days, MAX_HISTORY_DAYS))
+
+    theme_lookup = await db.execute(select(Theme).where(Theme.id == theme_id))
+    theme = theme_lookup.scalar_one_or_none()
+    if not theme:
+        raise HTTPException(status_code=404, detail="Theme not found")
+
+    ticker_norm = ticker.upper()
+    rows = await list_signal_history(
+        db=db,
+        ticker=ticker_norm,
+        theme_id=theme_id,
+        signal_type=signal_type,
+        days=days,
+    )
+
+    return {
+        "theme_id": theme_id,
+        "ticker": ticker_norm,
+        "signal_type": signal_type,
+        "days": days,
+        "points": [
+            {
+                "computed_at": row.computed_at.isoformat(),
+                "value": row.value,
+            }
+            for row in rows
+        ],
     }
