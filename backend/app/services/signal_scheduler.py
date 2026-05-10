@@ -26,6 +26,38 @@ logger = logging.getLogger(__name__)
 INTER_CALL_SLEEP = 2.0  # seconds between X API calls
 
 
+async def _persist_signal_set(
+    db: AsyncSession,
+    ticker: str,
+    theme_id: str,
+    results: dict[str, dict],
+    computed_at: datetime,
+) -> None:
+    """Replace the current Signal row for each signal_type with a new value.
+
+    `results` is a dict keyed by signal_type (`velocity`, `narrative`,
+    `discovery`) → JSONB-safe payload. All writes share `computed_at`.
+    """
+    for signal_type, value in results.items():
+        await db.execute(
+            delete(Signal).where(
+                Signal.ticker == ticker,
+                Signal.theme_id == theme_id,
+                Signal.signal_type == signal_type,
+            )
+        )
+        db.add(
+            Signal(
+                ticker=ticker,
+                theme_id=theme_id,
+                signal_type=signal_type,
+                value=value,
+                computed_at=computed_at,
+                is_stale=False,
+            )
+        )
+
+
 async def refresh_theme_signals(
     theme: Theme,
     fmp: FMPClient,
@@ -81,28 +113,17 @@ async def refresh_theme_signals(
             await asyncio.sleep(INTER_CALL_SLEEP)
 
             # ── Upsert signals ────────────────────────────────────────────────
-            for signal_type, value in [
-                ("velocity", velocity_data),
-                ("narrative", narrative_data),
-                ("discovery", discovery_data),
-            ]:
-                # Delete old signal of this type for this ticker/theme
-                await db.execute(
-                    delete(Signal).where(
-                        Signal.ticker == ticker,
-                        Signal.theme_id == theme.id,
-                        Signal.signal_type == signal_type,
-                    )
-                )
-                new_signal = Signal(
-                    ticker=ticker,
-                    theme_id=theme.id,
-                    signal_type=signal_type,
-                    value=value,
-                    computed_at=now,
-                    is_stale=False,
-                )
-                db.add(new_signal)
+            await _persist_signal_set(
+                db=db,
+                ticker=ticker,
+                theme_id=theme.id,
+                results={
+                    "velocity": velocity_data,
+                    "narrative": narrative_data,
+                    "discovery": discovery_data,
+                },
+                computed_at=now,
+            )
 
             await db.commit()
 
