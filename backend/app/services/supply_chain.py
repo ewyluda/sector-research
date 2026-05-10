@@ -67,12 +67,16 @@ class GraphNode:
 
 @dataclass
 class GraphEdge:
-    # Always flows root → counterparty, regardless of out/in direction.
-    # When direction=in, source_ticker holds the OTHER ticker (the filer).
+    # At hop=1, flows root → counterparty (out) or filer → root (in). At
+    # hop=2, flows hop-1-node → counterparty (out) or filer → hop-1-node
+    # (in). source_ticker always holds the filing-authoring ticker — i.e.
+    # from_id's node when direction=out, the OTHER ticker when direction=in.
     from_id: str
     to_id: str
     relationship_type: str
-    direction: Literal["out", "in"]  # relative to the root
+    # Relative to the expanding node (root at hop=1, hop-1 node at hop=2),
+    # not always the root.
+    direction: Literal["out", "in"]
     magnitude_pct: float | None
     unnamed: bool
     confirmed_bilateral: bool
