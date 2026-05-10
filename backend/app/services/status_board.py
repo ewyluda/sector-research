@@ -9,12 +9,14 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
+from types import SimpleNamespace
 
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.catalysts import CatalystRow, nearest_catalyst
 from backend.app.models import Catalyst, KillCriterionState, Theme
+from backend.app.models.workspace_run import WorkspaceRun
 from backend.app.services.run_timestamps import completed_at_sql
 
 logger = logging.getLogger(__name__)
@@ -147,6 +149,27 @@ def _build_latest_runs_sql(
     return sql, params
 
 
+def _resolve_staleness(
+    *,
+    research_run,
+    latest_workspace_run=None,
+    now: datetime,
+) -> tuple[bool, str | None]:
+    """Return (is_stale, reason_or_None).
+
+    A recent workspace run resets staleness even if the parent research_run
+    is older than STALE_DAYS. When latest_workspace_run is None the behaviour
+    is identical to the pre-workspace logic.
+    """
+    last_refresh = research_run.completed_at
+    if latest_workspace_run is not None and latest_workspace_run.created_at > last_refresh:
+        last_refresh = latest_workspace_run.created_at
+    age_days = (now - last_refresh).days
+    if age_days > STALE_DAYS:
+        return True, f"no refresh in {age_days}d (threshold {STALE_DAYS}d)"
+    return False, None
+
+
 def _resolve_health(
     thesis_status: str,
     triggered_count: int,
@@ -239,6 +262,25 @@ async def build_status_board(
     for s in kc_result.scalars():
         kc_by_run.setdefault(str(s.run_id), []).append(s)
 
+    # Latest completed workspace run per parent research_run (NOT per ticker).
+    # Grouping by ticker would let a workspace refresh on one theme reset
+    # staleness for a different theme that happens to share the ticker.
+    ws_stmt = (
+        select(
+            WorkspaceRun.parent_research_run_id,
+            func.max(WorkspaceRun.created_at).label("latest_created_at"),
+        )
+        .where(
+            WorkspaceRun.status == "completed",
+            WorkspaceRun.parent_research_run_id.in_(run_ids),
+        )
+        .group_by(WorkspaceRun.parent_research_run_id)
+    )
+    ws_result = await db.execute(ws_stmt)
+    ws_lookup: dict[str, datetime] = {
+        str(r.parent_research_run_id): r.latest_created_at for r in ws_result.all()
+    }
+
     entries: list[StatusBoardEntry] = []
     for row in run_rows:
         run_id = str(row["id"])
@@ -257,7 +299,17 @@ async def build_status_board(
         thesis_status = state.get("thesis_status") or "PENDING"
         conviction_score = state.get("conviction_score")
         completed_at = row["completed_at"] or row["created_at"]
-        days_since_update = (now - completed_at).days
+
+        ws_ts = ws_lookup.get(run_id)
+        ws_proxy = SimpleNamespace(created_at=ws_ts) if ws_ts is not None else None
+        _is_stale, _stale_reason = _resolve_staleness(
+            research_run=SimpleNamespace(completed_at=completed_at),
+            latest_workspace_run=ws_proxy,
+            now=now,
+        )
+        # days_since_update for health display uses the most recent refresh timestamp
+        last_refresh = ws_ts if (ws_ts is not None and ws_ts > completed_at) else completed_at
+        days_since_update = (now - last_refresh).days
 
         rows_for_run = catalysts_by_run.get(run_id, [])
         next_cat = _build_next_catalyst(rows_for_run, today)
@@ -301,3 +353,39 @@ async def build_status_board(
     )
 
     return StatusBoardResponse(entries=entries, total=len(entries), generated_at=now)
+
+
+async def upsert_kill_criterion_state(
+    db: AsyncSession,
+    *,
+    run_id: str,
+    ordinal: int,
+    status: str,
+    note: str | None,
+) -> None:
+    """Insert or update a KillCriterionState row for (run_id, ordinal).
+
+    Shared by the API PUT handler and the workspace challenge step so both
+    paths go through the same storage logic.
+    """
+    result = await db.execute(
+        select(KillCriterionState).where(
+            KillCriterionState.run_id == run_id,
+            KillCriterionState.ordinal == ordinal,
+        )
+    )
+    state = result.scalar_one_or_none()
+    if state is None:
+        state = KillCriterionState(
+            run_id=run_id,
+            ordinal=ordinal,
+            status=status,
+            note=note,
+            flipped_at=datetime.now(timezone.utc),
+        )
+        db.add(state)
+    else:
+        state.status = status
+        state.note = note
+        state.flipped_at = datetime.now(timezone.utc)
+    await db.flush()

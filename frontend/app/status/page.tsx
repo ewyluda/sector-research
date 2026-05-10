@@ -7,6 +7,7 @@ import {
   themes as themesApi,
   readThroughs,
   earnings as earningsApi,
+  workspaceApi,
   type Health,
   type ReadThroughsByRun,
   type StatusBoardEntry,
@@ -145,12 +146,14 @@ function Row({
   onClick,
   onArchive,
   onUnarchive,
+  actions,
 }: {
   entry: StatusBoardEntry;
   archived: boolean;
   onClick: () => void;
   onArchive: () => void;
   onUnarchive: () => void;
+  actions?: React.ReactNode;
 }) {
   return (
     <div
@@ -158,7 +161,7 @@ function Row({
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter") onClick(); }}
-      className={`grid grid-cols-[80px_110px_60px_minmax(0,1fr)_120px_70px_40px] gap-3 items-center px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-bg)] hover:bg-[var(--surface-alt)] cursor-pointer transition-colors ${archived ? "opacity-50" : ""}`}
+      className={`grid grid-cols-[80px_110px_60px_minmax(0,1fr)_120px_70px_auto_40px] gap-3 items-center px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-bg)] hover:bg-[var(--surface-alt)] cursor-pointer transition-colors ${archived ? "opacity-50" : ""}`}
     >
       <div className="font-mono font-bold text-sm text-[var(--text)] tracking-wide">
         {entry.ticker}
@@ -184,6 +187,9 @@ function Row({
       </div>
       <div className={`text-[11px] tabular-nums ${entry.days_since_update > 90 ? "text-slate-400" : "text-[var(--text-muted)]"}`}>
         {fmtDays(entry.days_since_update)}
+      </div>
+      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+        {actions}
       </div>
       <div onClick={(e) => e.stopPropagation()}>
         <OverflowMenu
@@ -452,7 +458,7 @@ export default function StatusPage() {
       ) : (
         <div className="space-y-1.5">
           {/* Column header */}
-          <div className="grid grid-cols-[80px_110px_60px_minmax(0,1fr)_120px_70px_40px] gap-3 px-3 py-1 text-[10px] uppercase tracking-wider text-[var(--text-faint)]">
+          <div className="grid grid-cols-[80px_110px_60px_minmax(0,1fr)_120px_70px_auto_40px] gap-3 px-3 py-1 text-[10px] uppercase tracking-wider text-[var(--text-faint)]">
             <div>Ticker</div>
             <div>Health</div>
             <div>Conv</div>
@@ -460,79 +466,98 @@ export default function StatusPage() {
             <div>Theme</div>
             <div>Refreshed</div>
             <div></div>
+            <div></div>
           </div>
           {filtered.map((e) => {
             const items = rtByRun[e.run_id] ?? [];
             const isExpanded = expandedRunId === e.run_id;
             return (
               <div key={e.run_id} className="space-y-1">
-                <div className="relative">
-                  <Row
-                    entry={e}
-                    archived={archived.has(e.run_id)}
-                    onClick={() => router.push(`/pipeline/${e.run_id}`)}
-                    onArchive={() => archiveEntry(e.run_id)}
-                    onUnarchive={() => unarchiveEntry(e.run_id)}
-                  />
-                  {items.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={(ev) => {
-                        ev.stopPropagation();
-                        setExpandedRunId(isExpanded ? null : e.run_id);
-                      }}
-                      title="Read-through events"
-                      className="absolute right-12 top-1/2 -translate-y-1/2 rounded bg-amber-900/40 px-1.5 py-0.5 text-[11px] text-amber-200 ring-1 ring-amber-700 hover:bg-amber-900/60"
-                    >
-                      ⟿ {items.length}
-                    </button>
-                  )}
-                  {(() => {
-                    const eb = earningsByRun[e.run_id];
-                    if (!eb || !eb.print) return null;
-                    const onClick = (ev: React.MouseEvent) => {
-                      ev.stopPropagation();
-                      setEarningsExpanded((m) => ({ ...m, [e.run_id]: !m[e.run_id] }));
-                    };
-                    if (eb.verdict) {
-                      const colors = VERDICT_BADGE[eb.verdict.verdict];
-                      return (
+                <Row
+                  entry={e}
+                  archived={archived.has(e.run_id)}
+                  onClick={() => router.push(`/pipeline/${e.run_id}`)}
+                  onArchive={() => archiveEntry(e.run_id)}
+                  onUnarchive={() => unarchiveEntry(e.run_id)}
+                  actions={
+                    <>
+                      {items.length > 0 && (
                         <button
-                          onClick={onClick}
-                          data-print-hide="true"
-                          className={`absolute right-20 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${colors}`}
+                          type="button"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setExpandedRunId(isExpanded ? null : e.run_id);
+                          }}
+                          title="Read-through events"
+                          className="rounded bg-amber-900/40 px-1.5 py-0.5 text-[11px] text-amber-200 ring-1 ring-amber-700 hover:bg-amber-900/60"
                         >
-                          📊 {eb.verdict.verdict}
+                          ⟿ {items.length}
                         </button>
-                      );
-                    }
-                    if (eb.phase === "post") {
-                      const days = daysSince(eb.print.earnings_date);
-                      return (
-                        <button
-                          onClick={onClick}
-                          data-print-hide="true"
-                          className="absolute right-20 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-[11px] font-semibold"
-                        >
-                          📊 reported {days}d ago
-                        </button>
-                      );
-                    }
-                    if (eb.phase === "pre") {
-                      const days = daysUntil(eb.print.earnings_date);
-                      return (
-                        <button
-                          onClick={onClick}
-                          data-print-hide="true"
-                          className="absolute right-20 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[11px] font-semibold"
-                        >
-                          📅 T-{days}d
-                        </button>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
+                      )}
+                      {(() => {
+                        const eb = earningsByRun[e.run_id];
+                        if (!eb || !eb.print) return null;
+                        const onClick = (ev: React.MouseEvent) => {
+                          ev.stopPropagation();
+                          setEarningsExpanded((m) => ({ ...m, [e.run_id]: !m[e.run_id] }));
+                        };
+                        if (eb.verdict) {
+                          const colors = VERDICT_BADGE[eb.verdict.verdict];
+                          return (
+                            <button
+                              onClick={onClick}
+                              data-print-hide="true"
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[11px] font-semibold ${colors}`}
+                            >
+                              📊 {eb.verdict.verdict}
+                            </button>
+                          );
+                        }
+                        if (eb.phase === "post") {
+                          const days = daysSince(eb.print.earnings_date);
+                          return (
+                            <button
+                              onClick={onClick}
+                              data-print-hide="true"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-[11px] font-semibold"
+                            >
+                              📊 {days}d ago
+                            </button>
+                          );
+                        }
+                        if (eb.phase === "pre") {
+                          const days = daysUntil(eb.print.earnings_date);
+                          return (
+                            <button
+                              onClick={onClick}
+                              data-print-hide="true"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[11px] font-semibold"
+                            >
+                              📅 T-{days}d
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
+                      <button
+                        type="button"
+                        onClick={async (ev) => {
+                          ev.stopPropagation();
+                          try {
+                            const { run_id } = await workspaceApi.kickOff(e.ticker, e.run_id);
+                            router.push(`/workspace/${run_id}`);
+                          } catch (err) {
+                            alert(`Workspace kick-off failed: ${err instanceof Error ? err.message : err}`);
+                          }
+                        }}
+                        title="Run workspace refresh for this ticker"
+                        className="rounded bg-slate-700/40 px-2 py-0.5 text-[11px] text-slate-300 ring-1 ring-slate-600 hover:bg-slate-700/60 hover:ring-slate-500"
+                      >
+                        ↻ Workspace
+                      </button>
+                    </>
+                  }
+                />
                 {isExpanded && items.length > 0 && (
                   <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)]">
                     <ReadThroughDrawer

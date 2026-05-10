@@ -25,6 +25,8 @@ from backend.app.api.questions import router as questions_router
 from backend.app.api.models_api import router as models_router
 from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
+from backend.app.services.workspace import WorkspaceService
+from backend.app.api import workspace as workspace_api
 
 settings = get_settings()
 
@@ -55,6 +57,16 @@ async def lifespan(app: FastAPI):
     # Fan-out service (relationship extraction orchestrator)
     app.state.fanout = FanoutService(edgar=app.state.edgar, fmp=app.state.fmp)
     logger.info("FanoutService initialised")
+
+    # Workspace loop service
+    import anthropic as _anthropic
+    app.state.anthropic = _anthropic.AsyncAnthropic(
+        api_key=settings.anthropic_api_key
+    )
+    app.state.workspace = WorkspaceService(
+        fmp=app.state.fmp, edgar=app.state.edgar, anthropic=app.state.anthropic,
+    )
+    logger.info("WorkspaceService initialised")
 
     # Daily signal scheduler — 2 AM local time
     scheduler = AsyncIOScheduler()
@@ -133,3 +145,4 @@ app.include_router(read_through_router, prefix="/api")
 app.include_router(earnings_router, prefix="/api")
 app.include_router(questions_router, prefix="/api")
 app.include_router(models_router)
+app.include_router(workspace_api.router)
