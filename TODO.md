@@ -16,7 +16,6 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Backlog / v3
 
-- **`signals` table loses velocity history** — currently upsert-overwrite per `(ticker, theme_id, signal_type)`. Daily scheduler replaces yesterday's row. For multi-month velocity charts, either make `signals` append-only or add a sibling `signal_history` table. Not blocking anything today.
 - Interactive D3 force-directed full-graph viewer.
 - Sankey revenue-flow visualization for supply chain.
 - Graph centrality (betweenness, eigenvector) as an input to discovery ranking.
@@ -27,6 +26,8 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 - Persist FMP citations on state — currently discarded for primary FMP fetches in `node_deep_dive` (only transcript + FRED citations land in state).
 
 ## Done (recent)
+
+- **Signal velocity history**. New sibling `signal_history` table appended on every scheduler write so multi-month sparklines and surprise-threshold tuning have a real time series. Existing `signals` table semantics unchanged (still 1 row per `(ticker, theme_id, signal_type)`, last-write-wins) — discovery engine read path, surprise-alert prior-ratio lookup, pipeline reads all untouched. New `services/signal_history.list_signal_history()` helper + `GET /api/themes/{id}/signals/{ticker}/history?signal_type=velocity&days=N` endpoint expose the time series; clamped to [1, 365] days. Frontend typed client (`getSignalHistory` in `lib/api.ts`) added; sparkline UI deferred (YAGNI). Migration `8b4fd10f00d3` adds the table + composite index `(ticker, theme_id, signal_type, computed_at)` matching the time-series read pattern.
 
 - **Tier 3.9 — Workspace 5-step loop**. New `/workspace/[runId]` page with SSE-streamed 5-step refresh: Update/Refresh (model diff + version bump), Research (Haiku triage), Validation (reverse-DCF re-run), Challenge (stress-test with kill-criterion writeback to /status), Differentiation (peer-comp via competitor_landscape + read-throughs). New `workspace_runs` table; status board staleness now considers latest workspace run. Manual per-ticker trigger from /status row, /pipeline/[runId] header, and /workspace index page (top-nav). All 5 step types render in collapsible cards; verdict badge mirrors status-board palette. Catalyst writebacks deferred to v1.5 (Catalyst.status column not yet present). 17 commits on the branch; full backend suite 82/82 green; frontend build green. Spec at `docs/superpowers/specs/2026-05-09-tier-3-9-workspace-loop-design.md`; plan at `docs/superpowers/plans/2026-05-09-tier-3-9-workspace-loop.md`.
 

@@ -155,6 +155,8 @@ Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU 
 
 Combined score = 40% X velocity + 40% fundamental quality + 20% discovery score when X data is fresh. When X is missing or stale, the weights collapse to 80% fundamental + 20% discovery. Staleness threshold lives in `clients/x_client.py::STALE_THRESHOLD_HOURS`.
 
+The scheduler also dual-writes a `signal_history` row per signal_type per refresh — read it via `services/signal_history.list_signal_history()` or `GET /api/themes/{id}/signals/{ticker}/history?signal_type=velocity&days=N` (days clamped to [1, 365]). The current-value `signals` table semantics are unchanged.
+
 ### Citations as a first-class primitive
 
 Every data-client method returns `tuple[data, Citation]`, not just data. `models/citation.py` defines two shapes: the `Citation` dataclass (in-memory / embedded in `CompanySignalCard` / etc.) and `CitationRecord` ORM (persisted rows). Inside the LangGraph state, use `StateCitation` (in `graph/state.py`) — it's the JSON-serializable form with an ISO-string timestamp. When adding a new data source, preserve this convention or the report endpoint and frontend's `Citation[]` typing break silently.
