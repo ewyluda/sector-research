@@ -403,5 +403,115 @@ class TestRecordVerdict(unittest.TestCase):
         self.assertIsNone(outcome.superseded_at)
 
 
+class TestSupersedeRules(unittest.TestCase):
+    def test_same_source_type_same_theme_supersedes(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                theme_id = str(uuid4())
+                prices = {"NVDA": {date(2026, 1, 5): Decimal("850.00"),
+                                   date(2026, 2, 5): Decimal("935.00")},
+                          "SPY": {date(2026, 1, 5): Decimal("550.00"),
+                                  date(2026, 2, 5): Decimal("560.00")}}
+                fmp = _mock_fmp_price_series(prices)
+
+                first = await record_verdict(
+                    source_type="workspace_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=theme_id, theme_seed_tickers=None, sector=None,
+                    verdict="healthy",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+
+                second = await record_verdict(
+                    source_type="workspace_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=theme_id, theme_seed_tickers=None, sector=None,
+                    verdict="imminent",
+                    verdict_emitted_at=datetime(2026, 2, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+                await db.refresh(first)
+                return first, second
+
+        first, second = asyncio.run(_run())
+        self.assertIsNotNone(first.superseded_at)
+        self.assertEqual(first.superseded_by_outcome_id, second.id)
+        # Realized return: 935/850 - 1 = ~0.1
+        self.assertAlmostEqual(float(first.realized_ticker_return_pct), 0.1, places=4)
+
+    def test_cross_source_type_does_not_supersede(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                theme_id = str(uuid4())
+                prices = {"NVDA": {date(2026, 1, 5): Decimal("850.00"),
+                                   date(2026, 2, 5): Decimal("935.00")},
+                          "SPY": {date(2026, 1, 5): Decimal("550.00"),
+                                  date(2026, 2, 5): Decimal("560.00")}}
+                fmp = _mock_fmp_price_series(prices)
+
+                research = await record_verdict(
+                    source_type="research_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=theme_id, theme_seed_tickers=None, sector=None,
+                    verdict="completed",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+
+                workspace = await record_verdict(
+                    source_type="workspace_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=theme_id, theme_seed_tickers=None, sector=None,
+                    verdict="healthy",
+                    verdict_emitted_at=datetime(2026, 2, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+                await db.refresh(research)
+                return research, workspace
+
+        research, _workspace = asyncio.run(_run())
+        self.assertIsNone(research.superseded_at)
+
+    def test_cross_theme_does_not_supersede(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                theme_a, theme_b = str(uuid4()), str(uuid4())
+                prices = {"NVDA": {date(2026, 1, 5): Decimal("850.00"),
+                                   date(2026, 2, 5): Decimal("935.00")},
+                          "SPY": {date(2026, 1, 5): Decimal("550.00"),
+                                  date(2026, 2, 5): Decimal("560.00")}}
+                fmp = _mock_fmp_price_series(prices)
+
+                in_a = await record_verdict(
+                    source_type="workspace_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=theme_a, theme_seed_tickers=None, sector=None,
+                    verdict="healthy",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+
+                in_b = await record_verdict(
+                    source_type="workspace_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=theme_b, theme_seed_tickers=None, sector=None,
+                    verdict="healthy",
+                    verdict_emitted_at=datetime(2026, 2, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+                await db.refresh(in_a)
+                return in_a
+
+        in_a = asyncio.run(_run())
+        self.assertIsNone(in_a.superseded_at)
+
+
 if __name__ == "__main__":
     unittest.main()
