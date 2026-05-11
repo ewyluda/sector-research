@@ -4,6 +4,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from uuid import uuid4
+
 from fastapi.testclient import TestClient
 
 
@@ -33,6 +35,54 @@ class TestBackfillEndpoint(unittest.TestCase):
             self.assertEqual(r.status_code, 202)
             body = r.json()
             self.assertEqual(body["outcomes_created"], 3)
+
+
+class TestGetBySource(unittest.TestCase):
+    def test_get_by_source_returns_outcome(self):
+        from backend.app.main import app
+
+        source_id = str(uuid4())
+        outcome_payload = {
+            "id": str(uuid4()),
+            "source_type": "workspace_run",
+            "source_id": source_id,
+            "ticker": "NVDA",
+            "theme_id": None,
+            "verdict": "healthy",
+            "verdict_emitted_at": "2026-01-02T22:00:00+00:00",
+            "entry_price_at": "2026-01-05",
+            "entry_price": "850.00",
+            "sector_etf_ticker": None,
+            "superseded_at": None,
+            "closed_at": None,
+            "realized_ticker_return_pct": None,
+            "realized_spy_excess_pct": None,
+            "realized_sector_excess_pct": None,
+            "realized_theme_basket_excess_pct": None,
+            "snapshots": [],
+            "theme_basket_constituents": None,
+            "signal_snapshot": None,
+        }
+
+        with patch(
+            "backend.app.api.outcomes._get_outcome_by_source",
+            new=AsyncMock(return_value=outcome_payload),
+        ):
+            client = TestClient(app)
+            r = client.get(f"/api/outcomes/by-source/workspace_run/{source_id}")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json()["ticker"], "NVDA")
+
+    def test_get_by_source_404_when_missing(self):
+        from backend.app.main import app
+
+        with patch(
+            "backend.app.api.outcomes._get_outcome_by_source",
+            new=AsyncMock(return_value=None),
+        ):
+            client = TestClient(app)
+            r = client.get(f"/api/outcomes/by-source/research_run/{uuid4()}")
+            self.assertEqual(r.status_code, 404)
 
 
 if __name__ == "__main__":
