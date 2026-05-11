@@ -85,7 +85,7 @@ async def _resolve_entry_prices(
         )
     first = sorted(ticker_rows, key=lambda r: r["date"])[0]
     entry_day: date = date.fromisoformat(first["date"])
-    ticker_price = Decimal(str(first["close"]))
+    ticker_price = Decimal(str(first["adjClose"]))
 
     async def _close_on(symbol: str, target_day: date) -> Decimal | None:
         # Widen the window so that benchmark/constituent symbols whose trading
@@ -101,7 +101,7 @@ async def _resolve_entry_prices(
         target_iso = target_day.isoformat()
         for r in rows_sorted:
             if r["date"] >= target_iso:
-                return Decimal(str(r["close"]))
+                return Decimal(str(r["adjClose"]))
         return None
 
     spy_price = await _close_on("SPY", entry_day)
@@ -283,6 +283,13 @@ async def record_verdict(
         signal_snapshot=signal_snapshot,
     )
 
+    # Insert the new outcome FIRST so the prior's superseded_by_outcome_id FK
+    # has a valid target when _stamp_prior_open_as_superseded flushes its
+    # UPDATE. (Postgres enforces FK constraints at statement time; SQLite in
+    # tests does not, which masked this in unit tests.)
+    db.add(outcome)
+    await db.flush()
+
     await _stamp_prior_open_as_superseded(
         ticker=ticker,
         theme_id=theme_id,
@@ -291,9 +298,6 @@ async def record_verdict(
         bundle=bundle,
         db=db,
     )
-
-    db.add(outcome)
-    await db.flush()
     return outcome
 
 
@@ -311,6 +315,9 @@ async def _stamp_prior_open_as_superseded(
         VerdictOutcome.ticker == ticker,
         VerdictOutcome.source_type == source_type,
         VerdictOutcome.superseded_at.is_(None),
+        # Exclude the just-inserted new outcome (added + flushed by record_verdict
+        # before this call so the supersede FK has a valid target).
+        VerdictOutcome.id != new_outcome.id,
     )
     if theme_id is None:
         q = q.where(VerdictOutcome.theme_id.is_(None))
@@ -447,7 +454,7 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
                 if sigs:
                     signals_row = {s.signal_type: s.value for s in sigs}
 
-            profile, _ = await fmp.get_profile(run.ticker)
+            profile, _ = await fmp.get_company_profile(run.ticker)
             sector = (profile or {}).get("sector")
 
             state_dict = run.state if isinstance(run.state, dict) else {}
@@ -538,7 +545,7 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
                 if sigs:
                     signals_row = {s.signal_type: s.value for s in sigs}
 
-            profile, _ = await fmp.get_profile(wrun.ticker)
+            profile, _ = await fmp.get_company_profile(wrun.ticker)
             sector = (profile or {}).get("sector")
 
             step_outputs = wrun.step_outputs or {}
@@ -628,7 +635,7 @@ async def _refresh_one(
         for r in rows or []:
             raw_date = r["date"]
             d = raw_date if isinstance(raw_date, date) else date.fromisoformat(raw_date)
-            out[d] = Decimal(str(r["close"]))
+            out[d] = Decimal(str(r["adjClose"]))
         return out
 
     by_date = _parse_row(ticker_rows)

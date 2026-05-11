@@ -38,10 +38,11 @@ from backend.app.services.outcome_tracker import _resolve_entry_prices
 def _mock_fmp_price_series(prices_by_ticker_by_date: dict[str, dict[date, Decimal]]):
     """Build an FMPClient mock whose get_historical_price_adjusted returns OHLCV rows.
 
-    prices_by_ticker_by_date: {ticker: {date: close}}
+    prices_by_ticker_by_date: {ticker: {date: adjClose}}
     Mirrors the real FMPClient.get_historical_price_adjusted(ticker, from_date: str, to_date: str)
-    which returns tuple[list[dict], Citation] with rows having {date: str, close: ...}
-    where close is split + dividend adjusted.
+    which returns tuple[list[dict], Citation] with rows having
+    {symbol, date, adjOpen, adjHigh, adjLow, adjClose, volume} — `adjClose` is
+    the split + dividend adjusted close used for return calculations.
     """
     mock = MagicMock()
 
@@ -51,7 +52,7 @@ def _mock_fmp_price_series(prices_by_ticker_by_date: dict[str, dict[date, Decima
         rows = []
         for d, px in sorted(prices_by_ticker_by_date.get(symbol, {}).items()):
             if start <= d <= end:
-                rows.append({"date": d.isoformat(), "close": float(px)})
+                rows.append({"date": d.isoformat(), "adjClose": float(px)})
         return rows, None  # tuple[list, Citation | None]
 
     mock.get_historical_price_adjusted = AsyncMock(side_effect=get_historical_price_adjusted)

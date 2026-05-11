@@ -361,7 +361,7 @@ class WorkspaceService:
                 if tm and tm.state:
                     model_assumptions = (tm.state or {}).get("assumptions") or {}
 
-                profile, _ = await self._fmp.get_profile(run.ticker)
+                profile, _ = await self._fmp.get_company_profile(run.ticker)
                 sector = (profile or {}).get("sector")
 
                 snapshot = outcome_tracker.build_workspace_run_signal_snapshot(

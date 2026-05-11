@@ -343,8 +343,9 @@ class FMPClient:
         """Dividend-and-split-adjusted daily EOD price history.
 
         GET /stable/historical-price-eod/dividend-adjusted?symbol=X&from=YYYY-MM-DD&to=YYYY-MM-DD
-        Returns list of {date, open, high, low, close, volume, ...} newest first,
-        where `close` is split + dividend adjusted.
+        Returns list of {symbol, date, adjOpen, adjHigh, adjLow, adjClose, volume}
+        newest first. Use `adjClose` for return calculations — it is split +
+        dividend adjusted.
 
         Use this — not get_historical_price — when measuring returns over windows
         that may include splits or dividend payments. Outcome tracking uses this.

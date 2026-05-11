@@ -316,7 +316,7 @@ class PipelineService:
                         if isinstance(theme.seed_tickers, list):
                             theme_seed_tickers = list(theme.seed_tickers)
 
-                profile, _ = await self._fmp.get_profile(state.ticker)
+                profile, _ = await self._fmp.get_company_profile(state.ticker)
                 sector = (profile or {}).get("sector")
 
                 snapshot = outcome_tracker.build_research_run_signal_snapshot(
