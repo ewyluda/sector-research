@@ -60,7 +60,7 @@ def _build_async_test_session():
             await conn.execute(text(_DDL_TRANSCRIPT_DELTAS))
             await conn.execute(text(_DDL_TRANSCRIPT_DELTAS_IDX))
 
-    asyncio.get_event_loop().run_until_complete(_setup())
+    asyncio.run(_setup())
     Session = sessionmaker(engine, class_=SAAsyncSession, expire_on_commit=False)
     return engine, Session
 
@@ -81,7 +81,7 @@ class TestComputeDeltaShortCircuits(unittest.TestCase):
                     await compute_delta(ticker="NVDA", db=db, fmp=fmp, force=False)
             await engine.dispose()
 
-        asyncio.get_event_loop().run_until_complete(go())
+        asyncio.run(go())
 
     def test_cache_hit_returns_existing_row_without_calling_llm(self):
         from datetime import datetime as dt
@@ -148,7 +148,7 @@ class TestComputeDeltaShortCircuits(unittest.TestCase):
                 self.assertEqual(result.transcripts_fingerprint, fingerprint)
             await engine.dispose()
 
-        asyncio.get_event_loop().run_until_complete(go())
+        asyncio.run(go())
 
 
 class TestComputeDeltaPersistsAndTrims(unittest.TestCase):
@@ -206,7 +206,7 @@ class TestComputeDeltaPersistsAndTrims(unittest.TestCase):
                 self.assertEqual(len(count), 1)
             await engine.dispose()
 
-        asyncio.get_event_loop().run_until_complete(go())
+        asyncio.run(go())
 
     def test_history_cap_trims_oldest(self):
         from backend.app.services.transcript_delta import (
@@ -275,7 +275,7 @@ class TestComputeDeltaPersistsAndTrims(unittest.TestCase):
                 self.assertNotIn("seed-0", fingerprints)
             await engine.dispose()
 
-        asyncio.get_event_loop().run_until_complete(go())
+        asyncio.run(go())
 
 
 if __name__ == "__main__":
