@@ -68,7 +68,7 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
   if (loading) {
     return (
       <section
-        id="what-changed"
+        id="what_changed"
         className="px-4 py-6 border-b border-[var(--border)]"
       />
     );
@@ -77,7 +77,7 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
   if (!delta) {
     return (
       <section
-        id="what-changed"
+        id="what_changed"
         className="px-4 py-6 border-b border-[var(--border)]"
       >
         <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)] mb-2">
@@ -110,7 +110,7 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
 
   return (
     <section
-      id="what-changed"
+      id="what_changed"
       className="px-4 py-6 border-b border-[var(--border)]"
     >
       <div className="flex items-baseline justify-between mb-3">
