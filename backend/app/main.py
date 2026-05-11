@@ -27,6 +27,8 @@ from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
 from backend.app.services.workspace import WorkspaceService
 from backend.app.api import workspace as workspace_api
+from backend.app.api import outcomes as outcomes_api
+from backend.app.db import unit_of_work
 
 settings = get_settings()
 
@@ -86,9 +88,30 @@ async def lifespan(app: FastAPI):
         name="Daily Earnings Prints Refresh",
         replace_existing=True,
     )
+    # Daily verdict-outcome snapshot refresh — 03:00 UTC
+    async def _run_daily_outcome_refresh() -> None:
+        from backend.app.services.outcome_tracker import refresh_snapshots
+        try:
+            fmp = app.state.fmp
+            async with unit_of_work() as db:
+                summary = await refresh_snapshots(fmp=fmp, db=db)
+            logger.info(
+                "outcome refresh: processed=%d snapshotted=%d closed=%d errors=%d",
+                summary.processed, summary.snapshotted, summary.closed, len(summary.errors),
+            )
+        except Exception:
+            logger.exception("Daily outcome refresh crashed")
+
+    scheduler.add_job(
+        _run_daily_outcome_refresh,
+        CronTrigger(hour=3, minute=0, timezone="UTC"),
+        id="outcome_snapshot_refresh",
+        replace_existing=True,
+    )
+
     scheduler.start()
     app.state.scheduler = scheduler
-    logger.info("Schedulers started: X signals @ 02:00 UTC, earnings @ 21:00 UTC")
+    logger.info("Schedulers started: X signals @ 02:00 UTC, earnings @ 21:00 UTC, outcomes @ 03:00 UTC")
 
     yield
 
@@ -146,3 +169,4 @@ app.include_router(earnings_router, prefix="/api")
 app.include_router(questions_router, prefix="/api")
 app.include_router(models_router)
 app.include_router(workspace_api.router)
+app.include_router(outcomes_api.router)

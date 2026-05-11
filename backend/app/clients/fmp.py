@@ -337,6 +337,30 @@ class FMPClient:
         )
         return data if isinstance(data, list) else [], citation
 
+    async def get_historical_price_adjusted(
+        self, ticker: str, from_date: str, to_date: str
+    ) -> tuple[list[dict], Citation]:
+        """Dividend-and-split-adjusted daily EOD price history.
+
+        GET /stable/historical-price-eod/dividend-adjusted?symbol=X&from=YYYY-MM-DD&to=YYYY-MM-DD
+        Returns list of {date, open, high, low, close, volume, ...} newest first,
+        where `close` is split + dividend adjusted.
+
+        Use this — not get_historical_price — when measuring returns over windows
+        that may include splits or dividend payments. Outcome tracking uses this.
+        """
+        params = {"symbol": ticker, "from": from_date, "to": to_date}
+        data = await self._request(
+            "historical-price-eod/dividend-adjusted", params, ttl=TTL_FUNDAMENTAL
+        )
+        citation = self._make_citation(
+            "historical-price-eod/dividend-adjusted",
+            "Adjusted Historical Price",
+            ticker,
+            params,
+        )
+        return data if isinstance(data, list) else [], citation
+
     async def get_key_metrics_ttm(self, ticker: str) -> tuple[dict, Citation]:
         """Trailing-twelve-month key metrics — source for PE ratio since it's
         no longer on the /stable/ profile or quote endpoints."""
