@@ -110,5 +110,31 @@ class TestResolveEntryPrices(unittest.TestCase):
             ))
 
 
+from backend.app.services.outcome_tracker import _resolve_sector_etf
+
+
+class TestResolveSectorEtf(unittest.TestCase):
+    def test_returns_etf_for_mapped_sector(self):
+        async def _run():
+            db = MagicMock()
+            db.execute = AsyncMock(return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value="XLK")
+            ))
+            return await _resolve_sector_etf(sector="Technology", db=db)
+
+        self.assertEqual(asyncio.run(_run()), "XLK")
+
+    def test_returns_none_for_unmapped_or_null(self):
+        async def _run(sector):
+            db = MagicMock()
+            db.execute = AsyncMock(return_value=MagicMock(
+                scalar_one_or_none=MagicMock(return_value=None)
+            ))
+            return await _resolve_sector_etf(sector=sector, db=db)
+
+        self.assertIsNone(asyncio.run(_run(None)))
+        self.assertIsNone(asyncio.run(_run("Cryptocurrency")))
+
+
 if __name__ == "__main__":
     unittest.main()

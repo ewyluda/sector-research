@@ -119,3 +119,13 @@ async def _resolve_entry_prices(
         sector_etf_price=sector_price,
         theme_basket_constituents=constituents,
     )
+
+
+async def _resolve_sector_etf(*, sector: str | None, db: AsyncSession) -> str | None:
+    """Look up the SPDR sector ETF for an FMP sector name. None if unmapped or sector is null."""
+    if not sector:
+        return None
+    result = await db.execute(
+        select(SectorEtfMapping.etf_ticker).where(SectorEtfMapping.fmp_sector == sector)
+    )
+    return result.scalar_one_or_none()
