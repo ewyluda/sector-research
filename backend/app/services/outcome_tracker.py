@@ -88,13 +88,19 @@ async def _resolve_entry_prices(
     ticker_price = Decimal(str(first["close"]))
 
     async def _close_on(symbol: str, target_day: date) -> Decimal | None:
+        # Widen the window so that benchmark/constituent symbols whose trading
+        # calendar differs from the ticker (e.g. an exchange holiday on entry_day)
+        # still resolve to the first close >= target_day rather than NULL.
+        window_end = target_day + timedelta(days=ENTRY_PRICE_LOOKAHEAD_DAYS)
         rows, _ = await fmp.get_historical_price_adjusted(
-            symbol, target_day.isoformat(), target_day.isoformat()
+            symbol, target_day.isoformat(), window_end.isoformat()
         )
         if not rows:
             return None
-        for r in rows:
-            if r["date"] == target_day.isoformat():
+        rows_sorted = sorted(rows, key=lambda r: r["date"])
+        target_iso = target_day.isoformat()
+        for r in rows_sorted:
+            if r["date"] >= target_iso:
                 return Decimal(str(r["close"]))
         return None
 
@@ -359,16 +365,21 @@ async def refresh_snapshots(*, fmp: FMPClient, db: AsyncSession) -> RefreshSumma
         select(VerdictOutcome).where(VerdictOutcome.closed_at.is_(None))
     )).scalars().all()
 
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     snapshotted = 0
     closed = 0
     errors: list[dict[str, str]] = []
 
     for outcome in open_outcomes:
         try:
-            inserted, did_close = await _refresh_one(
-                outcome=outcome, today=today, fmp=fmp, db=db,
-            )
+            # SAVEPOINT-per-outcome: a flush IntegrityError (e.g. concurrent
+            # backfill racing the same (outcome_id, snapshot_offset)) only
+            # rolls back this savepoint, not the whole session — so later
+            # outcomes in the loop are not poisoned by PendingRollbackError.
+            async with db.begin_nested():
+                inserted, did_close = await _refresh_one(
+                    outcome=outcome, today=today, fmp=fmp, db=db,
+                )
             snapshotted += inserted
             if did_close:
                 closed += 1
