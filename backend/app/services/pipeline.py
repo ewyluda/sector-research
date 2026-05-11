@@ -15,7 +15,7 @@ import json
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,8 @@ from backend.app.clients.fred import FREDClient
 from backend.app.graph import nodes
 from backend.app.graph.pipeline import make_graph
 from backend.app.graph.state import ResearchState
-from backend.app.db import async_session
+from backend.app.db import async_session, unit_of_work
+from backend.app.services import outcome_tracker
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.signal import Signal
 from backend.app.services import edgar_ingest, edgar_sections_ingest
@@ -200,6 +201,7 @@ class PipelineService:
 
                 if state.status in ("completed", "watchlist", "pass"):
                     mark_terminal_completed_at(state)
+                    await self._record_terminal_outcome(run_id=run_id, state=state)
 
                 # Persist state after phase execution
                 async with db.begin():
@@ -266,6 +268,54 @@ class PipelineService:
                                  "phase": state.phase,
                                  "conviction_score": state.conviction_score,
                                  "thesis_status": state.thesis_status})
+
+    async def _record_terminal_outcome(self, *, run_id: str, state: Any) -> None:
+        """Best-effort: record the verdict in verdict_outcomes. Errors logged, never propagated."""
+        try:
+            async with unit_of_work() as db:
+                signals_row: dict | None = None
+                if state.theme_id:
+                    sig_rows = (await db.execute(
+                        select(Signal).where(
+                            Signal.ticker == state.ticker,
+                            Signal.theme_id == state.theme_id,
+                        )
+                    )).scalars().all()
+                    if sig_rows:
+                        signals_row = {r.signal_type: r.value for r in sig_rows}
+
+                theme_seed_tickers: list[str] | None = None
+                if state.theme_id:
+                    from backend.app.models.theme import Theme
+                    theme = (await db.execute(
+                        select(Theme).where(Theme.id == state.theme_id)
+                    )).scalar_one_or_none()
+                    if theme and theme.seed_tickers:
+                        if isinstance(theme.seed_tickers, list):
+                            theme_seed_tickers = list(theme.seed_tickers)
+
+                profile, _ = await self._fmp.get_profile(state.ticker)
+                sector = (profile or {}).get("sector")
+
+                snapshot = outcome_tracker.build_research_run_signal_snapshot(
+                    state=state, signals_row=signals_row, kill_states=[],
+                )
+
+                await outcome_tracker.record_verdict(
+                    source_type="research_run",
+                    source_id=run_id,
+                    ticker=state.ticker,
+                    theme_id=state.theme_id,
+                    theme_seed_tickers=theme_seed_tickers,
+                    sector=sector,
+                    verdict=state.status,
+                    verdict_emitted_at=datetime.now(timezone.utc),
+                    signal_snapshot=snapshot,
+                    fmp=self._fmp,
+                    db=db,
+                )
+        except Exception:
+            logger.exception("record_verdict failed for run %s", run_id)
 
     async def _fetch_filing_sections(self, ticker: str) -> dict:
         """Return {section_key: {...}} for the most recent ingested sections.
