@@ -104,15 +104,15 @@ async def compute_delta(
     window = _window_from_transcripts(transcripts)
     fingerprint = compute_fingerprint(window)
 
-    if not force:
-        existing = (await db.execute(
-            select(TranscriptDelta).where(
-                TranscriptDelta.ticker == ticker,
-                TranscriptDelta.transcripts_fingerprint == fingerprint,
-            )
-        )).scalar_one_or_none()
-        if existing is not None:
-            return existing
+    existing = (await db.execute(
+        select(TranscriptDelta).where(
+            TranscriptDelta.ticker == ticker,
+            TranscriptDelta.transcripts_fingerprint == fingerprint,
+        )
+    )).scalar_one_or_none()
+
+    if existing is not None and not force:
+        return existing
 
     raw = await complete(
         model=HAIKU,
@@ -121,11 +121,18 @@ async def compute_delta(
         assistant_prefill='{"axes":',
         max_tokens=2500,
     )
-    # complete() already prepends the prefill; hedge handles any edge case.
-    payload_str = raw if raw.lstrip().startswith("{") else '{"axes":' + raw
+    payload_str = raw
     parsed = json.loads(payload_str)
     axes = AxesDelta.model_validate(parsed["axes"]).model_dump()
 
+    if existing is not None:
+        # force=True path: refresh in place — avoids unique constraint violation
+        existing.axes = axes
+        existing.computed_at = datetime.now(timezone.utc)
+        await db.flush()
+        return existing
+
+    # New fingerprint: insert
     row = TranscriptDelta(
         id=str(uuid4()),
         ticker=ticker,

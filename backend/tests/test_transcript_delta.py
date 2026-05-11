@@ -278,5 +278,90 @@ class TestComputeDeltaPersistsAndTrims(unittest.TestCase):
         asyncio.run(go())
 
 
+    def test_force_recompute_updates_existing_row_in_place(self):
+        """force=True on same transcript window must not violate the
+        (ticker, fingerprint) unique constraint — it should update in place."""
+        from backend.app.services.transcript_delta import (
+            compute_delta, compute_fingerprint,
+        )
+        from backend.app.models.transcript_delta import TranscriptDelta
+        from sqlalchemy import select as sa_select
+        from datetime import datetime as dt
+
+        now = dt.utcnow()
+        y, q = now.year, ((now.month - 1) // 3) + 1
+        slots = []
+        ty, tq = y, q
+        for _ in range(8):
+            slots.append((ty, tq))
+            tq -= 1
+            if tq == 0:
+                tq = 4
+                ty -= 1
+
+        t0 = {"year": slots[0][0], "quarter": slots[0][1], "content": "Q0 content"}
+        t1 = {"year": slots[1][0], "quarter": slots[1][1], "content": "Q1 content"}
+        side_effects = [([t0], None), ([t1], None)] + [([], None)] * 6
+
+        fmp = MagicMock()
+        fmp.get_earnings_transcript = AsyncMock(side_effect=side_effects)
+
+        window = [{"year": t0["year"], "quarter": t0["quarter"]},
+                  {"year": t1["year"], "quarter": t1["quarter"]}]
+        fingerprint = compute_fingerprint(window)
+
+        seeded_axes = {
+            "business_quality": None, "risk_assessment": None,
+            "growth_earnings": None, "sentiment_narrative": None,
+            "management_governance": None, "future_durability": None,
+            "macro_regime": None, "financial_health": None,
+            "valuation_stage": None,
+        }
+        updated_llm_payload = (
+            '{"axes":{"business_quality":null,"risk_assessment":null,'
+            '"growth_earnings":{"direction":"strengthening","magnitude":"minor",'
+            '"summary":"Guidance raised.","quotes":[]},'
+            '"sentiment_narrative":null,"management_governance":null,'
+            '"future_durability":null,"macro_regime":null,'
+            '"financial_health":null,"valuation_stage":null}}'
+        )
+
+        engine, Session = _build_async_test_session()
+
+        async def go():
+            async with Session() as db:
+                # Seed an existing row with the same fingerprint
+                db.add(TranscriptDelta(
+                    id=str(uuid4()),
+                    ticker="NVDA",
+                    transcripts_window=window,
+                    transcripts_fingerprint=fingerprint,
+                    axes=seeded_axes,
+                    computed_at=datetime.now(timezone.utc),
+                ))
+                await db.commit()
+
+                with patch(
+                    "backend.app.services.transcript_delta.complete",
+                    new=AsyncMock(return_value=updated_llm_payload),
+                ):
+                    result = await compute_delta(
+                        ticker="NVDA", db=db, fmp=fmp, force=True,
+                    )
+
+                # No IntegrityError raised, and still exactly 1 row
+                rows = (await db.execute(
+                    sa_select(TranscriptDelta).where(TranscriptDelta.ticker == "NVDA")
+                )).scalars().all()
+                self.assertEqual(len(rows), 1)
+                # axes reflects the new LLM payload, not the seeded one
+                self.assertEqual(
+                    result.axes["growth_earnings"]["direction"], "strengthening"
+                )
+            await engine.dispose()
+
+        asyncio.run(go())
+
+
 if __name__ == "__main__":
     unittest.main()
