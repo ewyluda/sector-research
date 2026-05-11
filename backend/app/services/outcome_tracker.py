@@ -68,14 +68,15 @@ async def _resolve_entry_prices(
     Fetches close price for ticker + SPY + (optional) sector ETF + theme constituents,
     all anchored to the same entry day for fair comparison.
 
-    Uses FMPClient.get_historical_price(ticker, from_date: str, to_date: str) which
-    returns tuple[list[dict], Citation] with rows {date: str, close: float, ...}.
+    Uses FMPClient.get_historical_price_adjusted(ticker, from_date: str, to_date: str)
+    which returns tuple[list[dict], Citation] with rows {date: str, close: float, ...}
+    where close is split + dividend adjusted.
     """
     emitted_date = verdict_emitted_at.astimezone(timezone.utc).date()
     range_start = emitted_date + timedelta(days=1)
     range_end = emitted_date + timedelta(days=ENTRY_PRICE_LOOKAHEAD_DAYS)
 
-    ticker_rows, _ = await fmp.get_historical_price(
+    ticker_rows, _ = await fmp.get_historical_price_adjusted(
         ticker, range_start.isoformat(), range_end.isoformat()
     )
     if not ticker_rows:
@@ -87,7 +88,7 @@ async def _resolve_entry_prices(
     ticker_price = Decimal(str(first["close"]))
 
     async def _close_on(symbol: str, target_day: date) -> Decimal | None:
-        rows, _ = await fmp.get_historical_price(
+        rows, _ = await fmp.get_historical_price_adjusted(
             symbol, target_day.isoformat(), target_day.isoformat()
         )
         if not rows:

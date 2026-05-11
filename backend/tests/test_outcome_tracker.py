@@ -35,15 +35,16 @@ from backend.app.services.outcome_tracker import _resolve_entry_prices
 
 
 def _mock_fmp_price_series(prices_by_ticker_by_date: dict[str, dict[date, Decimal]]):
-    """Build an FMPClient mock whose get_historical_price returns OHLCV rows.
+    """Build an FMPClient mock whose get_historical_price_adjusted returns OHLCV rows.
 
     prices_by_ticker_by_date: {ticker: {date: close}}
-    Mirrors the real FMPClient.get_historical_price(ticker, from_date: str, to_date: str)
-    which returns tuple[list[dict], Citation] with rows having {date: str, close: ...}.
+    Mirrors the real FMPClient.get_historical_price_adjusted(ticker, from_date: str, to_date: str)
+    which returns tuple[list[dict], Citation] with rows having {date: str, close: ...}
+    where close is split + dividend adjusted.
     """
     mock = MagicMock()
 
-    async def get_historical_price(symbol: str, from_date: str, to_date: str):
+    async def get_historical_price_adjusted(symbol: str, from_date: str, to_date: str):
         start = date.fromisoformat(from_date)
         end = date.fromisoformat(to_date)
         rows = []
@@ -52,7 +53,7 @@ def _mock_fmp_price_series(prices_by_ticker_by_date: dict[str, dict[date, Decima
                 rows.append({"date": d.isoformat(), "close": float(px)})
         return rows, None  # tuple[list, Citation | None]
 
-    mock.get_historical_price = AsyncMock(side_effect=get_historical_price)
+    mock.get_historical_price_adjusted = AsyncMock(side_effect=get_historical_price_adjusted)
     return mock
 
 
