@@ -91,13 +91,16 @@ async def lifespan(app: FastAPI):
     # Daily verdict-outcome snapshot refresh — 03:00 UTC
     async def _run_daily_outcome_refresh() -> None:
         from backend.app.services.outcome_tracker import refresh_snapshots
-        fmp = app.state.fmp
-        async with unit_of_work() as db:
-            summary = await refresh_snapshots(fmp=fmp, db=db)
-        logger.info(
-            "outcome refresh: processed=%d snapshotted=%d closed=%d errors=%d",
-            summary.processed, summary.snapshotted, summary.closed, len(summary.errors),
-        )
+        try:
+            fmp = app.state.fmp
+            async with unit_of_work() as db:
+                summary = await refresh_snapshots(fmp=fmp, db=db)
+            logger.info(
+                "outcome refresh: processed=%d snapshotted=%d closed=%d errors=%d",
+                summary.processed, summary.snapshotted, summary.closed, len(summary.errors),
+            )
+        except Exception:
+            logger.exception("Daily outcome refresh crashed")
 
     scheduler.add_job(
         _run_daily_outcome_refresh,

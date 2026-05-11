@@ -212,11 +212,14 @@ class PipelineService:
                 elif phase == "position_monitor":
                     state = await nodes.node_position_monitor(state)
 
-                if state.status in ("completed", "watchlist", "pass"):
+                terminal = state.status in ("completed", "watchlist", "pass")
+                if terminal:
                     mark_terminal_completed_at(state)
-                    await self._record_terminal_outcome(run_id=run_id, state=state)
 
-                # Persist state after phase execution
+                # Persist state after phase execution — committed BEFORE outcome
+                # recording so research_runs is the atomic source of truth. A
+                # crash between this commit and the background outcome task is
+                # recovered by the daily backfill cron (idempotent).
                 async with db.begin():
                     result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
                     run = result.scalar_one_or_none()
@@ -225,6 +228,12 @@ class PipelineService:
                         run.phase = state.phase
                         run.status = state.status
                         run.loop_count = state.loop_count
+
+                if terminal:
+                    # Fire-and-forget: outcome recording makes ~N+3 serial FMP
+                    # calls and must not block the phase_complete / complete
+                    # SSE events. Inner function logs and swallows all errors.
+                    asyncio.create_task(self._record_terminal_outcome(run_id=run_id, state=state))
 
                 # Emit phase_complete event
                 output_key = PHASE_OUTPUT_KEYS.get(phase, phase)

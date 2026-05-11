@@ -268,9 +268,12 @@ class WorkspaceService:
                 )
 
             if final_status == "completed" and verdict_str:
-                await self._record_workspace_outcome(
+                # Fire-and-forget: outcome recording makes ~N+3 serial FMP
+                # calls and must not block the workspace_run_complete SSE
+                # emit. Inner function logs and swallows all errors.
+                asyncio.create_task(self._record_workspace_outcome(
                     run_id=run_id, verdict=verdict_str, outputs=outputs,
-                )
+                ))
 
             emit({"type": "workspace_run_complete", "verdict": verdict_str,
                   "version_after": version_after, "status": final_status})
