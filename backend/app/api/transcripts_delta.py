@@ -1,13 +1,14 @@
-"""GET /api/transcripts/delta/{ticker}/latest, GET /history."""
+"""GET /api/transcripts/delta/{ticker}/latest, GET /history, POST /delta/{ticker}."""
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 
-from backend.app.db import async_session
+from backend.app.db import async_session, unit_of_work
 from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.models.transcript_delta import TranscriptDelta
 from backend.app.models.transcript_delta_schemas import TranscriptDeltaRead
+from backend.app.services import transcript_delta
 
 router = APIRouter(prefix="/api/transcripts", tags=["transcripts"])
 
@@ -59,3 +60,20 @@ async def get_latest(ticker: Ticker = Depends(TickerPath)) -> Response:
 async def get_history(ticker: Ticker = Depends(TickerPath)) -> list[dict]:
     async with async_session() as db:
         return await _fetch_history(ticker=ticker, db=db)
+
+
+@router.post("/delta/{ticker}", response_model=TranscriptDeltaRead)
+async def post_compute(
+    request: Request,
+    ticker: Ticker = Depends(TickerPath),
+    force: bool = False,
+) -> dict:
+    fmp = request.app.state.fmp
+    async with unit_of_work() as db:
+        try:
+            row = await transcript_delta.compute_delta(
+                ticker=ticker, db=db, fmp=fmp, force=force,
+            )
+        except transcript_delta.InsufficientTranscriptsError as exc:
+            raise HTTPException(status_code=404, detail=str(exc))
+    return _orm_to_dict(row)
