@@ -12,6 +12,7 @@ const links = [
   { href: "/workspace",     label: "Workspace" },
   { href: "/questions",     label: "Questions" },
   { href: "/library",       label: "Library"  },
+  { href: "/performance",   label: "Performance" },
   { href: "/pipeline/new",  label: "+ New Run" },
 ];
 
