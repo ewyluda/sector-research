@@ -1,7 +1,15 @@
 """Tests for backend.app.services.transcript_delta."""
 from __future__ import annotations
 
+import asyncio
 import unittest
+from datetime import datetime, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession as SAAsyncSession
+from sqlalchemy.orm import sessionmaker
 
 
 class TestFingerprint(unittest.TestCase):
@@ -17,6 +25,130 @@ class TestFingerprint(unittest.TestCase):
         a = [{"year": 2025, "quarter": 4}, {"year": 2025, "quarter": 3}]
         b = [{"year": 2026, "quarter": 1}, {"year": 2025, "quarter": 4}]
         self.assertNotEqual(compute_fingerprint(a), compute_fingerprint(b))
+
+
+_DDL_TRANSCRIPT_DELTAS = """
+CREATE TABLE IF NOT EXISTS transcript_deltas (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    transcripts_window TEXT NOT NULL,
+    transcripts_fingerprint TEXT NOT NULL,
+    axes TEXT NOT NULL,
+    computed_at TEXT NOT NULL,
+    UNIQUE (ticker, transcripts_fingerprint)
+)
+"""
+
+_DDL_TRANSCRIPT_DELTAS_IDX = """
+CREATE INDEX IF NOT EXISTS ix_transcript_deltas_ticker_computed_at
+ON transcript_deltas (ticker, computed_at)
+"""
+
+
+def _build_async_test_session():
+    """In-memory async sqlite engine + session.
+
+    Uses raw DDL (mirrors test_outcome_tracker.py) to avoid:
+    - counterparty_aliases duplicate-index bug in Base.metadata.create_all.
+    - Transitive FK deps pulling in unrelated tables.
+    JSONB columns become TEXT in sqlite; ORM round-trip works fine.
+    """
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+
+    async def _setup():
+        async with engine.begin() as conn:
+            await conn.execute(text(_DDL_TRANSCRIPT_DELTAS))
+            await conn.execute(text(_DDL_TRANSCRIPT_DELTAS_IDX))
+
+    asyncio.get_event_loop().run_until_complete(_setup())
+    Session = sessionmaker(engine, class_=SAAsyncSession, expire_on_commit=False)
+    return engine, Session
+
+
+class TestComputeDeltaShortCircuits(unittest.TestCase):
+    def test_insufficient_transcripts_raises(self):
+        from backend.app.services.transcript_delta import (
+            compute_delta, InsufficientTranscriptsError,
+        )
+        fmp = MagicMock()
+        fmp.get_earnings_transcript = AsyncMock(return_value=([], None))
+
+        engine, Session = _build_async_test_session()
+
+        async def go():
+            async with Session() as db:
+                with self.assertRaises(InsufficientTranscriptsError):
+                    await compute_delta(ticker="NVDA", db=db, fmp=fmp, force=False)
+            await engine.dispose()
+
+        asyncio.get_event_loop().run_until_complete(go())
+
+    def test_cache_hit_returns_existing_row_without_calling_llm(self):
+        from datetime import datetime as dt
+        from backend.app.services.transcript_delta import (
+            compute_delta, compute_fingerprint,
+        )
+        from backend.app.models.transcript_delta import TranscriptDelta
+
+        # Determine the two quarters fetch_recent_transcripts will return first
+        # (walks back from current date: skip empty quarters, collect first two
+        # that return data).  We stamp them with the years/quarters the walker
+        # will request so the fingerprint matches what compute_delta derives.
+        now = dt.utcnow()
+        y, q = now.year, ((now.month - 1) // 3) + 1
+        # Build a list of (year, quarter) for the next TRANSCRIPT_WINDOW slots
+        slots = []
+        ty, tq = y, q
+        for _ in range(8):
+            slots.append((ty, tq))
+            tq -= 1
+            if tq == 0:
+                tq = 4
+                ty -= 1
+
+        # Return data for the first two slots, empty for the rest
+        t0 = {"year": slots[0][0], "quarter": slots[0][1], "content": "..."}
+        t1 = {"year": slots[1][0], "quarter": slots[1][1], "content": "..."}
+        side_effects = [
+            ([t0], None),
+            ([t1], None),
+        ] + [([], None)] * 6
+
+        fmp = MagicMock()
+        fmp.get_earnings_transcript = AsyncMock(side_effect=side_effects)
+
+        engine, Session = _build_async_test_session()
+        window = [{"year": t0["year"], "quarter": t0["quarter"]},
+                  {"year": t1["year"], "quarter": t1["quarter"]}]
+        fingerprint = compute_fingerprint(window)
+
+        async def go():
+            async with Session() as db:
+                # Seed an existing row with the matching fingerprint
+                db.add(TranscriptDelta(
+                    id=str(uuid4()),
+                    ticker="NVDA",
+                    transcripts_window=window,
+                    transcripts_fingerprint=fingerprint,
+                    axes={"business_quality": None, "risk_assessment": None,
+                          "growth_earnings": None, "sentiment_narrative": None,
+                          "management_governance": None, "future_durability": None,
+                          "macro_regime": None, "financial_health": None,
+                          "valuation_stage": None},
+                    computed_at=datetime.now(timezone.utc),
+                ))
+                await db.commit()
+
+                # Cache hit returns before reaching the NotImplementedError
+                # that guards the LLM path (Task 6).
+                result = await compute_delta(
+                    ticker="NVDA", db=db, fmp=fmp, force=False,
+                )
+                self.assertEqual(result.ticker, "NVDA")
+                self.assertEqual(result.transcripts_fingerprint, fingerprint)
+            await engine.dispose()
+
+        asyncio.get_event_loop().run_until_complete(go())
 
 
 if __name__ == "__main__":
