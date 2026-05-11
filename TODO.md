@@ -4,7 +4,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## In progress
 
-- _Nothing in flight. PR #25 (deep-dive polish: chart labels, markdown rendering, thesis fallback, stale RPO) merged 2026-05-07._
+- **Verdict outcome tracking (edge measurement).** Spec at `docs/superpowers/specs/2026-05-10-verdict-outcome-tracking-design.md`. Closes the feedback loop: every research-run + workspace-run verdict is recorded with entry price + benchmark, then snapshotted at +1d/+1w/+1m/+3m/+6m via daily APScheduler job. New `/performance` page answers "are my healthy verdicts beating SPY." Pre-PR #29 backlog item was cross-theme traversal (shipped); this is the next pickup.
 
 ## Backlog / polish
 
@@ -16,10 +16,11 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Backlog / v3
 
+- **SEC 8-K + Form 4 monitoring as alpha signal.** 8-K is where surprises live (guidance changes, exec departures, M&A); Form 4 insider buys are one of the best-documented free alpha signals. Ingestion infra already exists (`EdgarClient`, `filings`/`xbrl_facts`/`filing_sections` tables, alias resolver, `FanoutService`). Build: daily 8-K scan for tracked tickers via EDGAR submissions feed, Haiku extractor that classifies event type (guidance / personnel / M&A / other) + materiality, persist to new `material_events` table, surface on status board as a new badge alongside read-throughs. Form 4 ingest via EDGAR's owners feed → new `insider_transactions` table → daily signal that flows into discovery ranking and status board. Add congressional trading (Capitol Trades JSON, free) as a third signal in the same pattern. Effort: ~3-4 days for 8-K + Form 4, plus ~½ day for congressional.
+- **Earnings call transcript delta analysis.** Reuses the 4 quarters of transcripts already ingested for relationship extraction. New endpoint `POST /api/transcripts/delta/{ticker}` runs a Haiku pass that compares language across the most recent 2-4 quarters on the deep-dive category axes (margin guidance, capex, customer concentration, competitive tone, risk language). Persisted as `transcript_deltas` with a `delta_summary` JSONB. Surface on the deep-dive page as a new "What changed" section above Management & Governance, and as a workspace-loop step input. Higher-leverage than it sounds because it reuses ingest infra and produces signal nobody can buy off-the-shelf — framed against your own thesis pillars. Effort: ~1-1.5 days.
 - Interactive D3 force-directed full-graph viewer.
 - Sankey revenue-flow visualization for supply chain.
 - Graph centrality (betweenness, eigenvector) as an input to discovery ranking.
-- Cross-theme supply-chain traversal ("from NVDA, 2 hops, filtered to AI-infra theme").
 - Options IV / put-call / short interest — new vendor or FMP higher tier.
 - Credit ratings — new vendor.
 - Institutional ownership (13F) via FMP — current plan returns 404 on ticker-side endpoints; would need daily polling of `institutional-ownership/latest` into a local ticker→holder aggregation.
