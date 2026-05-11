@@ -346,6 +346,22 @@ def _parse_json_lenient(raw: str) -> dict:
     return parsed
 
 
+import logging as _logging
+
+_log = _logging.getLogger(__name__)
+
+
+def _format_transcript_delta(row) -> str:
+    """Render the axes payload as a prompt-friendly markdown block."""
+    populated = [(k, v) for (k, v) in row.axes.items() if v is not None]
+    if not populated:
+        return ""
+    lines = ["Recent transcript-language deltas (anchors, not paraphrases):"]
+    for key, ax in populated:
+        lines.append(f"- {key}: {ax['direction']} ({ax['magnitude']}) — {ax['summary']}")
+    return "\n".join(lines)
+
+
 def _gather_new_sources_text(ctx: WorkspaceContext) -> str:
     """Best-effort concatenation of new filing excerpts pulled by Step 1.
     Reads from the ticker_model's state if Step 1 stashed text there;
@@ -356,6 +372,8 @@ def _gather_new_sources_text(ctx: WorkspaceContext) -> str:
 
 
 async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
+    from backend.app.services import transcript_delta as transcript_delta_svc
+
     # Pull prior thesis
     prior_state = ctx.prior_research_run.state or {}
     phase_outputs = prior_state.get("phase_outputs") or {}
@@ -372,6 +390,21 @@ async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
     # For v1, pass the prior research_run's own filing-excerpt summary (lightweight).
     # Real ingest happens in Step 1; here we just summarize what Step 1 surfaced.
     new_sources = _gather_new_sources_text(ctx)[:8000]
+
+    # Best-effort transcript delta enrichment — prepended to new_sources.
+    try:
+        delta_row = await transcript_delta_svc.compute_delta(
+            ticker=ctx.ticker, db=ctx.db, fmp=ctx.fmp, force=False,
+        )
+        transcript_delta_block = _format_transcript_delta(delta_row)
+    except transcript_delta_svc.InsufficientTranscriptsError:
+        transcript_delta_block = ""
+    except Exception as exc:  # noqa: BLE001 — best-effort enrichment
+        _log.warning("transcript_delta failed for %s: %r", ctx.ticker, exc)
+        transcript_delta_block = ""
+
+    if transcript_delta_block:
+        new_sources = (transcript_delta_block + "\n\n" + new_sources).strip()
 
     user = RESEARCH_USER_TEMPLATE.format(
         prior_thesis=prior_thesis,
