@@ -12,7 +12,8 @@ export function BySignalBucketPanel({ summary }: { summary: OutcomeSummary }) {
     return null;
   }
 
-  const buckets = active ? summary.by_signal_bucket[active] ?? [] : [];
+  const effectiveActive = active && signals.includes(active) ? active : signals[0];
+  const buckets = summary.by_signal_bucket[effectiveActive] ?? [];
 
   return (
     <section className="px-4 py-6 border-b border-[var(--border)]">
@@ -26,7 +27,7 @@ export function BySignalBucketPanel({ summary }: { summary: OutcomeSummary }) {
               onClick={() => setActive(sig)}
               className={
                 "px-2 py-1 text-xs rounded " +
-                (sig === active
+                (sig === effectiveActive
                   ? "bg-[var(--primary)] text-white"
                   : "bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-2)]")
               }
