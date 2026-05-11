@@ -12,6 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import unit_of_work
 from backend.app.models.workspace_run import WorkspaceRun
+from backend.app.models.signal import Signal
+from backend.app.models.kill_criterion_state import KillCriterionState
+from backend.app.services import outcome_tracker
 from backend.app.services.workspace_context import WorkspaceContext
 from backend.app.services.workspace_steps import run_steps_in_sequence
 
@@ -263,6 +266,12 @@ class WorkspaceService:
                     status=final_status, verdict=verdict_str,
                     step_outputs=outputs, version_after=version_after,
                 )
+
+            if final_status == "completed" and verdict_str:
+                await self._record_workspace_outcome(
+                    run_id=run_id, verdict=verdict_str, outputs=outputs,
+                )
+
             emit({"type": "workspace_run_complete", "verdict": verdict_str,
                   "version_after": version_after, "status": final_status})
 
@@ -287,3 +296,88 @@ class WorkspaceService:
                     )
             finally:
                 emit({"type": "workspace_run_failed", "error": str(e)})
+
+    async def _record_workspace_outcome(
+        self, *, run_id: str, verdict: str, outputs: dict
+    ) -> None:
+        """Best-effort: record the workspace verdict in verdict_outcomes."""
+        try:
+            async with unit_of_work() as db:
+                run = (await db.execute(
+                    select(WorkspaceRun).where(WorkspaceRun.id == run_id)
+                )).scalar_one_or_none()
+                if run is None:
+                    return
+
+                theme_id: str | None = None
+                theme_seed_tickers: list[str] | None = None
+                if run.parent_research_run_id:
+                    from backend.app.models.research_run import ResearchRun
+                    from backend.app.models.theme import Theme
+                    parent = (await db.execute(
+                        select(ResearchRun).where(ResearchRun.id == run.parent_research_run_id)
+                    )).scalar_one_or_none()
+                    if parent and parent.theme_id:
+                        theme_id = parent.theme_id
+                        theme = (await db.execute(
+                            select(Theme).where(Theme.id == theme_id)
+                        )).scalar_one_or_none()
+                        if theme and theme.seed_tickers and isinstance(theme.seed_tickers, list):
+                            theme_seed_tickers = list(theme.seed_tickers)
+
+                signals_row: dict | None = None
+                if theme_id:
+                    sig_rows = (await db.execute(
+                        select(Signal).where(
+                            Signal.ticker == run.ticker,
+                            Signal.theme_id == theme_id,
+                        )
+                    )).scalars().all()
+                    if sig_rows:
+                        signals_row = {r.signal_type: r.value for r in sig_rows}
+
+                kill_rows = []
+                if run.parent_research_run_id:
+                    kill_rows = (await db.execute(
+                        select(KillCriterionState).where(
+                            KillCriterionState.run_id == run.parent_research_run_id
+                        )
+                    )).scalars().all()
+                kill_states = [
+                    {"ordinal": r.ordinal, "state": r.status} for r in kill_rows
+                ]
+
+                model_assumptions: dict | None = None
+                from backend.app.models import TickerModel
+                tm = (await db.execute(
+                    select(TickerModel)
+                    .where(TickerModel.ticker == run.ticker)
+                    .order_by(TickerModel.version.desc())
+                    .limit(1)
+                )).scalar_one_or_none()
+                if tm and tm.state:
+                    model_assumptions = (tm.state or {}).get("assumptions") or {}
+
+                profile, _ = await self._fmp.get_profile(run.ticker)
+                sector = (profile or {}).get("sector")
+
+                snapshot = outcome_tracker.build_workspace_run_signal_snapshot(
+                    run=run, signals_row=signals_row, kill_states=kill_states,
+                    model_assumptions=model_assumptions,
+                )
+
+                await outcome_tracker.record_verdict(
+                    source_type="workspace_run",
+                    source_id=run_id,
+                    ticker=run.ticker,
+                    theme_id=theme_id,
+                    theme_seed_tickers=theme_seed_tickers,
+                    sector=sector,
+                    verdict=verdict,
+                    verdict_emitted_at=datetime.now(timezone.utc),
+                    signal_snapshot=snapshot,
+                    fmp=self._fmp,
+                    db=db,
+                )
+        except Exception:
+            logger.exception("record_verdict failed for workspace run %s", run_id)
