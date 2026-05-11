@@ -212,7 +212,7 @@ class TestSignalSnapshotBuilders(unittest.TestCase):
         self.assertNotIn("deep_dive_scores", snap)
 
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession as SAAsyncSession
 from sqlalchemy.orm import sessionmaker
 from backend.app.models.outcome import VerdictOutcome, SectorEtfMapping
@@ -263,6 +263,25 @@ CREATE TABLE IF NOT EXISTS verdict_outcomes (
 )
 """
 
+_DDL_VERDICT_RETURN_SNAPSHOTS = """
+CREATE TABLE IF NOT EXISTS verdict_return_snapshots (
+    id TEXT PRIMARY KEY,
+    outcome_id TEXT NOT NULL,
+    snapshot_offset TEXT NOT NULL,
+    snapshot_date TEXT NOT NULL,
+    ticker_price NUMERIC NOT NULL,
+    spy_price NUMERIC,
+    sector_etf_price NUMERIC,
+    theme_basket_value NUMERIC,
+    ticker_return_pct NUMERIC NOT NULL,
+    spy_excess_pct NUMERIC,
+    sector_excess_pct NUMERIC,
+    theme_basket_excess_pct NUMERIC,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (outcome_id, snapshot_offset)
+)
+"""
+
 
 def _build_async_test_session():
     """Spin up an in-memory async sqlite engine + session for ORM tests.
@@ -280,6 +299,7 @@ def _build_async_test_session():
         async with engine.begin() as conn:
             await conn.execute(text(_DDL_SECTOR_ETF))
             await conn.execute(text(_DDL_VERDICT_OUTCOMES))
+            await conn.execute(text(_DDL_VERDICT_RETURN_SNAPSHOTS))
 
     asyncio.run(_setup())
     Session = sessionmaker(engine, class_=SAAsyncSession, expire_on_commit=False)
@@ -511,6 +531,152 @@ class TestSupersedeRules(unittest.TestCase):
 
         in_a = asyncio.run(_run())
         self.assertIsNone(in_a.superseded_at)
+
+
+from backend.app.services.outcome_tracker import refresh_snapshots
+from backend.app.models.outcome import VerdictReturnSnapshot
+
+
+class TestRefreshSnapshots(unittest.TestCase):
+    def test_fills_due_offsets_and_closes_at_6m(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            from datetime import timedelta as _td
+            async with Session() as db:
+                today = date.today()
+                entry_day = today - _td(days=200)
+                outcome = VerdictOutcome(
+                    id=str(uuid4()),
+                    source_type="workspace_run",
+                    source_id=str(uuid4()),
+                    ticker="NVDA",
+                    theme_id=None,
+                    verdict="healthy",
+                    verdict_emitted_at=datetime.combine(entry_day - _td(days=1),
+                                                        datetime.min.time(),
+                                                        tzinfo=timezone.utc),
+                    entry_price_at=entry_day,
+                    entry_price=Decimal("850.00"),
+                    spy_entry_price=Decimal("550.00"),
+                    sector_etf_ticker=None,
+                    sector_etf_entry_price=None,
+                    theme_basket_entry_value=None,
+                    theme_basket_constituents=None,
+                )
+                db.add(outcome)
+                await db.commit()
+
+                prices_nvda = {entry_day: Decimal("850.00")}
+                prices_spy  = {entry_day: Decimal("550.00")}
+                for (key, days) in [("1d", 1), ("1w", 7), ("1m", 30), ("3m", 90), ("6m", 180)]:
+                    d = entry_day + _td(days=days)
+                    prices_nvda[d] = Decimal("850.00") * Decimal("1.0") + Decimal(str(days)) * Decimal("0.5")
+                    prices_spy[d]  = Decimal("550.00") + Decimal(str(days)) * Decimal("0.1")
+
+                fmp = _mock_fmp_price_series({"NVDA": prices_nvda, "SPY": prices_spy})
+                summary = await refresh_snapshots(fmp=fmp, db=db)
+                await db.commit()
+
+                snaps = (await db.execute(
+                    select(VerdictReturnSnapshot).where(
+                        VerdictReturnSnapshot.outcome_id == outcome.id
+                    )
+                )).scalars().all()
+
+                await db.refresh(outcome)
+                return summary, snaps, outcome
+
+        summary, snaps, outcome = asyncio.run(_run())
+        self.assertEqual({s.snapshot_offset for s in snaps}, {"1d", "1w", "1m", "3m", "6m"})
+        self.assertIsNotNone(outcome.closed_at)
+        self.assertEqual(summary.closed, 1)
+
+    def test_does_not_duplicate_existing_snapshots(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            from datetime import timedelta as _td
+            async with Session() as db:
+                entry_day = date.today() - _td(days=200)
+                outcome = VerdictOutcome(
+                    id=str(uuid4()), source_type="workspace_run", source_id=str(uuid4()),
+                    ticker="NVDA", theme_id=None, verdict="healthy",
+                    verdict_emitted_at=datetime.combine(entry_day, datetime.min.time(), tzinfo=timezone.utc),
+                    entry_price_at=entry_day, entry_price=Decimal("850.00"),
+                    spy_entry_price=Decimal("550.00"),
+                )
+                db.add(outcome)
+                snap = VerdictReturnSnapshot(
+                    id=str(uuid4()), outcome_id=outcome.id, snapshot_offset="1m",
+                    snapshot_date=entry_day + _td(days=30),
+                    ticker_price=Decimal("900.00"),
+                    ticker_return_pct=Decimal("0.0588"),
+                )
+                db.add(snap)
+                await db.commit()
+
+                prices_nvda = {entry_day + _td(days=d): Decimal("900.00") for d in [1, 7, 30, 90, 180]}
+                prices_spy  = {entry_day + _td(days=d): Decimal("560.00") for d in [1, 7, 30, 90, 180]}
+                fmp = _mock_fmp_price_series({"NVDA": prices_nvda, "SPY": prices_spy})
+                summary = await refresh_snapshots(fmp=fmp, db=db)
+                await db.commit()
+                count = (await db.execute(
+                    select(VerdictReturnSnapshot).where(
+                        VerdictReturnSnapshot.outcome_id == outcome.id,
+                        VerdictReturnSnapshot.snapshot_offset == "1m",
+                    )
+                )).scalars().all()
+                return summary, len(count)
+
+        summary, count_1m = asyncio.run(_run())
+        self.assertEqual(count_1m, 1)
+
+    def test_per_outcome_errors_isolated(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            from datetime import timedelta as _td
+            async with Session() as db:
+                entry_day = date.today() - _td(days=200)
+                bad = VerdictOutcome(
+                    id=str(uuid4()), source_type="workspace_run", source_id=str(uuid4()),
+                    ticker="DELISTED", theme_id=None, verdict="healthy",
+                    verdict_emitted_at=datetime.combine(entry_day, datetime.min.time(), tzinfo=timezone.utc),
+                    entry_price_at=entry_day, entry_price=Decimal("100.00"),
+                    spy_entry_price=Decimal("550.00"),
+                )
+                good = VerdictOutcome(
+                    id=str(uuid4()), source_type="workspace_run", source_id=str(uuid4()),
+                    ticker="NVDA", theme_id=None, verdict="healthy",
+                    verdict_emitted_at=datetime.combine(entry_day, datetime.min.time(), tzinfo=timezone.utc),
+                    entry_price_at=entry_day, entry_price=Decimal("850.00"),
+                    spy_entry_price=Decimal("550.00"),
+                )
+                db.add_all([bad, good])
+                await db.commit()
+
+                prices_nvda = {entry_day + _td(days=d): Decimal("900.00") for d in [1, 7, 30, 90, 180]}
+                prices_spy  = {entry_day + _td(days=d): Decimal("560.00") for d in [1, 7, 30, 90, 180]}
+                fmp = _mock_fmp_price_series({"NVDA": prices_nvda, "SPY": prices_spy})  # DELISTED missing
+                summary = await refresh_snapshots(fmp=fmp, db=db)
+                await db.commit()
+                good_snaps = (await db.execute(
+                    select(VerdictReturnSnapshot).where(
+                        VerdictReturnSnapshot.outcome_id == good.id
+                    )
+                )).scalars().all()
+                bad_snaps = (await db.execute(
+                    select(VerdictReturnSnapshot).where(
+                        VerdictReturnSnapshot.outcome_id == bad.id
+                    )
+                )).scalars().all()
+                return summary, len(good_snaps), len(bad_snaps)
+
+        summary, good_n, bad_n = asyncio.run(_run())
+        self.assertEqual(good_n, 5)
+        self.assertEqual(bad_n, 0)
+        self.assertTrue(len(summary.errors) >= 1)
 
 
 if __name__ == "__main__":

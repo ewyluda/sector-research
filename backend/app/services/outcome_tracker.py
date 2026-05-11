@@ -348,3 +348,177 @@ async def _stamp_prior_open_as_superseded(
     )
     prior.realized_theme_basket_excess_pct = prior_basket_excess
     await db.flush()
+
+
+async def refresh_snapshots(*, fmp: FMPClient, db: AsyncSession) -> RefreshSummary:
+    """Iterate open outcomes; insert any newly-due snapshots; close at 6m.
+
+    Per-outcome errors captured in summary.errors[], never abort the loop.
+    """
+    open_outcomes = (await db.execute(
+        select(VerdictOutcome).where(VerdictOutcome.closed_at.is_(None))
+    )).scalars().all()
+
+    today = date.today()
+    snapshotted = 0
+    closed = 0
+    errors: list[dict[str, str]] = []
+
+    for outcome in open_outcomes:
+        try:
+            inserted, did_close = await _refresh_one(
+                outcome=outcome, today=today, fmp=fmp, db=db,
+            )
+            snapshotted += inserted
+            if did_close:
+                closed += 1
+        except Exception as exc:  # noqa: BLE001 — captured per-outcome
+            logger.exception("refresh_snapshots failed for outcome %s", outcome.id)
+            errors.append({"outcome_id": outcome.id, "error": str(exc)})
+
+    return RefreshSummary(
+        processed=len(open_outcomes), snapshotted=snapshotted, closed=closed, errors=errors,
+    )
+
+
+async def _refresh_one(
+    *,
+    outcome: VerdictOutcome,
+    today: date,
+    fmp: FMPClient,
+    db: AsyncSession,
+) -> tuple[int, bool]:
+    """Insert any due snapshots for this outcome. Returns (insertions, did_close_at_6m)."""
+    existing = {
+        row.snapshot_offset
+        for row in (await db.execute(
+            select(VerdictReturnSnapshot).where(
+                VerdictReturnSnapshot.outcome_id == outcome.id
+            )
+        )).scalars().all()
+    }
+
+    due_offsets: list[tuple[str, date]] = []
+    for key, days in SNAPSHOT_OFFSETS:
+        if key in existing:
+            continue
+        target = outcome.entry_price_at + timedelta(days=days)
+        if target <= today:
+            due_offsets.append((key, target))
+
+    if not due_offsets:
+        return 0, False
+
+    overall_start = min(d for _, d in due_offsets)
+    overall_end = max(d for _, d in due_offsets) + timedelta(days=3)
+
+    ticker_rows, _ = await fmp.get_historical_price_adjusted(
+        outcome.ticker, overall_start.isoformat(), overall_end.isoformat()
+    )
+    if not ticker_rows:
+        raise LookupError(f"no FMP price for {outcome.ticker} in [{overall_start}, {overall_end}]")
+
+    def _parse_row(rows: list[dict]) -> dict[date, Decimal]:
+        out: dict[date, Decimal] = {}
+        for r in rows or []:
+            raw_date = r["date"]
+            d = raw_date if isinstance(raw_date, date) else date.fromisoformat(raw_date)
+            out[d] = Decimal(str(r["close"]))
+        return out
+
+    by_date = _parse_row(ticker_rows)
+
+    spy_by_date: dict[date, Decimal] = {}
+    if outcome.spy_entry_price is not None:
+        spy_rows, _ = await fmp.get_historical_price_adjusted(
+            "SPY", overall_start.isoformat(), overall_end.isoformat()
+        )
+        spy_by_date = _parse_row(spy_rows)
+
+    sector_by_date: dict[date, Decimal] = {}
+    if outcome.sector_etf_ticker:
+        rows, _ = await fmp.get_historical_price_adjusted(
+            outcome.sector_etf_ticker, overall_start.isoformat(), overall_end.isoformat()
+        )
+        sector_by_date = _parse_row(rows)
+
+    constituent_by_date_by_ticker: dict[str, dict[date, Decimal]] = {}
+    if outcome.theme_basket_constituents:
+        for c in outcome.theme_basket_constituents:
+            sym = c["ticker"]
+            rows, _ = await fmp.get_historical_price_adjusted(
+                sym, overall_start.isoformat(), overall_end.isoformat()
+            )
+            constituent_by_date_by_ticker[sym] = _parse_row(rows)
+
+    def _first_on_or_after(
+        by_date_map: dict[date, Decimal], target: date
+    ) -> tuple[date, Decimal] | None:
+        for d in sorted(by_date_map.keys()):
+            if d >= target:
+                return d, by_date_map[d]
+        return None
+
+    inserted = 0
+    did_close = False
+
+    for key, target in due_offsets:
+        match = _first_on_or_after(by_date, target)
+        if match is None:
+            continue
+        snap_date, ticker_px = match
+        ticker_return = (ticker_px / outcome.entry_price) - Decimal("1")
+
+        spy_px: Decimal | None = None
+        spy_excess: Decimal | None = None
+        if outcome.spy_entry_price is not None:
+            spy_match = _first_on_or_after(spy_by_date, target)
+            if spy_match is not None:
+                _, spy_px = spy_match
+                spy_return = (spy_px / outcome.spy_entry_price) - Decimal("1")
+                spy_excess = ticker_return - spy_return
+
+        sector_px: Decimal | None = None
+        sector_excess: Decimal | None = None
+        if outcome.sector_etf_ticker and outcome.sector_etf_entry_price:
+            m = _first_on_or_after(sector_by_date, target)
+            if m is not None:
+                _, sector_px = m
+                sector_return = (sector_px / outcome.sector_etf_entry_price) - Decimal("1")
+                sector_excess = ticker_return - sector_return
+
+        basket_value: Decimal | None = None
+        basket_excess: Decimal | None = None
+        if outcome.theme_basket_constituents and outcome.theme_basket_entry_value:
+            current_prices: dict[str, Decimal] = {}
+            for sym, by in constituent_by_date_by_ticker.items():
+                m = _first_on_or_after(by, target)
+                if m is not None:
+                    current_prices[sym] = m[1]
+            basket_value = compute_basket_value(outcome.theme_basket_constituents, current_prices)
+            if basket_value is not None:
+                basket_return = (basket_value / Decimal(str(outcome.theme_basket_entry_value))) - Decimal("1")
+                basket_excess = ticker_return - basket_return
+
+        db.add(VerdictReturnSnapshot(
+            id=str(uuid4()),
+            outcome_id=outcome.id,
+            snapshot_offset=key,
+            snapshot_date=snap_date,
+            ticker_price=ticker_px,
+            spy_price=spy_px,
+            sector_etf_price=sector_px,
+            theme_basket_value=basket_value,
+            ticker_return_pct=ticker_return,
+            spy_excess_pct=spy_excess,
+            sector_excess_pct=sector_excess,
+            theme_basket_excess_pct=basket_excess,
+        ))
+        inserted += 1
+        if key == "6m":
+            outcome.closed_at = datetime.now(timezone.utc)
+            did_close = True
+
+    if inserted:
+        await db.flush()
+    return inserted, did_close
