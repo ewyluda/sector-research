@@ -136,7 +136,11 @@ class TestResolveSectorEtf(unittest.TestCase):
         self.assertIsNone(asyncio.run(_run("Cryptocurrency")))
 
 
-from backend.app.services.outcome_tracker import compute_basket_value
+from backend.app.services.outcome_tracker import (
+    build_research_run_signal_snapshot,
+    build_workspace_run_signal_snapshot,
+    compute_basket_value,
+)
 
 
 class TestComputeBasketValue(unittest.TestCase):
@@ -168,6 +172,43 @@ class TestComputeBasketValue(unittest.TestCase):
     def test_returns_none_when_all_missing(self):
         constituents = [{"ticker": "NVDA", "entry_price": Decimal("100.00")}]
         self.assertIsNone(compute_basket_value(constituents, {}))
+
+
+class TestSignalSnapshotBuilders(unittest.TestCase):
+    def test_research_run_snapshot_shape(self):
+        state = MagicMock()
+        state.deep_dive_results = {
+            "Business Quality": MagicMock(score=72),
+            "Risk Assessment":  MagicMock(score=58),
+        }
+        signals_row = {"velocity": 12.3, "fundamental": 0.78, "discovery": 0.65, "surprise": None}
+        kill_states = [{"ordinal": 1, "state": "armed"}]
+
+        snap = build_research_run_signal_snapshot(
+            state=state, signals_row=signals_row, kill_states=kill_states
+        )
+        self.assertEqual(snap["signals_row"], signals_row)
+        self.assertEqual(snap["deep_dive_scores"]["Business Quality"], 72)
+        self.assertEqual(snap["kill_criterion_state"], kill_states)
+        self.assertNotIn("workspace_step_verdicts", snap)
+
+    def test_workspace_run_snapshot_shape(self):
+        run = MagicMock()
+        run.step_outputs = {
+            "update_refresh": {"verdict": "healthy"},
+            "challenge":      {"proposed_verdict": "imminent"},
+        }
+        signals_row = {"velocity": 5.0, "fundamental": 0.5, "discovery": 0.3, "surprise": None}
+        model_assumptions = {"discount_rate": 0.10, "terminal_growth": 0.025}
+
+        snap = build_workspace_run_signal_snapshot(
+            run=run, signals_row=signals_row, kill_states=[],
+            model_assumptions=model_assumptions,
+        )
+        self.assertEqual(snap["signals_row"], signals_row)
+        self.assertEqual(snap["workspace_step_verdicts"]["challenge"], "imminent")
+        self.assertEqual(snap["model_assumptions"], model_assumptions)
+        self.assertNotIn("deep_dive_scores", snap)
 
 
 if __name__ == "__main__":

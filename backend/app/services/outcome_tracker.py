@@ -146,6 +146,60 @@ def compute_basket_value(
     return Decimal(str(statistics.fmean(ratios) * 100))
 
 
+def build_research_run_signal_snapshot(
+    *,
+    state: Any,
+    signals_row: dict | None,
+    kill_states: list[dict] | None,
+) -> dict:
+    """Assemble signal_snapshot JSONB for a research-run verdict.
+
+    Tolerant of missing fields on state — backfill against older state shapes must not raise.
+    """
+    deep_dive_scores: dict[str, float | None] = {}
+    results = getattr(state, "deep_dive_results", None) or {}
+    if isinstance(results, dict):
+        for category, payload in results.items():
+            score = getattr(payload, "score", None)
+            if score is None and isinstance(payload, dict):
+                score = payload.get("score")
+            deep_dive_scores[category] = score
+
+    return {
+        "signals_row": signals_row or {},
+        "deep_dive_scores": deep_dive_scores,
+        "kill_criterion_state": kill_states or [],
+    }
+
+
+def build_workspace_run_signal_snapshot(
+    *,
+    run: Any,
+    signals_row: dict | None,
+    kill_states: list[dict] | None,
+    model_assumptions: dict | None,
+) -> dict:
+    """Assemble signal_snapshot JSONB for a workspace-run verdict.
+
+    Tolerant of missing keys on run.step_outputs.
+    """
+    step_outputs = getattr(run, "step_outputs", None) or {}
+    verdicts: dict[str, str | None] = {}
+    if isinstance(step_outputs, dict):
+        for step_name, payload in step_outputs.items():
+            if not isinstance(payload, dict):
+                continue
+            verdict = payload.get("proposed_verdict") or payload.get("verdict")
+            verdicts[step_name] = verdict
+
+    return {
+        "signals_row": signals_row or {},
+        "workspace_step_verdicts": verdicts,
+        "kill_criterion_state": kill_states or [],
+        "model_assumptions": model_assumptions or {},
+    }
+
+
 async def _resolve_sector_etf(*, sector: str | None, db: AsyncSession) -> str | None:
     """Look up the SPDR sector ETF for an FMP sector name. None if unmapped or sector is null."""
     if not sector:
