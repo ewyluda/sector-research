@@ -85,5 +85,56 @@ class TestGetBySource(unittest.TestCase):
             self.assertEqual(r.status_code, 404)
 
 
+class TestListOutcomes(unittest.TestCase):
+    def test_list_returns_200_empty(self):
+        from backend.app.main import app
+
+        with patch(
+            "backend.app.api.outcomes._query_outcomes",
+            new=AsyncMock(return_value=[]),
+        ):
+            client = TestClient(app)
+            r = client.get("/api/outcomes")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json(), [])
+
+    def test_list_with_filters_passes_through(self):
+        from backend.app.main import app
+
+        source_id = str(uuid4())
+        payload = {
+            "id": str(uuid4()),
+            "source_type": "research_run",
+            "source_id": source_id,
+            "ticker": "MSFT",
+            "theme_id": None,
+            "verdict": "completed",
+            "verdict_emitted_at": "2026-02-01T10:00:00+00:00",
+            "entry_price_at": "2026-02-03",
+            "entry_price": "400.00",
+            "sector_etf_ticker": "XLK",
+            "superseded_at": None,
+            "closed_at": None,
+            "realized_ticker_return_pct": None,
+            "realized_spy_excess_pct": None,
+            "realized_sector_excess_pct": None,
+            "realized_theme_basket_excess_pct": None,
+            "snapshots": [],
+            "theme_basket_constituents": None,
+            "signal_snapshot": None,
+        }
+
+        with patch(
+            "backend.app.api.outcomes._query_outcomes",
+            new=AsyncMock(return_value=[payload]),
+        ):
+            client = TestClient(app)
+            r = client.get("/api/outcomes?verdict=completed&source_type=research_run&limit=50")
+            self.assertEqual(r.status_code, 200)
+            data = r.json()
+            self.assertEqual(len(data), 1)
+            self.assertEqual(data[0]["ticker"], "MSFT")
+
+
 if __name__ == "__main__":
     unittest.main()

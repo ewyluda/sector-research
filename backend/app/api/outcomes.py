@@ -1,6 +1,8 @@
 """GET /api/outcomes/*, POST /api/outcomes/backfill."""
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import APIRouter, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -64,6 +66,40 @@ def _outcome_to_detail_dict(outcome: VerdictOutcome) -> dict:
 
 # ── Internal fetch helpers (module-level so tests can patch them) ─────────────
 
+async def _query_outcomes(
+    *,
+    theme_id: str | None,
+    verdict: str | None,
+    source_type: str | None,
+    superseded: str,
+    closed: str,
+    limit: int,
+    offset: int,
+    db,
+) -> list[dict]:
+    q = (
+        select(VerdictOutcome)
+        .options(selectinload(VerdictOutcome.snapshots))
+    )
+    if theme_id is not None:
+        q = q.where(VerdictOutcome.theme_id == theme_id)
+    if verdict is not None:
+        q = q.where(VerdictOutcome.verdict == verdict)
+    if source_type is not None:
+        q = q.where(VerdictOutcome.source_type == source_type)
+    if superseded == "true":
+        q = q.where(VerdictOutcome.superseded_at.is_not(None))
+    elif superseded == "false":
+        q = q.where(VerdictOutcome.superseded_at.is_(None))
+    if closed == "true":
+        q = q.where(VerdictOutcome.closed_at.is_not(None))
+    elif closed == "false":
+        q = q.where(VerdictOutcome.closed_at.is_(None))
+    q = q.order_by(VerdictOutcome.verdict_emitted_at.desc()).offset(offset).limit(limit)
+    rows = (await db.execute(q)).scalars().all()
+    return [_outcome_to_detail_dict(r) for r in rows]
+
+
 async def _get_outcome_by_source(*, source_type: str, source_id: str, db) -> dict | None:
     outcome = (
         await db.execute(
@@ -92,6 +128,31 @@ async def trigger_backfill(request: Request) -> BackfillSummary:
     async with unit_of_work() as db:
         summary = await outcome_tracker.backfill_from_history(fmp=fmp, db=db)
     return summary
+
+
+@router.get("", response_model=list[OutcomeDetail])
+async def list_outcomes(
+    theme_id: str | None = None,
+    verdict: str | None = None,
+    source_type: Literal["research_run", "workspace_run"] | None = None,
+    superseded: Literal["true", "false", "all"] = "all",
+    closed: Literal["true", "false", "all"] = "all",
+    limit: int = 100,
+    offset: int = 0,
+) -> list[OutcomeDetail]:
+    """List verdict outcomes with optional filters and pagination (max 500 per page)."""
+    limit = max(1, min(limit, 500))
+    async with async_session() as db:
+        return await _query_outcomes(
+            theme_id=theme_id,
+            verdict=verdict,
+            source_type=source_type,
+            superseded=superseded,
+            closed=closed,
+            limit=limit,
+            offset=offset,
+            db=db,
+        )
 
 
 @router.get("/by-source/{source_type}/{source_id}", response_model=OutcomeDetail)
