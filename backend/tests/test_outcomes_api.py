@@ -136,5 +136,52 @@ class TestListOutcomes(unittest.TestCase):
             self.assertEqual(data[0]["ticker"], "MSFT")
 
 
+class TestSummary(unittest.TestCase):
+    def test_summary_empty_window_returns_zero_filled(self):
+        from backend.app.main import app
+
+        with patch(
+            "backend.app.api.outcomes._compute_summary",
+            new=AsyncMock(return_value={
+                "window": "90d", "snapshot_offset": "3m", "benchmark": "spy", "source_type": "all",
+                "overall": {"n": 0, "mean_return_pct": None, "mean_excess_pct": None,
+                            "win_rate": None, "median_excess_pct": None},
+                "by_verdict": {},
+                "by_theme": [],
+                "by_signal_bucket": {},
+            }),
+        ):
+            client = TestClient(app)
+            r = client.get("/api/outcomes/summary")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json()["overall"]["n"], 0)
+
+    def test_summary_filters_pass_through(self):
+        from backend.app.main import app
+
+        captured = {}
+
+        async def _stub(*, theme_id, window, snapshot_offset, benchmark, source_type, db):
+            captured.update({
+                "theme_id": theme_id, "window": window, "snapshot_offset": snapshot_offset,
+                "benchmark": benchmark, "source_type": source_type,
+            })
+            return {
+                "window": window, "snapshot_offset": snapshot_offset, "benchmark": benchmark,
+                "source_type": source_type,
+                "overall": {"n": 0, "mean_return_pct": None, "mean_excess_pct": None,
+                            "win_rate": None, "median_excess_pct": None},
+                "by_verdict": {}, "by_theme": [], "by_signal_bucket": {},
+            }
+
+        with patch("backend.app.api.outcomes._compute_summary", new=_stub):
+            client = TestClient(app)
+            r = client.get("/api/outcomes/summary?window=30d&snapshot_offset=1m&benchmark=sector&source_type=workspace_run&theme_id=abc")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(captured["window"], "30d")
+            self.assertEqual(captured["benchmark"], "sector")
+            self.assertEqual(captured["source_type"], "workspace_run")
+
+
 if __name__ == "__main__":
     unittest.main()
