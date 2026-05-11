@@ -1608,3 +1608,139 @@ export const workspaceApi = {
   },
   streamUrl: (runId: string) => `${BASE}/api/workspace/runs/${runId}/stream`,
 };
+
+// ============================================================================
+// Outcome tracking
+// ============================================================================
+
+export type SnapshotOffset = "1d" | "1w" | "1m" | "3m" | "6m";
+export type SourceType = "research_run" | "workspace_run";
+export type Benchmark = "spy" | "sector" | "theme_basket";
+export type Window = "30d" | "90d" | "1y" | "all";
+
+export interface SnapshotRead {
+  snapshot_offset: SnapshotOffset;
+  snapshot_date: string;
+  ticker_price: string;
+  spy_price: string | null;
+  sector_etf_price: string | null;
+  theme_basket_value: string | null;
+  ticker_return_pct: string;
+  spy_excess_pct: string | null;
+  sector_excess_pct: string | null;
+  theme_basket_excess_pct: string | null;
+}
+
+export interface OutcomeListItem {
+  id: string;
+  source_type: SourceType;
+  source_id: string;
+  ticker: string;
+  theme_id: string | null;
+  verdict: string;
+  verdict_emitted_at: string;
+  entry_price_at: string;
+  entry_price: string;
+  sector_etf_ticker: string | null;
+  superseded_at: string | null;
+  closed_at: string | null;
+  realized_ticker_return_pct: string | null;
+  realized_spy_excess_pct: string | null;
+  realized_sector_excess_pct: string | null;
+  realized_theme_basket_excess_pct: string | null;
+  snapshots: SnapshotRead[];
+}
+
+export interface OutcomeDetail extends OutcomeListItem {
+  theme_basket_constituents: { ticker: string; entry_price: string }[] | null;
+  signal_snapshot: Record<string, unknown> | null;
+}
+
+export interface StatGroup {
+  n: number;
+  mean_return_pct: number | null;
+  mean_excess_pct: number | null;
+  win_rate: number | null;
+  median_excess_pct: number | null;
+}
+
+export interface ThemeStat {
+  theme_id: string | null;
+  theme_name: string | null;
+  stats: StatGroup;
+}
+
+export interface SignalBucket {
+  bucket: string;
+  n: number;
+  mean_excess_pct: number | null;
+  win_rate: number | null;
+}
+
+export interface OutcomeSummary {
+  window: Window;
+  snapshot_offset: SnapshotOffset;
+  benchmark: Benchmark;
+  source_type: SourceType | "all";
+  overall: StatGroup;
+  by_verdict: Record<string, StatGroup | null>;
+  by_theme: ThemeStat[];
+  by_signal_bucket: Record<string, SignalBucket[]>;
+}
+
+export interface BackfillSummary {
+  outcomes_created: number;
+  outcomes_existed: number;
+  snapshots_inserted: number;
+  errors: { source_id?: string; outcome_id?: string; error: string }[];
+}
+
+export interface OutcomeSummaryQuery {
+  themeId?: string;
+  window?: Window;
+  snapshotOffset?: SnapshotOffset;
+  benchmark?: Benchmark;
+  sourceType?: SourceType | "all";
+}
+
+export interface OutcomeListQuery {
+  themeId?: string;
+  verdict?: string;
+  sourceType?: SourceType;
+  superseded?: "true" | "false" | "all";
+  closed?: "true" | "false" | "all";
+  limit?: number;
+  offset?: number;
+}
+
+export const outcomesApi = {
+  async getSummary(q: OutcomeSummaryQuery = {}): Promise<OutcomeSummary> {
+    const params = new URLSearchParams();
+    if (q.themeId) params.set("theme_id", q.themeId);
+    if (q.window) params.set("window", q.window);
+    if (q.snapshotOffset) params.set("snapshot_offset", q.snapshotOffset);
+    if (q.benchmark) params.set("benchmark", q.benchmark);
+    if (q.sourceType) params.set("source_type", q.sourceType);
+    return apiFetch(`/api/outcomes/summary?${params.toString()}`);
+  },
+
+  async list(q: OutcomeListQuery = {}): Promise<OutcomeListItem[]> {
+    const params = new URLSearchParams();
+    if (q.themeId) params.set("theme_id", q.themeId);
+    if (q.verdict) params.set("verdict", q.verdict);
+    if (q.sourceType) params.set("source_type", q.sourceType);
+    if (q.superseded) params.set("superseded", q.superseded);
+    if (q.closed) params.set("closed", q.closed);
+    if (q.limit != null) params.set("limit", String(q.limit));
+    if (q.offset != null) params.set("offset", String(q.offset));
+    return apiFetch(`/api/outcomes?${params.toString()}`);
+  },
+
+  async getBySource(sourceType: SourceType, sourceId: string): Promise<OutcomeDetail> {
+    return apiFetch(`/api/outcomes/by-source/${sourceType}/${sourceId}`);
+  },
+
+  async triggerBackfill(): Promise<BackfillSummary> {
+    return apiFetch(`/api/outcomes/backfill`, { method: "POST" });
+  },
+};
