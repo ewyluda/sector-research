@@ -208,3 +208,143 @@ async def _resolve_sector_etf(*, sector: str | None, db: AsyncSession) -> str | 
         select(SectorEtfMapping.etf_ticker).where(SectorEtfMapping.fmp_sector == sector)
     )
     return result.scalar_one_or_none()
+
+
+async def record_verdict(
+    *,
+    source_type: Literal["research_run", "workspace_run"],
+    source_id: str,
+    ticker: str,
+    theme_id: str | None,
+    theme_seed_tickers: list[str] | None,
+    sector: str | None,
+    verdict: str,
+    verdict_emitted_at: datetime,
+    signal_snapshot: dict | None,
+    fmp: FMPClient,
+    db: AsyncSession,
+) -> VerdictOutcome:
+    """Idempotent on (source_type, source_id).
+
+    1) Return existing outcome if already recorded.
+    2) Resolve entry-anchored prices for ticker + SPY + sector ETF + theme constituents.
+    3) Stamp any prior open same-(ticker, theme_id, source_type) outcome as superseded.
+    4) Insert the new outcome row.
+    """
+    existing = (await db.execute(
+        select(VerdictOutcome).where(
+            VerdictOutcome.source_type == source_type,
+            VerdictOutcome.source_id == source_id,
+        )
+    )).scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    sector_etf_ticker = await _resolve_sector_etf(sector=sector, db=db)
+
+    bundle = await _resolve_entry_prices(
+        ticker=ticker,
+        verdict_emitted_at=verdict_emitted_at,
+        theme_seed_tickers=theme_seed_tickers,
+        sector_etf_ticker=sector_etf_ticker,
+        fmp=fmp,
+    )
+
+    new_id = str(uuid4())
+    constituents_payload = (
+        [{"ticker": c.ticker, "entry_price": str(c.entry_price)}
+         for c in bundle.theme_basket_constituents] or None
+    )
+    theme_basket_entry_value: Decimal | None = (
+        Decimal("100") if constituents_payload else None
+    )
+
+    outcome = VerdictOutcome(
+        id=new_id,
+        source_type=source_type,
+        source_id=source_id,
+        ticker=ticker,
+        theme_id=theme_id,
+        verdict=verdict,
+        verdict_emitted_at=verdict_emitted_at,
+        entry_price_at=bundle.entry_price_at,
+        entry_price=bundle.ticker_price,
+        spy_entry_price=bundle.spy_price,
+        sector_etf_ticker=bundle.sector_etf_ticker,
+        sector_etf_entry_price=bundle.sector_etf_price,
+        theme_basket_entry_value=theme_basket_entry_value,
+        theme_basket_constituents=constituents_payload,
+        signal_snapshot=signal_snapshot,
+    )
+
+    await _stamp_prior_open_as_superseded(
+        ticker=ticker,
+        theme_id=theme_id,
+        source_type=source_type,
+        new_outcome=outcome,
+        bundle=bundle,
+        db=db,
+    )
+
+    db.add(outcome)
+    await db.flush()
+    return outcome
+
+
+async def _stamp_prior_open_as_superseded(
+    *,
+    ticker: str,
+    theme_id: str | None,
+    source_type: str,
+    new_outcome: VerdictOutcome,
+    bundle: EntryPriceBundle,
+    db: AsyncSession,
+) -> None:
+    """If there's a prior open (ticker, theme_id, source_type) outcome, stamp realized returns on it."""
+    q = select(VerdictOutcome).where(
+        VerdictOutcome.ticker == ticker,
+        VerdictOutcome.source_type == source_type,
+        VerdictOutcome.superseded_at.is_(None),
+    )
+    if theme_id is None:
+        q = q.where(VerdictOutcome.theme_id.is_(None))
+    else:
+        q = q.where(VerdictOutcome.theme_id == theme_id)
+    q = q.order_by(VerdictOutcome.verdict_emitted_at.desc()).limit(1)
+
+    prior = (await db.execute(q)).scalar_one_or_none()
+    if prior is None:
+        return
+
+    def _excess(t_entry, t_now, b_entry, b_now) -> Decimal | None:
+        if t_entry in (None, 0) or b_entry in (None, 0) or t_now is None or b_now is None:
+            return None
+        return ((Decimal(str(t_now)) / Decimal(str(t_entry))) - (Decimal(str(b_now)) / Decimal(str(b_entry))))
+
+    t_return: Decimal | None = None
+    if prior.entry_price and prior.entry_price != 0:
+        t_return = (Decimal(str(bundle.ticker_price)) / Decimal(str(prior.entry_price))) - Decimal("1")
+
+    # Theme basket realized: rebuild prior basket value using new entry-day constituent prices
+    prior_basket_excess: Decimal | None = None
+    if prior.theme_basket_constituents:
+        current_prices = {c.ticker: c.entry_price for c in bundle.theme_basket_constituents}
+        prior_value_at_new_entry = compute_basket_value(
+            prior.theme_basket_constituents, current_prices
+        )
+        if prior_value_at_new_entry is not None and prior.theme_basket_entry_value:
+            basket_return = (prior_value_at_new_entry / Decimal(str(prior.theme_basket_entry_value))) - Decimal("1")
+            if t_return is not None:
+                prior_basket_excess = t_return - basket_return
+
+    prior.superseded_at = datetime.now(timezone.utc)
+    prior.superseded_by_outcome_id = new_outcome.id
+    prior.realized_ticker_return_pct = t_return
+    prior.realized_spy_excess_pct = _excess(
+        prior.entry_price, bundle.ticker_price, prior.spy_entry_price, bundle.spy_price
+    )
+    prior.realized_sector_excess_pct = _excess(
+        prior.entry_price, bundle.ticker_price, prior.sector_etf_entry_price, bundle.sector_etf_price
+    )
+    prior.realized_theme_basket_excess_pct = prior_basket_excess
+    await db.flush()

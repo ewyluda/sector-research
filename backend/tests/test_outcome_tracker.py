@@ -4,6 +4,7 @@ from __future__ import annotations
 import unittest
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from uuid import uuid4
 
 from backend.app.services.outcome_tracker import (
     all_offset_keys,
@@ -209,6 +210,197 @@ class TestSignalSnapshotBuilders(unittest.TestCase):
         self.assertEqual(snap["workspace_step_verdicts"]["challenge"], "imminent")
         self.assertEqual(snap["model_assumptions"], model_assumptions)
         self.assertNotIn("deep_dive_scores", snap)
+
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession as SAAsyncSession
+from sqlalchemy.orm import sessionmaker
+from backend.app.models.outcome import VerdictOutcome, SectorEtfMapping
+from backend.app.services.outcome_tracker import record_verdict
+
+# Raw DDL for the two tables needed in outcome tests.
+# We bypass Base.metadata.create_all for two reasons:
+#   1. counterparty_aliases has a duplicate-index bug (index=True + explicit Index()),
+#      which causes OperationalError on every new sqlite engine.
+#   2. VerdictOutcome has a FK to themes.id — SQLAlchemy tries to resolve this during
+#      DDL sort even on sqlite, so we'd need themes in the metadata too (pulling in
+#      more transitive deps). Raw DDL sidesteps all of this cleanly.
+_DDL_SECTOR_ETF = """
+CREATE TABLE IF NOT EXISTS sector_etf_mapping (
+    fmp_sector TEXT PRIMARY KEY,
+    etf_ticker TEXT NOT NULL,
+    notes TEXT
+)
+"""
+
+_DDL_VERDICT_OUTCOMES = """
+CREATE TABLE IF NOT EXISTS verdict_outcomes (
+    id TEXT PRIMARY KEY,
+    source_type TEXT NOT NULL,
+    source_id TEXT NOT NULL,
+    ticker TEXT NOT NULL,
+    theme_id TEXT,
+    verdict TEXT NOT NULL,
+    verdict_emitted_at TEXT NOT NULL,
+    entry_price_at TEXT NOT NULL,
+    entry_price NUMERIC NOT NULL,
+    entry_price_source TEXT NOT NULL DEFAULT 'fmp_historical_eod_adjusted',
+    spy_entry_price NUMERIC,
+    sector_etf_ticker TEXT,
+    sector_etf_entry_price NUMERIC,
+    theme_basket_entry_value NUMERIC,
+    theme_basket_constituents TEXT,
+    signal_snapshot TEXT,
+    superseded_at TEXT,
+    superseded_by_outcome_id TEXT,
+    realized_ticker_return_pct NUMERIC,
+    realized_spy_excess_pct NUMERIC,
+    realized_sector_excess_pct NUMERIC,
+    realized_theme_basket_excess_pct NUMERIC,
+    closed_at TEXT,
+    created_at TEXT,
+    UNIQUE (source_type, source_id)
+)
+"""
+
+
+def _build_async_test_session():
+    """Spin up an in-memory async sqlite engine + session for ORM tests.
+
+    Uses raw DDL to avoid two problems with Base.metadata.create_all:
+    - counterparty_aliases duplicate-index bug causes OperationalError.
+    - VerdictOutcome FK to themes.id requires themes table in metadata.
+
+    JSONB columns become TEXT in sqlite; ORM round-trip preserves dict values.
+    SQLite doesn't enforce FK constraints, so the theme_id FK is safe to omit.
+    """
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+
+    async def _setup():
+        async with engine.begin() as conn:
+            await conn.execute(text(_DDL_SECTOR_ETF))
+            await conn.execute(text(_DDL_VERDICT_OUTCOMES))
+
+    asyncio.run(_setup())
+    Session = sessionmaker(engine, class_=SAAsyncSession, expire_on_commit=False)
+    return engine, Session
+
+
+class TestRecordVerdict(unittest.TestCase):
+    def test_creates_outcome_with_all_three_benchmark_entries(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                db.add(SectorEtfMapping(fmp_sector="Technology", etf_ticker="XLK"))
+                await db.commit()
+
+                prices = {
+                    "NVDA": {date(2026, 1, 5): Decimal("850.00")},
+                    "SPY":  {date(2026, 1, 5): Decimal("550.00")},
+                    "XLK":  {date(2026, 1, 5): Decimal("200.00")},
+                    "AMD":  {date(2026, 1, 5): Decimal("180.00")},
+                }
+                fmp = _mock_fmp_price_series(prices)
+
+                outcome = await record_verdict(
+                    source_type="research_run",
+                    source_id=str(uuid4()),
+                    ticker="NVDA",
+                    theme_id=None,
+                    theme_seed_tickers=["NVDA", "AMD"],
+                    sector="Technology",
+                    verdict="completed",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot={"signals_row": {"velocity": 12.3}},
+                    fmp=fmp,
+                    db=db,
+                )
+                await db.commit()
+                return outcome
+
+        outcome = asyncio.run(_run())
+        self.assertEqual(outcome.ticker, "NVDA")
+        self.assertEqual(outcome.entry_price_at, date(2026, 1, 5))
+        self.assertEqual(outcome.entry_price, Decimal("850.00"))
+        self.assertEqual(outcome.spy_entry_price, Decimal("550.00"))
+        self.assertEqual(outcome.sector_etf_ticker, "XLK")
+        self.assertEqual(outcome.sector_etf_entry_price, Decimal("200.00"))
+        self.assertEqual(outcome.theme_basket_entry_value, Decimal("100"))
+        self.assertEqual(len(outcome.theme_basket_constituents), 2)
+
+    def test_idempotent_on_source_id(self):
+        engine, Session = _build_async_test_session()
+        source_id = str(uuid4())
+
+        async def _run():
+            async with Session() as db:
+                prices = {"NVDA": {date(2026, 1, 5): Decimal("850.00")},
+                          "SPY": {date(2026, 1, 5): Decimal("550.00")}}
+                fmp = _mock_fmp_price_series(prices)
+
+                first = await record_verdict(
+                    source_type="research_run", source_id=source_id, ticker="NVDA",
+                    theme_id=None, theme_seed_tickers=None, sector=None,
+                    verdict="completed",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+                second = await record_verdict(
+                    source_type="research_run", source_id=source_id, ticker="NVDA",
+                    theme_id=None, theme_seed_tickers=None, sector=None,
+                    verdict="completed",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                return first.id, second.id
+
+        first_id, second_id = asyncio.run(_run())
+        self.assertEqual(first_id, second_id)
+
+    def test_unmapped_sector_leaves_sector_columns_null(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                prices = {"NVDA": {date(2026, 1, 5): Decimal("850.00")},
+                          "SPY": {date(2026, 1, 5): Decimal("550.00")}}
+                fmp = _mock_fmp_price_series(prices)
+                outcome = await record_verdict(
+                    source_type="research_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=None, theme_seed_tickers=None, sector="Cryptocurrency",
+                    verdict="completed",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+                return outcome
+
+        outcome = asyncio.run(_run())
+        self.assertIsNone(outcome.sector_etf_ticker)
+        self.assertIsNone(outcome.sector_etf_entry_price)
+
+    def test_no_supersede_when_no_prior(self):
+        engine, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                prices = {"NVDA": {date(2026, 1, 5): Decimal("850.00")},
+                          "SPY": {date(2026, 1, 5): Decimal("550.00")}}
+                fmp = _mock_fmp_price_series(prices)
+                outcome = await record_verdict(
+                    source_type="research_run", source_id=str(uuid4()), ticker="NVDA",
+                    theme_id=None, theme_seed_tickers=None, sector=None,
+                    verdict="completed",
+                    verdict_emitted_at=datetime(2026, 1, 2, 22, 0, tzinfo=timezone.utc),
+                    signal_snapshot=None, fmp=fmp, db=db,
+                )
+                await db.commit()
+                return outcome
+
+        outcome = asyncio.run(_run())
+        self.assertIsNone(outcome.superseded_at)
 
 
 if __name__ == "__main__":
