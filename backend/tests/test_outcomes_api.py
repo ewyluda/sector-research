@@ -183,5 +183,26 @@ class TestSummary(unittest.TestCase):
             self.assertEqual(captured["source_type"], "workspace_run")
 
 
+class TestQuartileBuckets(unittest.TestCase):
+    def test_quartile_buckets_balanced(self):
+        from backend.app.api.outcomes import _quartile_buckets
+        # 8 outcomes with signal 1..8 and excess matching signal
+        values = [(float(i), float(i)) for i in range(1, 9)]
+        buckets = _quartile_buckets(values)
+        by_key = {b.bucket: b for b in buckets}
+        self.assertEqual(by_key["0-25th"].n, 2)
+        self.assertEqual(by_key["25-50th"].n, 2)
+        self.assertEqual(by_key["50-75th"].n, 2)
+        self.assertEqual(by_key["75-100th"].n, 2)
+        self.assertGreater(by_key["75-100th"].mean_excess_pct, by_key["0-25th"].mean_excess_pct)
+
+    def test_quartile_buckets_includes_null(self):
+        from backend.app.api.outcomes import _quartile_buckets
+        values = [(None, 5.0), (1.0, 0.0), (2.0, 1.0)]
+        buckets = _quartile_buckets(values)
+        by_key = {b.bucket: b for b in buckets}
+        self.assertEqual(by_key["null"].n, 1)
+
+
 if __name__ == "__main__":
     unittest.main()
