@@ -121,6 +121,31 @@ async def _resolve_entry_prices(
     )
 
 
+def compute_basket_value(
+    constituents: list[dict],
+    current_prices: dict[str, Decimal],
+) -> Decimal | None:
+    """Equal-weighted arithmetic basket value.
+
+    constituents: list of {"ticker": str, "entry_price": Decimal}.
+    Returns mean(current/entry) * 100, omitting constituents with no current price.
+    Returns None when no constituent has a current price.
+    """
+    ratios: list[float] = []
+    for c in constituents:
+        symbol = c["ticker"]
+        entry = c["entry_price"]
+        if isinstance(entry, (str, int, float)):
+            entry = Decimal(str(entry))
+        current = current_prices.get(symbol)
+        if current is None or entry == 0:
+            continue
+        ratios.append(float(current) / float(entry))
+    if not ratios:
+        return None
+    return Decimal(str(statistics.fmean(ratios) * 100))
+
+
 async def _resolve_sector_etf(*, sector: str | None, db: AsyncSession) -> str | None:
     """Look up the SPDR sector ETF for an FMP sector name. None if unmapped or sector is null."""
     if not sector:

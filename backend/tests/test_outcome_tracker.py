@@ -136,5 +136,39 @@ class TestResolveSectorEtf(unittest.TestCase):
         self.assertIsNone(asyncio.run(_run("Cryptocurrency")))
 
 
+from backend.app.services.outcome_tracker import compute_basket_value
+
+
+class TestComputeBasketValue(unittest.TestCase):
+    def test_equal_weighted_basket(self):
+        # NVDA: 850 → 935 (+10%); AMD: 180 → 198 (+10%); TSM: 110 → 110 (0%) → basket value 106.67
+        constituents = [
+            {"ticker": "NVDA", "entry_price": Decimal("850.00")},
+            {"ticker": "AMD",  "entry_price": Decimal("180.00")},
+            {"ticker": "TSM",  "entry_price": Decimal("110.00")},
+        ]
+        current_prices = {
+            "NVDA": Decimal("935.00"),
+            "AMD":  Decimal("198.00"),
+            "TSM":  Decimal("110.00"),
+        }
+        value = compute_basket_value(constituents, current_prices)
+        # mean of (935/850, 198/180, 110/110) * 100 = mean(1.1, 1.1, 1.0) * 100 = 106.6667
+        self.assertAlmostEqual(float(value), 106.6667, places=3)
+
+    def test_drops_missing_constituent(self):
+        constituents = [
+            {"ticker": "NVDA", "entry_price": Decimal("100.00")},
+            {"ticker": "AMD",  "entry_price": Decimal("100.00")},
+        ]
+        # AMD has no current price → only NVDA averaged. (110/100)*100 = 110.
+        value = compute_basket_value(constituents, {"NVDA": Decimal("110.00")})
+        self.assertAlmostEqual(float(value), 110.0, places=3)
+
+    def test_returns_none_when_all_missing(self):
+        constituents = [{"ticker": "NVDA", "entry_price": Decimal("100.00")}]
+        self.assertIsNone(compute_basket_value(constituents, {}))
+
+
 if __name__ == "__main__":
     unittest.main()
