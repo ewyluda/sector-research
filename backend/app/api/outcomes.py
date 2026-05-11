@@ -29,6 +29,18 @@ from backend.app.services import outcome_tracker
 router = APIRouter(prefix="/api/outcomes", tags=["outcomes"])
 
 
+# ── Verdict wire/storage translation ──────────────────────────────────────────
+# DB stores raw `run.status` ("pass" for research runs). API exposes "passed"
+# because `pass` is a Python keyword and collides with VerdictStats field names.
+
+def _verdict_to_wire(stored: str) -> str:
+    return "passed" if stored == "pass" else stored
+
+
+def _verdict_to_stored(wire: str) -> str:
+    return "pass" if wire == "passed" else wire
+
+
 # ── Serialization helper ──────────────────────────────────────────────────────
 
 def _outcome_to_detail_dict(outcome: VerdictOutcome) -> dict:
@@ -47,7 +59,7 @@ def _outcome_to_detail_dict(outcome: VerdictOutcome) -> dict:
         "source_id": outcome.source_id,
         "ticker": outcome.ticker,
         "theme_id": outcome.theme_id,
-        "verdict": outcome.verdict,
+        "verdict": _verdict_to_wire(outcome.verdict),
         "verdict_emitted_at": outcome.verdict_emitted_at,
         "entry_price_at": outcome.entry_price_at,
         "entry_price": outcome.entry_price,
@@ -98,7 +110,7 @@ async def _query_outcomes(
     if theme_id is not None:
         q = q.where(VerdictOutcome.theme_id == theme_id)
     if verdict is not None:
-        q = q.where(VerdictOutcome.verdict == verdict)
+        q = q.where(VerdictOutcome.verdict == _verdict_to_stored(verdict))
     if source_type is not None:
         q = q.where(VerdictOutcome.source_type == source_type)
     if superseded == "true":
@@ -328,7 +340,7 @@ async def _compute_summary(
     # Build VerdictStats via setattr (avoids 'pass' keyword collision)
     verdict_stats = VerdictStats()
     for v, pairs in by_verdict.items():
-        field = "passed" if v == "pass" else v
+        field = _verdict_to_wire(v)
         if hasattr(verdict_stats, field):
             setattr(verdict_stats, field, _stats_for(pairs))
 
