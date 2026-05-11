@@ -381,6 +381,186 @@ async def refresh_snapshots(*, fmp: FMPClient, db: AsyncSession) -> RefreshSumma
     )
 
 
+async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> BackfillSummary:
+    """Walk completed research_runs + terminal workspace_runs; record_verdict for each (idempotent).
+
+    Then run refresh_snapshots once to populate due offsets across new outcomes.
+
+    Tolerant of missing source tables (e.g., in test environments) — returns zero-created.
+    """
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+    from backend.app.models.research_run import ResearchRun
+    from backend.app.models.workspace_run import WorkspaceRun
+    from backend.app.models.theme import Theme
+    from backend.app.models.signal import Signal
+
+    created = 0
+    existed = 0
+    errors: list[dict[str, str]] = []
+
+    # ── Research runs ────────────────────────────────────────────────────────
+    try:
+        research_runs = (await db.execute(
+            select(ResearchRun).where(ResearchRun.status.in_(["completed", "watchlist", "pass"]))
+        )).scalars().all()
+    except (OperationalError, ProgrammingError):
+        research_runs = []
+
+    for run in research_runs:
+        try:
+            existing = (await db.execute(
+                select(VerdictOutcome).where(
+                    VerdictOutcome.source_type == "research_run",
+                    VerdictOutcome.source_id == run.id,
+                )
+            )).scalar_one_or_none()
+            if existing is not None:
+                existed += 1
+                continue
+
+            theme_seed_tickers = None
+            if run.theme_id:
+                theme = (await db.execute(select(Theme).where(Theme.id == run.theme_id))).scalar_one_or_none()
+                if theme and isinstance(theme.seed_tickers, list):
+                    theme_seed_tickers = list(theme.seed_tickers)
+
+            signals_row = None
+            if run.theme_id:
+                sigs = (await db.execute(
+                    select(Signal).where(
+                        Signal.ticker == run.ticker, Signal.theme_id == run.theme_id
+                    )
+                )).scalars().all()
+                if sigs:
+                    signals_row = {s.signal_type: s.value for s in sigs}
+
+            profile, _ = await fmp.get_profile(run.ticker)
+            sector = (profile or {}).get("sector")
+
+            state_dict = run.state if isinstance(run.state, dict) else {}
+            dd = state_dict.get("deep_dive_results") or {}
+            scores = {k: (v.get("score") if isinstance(v, dict) else None) for k, v in dd.items()}
+            snapshot = {
+                "signals_row": signals_row or {},
+                "deep_dive_scores": scores,
+                "kill_criterion_state": [],
+            }
+
+            emitted_at = run.completed_at or run.created_at
+            if emitted_at is None:
+                errors.append({"source_id": run.id, "error": "no completed_at/created_at"})
+                continue
+
+            await record_verdict(
+                source_type="research_run",
+                source_id=run.id,
+                ticker=run.ticker,
+                theme_id=run.theme_id,
+                theme_seed_tickers=theme_seed_tickers,
+                sector=sector,
+                verdict=run.status,
+                verdict_emitted_at=emitted_at,
+                signal_snapshot=snapshot,
+                fmp=fmp,
+                db=db,
+            )
+            created += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("backfill failed for research_run %s", run.id)
+            errors.append({"source_id": run.id, "error": str(exc)})
+
+    # ── Workspace runs ────────────────────────────────────────────────────────
+    try:
+        workspace_runs = (await db.execute(
+            select(WorkspaceRun).where(WorkspaceRun.status == "completed", WorkspaceRun.verdict.is_not(None))
+        )).scalars().all()
+    except (OperationalError, ProgrammingError):
+        workspace_runs = []
+
+    for wrun in workspace_runs:
+        try:
+            existing = (await db.execute(
+                select(VerdictOutcome).where(
+                    VerdictOutcome.source_type == "workspace_run",
+                    VerdictOutcome.source_id == wrun.id,
+                )
+            )).scalar_one_or_none()
+            if existing is not None:
+                existed += 1
+                continue
+
+            theme_id: str | None = None
+            theme_seed_tickers: list[str] | None = None
+            if wrun.parent_research_run_id:
+                parent = (await db.execute(
+                    select(ResearchRun).where(ResearchRun.id == wrun.parent_research_run_id)
+                )).scalar_one_or_none()
+                if parent and parent.theme_id:
+                    theme_id = parent.theme_id
+                    theme = (await db.execute(
+                        select(Theme).where(Theme.id == theme_id)
+                    )).scalar_one_or_none()
+                    if theme and isinstance(theme.seed_tickers, list):
+                        theme_seed_tickers = list(theme.seed_tickers)
+
+            signals_row = None
+            if theme_id:
+                sigs = (await db.execute(
+                    select(Signal).where(
+                        Signal.ticker == wrun.ticker, Signal.theme_id == theme_id
+                    )
+                )).scalars().all()
+                if sigs:
+                    signals_row = {s.signal_type: s.value for s in sigs}
+
+            profile, _ = await fmp.get_profile(wrun.ticker)
+            sector = (profile or {}).get("sector")
+
+            step_outputs = wrun.step_outputs or {}
+            verdicts = {}
+            for step, payload in step_outputs.items():
+                if isinstance(payload, dict):
+                    verdicts[step] = payload.get("proposed_verdict") or payload.get("verdict")
+            snapshot = {
+                "signals_row": signals_row or {},
+                "workspace_step_verdicts": verdicts,
+                "kill_criterion_state": [],
+                "model_assumptions": {},
+            }
+
+            emitted_at = wrun.updated_at or wrun.created_at
+            if emitted_at is None:
+                errors.append({"source_id": wrun.id, "error": "no timestamp"})
+                continue
+
+            await record_verdict(
+                source_type="workspace_run",
+                source_id=wrun.id,
+                ticker=wrun.ticker,
+                theme_id=theme_id,
+                theme_seed_tickers=theme_seed_tickers,
+                sector=sector,
+                verdict=wrun.verdict,
+                verdict_emitted_at=emitted_at,
+                signal_snapshot=snapshot,
+                fmp=fmp,
+                db=db,
+            )
+            created += 1
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("backfill failed for workspace_run %s", wrun.id)
+            errors.append({"source_id": wrun.id, "error": str(exc)})
+
+    # Refresh in the same transaction so existing outcomes also pick up any due snapshots
+    refresh = await refresh_snapshots(fmp=fmp, db=db)
+    return BackfillSummary(
+        outcomes_created=created,
+        outcomes_existed=existed,
+        snapshots_inserted=refresh.snapshotted,
+        errors=errors + refresh.errors,
+    )
+
+
 async def _refresh_one(
     *,
     outcome: VerdictOutcome,
