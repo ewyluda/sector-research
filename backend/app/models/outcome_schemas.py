@@ -20,7 +20,7 @@ class EntryConstituent(BaseModel):
 
 
 class EntryPriceBundle(BaseModel):
-    """Result of _resolve_entry_prices — entry-anchored prices for outcome creation."""
+    """Entry-anchored prices for outcome creation: ticker + SPY + sector ETF + theme constituents."""
     entry_price_at: date
     ticker_price: Decimal
     spy_price: Decimal | None
@@ -85,14 +85,16 @@ class StatGroup(BaseModel):
 
 
 class VerdictStats(BaseModel):
-    """{verdict_string: StatGroup}. Verdict strings are not enumerated — research+workspace verdict spaces."""
+    """Per-verdict-band stats. Field set is the known verdict space:
+    workspace emits healthy|imminent|triggered|broken; research emits completed|watchlist|pass.
+    'passed' aliases 'pass' (Python keyword collision)."""
     healthy: StatGroup | None = None
     imminent: StatGroup | None = None
     triggered: StatGroup | None = None
     broken: StatGroup | None = None
     completed: StatGroup | None = None
     watchlist: StatGroup | None = None
-    passed: StatGroup | None = None  # 'pass' is a Python keyword; rename in API output
+    passed: StatGroup | None = None  # 'pass' is a Python keyword — service maps research_run.status='pass' to this field name
 
 
 class ThemeStat(BaseModel):
@@ -116,7 +118,7 @@ class OutcomeSummary(BaseModel):
     overall: StatGroup
     by_verdict: VerdictStats
     by_theme: list[ThemeStat]
-    by_signal_bucket: dict[str, list[SignalBucket]]
+    by_signal_bucket: dict[str, list[SignalBucket]]  # key = signal name (e.g. 'velocity', 'fundamental', 'discovery')
 
 
 class RefreshSummary(BaseModel):
