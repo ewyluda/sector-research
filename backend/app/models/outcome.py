@@ -43,7 +43,7 @@ class VerdictOutcome(Base):
     entry_price_at: Mapped[date] = mapped_column(Date, nullable=False)
     entry_price: Mapped[Decimal] = mapped_column(Numeric(20, 6), nullable=False)
     entry_price_source: Mapped[str] = mapped_column(
-        String(64), nullable=False, default="fmp_historical_eod_adjusted"
+        String(64), nullable=False, server_default="fmp_historical_eod_adjusted"
     )
 
     spy_entry_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
