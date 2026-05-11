@@ -374,7 +374,7 @@ class WorkspaceService:
                     theme_seed_tickers=theme_seed_tickers,
                     sector=sector,
                     verdict=verdict,
-                    verdict_emitted_at=datetime.now(timezone.utc),
+                    verdict_emitted_at=run.updated_at or datetime.now(timezone.utc),
                     signal_snapshot=snapshot,
                     fmp=self._fmp,
                     db=db,

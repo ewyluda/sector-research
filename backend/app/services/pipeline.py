@@ -17,6 +17,19 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
+
+def _coerce_to_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    return None
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -309,7 +322,7 @@ class PipelineService:
                     theme_seed_tickers=theme_seed_tickers,
                     sector=sector,
                     verdict=state.status,
-                    verdict_emitted_at=datetime.now(timezone.utc),
+                    verdict_emitted_at=_coerce_to_datetime(state.completed_at) or datetime.now(timezone.utc),
                     signal_snapshot=snapshot,
                     fmp=self._fmp,
                     db=db,

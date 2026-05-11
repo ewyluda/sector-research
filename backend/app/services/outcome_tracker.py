@@ -401,7 +401,9 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
     # ── Research runs ────────────────────────────────────────────────────────
     try:
         research_runs = (await db.execute(
-            select(ResearchRun).where(ResearchRun.status.in_(["completed", "watchlist", "pass"]))
+            select(ResearchRun)
+            .where(ResearchRun.status.in_(["completed", "watchlist", "pass"]))
+            .order_by(ResearchRun.created_at.asc())
         )).scalars().all()
     except (OperationalError, ProgrammingError):
         research_runs = []
@@ -438,6 +440,21 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
             sector = (profile or {}).get("sector")
 
             state_dict = run.state if isinstance(run.state, dict) else {}
+
+            completed_iso = state_dict.get("completed_at")
+            emitted_at = None
+            if completed_iso:
+                try:
+                    emitted_at = datetime.fromisoformat(completed_iso.replace("Z", "+00:00")) if isinstance(completed_iso, str) else completed_iso
+                except (ValueError, AttributeError):
+                    emitted_at = None
+            if emitted_at is None:
+                emitted_at = run.created_at
+
+            if emitted_at is None:
+                errors.append({"source_id": run.id, "error": "no completed_at/created_at"})
+                continue
+
             dd = state_dict.get("deep_dive_results") or {}
             scores = {k: (v.get("score") if isinstance(v, dict) else None) for k, v in dd.items()}
             snapshot = {
@@ -445,11 +462,6 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
                 "deep_dive_scores": scores,
                 "kill_criterion_state": [],
             }
-
-            emitted_at = run.completed_at or run.created_at
-            if emitted_at is None:
-                errors.append({"source_id": run.id, "error": "no completed_at/created_at"})
-                continue
 
             await record_verdict(
                 source_type="research_run",
@@ -472,7 +484,9 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
     # ── Workspace runs ────────────────────────────────────────────────────────
     try:
         workspace_runs = (await db.execute(
-            select(WorkspaceRun).where(WorkspaceRun.status == "completed", WorkspaceRun.verdict.is_not(None))
+            select(WorkspaceRun)
+            .where(WorkspaceRun.status == "completed", WorkspaceRun.verdict.is_not(None))
+            .order_by(WorkspaceRun.created_at.asc())
         )).scalars().all()
     except (OperationalError, ProgrammingError):
         workspace_runs = []
