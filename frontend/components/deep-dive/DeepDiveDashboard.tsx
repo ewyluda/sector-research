@@ -8,6 +8,7 @@ import { TechnicalMarket } from "./sections/TechnicalMarket";
 import { BusinessQuality } from "./sections/BusinessQuality";
 import { MacroRegime } from "./sections/MacroRegime";
 import { RiskAssessment } from "./sections/RiskAssessment";
+import { WhatChangedPanel } from "./sections/WhatChangedPanel";
 import { ManagementGovernance } from "./sections/ManagementGovernance";
 import { SentimentNarrative } from "./sections/SentimentNarrative";
 import { FutureDurability } from "./sections/FutureDurability";
@@ -102,6 +103,8 @@ export function DeepDiveDashboard({ ticker, themeId, financials, categories: raw
           fallback={categories["risk_assessment"] ?? null}
           isLive={isLive}
         />
+
+        <WhatChangedPanel ticker={ticker} />
 
         {/* Qualitative — 2-column grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
