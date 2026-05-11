@@ -6,15 +6,17 @@ A personal stock research application combining structured equity data with soci
 
 ## What It Does
 
-Five core workflows:
+Six core workflows:
 
 **Discovery** — Open a curated investment theme (e.g., "AI Power Infrastructure") and see every company in that space ranked by signal strength. FMP screener data and X mention velocity surface unknown players alongside known ones. Combined signal score = 40% X velocity + 40% FMP fundamental quality + 20% discovery score.
 
 **Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. Phases 1-5 (quick_screen → deep_dive → thesis_construction → risk_stress_test) run continuously after `POST /api/runs`; risk_stress_test can loop back to deep_dive when `loop_required` is set (capped at 2 loops). Phase 6 (position_monitor) is the only manually-gated step — triggered via `POST /api/runs/{id}/advance` once the prior phases complete. Citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
 
-**Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a supply-chain graph card in the deep-dive dashboard, a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
+**Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a 1-hop supply-chain card in the deep-dive dashboard, a dedicated multi-hop graph page at `/filings/graph` that BFS-walks counterparties of counterparties (optionally gated to a theme's seed tickers), a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
 
 **Model** — Editable 5-year financial model per ticker, AI-seeded from the latest completed research run. Sonnet emits forecast drivers, the balancing engine recomputes the full 3-statement P&L / BS / CF on every cell edit (plug into `retained_earnings` keeps A=L+E), versions persist to `ticker_models` with a single working draft per ticker. The reverse-DCF tab solves implied revenue growth / EBIT margin / terminal multiple from the live FMP quote, computes the implied IRR, and renders three 21×21 sensitivity heatmaps plus a thesis-vs-priced-in summary. Cell edits, history diff (cell-path-keyed), and a what-if scratch panel (illustrative sliders).
+
+**Workspace Loop** — Five-step thesis refresh that pulls a completed research run forward in time: `update_refresh → research → challenge → differentiate → validate`. Re-pulls FMP financials and promotes newly-published forecast periods from `ai_baseline` → `historical` (warning when previously-edited override cells are evicted), then runs Sonnet/Haiku passes to surface what's changed in the thesis. Produces a fresh `WorkspaceVerdict` (`healthy | imminent | triggered | broken`). Streams via SSE; runs persist to `workspace_runs` with a JSONB `step_outputs` column. Index at `/workspace`, per-run report at `/workspace/[runId]`.
 
 **Status Board** — Live tracker of every active thesis across all themes. Aggregates the latest completed run per `(ticker, theme)` with health badges (Healthy / Imminent / Stale / Triggered / Broken), nearest-catalyst proximity, and a kill-criteria summary you can toggle armed/triggered inline. Polls every 60s while the tab is visible. The post-thesis fleet-management view — what to pay attention to and what's quietly aging out. Companion `/catalysts` and `/questions` pages surface the calendar and open-question log feeding the same data.
 
@@ -42,33 +44,33 @@ Five core workflows:
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│            Next.js 16 Frontend          │
-│  Themes │ Filings │ Pipeline │ Model │ Library │
-└────────────────────┬────────────────────┘
-                     │ HTTP / SSE streaming
-┌────────────────────▼────────────────────┐
-│              FastAPI Backend            │
-│  ┌─────────────┐  ┌────────────────┐   │
-│  │  Discovery  │  │  LangGraph     │   │
-│  │  Engine     │  │  Pipeline      │   │
-│  │  (FMP + X)  │  │  (6-phase DD)  │   │
-│  └──────┬──────┘  └───────┬────────┘   │
-│         └────────┬─────────┘           │
-│          ┌───────▼───────┐             │
-│          │  Data Clients │             │
-│          │FMP·X·FRED·EDGAR│            │
-│          └───────┬───────┘             │
-└──────────────────┼─────────────────────┘
-                   │
-┌──────────────────▼─────────────────────┐
-│              PostgreSQL                 │
-│  themes · research_runs · citations     │
-│  signals · watchlist                    │
-│  filings · xbrl_facts · filing_sections │
-│  relationships · counterparty_aliases   │
-│  ticker_models · ticker_model_drafts    │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                      Next.js 16 Frontend                         │
+│  Themes │ Filings │ Catalysts │ Status │ Workspace │ Questions │ │
+│                                                Library │ + New  │
+└─────────────────────────────────┬────────────────────────────────┘
+                                  │ HTTP / SSE streaming
+┌─────────────────────────────────▼────────────────────────────────┐
+│                         FastAPI Backend                          │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
+│  │Discovery │ │ LangGraph│ │ Workspace│ │ Filings  │ │ Status │ │
+│  │ Engine   │ │ Pipeline │ │   Loop   │ │ EDGAR +  │ │ Board  │ │
+│  │(FMP + X) │ │(6-phase) │ │(5-step)  │ │  graph   │ │+ kill  │ │
+│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
+│       └────────────┴────────────┴────────────┴───────────┘      │
+│                           ┌───────▼───────┐                      │
+│                           │  Data Clients │                      │
+│                           │FMP·X·FRED·EDGAR│                     │
+│                           └───────┬───────┘                      │
+└───────────────────────────────────┼──────────────────────────────┘
+                                    │
+┌───────────────────────────────────▼──────────────────────────────┐
+│                            PostgreSQL                            │
+│  themes · research_runs · workspace_runs · citations · signals   │
+│  signal_history · watchlist · kill_criterion_state · catalysts   │
+│  filings · xbrl_facts · filing_sections · relationships          │
+│  counterparty_aliases · ticker_models · ticker_model_drafts      │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -131,8 +133,16 @@ POST /api/relationships/resolve/{ticker}
   ↓  80-94 → curation queue
   ↓  Persists to counterparty_aliases, backfills relationships
 
-GET /api/relationships/graph/{ticker}?direction=both
-  ↓  Returns {nodes, edges, summary} for the supply-chain card
+GET /api/relationships/graph/{ticker}?direction=both&depth=1|2&theme_id=...
+  ↓  Returns {root_ticker, nodes, edges, summary}.
+  ↓  Depth defaults to 1. At depth=2 BFS expands hop-1 counterparties
+  ↓    into hop-2 edges; optional theme_id gates which counterparties
+  ↓    are expanded (only tickers in that theme's seed_tickers).
+  ↓  Each node carries hop + in_selected_theme; each edge carries hop
+  ↓    + source_ticker (the filer at that hop). `summary` is always
+  ↓    the hop-1-only bucketed view the deep-dive card consumes.
+  ↓  Frontend has two consumers: the SupplyChainEcosystem card
+  ↓    (depth=1) and /filings/graph (depth=2 with theme gating).
 
 POST /api/relationships/reconcile
   ↓  Finds reciprocal pairs (customer↔supplier, etc.)
@@ -280,6 +290,14 @@ No auth system — personal local tool.
 | `backend/app/services/fanout.py` | FanoutService — orchestrates ingest → extract → resolve across a theme or a single ticker; in-memory status tracker wired through `app.state.fanout` |
 | `backend/app/services/relationship_context.py` | Read-path query layer: builds the `CounterpartyContext` (outbound + inbound, grouped by type) consumed by the deep-dive prompt routing |
 | `backend/app/api/fanouts.py` | Fan-out endpoints (theme, ticker, status polling) |
+| `backend/app/services/workspace.py` | `WorkspaceService` — orchestrates 5-step workspace-loop runs with SSE streaming |
+| `backend/app/services/workspace_steps.py` | Step functions (`step_update_refresh`, `step_research`, `step_challenge`, `step_differentiation`, `step_validation`) |
+| `backend/app/models/workspace_schemas.py` | Output schemas per step + `WorkspaceVerdict` enum |
+| `backend/app/api/workspace.py` | Workspace API surface (kick-off, status, SSE, recent list) |
+| `backend/app/services/status_board.py` | Fleet aggregator powering `GET /api/status/board` |
+| `backend/app/api/status.py` | Status board, archive/unarchive, kill-criteria toggles |
+| `backend/app/api/catalysts.py` | Catalyst calendar |
+| `backend/app/api/questions.py` | Open-question log (dismiss / resolve / retry-auto) |
 | `backend/app/models/model_state.py` | `ModelState` Pydantic + `ModelCell` (drivers/statements/assumptions) |
 | `backend/app/services/model_baseline.py` | Sonnet-seeded baseline orchestrator (`build_baseline_state`, `initialize_or_get_model`) |
 | `backend/app/services/model_balancing.py` | Pure recompute pipeline: P&L → CF → BS plug into `retained_earnings` |

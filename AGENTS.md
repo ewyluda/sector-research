@@ -70,9 +70,19 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## What this is
 
-Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with human-in-the-loop interrupts and citations on every data point). No auth — local-only tool.
+Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with citations on every data point). No auth — local-only tool.
 
-Four top-level workspaces: **Discovery** (ranked companies per theme), **Pipeline** (6-phase due diligence), **Filings** (SEC EDGAR filing extraction, relationship graph, and counterparty resolution), and **Model** (editable AI-seeded 5-year financial model with versioning + reverse-DCF engine).
+Seven top-level workspaces (see `frontend/components/Nav.tsx`):
+
+- **Themes / Discovery** (`/`, `/theme/[id]`) — ranked companies per theme.
+- **Filings** (`/filings`, `/filings/graph`) — SEC EDGAR filing extraction, relationship graph (1- or 2-hop, optionally theme-gated), counterparty resolution.
+- **Catalysts** (`/catalysts`) — upcoming-event calendar feeding the same data the status board surfaces.
+- **Status** (`/status`) — fleet-management view: every active thesis bucketed by health (Healthy / Imminent / Stale / Triggered / Broken), kill-criteria toggles, read-through and earnings drawers.
+- **Workspace** (`/workspace`, `/workspace/[runId]`) — 5-step workspace-loop orchestrator that refreshes a thesis (update → research → challenge → differentiate → validate) and produces an updated verdict + model deltas.
+- **Questions** (`/questions`) — open-question log with retry/dismiss/resolve actions.
+- **Library** (`/library`) — saved runs / archive.
+
+Plus the run-creation flow (`/pipeline/new`, `/pipeline/[runId]`) and the per-ticker financial model (`/model/[ticker]`).
 
 Two deployables in a flat layout:
 
@@ -100,7 +110,7 @@ cd backend && alembic upgrade head
 cd backend && alembic revision --autogenerate -m "description"
 ```
 
-No test framework is configured for the backend.
+Backend tests live in `backend/tests/` and run via Python's stdlib `unittest`. Invoke as `python -m unittest backend.tests.<module>` from project root with the venv active. No pytest, no coverage harness.
 
 **Frontend:**
 
@@ -155,6 +165,8 @@ Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU 
 
 Combined score = 40% X velocity + 40% fundamental quality + 20% discovery score when X data is fresh. When X is missing or stale, the weights collapse to 80% fundamental + 20% discovery. Staleness threshold lives in `clients/x_client.py::STALE_THRESHOLD_HOURS`.
 
+The scheduler also dual-writes a `signal_history` row per signal_type per refresh — read it via `services/signal_history.list_signal_history()` or `GET /api/themes/{id}/signals/{ticker}/history?signal_type=velocity&days=N` (days clamped to [1, 365]). The current-value `signals` table semantics are unchanged.
+
 ### Citations as a first-class primitive
 
 Every data-client method returns `tuple[data, Citation]`, not just data. `models/citation.py` defines two shapes: the `Citation` dataclass (in-memory / embedded in `CompanySignalCard` / etc.) and `CitationRecord` ORM (persisted rows). Inside the LangGraph state, use `StateCitation` (in `graph/state.py`) — it's the JSON-serializable form with an ISO-string timestamp. When adding a new data source, preserve this convention or the report endpoint and frontend's `Citation[]` typing break silently.
@@ -203,9 +215,12 @@ Five-phase pipeline for extracting and consuming SEC filing narrative. All on-de
 
 **Phase D — Supply-chain graph** (`services/supply_chain.py`):
 
-- `GET /api/relationships/graph/{ticker}?direction=out|in|both` returns `{root_ticker, nodes[], edges[], summary}`. 1-hop depth. Nodes identified by CIK (resolved) or normalized name (unresolved). `tracked` flag from theme seed_tickers.
+- `GET /api/relationships/graph/{ticker}?direction=out|in|both&depth=1|2&theme_id=...` returns `{root_ticker, nodes[], edges[], summary}`. Depth defaults to 1; depth=2 runs a BFS over hop-1 counterparties to assemble their outbound/inbound edges as hop-2. `theme_id` (optional) gates which hop-1 nodes are expanded — only counterparties with a ticker tracked in that theme's `seed_tickers` get their hop-2 edges traversed, which is how the cross-theme "what does my universe see about NVDA's customers?" view is bounded.
+- Each `GraphNode` carries `hop` and `in_selected_theme`; each `GraphEdge` carries `hop` and `source_ticker` (the node whose filing produced the edge — at hop 2 this is a hop-1 counterparty, not the root). `summary` is always the hop-1-only bucketed view the deep-dive card consumes, even when depth=2 — the multi-hop view bucketizes from `edges[]` directly.
 - `POST /api/relationships/reconcile` flips `confirmed_bilateral=true` on reciprocal pairs (customer↔supplier, partner↔partner, competitor↔competitor, licensor↔licensee, distributor↔reseller, joint_venture↔joint_venture).
-- Frontend: `SupplyChainEcosystem` card in the deep-dive dashboard (after Business Quality). Groups counterparties by type, shows verbatim quotes, bilateral badges, tracker-links.
+- Frontend: two consumers of this endpoint —
+  1. `SupplyChainEcosystem` card in the deep-dive dashboard (after Business Quality) calls `getGraph(ticker, { depth: 1 })`. Groups counterparties by type, shows verbatim quotes, bilateral badges, tracker-links, and an **"Explore 2-hop graph →"** deep link to `/filings/graph?root={ticker}`.
+  2. `/filings/graph` page (`MultiHopGraphView`) calls `getGraph(root, { depth: 2, theme_id? })` and renders a `RootHeader` + nested `HopGroup` disclosures with render-layer edge dedup (same `(from, to, type)` collapsed into one row with a disclosure-count badge).
 
 **Phase E — Fan-out orchestration + deep-dive prompt routing** (`services/fanout.py` + `services/relationship_context.py`):
 
@@ -220,10 +235,32 @@ Five-phase pipeline for extracting and consuming SEC filing narrative. All on-de
 Database tables (all in `models/filing.py`):
 
 - `filings` — one row per accession_number (10-K, 10-Q, DEF 14A, etc.)
-- `xbrl_facts` — XBRL numeric facts (RPO, debt maturity, concentration, credit)
+- `xbrl_facts` — XBRL numeric facts (RPO, debt maturity, credit). Customer concentration is NOT here: `ConcentrationRiskPercentage1` is always disclosed dimensionally and the SEC `companyfacts` API only exposes un-dimensioned parent facts. Concentration intel comes from Phase B narrative extraction (`Relationship.unnamed=true`).
 - `filing_sections` — extracted narrative text per section per filing
 - `relationships` — LLM-extracted counterparty relationships
 - `counterparty_aliases` — normalized name → canonical CIK/ticker resolution
+
+### Workspace loop (read this before touching `backend/app/services/workspace*.py`, `backend/app/api/workspace.py`, or `frontend/components/workspace/`)
+
+Separate from the LangGraph pipeline. The **workspace loop** is a 5-step thesis-refresh orchestrator that pulls a completed research run forward in time: `update_refresh → research → challenge → differentiate → validate`. Lives at `/workspace` (fleet list) and `/workspace/[runId]` (per-run report).
+
+- `WorkspaceService` (in `services/workspace.py`) wired into `main.py::lifespan` as `app.state.workspace`. Mirrors `PipelineService` — in-memory `dict[run_id, asyncio.Queue]` SSE plumbing, `WorkspaceRunInFlight` guard against duplicate starts per ticker.
+- Step implementations in `services/workspace_steps.py`. Output schemas in `models/workspace_schemas.py` (`UpdateRefreshOutput`, `ResearchOutput`, `ChallengeOutput`, `DifferentiationOutput`, `ValidationOutput` — each with a `WorkspaceVerdict` enum: `healthy | imminent | triggered | broken`). Run rows in `workspace_runs` (`models/workspace_run.py`) with a JSONB `step_outputs` column.
+- API surface (`api/workspace.py`, prefix `/api/workspace`): kick off a run, poll status, stream SSE, list recent runs. Frontend `WorkspaceReport.tsx` dual-hydrates — REST on mount, then SSE for live updates as steps complete. `StepCards/` renders each step's output; `VerdictBadge` summarizes the final verdict on the index page.
+- `update_refresh` is the only step that touches `ModelState`: it re-pulls FMP financials, promotes any newly-published forecast period from `ai_baseline` → `historical`, and warns when previously-edited override cells are evicted by a period rollover (`removed_cells` payload, surfaced in `UpdateRefreshCard`).
+
+### Status board, catalysts, and questions (read this before touching `backend/app/api/status.py`, `catalysts.py`, `questions.py`, `read_through.py`, or `frontend/components/status/`)
+
+The post-thesis fleet-management surface — aggregate views over completed research runs, scheduled catalysts, and the open-question log.
+
+- `GET /api/status/board` (`services/status_board.py`) → `{entries[], generated_at}`. One entry per `(ticker, theme)` keyed on the latest completed run, with `health` ∈ `healthy | imminent | stale | triggered | broken`, nearest catalyst, and kill-criteria summary. `POST /api/runs/{id}/archive` / `unarchive` hides/restores rows. `PUT /api/runs/{id}/kill-criteria/{ordinal}` flips an individual criterion's armed/triggered status (rows live in `kill_criterion_state`).
+- `GET /api/status/read-throughs` and `POST /api/status/read-throughs/dismiss|summary` (`api/read_through.py`) feed the `ReadThroughDrawer` on the status board.
+- `GET /api/catalysts` and `GET /api/catalysts/{id}` (`api/catalysts.py`) → the calendar view at `/catalysts`. Catalysts are promoted from research runs via `services/catalyst_promotion.py`; date resolution in `services/catalyst_dates.py`.
+- `GET /api/questions`, `/by-ticker`, `POST /api/questions/{id}/dismiss|resolve|retry-auto` (`api/questions.py`) → the `/questions` page (`OpenQuestionsPanel` + `QuestionTickerRollupTable`). Open questions are minted by both pipeline runs and workspace steps; `retry-auto` re-runs the targeted follow-up Haiku.
+
+### Theme delete + cascade
+
+`DELETE /api/themes/{id}` (in `api/themes.py`) is the single entry point — fired from `DeleteThemeButton` on the home-page `ThemeCard`. Cascade policy is set by migration `3cf8b874da39`: signal rows are ON DELETE CASCADE; `research_runs.theme_id` and `workspace_runs.theme_id` go to ON DELETE SET NULL so historical runs survive a theme deletion as orphans. `ResearchState.theme_id` stays non-nullable at the dataclass layer — nullable theme_id propagates safely through every caller (verified in PR #29 review).
 
 ### Financial model + reverse DCF (read this before touching `backend/app/services/model_*.py`, `backend/app/api/models_api.py`, or `frontend/components/model/`)
 
@@ -243,7 +280,7 @@ Editable 5-year financial model per ticker, AI-seeded from the latest completed 
 
 - `GET /{ticker}` — latest version + draft (or both null).
 - `POST /{ticker}/initialize?force=` — seed (or re-seed) baseline. 400 on no completed `research_run`.
-- `PUT /{ticker}/draft` — apply one cell edit (`cell_path` = `drivers.<period>.<key>` or `<stmt>.<line>.<period>` or `assumptions.<key>`), recompute, persist into `ticker_model_drafts` (idempotent per ticker — at most one draft row). 422 on bad `cell_path`, 409 on `ModelBalanceError`.
+- `PUT /{ticker}/draft` — apply one cell edit (`cell_path` = `drivers.<period>.<key>` or `<stmt>.<line>.<period>` or `assumptions.<key>`), recompute, persist into `ticker_model_drafts` (idempotent per ticker — at most one draft row). 422 on bad `cell_path`, 409 on `ModelBalanceError`. The `cell_path` string is parsed/validated by `backend/app/models/cell_path.py` (typed `CellPath` discriminated union — `DriverPath` | `StatementCellPath` | `AssumptionPath`); frontend builds the string via `frontend/lib/cellPath.ts`. `AssumptionPath` is intentionally restricted to ModelCell-shaped keys (`discount_rate`, `terminal_multiple`, `perpetuity_growth`, `tax_rate`); the categorical assumptions (`terminal_method`, `plug_priority`) are not editable through this endpoint and need a separate typed surface.
 - `POST /{ticker}/save` — promote draft → new `ticker_models` version, delete draft.
 - `DELETE /{ticker}/draft` — discard.
 - `GET /{ticker}/reverse-dcf?price=&from_draft=` — single payload: `implied_drivers` (3 scalar bisection solves), `implied_irr`, `sensitivity_grids` (3 × 21×21), `thesis_vs_priced_in`. `price` defaults to a live FMP quote via the shared `app.state.fmp` singleton (do NOT instantiate `FMPClient()` here). Wraps `Request` to access `request.app.state.fmp`.
@@ -275,10 +312,14 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 
 ### Frontend layout
 
-- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports), `/model/[ticker]` (editable financial model + reverse-DCF tabs). `/report/[runId]` redirects here.
+- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/filings/graph` (multi-hop supply-chain graph view), `/catalysts`, `/status` (fleet board), `/workspace` + `/workspace/[runId]` (workspace-loop runs), `/questions`, `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports), `/model/[ticker]` (editable financial model + reverse-DCF tabs). `/report/[runId]` redirects to `/pipeline/[runId]`.
 - `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
 - `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
-- `components/filings/` — `ThemeFilingsPanel`, `TickerFilingsCard`, `SectionReader` (modal), `CurationPanel` (counterparty resolution queue)
+- `components/filings/` — `ThemeFilingsPanel`, `TickerFilingsCard`, `SectionReader` (modal), `CurationPanel` (counterparty resolution queue), `MultiHopGraphView` + `RootHeader` + `HopGroup` + `EdgeRowBody` (the `/filings/graph` page)
+- `components/workspace/` — `WorkspaceReport` (dual-hydrating REST+SSE consumer), `VerdictBadge`, `StepCards/` (one card per workspace step: `UpdateRefreshCard`, etc.)
+- `components/status/` — `ReadThroughDrawer`, `EarningsDrawer` (drawers off the status board)
+- `components/questions/` — `OpenQuestionsPanel`, `QuestionRow`, `QuestionTickerRollupTable`
+- `components/themes/` — `DeleteThemeButton`
 - `components/deep-dive/` — 30+ component module for the financial dashboard: `DeepDiveDashboard` orchestrator (receives `ticker` prop for supply-chain card), `SectionNav` (sticky horizontal scroll-spy nav, pills grouped into Summary / Financials / Context / Qualitative clusters with visual dividers), `CommandPalette` (⌘K / Ctrl-K fuzzy jump over the same `sections.ts` registry), `ReportHeader` (company identity + verdict + thesis/risk callouts — the scoreboards live in `OverviewBanner`, not here), `OverviewBanner` (synthesized verdict line + radar + HeadlineMetrics + ScoreBar, single source for these), `VelocitySparkline` (X signal badge), `sections/` (9 category sections + CrossCategoryCorrelation + `SupplyChainEcosystem`), `charts/` (Recharts bar/line/trend + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
 - **Shared utilities under `components/deep-dive/`:**
   - `scoreKeys.ts` — `DISPLAY_TO_KEY` + `normalizeScoreKeys`. Use at every boundary where the backend hands you a `scores` object; the report API returns display-name keys (`"Macro & Regime"`) while the chip/radar components expect snake_case. Skipping this normalizer silently produces an all-em-dash ScoreBar.
@@ -292,17 +333,31 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 
 ### Deep-dive data routing
 
-`_fmt_fundamentals()` in `graph/nodes.py` builds the data payload every category receives. It includes: company profile, valuation ratios (PE, EV/EBITDA, P/B, P/FCF, P/S, PEG), return metrics (ROE, ROIC, ROA, interest coverage), 8 quarters of income statement trends with YoY growth, balance sheet with ST/LT debt structure, cash flow with SBC, DCF valuation, forward analyst estimates with earnings surprise, and historical growth rates. On top of that base payload, categories receive supplementary data via routing tables:
+`_fmt_fundamentals()` in `graph/nodes.py` builds the data payload every category receives. It includes: company profile, valuation ratios (PE, EV/EBITDA, P/B, P/FCF, P/S, PEG), return metrics (ROE, ROIC, ROA, interest coverage), 8 quarters of income statement trends with YoY growth, balance sheet with ST/LT debt structure, cash flow with SBC, DCF valuation, forward analyst estimates with earnings surprise, and historical growth rates. On top of that base payload, categories receive supplementary data via routing tables in `graph/deep_dive_routing.py`, rendered into prompt slots by the seven module-level builders in `graph/deep_dive_context.py` (each a pure function over a `DeepDiveContext` snapshot + category name; `node_deep_dive` builds the snapshot once after the FRED fetch block and calls `build_all_contexts`):
 
-- **Transcript routing** (`TRANSCRIPT_ROUTING` in `nodes.py`): Management & Governance (all 5 passes), Business Quality (pass3, pass5), Growth & Earnings (pass1, pass4, pass6), Sentiment & Narrative (pass3, pass5), Risk Assessment (pass1, pass4), Future Durability (pass1, pass5).
+- **Transcript routing** (`TRANSCRIPT_ROUTING`): Management & Governance (all 5 passes), Business Quality (pass3, pass5), Growth & Earnings (pass1, pass4, pass6), Sentiment & Narrative (pass3, pass5), Risk Assessment (pass1, pass4), Future Durability (pass1, pass5).
 - **Macro routing** (`MACRO_ROUTING`): Macro & Regime (all 9 FRED series), Risk Assessment (all 9), Future Durability (5 series), Financial Health (rates + yield curve).
 
-- **Filing excerpt routing** (`FILING_EXCERPT_ROUTING` in `nodes.py`): Business Quality (Item 1), Risk Assessment (Item 1A), Growth & Earnings (Item 7 + Item 2), Future Durability (Item 7 + Item 1), Management & Governance (DEF 14A). Truncated to `FILING_EXCERPT_BUDGET_CHARS` (5000) per section.
-- **Relationship routing** (`RELATIONSHIP_ROUTING` in `nodes.py`): Business Quality, Risk Assessment, Future Durability. Uses display-name keys. Rendered by the `_build_counterparty_context` closure in `node_deep_dive` from the `CounterpartyContext` fetched in `PipelineService._fetch_counterparty_context`. Positioned in `DEEP_DIVE_USER` right after `{filing_excerpts}` so the "anchors not re-quotes" instruction reads against the filing text. Empty payload → empty string → slot drops out cleanly.
-- **EDGAR XBRL routing** (`EDGAR_ROUTING`): Growth & Earnings (RPO), Future Durability (RPO), Financial Health (debt maturity + credit), Risk Assessment (debt maturity + concentration + credit), Business Quality (concentration).
+- **Filing excerpt routing** (`FILING_EXCERPT_ROUTING`): Business Quality (Item 1), Risk Assessment (Item 1A), Growth & Earnings (Item 7 + Item 2), Future Durability (Item 7 + Item 1), Management & Governance (DEF 14A). Truncated to `FILING_EXCERPT_BUDGET_CHARS` (5000) per section.
+- **Relationship routing** (`RELATIONSHIP_ROUTING`): Business Quality, Risk Assessment, Future Durability. Uses display-name keys. Rendered by `build_counterparty_context` in `deep_dive_context.py` from the `CounterpartyContext` fetched in `PipelineService._fetch_counterparty_context`. Positioned in `DEEP_DIVE_USER` right after `{filing_excerpts}` so the "anchors not re-quotes" instruction reads against the filing text. Empty payload → empty string → slot drops out cleanly.
+- **EDGAR XBRL routing** (`EDGAR_ROUTING`): Growth & Earnings (RPO), Future Durability (RPO), Financial Health (debt maturity + credit), Risk Assessment (debt maturity + credit). Customer concentration is intentionally absent — see the `xbrl_facts` note above; concentration arrives via the relationship-routing path instead.
 
 The deep dive fetches 10 FMP endpoints in parallel: income statement (8Q), balance sheet (8Q), cash flow (8Q), profile, DCF, analyst estimates (8Q), historical price (1Y), earnings transcript, key-metrics-ttm, and financial-growth (8Q). It also pulls ingested filing sections (if any) via `PipelineService._fetch_filing_sections()`, XBRL facts via `_fetch_edgar_facts()`, and the counterparty graph via `_fetch_counterparty_context()`.
 
 ## State-of-repo notes
 
 `TODO.md` at the repo root is the live rolling tracker for in-progress work, backlog, and a "Done (recent)" log — read it before starting anything substantive so you know what's already shipped. The `skills/due-diligence/` + `BACKLOG.md` design-phase artifacts are gone; active specs live in `docs/superpowers/specs/` (which is itself `.gitignore`d, so it's local-only). If you need old plans or the due-diligence methodology, recover from git history (`git log --all --diff-filter=D -- docs/`).
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in `ewyluda/sector-research` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context layout — `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
