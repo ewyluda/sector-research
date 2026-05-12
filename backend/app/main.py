@@ -28,6 +28,7 @@ from backend.app.services.fanout import FanoutService
 from backend.app.services.workspace import WorkspaceService
 from backend.app.api import workspace as workspace_api
 from backend.app.api import outcomes as outcomes_api
+from backend.app.api import transcripts_delta as transcripts_delta_api
 from backend.app.db import unit_of_work
 
 settings = get_settings()
@@ -170,3 +171,4 @@ app.include_router(questions_router, prefix="/api")
 app.include_router(models_router)
 app.include_router(workspace_api.router)
 app.include_router(outcomes_api.router)
+app.include_router(transcripts_delta_api.router)

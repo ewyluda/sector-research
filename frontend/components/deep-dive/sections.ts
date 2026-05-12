@@ -43,6 +43,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
   {
     title: "Qualitative",
     items: [
+      { id: "what_changed", label: "What Changed", title: "What Changed" },
       { id: "management_governance", label: "Management", title: "Management & Governance" },
       { id: "sentiment_narrative", label: "Sentiment", title: "Sentiment & Narrative" },
       { id: "future_durability", label: "Future", title: "Future Durability" },

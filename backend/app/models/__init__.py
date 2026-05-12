@@ -15,6 +15,7 @@ from backend.app.models.signal import Signal
 from backend.app.models.signal_history import SignalHistory  # noqa: F401
 from backend.app.models.watchlist import WatchlistItem
 from backend.app.models.surprise_alert import SurpriseAlert
+from backend.app.models.transcript_delta import TranscriptDelta  # noqa: F401
 from backend.app.models.workspace_run import WorkspaceRun  # noqa: F401
 
 __all__ = [
@@ -40,5 +41,6 @@ __all__ = [
     "SurpriseAlert",
     "TickerModel",
     "TickerModelDraft",
+    "TranscriptDelta",
     "WorkspaceRun",
 ]
