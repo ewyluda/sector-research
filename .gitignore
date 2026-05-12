@@ -29,7 +29,7 @@ node_modules/
 .superpowers/
 
 # Specs and plans
-docs/
+#docs/
 
 # Playwright MCP session output (screenshots, console logs)
 .playwright-mcp/

@@ -1,0 +1,29 @@
+# Findings: deep-dive-sections
+
+- **BUG [med]** — No score chips found on report
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - Screenshot: `test-results/05-deep-dive-sections-scor-9e3a2-ic-scores-not-all-em-dashes-chromium/no-chips.png`
+  - Check OverviewBanner / DataRichSection rendering. May be a scoreKeys.ts normalize issue.
+- **POLISH [med]** — Section "financial_health" has charts but only 0 AICompanionPanel — expect 2 (summary + analysis)
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - Per CLAUDE.md DataRichSection shell contract: summary inside chart grid + analysis full-width below.
+- **POLISH [med]** — Section "growth_earnings" has charts but only 0 AICompanionPanel — expect 2 (summary + analysis)
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - Per CLAUDE.md DataRichSection shell contract: summary inside chart grid + analysis full-width below.
+- **POLISH [med]** — Section "technical_market_structure" has charts but only 0 AICompanionPanel — expect 2 (summary + analysis)
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - Per CLAUDE.md DataRichSection shell contract: summary inside chart grid + analysis full-width below.
+- **POLISH [med]** — Section "cross_category" has charts but only 0 AICompanionPanel — expect 2 (summary + analysis)
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - Per CLAUDE.md DataRichSection shell contract: summary inside chart grid + analysis full-width below.
+- **POLISH [med]** — Section "business_quality" has charts but only 0 AICompanionPanel — expect 2 (summary + analysis)
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - Per CLAUDE.md DataRichSection shell contract: summary inside chart grid + analysis full-width below.
+- **POLISH [med]** — Section "macro_regime" has charts but only 0 AICompanionPanel — expect 2 (summary + analysis)
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - Per CLAUDE.md DataRichSection shell contract: summary inside chart grid + analysis full-width below.
+- **IMPROVEMENT [low]** — SupplyChainEcosystem card has no "Explore 2-hop graph" link
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+- **NOTE** — WhatChangedPanel not on this run (likely no transcript delta yet)
+  - URL: `http://localhost:3000/pipeline/72beb83b-10c2-4861-bcc8-9af1f4fede31`
+  - New feature — confirm transcript_delta service ran for this ticker.
