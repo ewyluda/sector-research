@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from sqlalchemy import Index, String, UniqueConstraint, func
+from sqlalchemy import DateTime, Index, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +18,7 @@ class TranscriptDelta(Base):
     transcripts_fingerprint: Mapped[str] = mapped_column(String, nullable=False)
     axes: Mapped[dict] = mapped_column(JSONB, nullable=False)
     computed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
     )

@@ -391,7 +391,8 @@ async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
     # Real ingest happens in Step 1; here we just summarize what Step 1 surfaced.
     new_sources = _gather_new_sources_text(ctx)[:8000]
 
-    # Best-effort transcript delta enrichment — prepended to new_sources.
+    # Best-effort transcript delta enrichment — rendered into its own slot,
+    # not muxed into new_sources (which is reserved for raw source text).
     try:
         delta_row = await transcript_delta_svc.compute_delta(
             ticker=ctx.ticker, db=ctx.db, fmp=ctx.fmp, force=False,
@@ -403,11 +404,9 @@ async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
         _log.warning("transcript_delta failed for %s: %r", ctx.ticker, exc)
         transcript_delta_block = ""
 
-    if transcript_delta_block:
-        new_sources = (transcript_delta_block + "\n\n" + new_sources).strip()
-
     user = RESEARCH_USER_TEMPLATE.format(
         prior_thesis=prior_thesis,
+        transcript_delta=transcript_delta_block or "(no transcript delta available)",
         new_sources=new_sources or "(no new filing/transcript text available)",
         existing_open_questions=existing_qs_text,
     )

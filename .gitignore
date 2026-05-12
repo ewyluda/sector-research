@@ -39,3 +39,6 @@ docs/
 
 # Local worktrees for parallel feature work
 .worktrees/
+
+# Claude Code local settings + worktrees
+.claude/

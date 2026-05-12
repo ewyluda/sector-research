@@ -42,6 +42,23 @@ Read paths follow the asymmetry:
 
 Either both rows land or neither does: `_persist_signal_set` adds the `Signal` and `SignalHistory` rows in the same scheduler transaction before `db.commit()`.
 
+### Transcript delta
+A Haiku-extracted quarter-over-quarter language shift for one ticker, organized by 9 axes that **overlap with but are not identical to** the deep-dive scoring categories: `business_quality`, `risk_assessment`, `growth_earnings`, `sentiment_narrative`, `management_governance`, `future_durability`, `macro_regime`, `financial_health`, `valuation_stage`. The value of any axis can be `null` — the prompt is instructed to return null when the transcripts don't materially address that axis, and `macro_regime` / `financial_health` / `valuation_stage` are expected to be null on most calls.
+
+**Axis vocabulary diverges by one slot from the scoring vocabulary:** the deep-dive *scoring* set uses `technical_market_structure` (chart/RSI/momentum) where the transcript delta set uses `valuation_stage`. Management never discusses chart structure on earnings calls, so the substitution is intentional. The frontend keeps both sets co-located in `frontend/components/deep-dive/categories.ts` (`SCORE_CATEGORIES` vs. `DELTA_AXES`).
+
+Not to be confused with the **model delta** that Step 1 of the workspace loop emits (`changed_cells`, `removed_cells`): Step 1's delta is structural and numeric — it tracks specific cells in `ticker_models.state` that changed between versions. A transcript delta is qualitative and narrative — it tracks how management's *language* shifted on a thesis axis, anchored by 1-3 verbatim quotes per axis. They live in different tables (`ticker_models` vs. `transcript_deltas`), have different cadences (per workspace run vs. per new earnings transcript), and feed different consumers (Step 4 Challenge consumes the model delta; the deep-dive `WhatChangedPanel` and Step 2 Research consume the transcript delta).
+
+Each emitted axis carries a `direction` (`softening` / `strengthening` / `stable`) and a `magnitude` (`minor` / `material` / `regime_change`). `regime_change` is a strong claim — "the narrative pillar itself has changed" — and is the only magnitude that should ever justify revisiting the thesis from priors.
+
+Persisted in `transcript_deltas`, keyed by `(ticker, transcripts_fingerprint)` where the fingerprint is a SHA-1 of the sorted `(year, quarter)` tuples of the transcripts the delta was computed from. Re-running on the same window is a cache hit (free idempotency). A new transcript drops → new fingerprint → new row. `force=True` updates the matching row in place rather than inserting (avoids the unique constraint). History capped at 8 rows per ticker via delete-oldest sweep at write time.
+
+**Scope is ticker-only, not `(ticker, theme_id)`** — a CEO's tone shift on growth is theme-agnostic, and the consumer surfaces (the deep-dive page and the workspace loop) are both keyed on ticker.
+
+**Known limitation:** `fetch_recent_transcripts` walks back quarter-by-quarter and skips empty quarters, so for a ticker with an FMP coverage gap the 4-quarter window can be non-consecutive (e.g. `[Q4'25, Q3'25, Q1'25, Q4'24]`). The prompt presents real `=== Qn YYYY ===` labels so Haiku can see the gap, but there's no instruction to downweight `regime_change` magnitude on long jumps. In practice this means an occasional over-confident regime call on small-caps / recent IPOs; not a quote-fabrication or wrong-direction risk.
+
+**Known limitation:** there is no in-flight guard on `compute_delta`. Two concurrent computes for the same `(ticker, fingerprint)` (two browser tabs, or a manual compute racing the workspace loop's Step 2 enrichment) can both pass the cache-check SELECT, both call Haiku, and one will surface a unique-constraint IntegrityError as a 500. Data integrity is fine (no duplicate rows), the failure mode is a benign 500 on a button click. If this becomes recurrent, add an in-memory in-flight set parallel to `WorkspaceRunInFlight`.
+
 ### The 5 steps
 The fixed sequence inside one workspace run, run continuously without human gates:
 

@@ -36,7 +36,7 @@ from backend.app.services.edgar_transcripts_relationships import fetch_recent_tr
 TRANSCRIPT_WINDOW = 4
 MIN_TRANSCRIPTS_FOR_DELTA = 2
 HISTORY_CAP = 8
-TRANSCRIPT_BODY_CHAR_BUDGET = 12_000  # per-transcript truncation in prompt
+TRANSCRIPT_BODY_CHAR_BUDGET = 80_000  # per-transcript safety cap; typical full transcripts run 50-80K chars
 
 
 _SYSTEM_PROMPT = """You analyze earnings call transcripts and emit per-category
@@ -121,8 +121,10 @@ async def compute_delta(
         assistant_prefill='{"axes":',
         max_tokens=2500,
     )
-    payload_str = raw
-    parsed = json.loads(payload_str)
+    # Haiku occasionally appends trailing content (whitespace, a stray note)
+    # after the JSON object. raw_decode parses the first JSON value and
+    # ignores anything past it; json.loads would raise "Extra data".
+    parsed, _end = json.JSONDecoder().raw_decode(raw.lstrip())
     axes = AxesDelta.model_validate(parsed["axes"]).model_dump()
 
     if existing is not None:

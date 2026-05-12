@@ -33,6 +33,8 @@ Output ONLY the JSON object. No prose before or after.
 RESEARCH_USER_TEMPLATE = """Prior thesis summary:
 {prior_thesis}
 
+{transcript_delta}
+
 Newly-released 10-Q/transcript excerpts (truncated to 8K chars):
 {new_sources}
 

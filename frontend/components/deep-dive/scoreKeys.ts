@@ -1,19 +1,7 @@
-export const DISPLAY_TO_KEY: Record<string, string> = {
-  "Business Quality": "business_quality",
-  "Financial Health": "financial_health",
-  "Growth & Earnings": "growth_earnings",
-  "Management & Governance": "management_governance",
-  "Technical & Market Structure": "technical_market_structure",
-  "Macro & Regime": "macro_regime",
-  "Sentiment & Narrative": "sentiment_narrative",
-  "Risk Assessment": "risk_assessment",
-  "Future Durability": "future_durability",
-};
+// Backward-compatible re-exports — the canonical source is `categories.ts`.
+// `DISPLAY_TO_KEY` is kept as an alias of `SCORE_DISPLAY_TO_KEY`.
 
-export function normalizeScoreKeys<T>(record: Record<string, T>): Record<string, T> {
-  const out: Record<string, T> = {};
-  for (const [k, v] of Object.entries(record)) {
-    out[DISPLAY_TO_KEY[k] ?? k] = v;
-  }
-  return out;
-}
+export {
+  SCORE_DISPLAY_TO_KEY as DISPLAY_TO_KEY,
+  normalizeScoreKeys,
+} from "./categories";

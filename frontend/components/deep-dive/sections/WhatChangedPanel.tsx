@@ -6,18 +6,7 @@ import {
   type TranscriptAxisDelta,
   type TranscriptDeltaRead,
 } from "@/lib/api";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  business_quality: "Business Quality",
-  risk_assessment: "Risk Assessment",
-  growth_earnings: "Growth & Earnings",
-  sentiment_narrative: "Sentiment & Narrative",
-  management_governance: "Management & Governance",
-  future_durability: "Future Durability",
-  macro_regime: "Macro & Regime",
-  financial_health: "Financial Health",
-  valuation_stage: "Valuation & Stage",
-};
+import { DELTA_AXIS_LABELS, type DeltaAxisKey } from "../categories";
 
 function directionClass(d: TranscriptAxisDelta["direction"]): string {
   if (d === "softening") return "bg-red-100 text-red-800 border-red-200";
@@ -102,11 +91,8 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
   }
 
   const populated = (
-    Object.entries(delta.axes) as [
-      keyof typeof CATEGORY_LABELS,
-      TranscriptAxisDelta | null,
-    ][]
-  ).filter(([, v]) => v !== null) as [string, TranscriptAxisDelta][];
+    Object.entries(delta.axes) as [DeltaAxisKey, TranscriptAxisDelta | null][]
+  ).filter(([, v]) => v !== null) as [DeltaAxisKey, TranscriptAxisDelta][];
 
   return (
     <section
@@ -142,7 +128,7 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
             className="border border-[var(--border)] rounded p-3 bg-[var(--surface)]"
           >
             <div className="flex items-center justify-between mb-1.5">
-              <div className="text-sm font-medium">{CATEGORY_LABELS[key]}</div>
+              <div className="text-sm font-medium">{DELTA_AXIS_LABELS[key]}</div>
               <span
                 className={`px-2 py-0.5 text-xs rounded border ${directionClass(
                   ax.direction
