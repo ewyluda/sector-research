@@ -34,7 +34,10 @@ class Settings(BaseSettings):
 
     # ── App ───────────────────────────────────────────────────────────────────
     log_level: str = "INFO"
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 
 
 @lru_cache

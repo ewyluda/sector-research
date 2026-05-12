@@ -30,12 +30,19 @@ class EntryPriceBundle(BaseModel):
 
 
 class SignalSnapshot(BaseModel):
-    """Shape of the signal_snapshot JSONB. All fields optional — backfill-tolerant."""
-    signals_row: dict[str, float | None] | None = None
-    deep_dive_scores: dict[str, float | None] | None = None
+    """Shape of the signal_snapshot JSONB. All fields optional — backfill-tolerant.
+
+    Inner types are `Any` for heterogeneous snapshot fields: `signals_row` holds
+    full CompanySignalCard sub-dicts (velocity, discovery, narrative, fundamental)
+    with nested keys, not scalars. `deep_dive_scores` and `model_assumptions` are
+    typed loosely for the same defensiveness — they are write-once snapshots and
+    consumers narrow at the read site.
+    """
+    signals_row: dict[str, Any] | None = None
+    deep_dive_scores: dict[str, Any] | None = None
     workspace_step_verdicts: dict[str, str | None] | None = None
     kill_criterion_state: list[dict[str, Any]] | None = None
-    model_assumptions: dict[str, float | None] | None = None
+    model_assumptions: dict[str, Any] | None = None
 
 
 class SnapshotRead(BaseModel):

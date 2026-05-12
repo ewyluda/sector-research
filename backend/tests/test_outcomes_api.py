@@ -135,6 +135,78 @@ class TestListOutcomes(unittest.TestCase):
             self.assertEqual(len(data), 1)
             self.assertEqual(data[0]["ticker"], "MSFT")
 
+    def test_list_accepts_nested_dict_signal_snapshot(self):
+        """Regression: signal_snapshot.signals_row holds CompanySignalCard sub-dicts
+        (velocity/discovery/narrative/fundamental), not scalars. Pre-fix the schema
+        declared dict[str, float | None] which rejected every persisted row with a
+        ResponseValidationError → 500."""
+        from backend.app.main import app
+
+        nested_signal_snapshot = {
+            "signals_row": {
+                "velocity": {
+                    "ratio": 1.0,
+                    "count_7d": 99,
+                    "direction": "stable",
+                    "count_30d_approx": 396,
+                },
+                "discovery": {
+                    "score": 1.0206,
+                    "is_seed": True,
+                    "raw_score": 1.0206,
+                    "boost_applied": 1.0,
+                },
+                "narrative": {
+                    "summary": None,
+                    "post_count": 50,
+                    "post_texts": ["sample post text"],
+                },
+                "fundamental": {"score": 0.85},
+            },
+            "deep_dive_scores": {"business_quality": 92, "growth_earnings": 88},
+            "workspace_step_verdicts": {"update_refresh": "healthy"},
+            "kill_criterion_state": [
+                {"ordinal": 1, "armed": True, "triggered": False, "label": "PE > 50"},
+            ],
+            "model_assumptions": {"discount_rate": 0.09, "terminal_multiple": 12.0},
+        }
+
+        payload = {
+            "id": str(uuid4()),
+            "source_type": "research_run",
+            "source_id": str(uuid4()),
+            "ticker": "NVDA",
+            "theme_id": None,
+            "verdict": "completed",
+            "verdict_emitted_at": "2026-04-15T10:00:00+00:00",
+            "entry_price_at": "2026-04-16",
+            "entry_price": "850.00",
+            "sector_etf_ticker": "XLK",
+            "superseded_at": None,
+            "closed_at": None,
+            "realized_ticker_return_pct": None,
+            "realized_spy_excess_pct": None,
+            "realized_sector_excess_pct": None,
+            "realized_theme_basket_excess_pct": None,
+            "snapshots": [],
+            "theme_basket_constituents": None,
+            "signal_snapshot": nested_signal_snapshot,
+        }
+
+        with patch(
+            "backend.app.api.outcomes._query_outcomes",
+            new=AsyncMock(return_value=[payload]),
+        ):
+            client = TestClient(app)
+            r = client.get("/api/outcomes?limit=10")
+            self.assertEqual(r.status_code, 200, msg=r.text)
+            data = r.json()
+            self.assertEqual(len(data), 1)
+            # signal_snapshot should round-trip with nested dicts intact
+            sigs = data[0]["signal_snapshot"]["signals_row"]
+            self.assertEqual(sigs["velocity"]["count_7d"], 99)
+            self.assertEqual(sigs["narrative"]["post_count"], 50)
+
 
 class TestSummary(unittest.TestCase):
     def test_summary_empty_window_returns_zero_filled(self):

@@ -142,10 +142,15 @@ def _apply_baseline_drivers(state: ModelState, response: BaselineDriversResponse
     unspecified period.
     """
     now = datetime.utcnow().isoformat()
-    for period_label, drvs in response.drivers.items():
+    for period_label, period_drivers in response.drivers.items():
         if period_label not in state.drivers:
             state.drivers[period_label] = {}
-        for k, proposal in drvs.items():
+        # period_drivers is a dynamically-built Pydantic model with one
+        # optional DriverProposal field per canonical DRIVER_KEYS entry.
+        for k in DRIVER_KEYS:
+            proposal = getattr(period_drivers, k, None)
+            if proposal is None:
+                continue  # LLM left this driver out for this period — leave empty cell
             state.drivers[period_label][k] = ModelCell(
                 value=proposal.value,
                 source="ai_baseline",
