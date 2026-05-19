@@ -3,10 +3,10 @@ import type { ModelCell } from "@/lib/api";
 
 const CLS: Record<string, string> = {
   historical:  "bg-[var(--surface-alt)] text-[var(--text-muted)]",
-  ai_baseline: "bg-amber-50 text-[var(--text)]",
-  driver:      "bg-amber-100 text-[var(--text)] font-medium",
+  ai_baseline: "bg-amber-500/10 text-[var(--text)]",
+  driver:      "bg-amber-500/20 text-[var(--text)] font-medium",
   computed:    "bg-transparent text-[var(--text)]",
-  override:    "border border-[var(--warning)] bg-orange-50 text-[var(--warning)]",
+  override:    "border border-[var(--warning)] bg-amber-500/15 text-[var(--warning)]",
 };
 
 export function CellRenderer({

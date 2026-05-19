@@ -7,8 +7,8 @@ export function ReturnCell({ value, asPercent = true }: { value: string | number
   if (Number.isNaN(num)) return <span className="text-[var(--text-muted)]">—</span>;
   const display = asPercent ? `${(num * 100).toFixed(2)}%` : num.toFixed(2);
   const color =
-    num > 0.0001 ? "text-emerald-600 dark:text-emerald-400"
-    : num < -0.0001 ? "text-rose-600 dark:text-rose-400"
+    num > 0.0001 ? "text-emerald-400"
+    : num < -0.0001 ? "text-rose-400"
     : "text-[var(--text-muted)]";
   const sign = num > 0.0001 ? "+" : "";
   return <span className={color}>{sign}{display}</span>;

@@ -77,7 +77,7 @@ export function MacroRegime({ financials, structured, score, fallback, isLive }:
                   <h4 className="text-[10px] font-medium text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Interest Rates</h4>
                   <TrendLineChart
                     lines={[
-                      ...(macro.fed_funds_rate.length > 0 ? [{ data: toQM(macro.fed_funds_rate), name: "Fed Funds", color: "#01696F" }] : []),
+                      ...(macro.fed_funds_rate.length > 0 ? [{ data: toQM(macro.fed_funds_rate), name: "Fed Funds", color: "#3b82f6" }] : []),
                       ...(macro.treasury_10y.length > 0 ? [{ data: toQM(macro.treasury_10y), name: "10Y", color: "#60a5fa" }] : []),
                       ...(macro.treasury_2y.length > 0 ? [{ data: toQM(macro.treasury_2y), name: "2Y", color: "#a78bfa" }] : []),
                     ]}

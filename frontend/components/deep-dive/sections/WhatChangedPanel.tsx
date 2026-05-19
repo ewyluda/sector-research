@@ -9,8 +9,8 @@ import {
 import { DELTA_AXIS_LABELS, type DeltaAxisKey } from "../categories";
 
 function directionClass(d: TranscriptAxisDelta["direction"]): string {
-  if (d === "softening") return "bg-red-100 text-red-800 border-red-200";
-  if (d === "strengthening") return "bg-green-100 text-green-800 border-green-200";
+  if (d === "softening") return "bg-red-500/15 text-red-400 border-red-500/30";
+  if (d === "strengthening") return "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
   return "bg-[var(--surface-2)] text-[var(--text)] border-[var(--border)]";
 }
 
@@ -85,7 +85,7 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
         >
           {busy ? "Computing…" : "Compute transcript delta"}
         </button>
-        {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+        {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
       </section>
     );
   }
@@ -163,7 +163,7 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
         ))}
       </div>
 
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
     </section>
   );
 }

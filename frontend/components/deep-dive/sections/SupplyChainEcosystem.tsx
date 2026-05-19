@@ -239,7 +239,7 @@ function EdgeRow({ entry }: { entry: SupplyChainEntry }) {
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {entry.confirmed_bilateral && (
-            <span className="text-[9px] text-emerald-600 uppercase tracking-wide" title="Reciprocal disclosure found">
+            <span className="text-[9px] text-emerald-400 uppercase tracking-wide" title="Reciprocal disclosure found">
               ↔ bilateral
             </span>
           )}

@@ -46,7 +46,7 @@ function CompanyRow({
               ${card.ticker}
             </span>
             {card.is_surprise && (
-              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-1.5 py-0.5">
+              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 rounded-full px-1.5 py-0.5">
                 ⚡ Surprise
               </span>
             )}
@@ -111,7 +111,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
           <SourceBadge badge={card.signal_source_badge} />
           <VelocityBadge signal={card.x_signal} />
           {card.is_surprise && (
-            <span className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+            <span className="text-xs font-semibold text-amber-400 bg-amber-500/15 border border-amber-500/30 rounded-full px-2.5 py-1">
               ⚡ Surprise Signal
             </span>
           )}
@@ -176,7 +176,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
                   "text-xs font-semibold",
                   card.last_thesis_status === "ON TRACK" && "text-[var(--success)]",
                   card.last_thesis_status === "DRIFTING" && "text-amber-600",
-                  card.last_thesis_status === "BROKEN" && "text-red-600"
+                  card.last_thesis_status === "BROKEN" && "text-red-400"
                 )}
               >
                 {card.last_thesis_status}
@@ -209,7 +209,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
                     "shrink-0 mt-0.5 text-[9px] font-bold rounded px-1 py-0.5",
                     c.tier === 1
                       ? "bg-[var(--accent-bg)] text-[var(--primary-dk)]"
-                      : "bg-amber-50 text-amber-700 border border-amber-200"
+                      : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
                   )}
                 >
                   T{c.tier}
@@ -356,7 +356,7 @@ function TickerEditor({
                 onClick={() => handleRemove(ticker)}
                 disabled={pending}
                 aria-label={`Remove ${ticker}`}
-                className="ml-0.5 w-4 h-4 inline-flex items-center justify-center rounded-full text-[var(--text-faint)] hover:text-red-600 hover:bg-red-50 cursor-pointer disabled:opacity-50"
+                className="ml-0.5 w-4 h-4 inline-flex items-center justify-center rounded-full text-[var(--text-faint)] hover:text-red-400 hover:bg-red-500/15 cursor-pointer disabled:opacity-50"
               >
                 ×
               </button>
@@ -390,7 +390,7 @@ function TickerEditor({
       </form>
 
       {error && (
-        <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-md px-2.5 py-1.5">
+        <p className="text-xs text-red-400 bg-red-500/15 border border-red-500/30 rounded-md px-2.5 py-1.5">
           {error}
         </p>
       )}
@@ -482,7 +482,7 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
           )}
           {/* Signal status — stacks below header on small screens, floats right on md+ */}
           {isStale && (
-            <div className="inline-flex items-center gap-2 text-xs text-[var(--warning)] bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 whitespace-nowrap">
+            <div className="inline-flex items-center gap-2 text-xs text-[var(--warning)] bg-amber-500/15 border border-amber-500/30 rounded-lg px-3 py-2 whitespace-nowrap">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
               Signal data stale — last updated &gt;36h ago
             </div>

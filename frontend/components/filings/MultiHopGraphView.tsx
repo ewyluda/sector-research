@@ -611,7 +611,7 @@ function EdgeRowBody({
           )}
           {edge.confirmed_bilateral && (
             <span
-              className="text-[9px] text-emerald-600 uppercase tracking-wide"
+              className="text-[9px] text-emerald-400 uppercase tracking-wide"
               title="Reciprocal disclosure found"
             >
               ↔ bilateral

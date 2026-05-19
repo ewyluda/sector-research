@@ -9,7 +9,7 @@ interface Props {
 const CONFIG = {
   accelerating: {
     label: "↑ Accelerating",
-    classes: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    classes: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
   },
   stable: {
     label: "→ Stable",
@@ -17,7 +17,7 @@ const CONFIG = {
   },
   decelerating: {
     label: "↓ Decelerating",
-    classes: "bg-amber-50 text-amber-700 border-amber-200",
+    classes: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   },
   unknown: {
     label: "— No signal",
