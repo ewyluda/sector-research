@@ -36,6 +36,8 @@ EXTRACTABLE_SECTION_KEYS: tuple[str, ...] = (
     "item_1a_risk_factors",
     "item_7_mda",
     "item_2_mda_10q",
+    "s1_business",
+    "s1_risk_factors",
 )
 
 # Upper bound on characters sent to Haiku per section. 15K chars ≈ 3.5K
