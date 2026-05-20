@@ -51,6 +51,21 @@ class TestS1Sections(unittest.TestCase):
         self.assertIn("s1_business", keys)
         self.assertIn("s1_underwriting", keys)
 
+    def test_standalone_business_heading_matched(self):
+        """S-1s often use bare 'BUSINESS' as a section heading without ITEM 1. prefix."""
+        pad = " The following paragraph contains substantive narrative content " * 10
+        html = (
+            "<html><body>"
+            f"<p>BUSINESS</p><p>We design, manufacture and launch rockets.{pad}</p>"
+            f"<p>RISK FACTORS</p><p>Our business is subject to many risks.{pad}</p>"
+            f"<p>MANAGEMENT'S DISCUSSION AND ANALYSIS</p><p>Revenues grew.{pad}</p>"
+            "</body></html>"
+        )
+        sections = extract_sections(html, "S-1")
+        keys = {s.section_key for s in sections}
+        self.assertIn("s1_business", keys)
+        self.assertIn("s1_risk_factors", keys)
+
     def test_missing_section_silently_skipped(self):
         sections = extract_sections(_fake_s1_html(dilution=False), "S-1")
         keys = {s.section_key for s in sections}

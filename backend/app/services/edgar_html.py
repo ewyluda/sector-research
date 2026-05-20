@@ -108,7 +108,7 @@ _SECTION_DEFS_DEF14A: list[tuple[str, list[str]]] = [
 _SECTION_DEFS_S1: list[tuple[str, list[str]]] = [
     # Headings on S-1s are not "ITEM N." prefixed — they are standalone
     # section titles in all caps. Anchor each to a word boundary.
-    ("s1_business", [r"\bITEM\s*1\.?\s*BUSINESS\b"]),
+    ("s1_business", [r"\bITEM\s*1\.?\s*BUSINESS\b", r"^\s*BUSINESS\b"]),
     ("s1_risk_factors", [
         r"\bITEM\s*1A\.?\s*RISK\s+FACTORS\b",
         r"\bRISK\s+FACTORS\b",
