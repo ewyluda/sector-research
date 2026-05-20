@@ -157,3 +157,23 @@ None that block implementation. Resolved at design time:
 5. Step 4 returns a `ProspectusThesisOutput` with a non-null `ipo_verdict` and a `post_ipo_research_plan` of at least 5 items.
 6. `/prospectus/{reportId}` renders progressively as steps complete (SSE), and `/prospectus` lists the report with the verdict pill.
 7. The existing public-company pipeline (`/pipeline/new`, `/pipeline/[runId]`, deep-dive dashboard, status board, workspace) is unchanged — same test runs pass, same SSE events emit.
+
+## Implementation notes
+
+Pipeline implementation completed 2026-05-20 on branch `feat/prospectus-pipeline` across 17 commits (`2dd5f0b..785d2e2`). All 266 backend tests pass; frontend lint + build clean; backend boot smoke confirms `ProspectusService initialised` and the API surface responds correctly (200 on list, 400 on invalid POST input).
+
+Notable deviations from the original plan, captured here for the next reader:
+
+- **`__init__` override on `ProspectusReport`** was added by the first implementer to satisfy construction-time default assertions in the smoke test. Reviewed and removed in `ba61c1b` — `mapped_column(default=...)` only fires at INSERT and the codebase pattern (per `WorkspaceRun`) is to pass defaults explicitly. Tests adjusted to drop the pre-flush default assertions.
+- **`s1_business` regex needed a line-anchored fallback** (`r"^\s*BUSINESS\b"`) rather than the original `\bBUSINESS\b`. Bare-word "business" appears throughout S-1 body text and out-votes the heading; the `^\s*` MULTILINE anchor (matching the 10-K `item_1_business` precedent) fixes it. Fix landed in `74e5dcd`.
+- **`extra="forbid"`** added to `ProspectusThesisOutput`, `KeyRisk`, and `PostIPOPlanItem` (commit `fbd4ce4`) so Sonnet schema drift is caught at the model boundary rather than silently swallowed. `ProspectusCategoryResult` already had it.
+- **`prospectus_ingest.py`** had a duplicate `edgar.get_submissions` call that was de-duped in `a9959d1` — `_resolve_issuer_from_submissions` now returns the submissions payload alongside the issuer name. Also de-asynced `_find_filing_in_submissions` (no awaits inside) and moved the `datetime` import to module level.
+- **`resolve_ticker_relationships` does not take `edgar=`** — the original plan was wrong about this signature. The orchestrator (commit `e22cb4c`) drops the kwarg and the unused return values; relationship state flows through the shared `db` session and is read back via a direct `select(Relationship)` for `verbatim_quote` (which `CounterpartyEntry` doesn't expose).
+- **`_step_categories` currently passes `filing_date = ""`** as a placeholder. The prompt template still renders cleanly with an empty value, and Sonnet receives the issuer name and form type, so the prompt is degraded but not broken. Worth wiring up in a follow-up by reading `Filing.filing_date` for the synthetic ticker.
+- **The bare-accession-number input path is not yet supported** — `ProspectusService.kick_off` raises `ValueError` and requires a full SEC URL. The URL-parsing helper already supports the bare-accession form; the orchestrator's CIK-resolution path needs a separate "look up CIK from accession via EDGAR" call to complete the path.
+
+The live end-to-end smoke against the SpaceX S-1 was intentionally deferred — it exercises real Anthropic credits and a 5-15 minute Sonnet run. Run it manually via the `New prospectus report` button on `/filings` with the SpaceX URL once you're ready to spend the credits. Boot the dev servers (`uvicorn backend.app.main:app --reload` and `cd frontend && npm run dev`) and paste:
+
+```
+https://www.sec.gov/Archives/edgar/data/1181412/000162828026036936/spaceexplorationtechnologi.htm
+```
