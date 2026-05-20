@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -65,17 +65,21 @@ def parse_source_input(text: str) -> SourceInput:
 
 async def _resolve_issuer_from_submissions(
     edgar: EdgarClient, cik_trimmed: str
-) -> tuple[str, str]:
-    """Return (cik_padded, issuer_name) for a trimmed CIK."""
+) -> tuple[str, str, dict]:
+    """Return (cik_padded, issuer_name, submissions_payload) for a trimmed CIK."""
     cik_padded = cik_trimmed.zfill(10)
     submissions, _ = await edgar.get_submissions(cik_padded)
     name = submissions.get("name") or submissions.get("entityName") or ""
-    return cik_padded, name
+    return cik_padded, name, submissions
 
 
-async def _find_filing_in_submissions(submissions: dict, accession_number: str) -> dict | None:
-    """Walk the submissions feed (recent + paginated older files) and return
-    the entry for this accession. Returns None if not found."""
+def _find_filing_in_submissions(submissions: dict, accession_number: str) -> dict | None:
+    """Return the submissions entry for this accession from the `recent` block.
+
+    EDGAR's submissions feed also has paginated older `files[]` entries but
+    this helper only inspects `recent`. For a pre-IPO issuer like SpaceX
+    there will be few enough filings that `recent` always covers them.
+    """
     recent = submissions.get("filings", {}).get("recent", {}) or {}
     accessions = recent.get("accessionNumber", []) or []
     for i, acc in enumerate(accessions):
@@ -93,7 +97,6 @@ def _parse_date(s: str | None) -> date | None:
     if not s:
         return None
     try:
-        from datetime import datetime
         return datetime.strptime(s, "%Y-%m-%d").date()
     except ValueError:
         return None
@@ -122,10 +125,9 @@ async def ingest_prospectus(
             "Cannot resolve issuer CIK — supply issuer_cik or pass a full URL"
         )
 
-    cik_padded, issuer_name = await _resolve_issuer_from_submissions(edgar, cik_trimmed)
+    cik_padded, issuer_name, submissions = await _resolve_issuer_from_submissions(edgar, cik_trimmed)
 
-    submissions, _ = await edgar.get_submissions(cik_padded)
-    entry = await _find_filing_in_submissions(submissions, source.accession_number)
+    entry = _find_filing_in_submissions(submissions, source.accession_number)
     if entry is None:
         raise ValueError(
             f"Accession {source.accession_number} not found in submissions feed for CIK {cik_padded}"
