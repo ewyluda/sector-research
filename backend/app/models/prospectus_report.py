@@ -40,13 +40,6 @@ class ProspectusReport(Base, TimestampMixin):
     step_outputs: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    def __init__(self, **kwargs):
-        # Apply Python-side defaults at construction so callers (and tests) see
-        # values before flush. SQLAlchemy's `default=` only fires at INSERT.
-        kwargs.setdefault("status", "ingesting")
-        kwargs.setdefault("step_outputs", {})
-        super().__init__(**kwargs)
-
     @property
     def synthetic_ticker(self) -> str:
         """Identifier written into filings.ticker / relationships.ticker.
