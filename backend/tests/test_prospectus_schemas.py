@@ -29,8 +29,7 @@ class TestProspectusFinancials(unittest.TestCase):
         )
         d = f.model_dump()
         f2 = ProspectusFinancials.model_validate(d)
-        self.assertEqual(f2.annual[0].revenue, 14_000_000_000.0)
-        self.assertEqual(f2.interim, [])
+        self.assertEqual(f, f2)
 
     def test_missing_period_label_rejected(self):
         with self.assertRaises(ValidationError):
@@ -55,6 +54,16 @@ class TestThesisOutput(unittest.TestCase):
                 price_range_commentary=None,
                 post_ipo_research_plan=[],
             )
+
+    def test_verdict_string_accepted(self):
+        out = ProspectusThesisOutput(
+            thesis_statement="x",
+            key_risks=[],
+            ipo_verdict="participate",  # string form, not enum member
+            price_range_commentary=None,
+            post_ipo_research_plan=[],
+        )
+        self.assertEqual(out.ipo_verdict, IPOVerdict.PARTICIPATE)
 
     def test_post_ipo_plan_shape(self):
         out = ProspectusThesisOutput(

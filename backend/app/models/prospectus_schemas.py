@@ -101,18 +101,21 @@ class IPOVerdict(str, Enum):
 
 
 class KeyRisk(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     risk: str
     severity: Literal["low", "medium", "high"]
     category_source: str
 
 
 class PostIPOPlanItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     question: str
     why_it_matters: str
     expected_data_source: str
 
 
 class ProspectusThesisOutput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     thesis_statement: str
     key_risks: list[KeyRisk]
     ipo_verdict: IPOVerdict
