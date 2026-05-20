@@ -26,9 +26,11 @@ from backend.app.api.models_api import router as models_router
 from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
 from backend.app.services.workspace import WorkspaceService
+from backend.app.services.prospectus_service import ProspectusService
 from backend.app.api import workspace as workspace_api
 from backend.app.api import outcomes as outcomes_api
 from backend.app.api import transcripts_delta as transcripts_delta_api
+from backend.app.api import prospectus as prospectus_api
 from backend.app.db import unit_of_work
 
 settings = get_settings()
@@ -70,6 +72,11 @@ async def lifespan(app: FastAPI):
         fmp=app.state.fmp, edgar=app.state.edgar, anthropic=app.state.anthropic,
     )
     logger.info("WorkspaceService initialised")
+
+    app.state.prospectus = ProspectusService(
+        edgar=app.state.edgar, fred=app.state.fred,
+    )
+    logger.info("ProspectusService initialised")
 
     # Daily signal scheduler — 2 AM local time
     scheduler = AsyncIOScheduler()
@@ -172,3 +179,4 @@ app.include_router(models_router)
 app.include_router(workspace_api.router)
 app.include_router(outcomes_api.router)
 app.include_router(transcripts_delta_api.router)
+app.include_router(prospectus_api.router)
