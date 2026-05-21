@@ -11,6 +11,7 @@ import { themes as themesApi } from "@/lib/api";
 import type { Theme } from "@/lib/api";
 import ThemeFilingsPanel from "@/components/filings/ThemeFilingsPanel";
 import CurationPanel from "@/components/filings/CurationPanel";
+import { NewProspectusButton } from "@/components/prospectus/NewProspectusButton";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +31,15 @@ export default async function FilingsPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-[var(--text)]">SEC Filings</h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          Narrative sections from the latest 10-K, 10-Q, and DEF 14A filings —
-          grouped by thesis.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-[var(--text)]">SEC Filings</h1>
+          <p className="text-sm text-[var(--text-muted)] mt-0.5">
+            Narrative sections from the latest 10-K, 10-Q, and DEF 14A filings —
+            grouped by thesis.
+          </p>
+        </div>
+        <NewProspectusButton />
       </div>
 
       {error && (

@@ -105,6 +105,30 @@ _SECTION_DEFS_DEF14A: list[tuple[str, list[str]]] = [
     (_BOUNDARY_PREFIX + "audit", [r"\bAUDIT\s+COMMITTEE\s+REPORT\b"]),
 ]
 
+_SECTION_DEFS_S1: list[tuple[str, list[str]]] = [
+    # Headings on S-1s are not "ITEM N." prefixed — they are standalone
+    # section titles in all caps. Anchor each to a word boundary.
+    ("s1_business", [r"\bITEM\s*1\.?\s*BUSINESS\b", r"^\s*BUSINESS\b"]),
+    ("s1_risk_factors", [
+        r"\bITEM\s*1A\.?\s*RISK\s+FACTORS\b",
+        r"\bRISK\s+FACTORS\b",
+    ]),
+    ("s1_mda", [
+        r"\bMANAGEMENT['']?S\s+DISCUSSION\s+AND\s+ANALYSIS"
+        r"(?:\s+O\s*F\s+FINANCIAL\s+CONDITION\s+AND\s+RESULTS\s+O\s*F\s+OPERATIONS)?",
+    ]),
+    ("s1_use_of_proceeds", [r"\bUSE\s+OF\s+PROCEEDS\b"]),
+    ("s1_capitalization", [r"\bCAPITALIZATION\b"]),
+    ("s1_dilution", [r"\bDILUTION\b"]),
+    ("s1_principal_stockholders", [
+        r"\bPRINCIPAL\s+(?:AND\s+SELLING\s+)?STOCKHOLDERS\b",
+    ]),
+    ("s1_underwriting", [
+        r"\bUNDERWRITING\b",
+        r"\bPLAN\s+OF\s+DISTRIBUTION\b",
+    ]),
+]
+
 MIN_SECTION_CHARS = 500
 
 
@@ -156,6 +180,8 @@ def _pick_section_defs(form_type: str) -> list[tuple[str, list[str]]]:
         return _SECTION_DEFS_10Q
     if "DEF14A" in key:
         return _SECTION_DEFS_DEF14A
+    if key.startswith("S-1") or key.startswith("S1"):
+        return _SECTION_DEFS_S1
     return []
 
 
