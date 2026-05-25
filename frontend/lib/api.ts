@@ -1948,3 +1948,21 @@ export const prospectusApi = {
   },
   streamUrl: (reportId: string) => `${BASE}/api/prospectus/${reportId}/stream`,
 };
+
+// ── Company workspace ─────────────────────────────────────────────────────────
+
+export interface CompanyHeader {
+  ticker: string;
+  name: string | null;
+  exchange: string | null;
+  logo_url: string | null;
+  currency: string | null;
+  price: number | null;
+  change: number | null;
+  change_pct: number | null;
+  delay_label: string;
+}
+
+export async function getCompanyHeader(ticker: string): Promise<CompanyHeader> {
+  return apiFetch<CompanyHeader>(`/api/company/${encodeURIComponent(ticker)}/header`);
+}
