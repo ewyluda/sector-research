@@ -373,6 +373,20 @@ class FMPClient:
         )
         return result, citation
 
+    async def get_ratios_ttm(self, ticker: str) -> tuple[dict, Citation]:
+        """Trailing-twelve-month valuation/profitability ratios.
+
+        Source for P/E, P/B, P/S, P/FCF, PEG, dividend yield, and margins —
+        these live on /stable/ratios-ttm, NOT key-metrics-ttm.
+        """
+        params = {"symbol": ticker}
+        data = await self._request("ratios-ttm", params, ttl=TTL_FUNDAMENTAL)
+        result = data[0] if isinstance(data, list) and data else data
+        citation = self._make_citation(
+            "ratios-ttm", "Ratios TTM", ticker, params
+        )
+        return result, citation
+
     async def get_financial_growth(
         self, ticker: str, period: str = "annual", limit: int = 5
     ) -> tuple[list[dict], Citation]:
