@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import clsx from "clsx";
 
 const links = [
@@ -19,6 +20,14 @@ const links = [
 
 export default function Nav() {
   const path = usePathname();
+  const router = useRouter();
+  const [tickerInput, setTickerInput] = useState("");
+
+  function goToCompany(e: React.FormEvent) {
+    e.preventDefault();
+    const t = tickerInput.trim().toUpperCase();
+    if (t) router.push(`/company/${encodeURIComponent(t)}`);
+  }
 
   return (
     <>
@@ -49,6 +58,15 @@ export default function Nav() {
               {label}
             </Link>
           ))}
+          <form onSubmit={goToCompany} className="ml-2">
+            <input
+              value={tickerInput}
+              onChange={(e) => setTickerInput(e.target.value)}
+              placeholder="Ticker…"
+              className="w-24 rounded-md border border-[var(--border)] bg-[var(--surface-alt)] px-2 py-1 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)]"
+              aria-label="Go to company workspace"
+            />
+          </form>
         </nav>
       </div>
     </header>
