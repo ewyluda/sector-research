@@ -17,10 +17,10 @@ class CompanyHeader(BaseModel):
     price: Optional[float] = None
     change: Optional[float] = None
     change_pct: Optional[float] = None
-    delay_label: str = "15 min delay"
+    delay_label: str = "15 min delay"  # static placeholder; FMP /stable does not expose a real-time tier flag
 
 
-def _as_dict(value) -> dict:
+def _as_dict(value: object) -> dict:
     """FMP helpers return dicts, but degrade defensively to {} for [] / None."""
     return value if isinstance(value, dict) else {}
 
@@ -58,5 +58,6 @@ async def build_company_header(fmp, ticker: str) -> CompanyHeader:
         currency=profile.get("currency"),
         price=price,
         change=quote.get("change"),
+        # FMP /stable/quote uses "changePercentage" (singular); verified against live API.
         change_pct=quote.get("changePercentage"),
     )
