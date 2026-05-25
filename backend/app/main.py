@@ -23,6 +23,7 @@ from backend.app.api.read_through import router as read_through_router
 from backend.app.api.earnings import router as earnings_router
 from backend.app.api.questions import router as questions_router
 from backend.app.api.models_api import router as models_router
+from backend.app.api.company import router as company_router
 from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
 from backend.app.services.workspace import WorkspaceService
@@ -175,6 +176,7 @@ app.include_router(status_router, prefix="/api")
 app.include_router(read_through_router, prefix="/api")
 app.include_router(earnings_router, prefix="/api")
 app.include_router(questions_router, prefix="/api")
+app.include_router(company_router, prefix="/api")
 app.include_router(models_router)
 app.include_router(workspace_api.router)
 app.include_router(outcomes_api.router)
