@@ -97,6 +97,15 @@ def _f(d: dict, key: str) -> Optional[float]:
     return None
 
 
+async def _safe_fetch(coro, default):
+    """Await an FMP client coroutine, unpacking (data, citation); return `default` on any error."""
+    try:
+        data, _ = await coro
+        return data
+    except Exception:
+        return default
+
+
 async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
     """Assemble the Overview-tab payload from five FMP endpoints (fmp-only).
 
@@ -107,21 +116,14 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
     """
     ticker = ticker.upper()
     today = date.today()
-    five_y_ago = today - timedelta(days=365 * 5 + 2)
-
-    async def _safe(coro, default):
-        try:
-            data, _ = await coro
-            return data
-        except Exception:
-            return default
+    five_y_ago = today - timedelta(days=365 * 5 + 2)  # 5y window + 2-day buffer so it opens on a trading day
 
     profile, km, ratios, growth_list, prices_raw = await asyncio.gather(
-        _safe(fmp.get_company_profile(ticker), {}),
-        _safe(fmp.get_key_metrics_ttm(ticker), {}),
-        _safe(fmp.get_ratios_ttm(ticker), {}),
-        _safe(fmp.get_financial_growth(ticker, period="annual", limit=1), []),
-        _safe(fmp.get_historical_price(ticker, five_y_ago.isoformat(), today.isoformat()), []),
+        _safe_fetch(fmp.get_company_profile(ticker), {}),
+        _safe_fetch(fmp.get_key_metrics_ttm(ticker), {}),
+        _safe_fetch(fmp.get_ratios_ttm(ticker), {}),
+        _safe_fetch(fmp.get_financial_growth(ticker, period="annual", limit=1), []),
+        _safe_fetch(fmp.get_historical_price_adjusted(ticker, five_y_ago.isoformat(), today.isoformat()), []),
     )
 
     pr = _as_dict(profile)
@@ -195,8 +197,8 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
     prices: list[PricePoint] = []
     if isinstance(prices_raw, list):
         for row in prices_raw:
-            if isinstance(row, dict) and row.get("date") and isinstance(row.get("close"), (int, float)):
-                prices.append(PricePoint(date=row["date"], close=float(row["close"])))
+            if isinstance(row, dict) and row.get("date") and isinstance(row.get("adjClose"), (int, float)):
+                prices.append(PricePoint(date=row["date"], close=float(row["adjClose"])))
         prices.sort(key=lambda p: p.date)  # FMP returns newest-first; chart wants oldest-first
 
     return CompanyOverview(

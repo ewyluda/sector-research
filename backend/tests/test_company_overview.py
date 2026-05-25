@@ -32,7 +32,7 @@ class _StubFMP:
     async def get_financial_growth(self, ticker, period="annual", limit=1):
         return self._growth, None
 
-    async def get_historical_price(self, ticker, from_date, to_date):
+    async def get_historical_price_adjusted(self, ticker, from_date, to_date):
         return self._prices, None
 
 
@@ -63,8 +63,8 @@ def _full_stub():
                 "tenYRevenueGrowthPerShare": 0.15,
                 "fiveYDividendperShareGrowthPerShare": 0.06},
         prices=[
-            {"date": "2025-01-03", "close": 240.0},
-            {"date": "2025-01-02", "close": 243.0},  # newest-first from FMP
+            {"date": "2025-01-03", "adjClose": 240.0},
+            {"date": "2025-01-02", "adjClose": 243.0},  # newest-first from FMP
         ],
     )
 
