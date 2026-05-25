@@ -16,25 +16,40 @@ export function ResearchTab({ ticker }: { ticker: string }) {
   const [report, setReport] = useState<ReportResponse | null>(null);
 
   useEffect(() => {
+    let alive = true;
     pipeline
-      .list({ status: "completed", limit: 50 })
-      .then((all) => {
-        const mine = all.filter((r) => r.ticker?.toUpperCase() === ticker.toUpperCase());
-        setRuns(mine);
-        const preferred =
-          (lens && mine.find((r) => r.theme_id === lens)) || mine[0];
-        setActiveRunId(preferred?.id ?? null);
+      .list({ status: "completed", ticker, limit: 50 })
+      .then((mine) => {
+        if (!alive) return;
         setReport(null);
+        setRuns(mine);
+        const preferred = (lens && mine.find((r) => r.theme_id === lens)) || mine[0];
+        setActiveRunId(preferred?.id ?? null);
       })
-      .catch(() => setRuns([]));
+      .catch(() => {
+        if (alive) setRuns([]);
+      });
+    return () => {
+      alive = false;
+    };
   }, [ticker, lens]);
 
   useEffect(() => {
-    if (!activeRunId) return;
+    if (!activeRunId) {
+      return;
+    }
+    let alive = true;
     pipeline
       .report(activeRunId)
-      .then(setReport)
-      .catch(() => setReport(null));
+      .then((r) => {
+        if (alive) setReport(r);
+      })
+      .catch(() => {
+        if (alive) setReport(null);
+      });
+    return () => {
+      alive = false;
+    };
   }, [activeRunId]);
 
   if (runs === null) {
@@ -72,14 +87,14 @@ export function ResearchTab({ ticker }: { ticker: string }) {
           </select>
         </div>
       )}
-      {props && activeRunId && (
+      {props ? (
         <>
           <ReportHeader
             financials={props.financials}
             quickScreen={props.quickScreen}
             convictionScore={props.convictionScore}
             ticker={ticker}
-            runId={activeRunId}
+            runId={activeRunId!}
             isLive={false}
             runStatus="completed"
           />
@@ -95,6 +110,8 @@ export function ResearchTab({ ticker }: { ticker: string }) {
             edgarFacts={props.edgarFacts}
           />
         </>
+      ) : (
+        <div className="p-6 text-[var(--text-muted)]">Loading report…</div>
       )}
     </div>
   );

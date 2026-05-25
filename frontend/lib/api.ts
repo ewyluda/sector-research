@@ -927,10 +927,11 @@ export const pipeline = {
 
   get: (runId: string) => apiFetch<RunDetail>(`/api/runs/${runId}`),
 
-  list: (opts?: { status?: string; theme_id?: string; search?: string; limit?: number }) => {
+  list: (opts?: { status?: string; theme_id?: string; ticker?: string; search?: string; limit?: number }) => {
     const params = new URLSearchParams();
     if (opts?.status)   params.set("status",   opts.status);
     if (opts?.theme_id) params.set("theme_id", opts.theme_id);
+    if (opts?.ticker)   params.set("ticker",   opts.ticker);
     if (opts?.search)   params.set("search",   opts.search);
     if (opts?.limit)    params.set("limit",    String(opts.limit));
     return apiFetch<RunSummary[]>(`/api/runs?${params}`);
