@@ -14,7 +14,7 @@ export default function CompanyLayout({ children }: { children: React.ReactNode 
   return (
     <div className="mx-auto max-w-[1400px]">
       <div className="sticky top-14 z-30 bg-[var(--surface)]" data-print-hide="true">
-        <Suspense fallback={<div className="h-[88px]" />}>
+        <Suspense fallback={<div className="h-[104px]" />}>
           <CompanyHeader ticker={ticker} />
           <TabStrip ticker={ticker} />
         </Suspense>
