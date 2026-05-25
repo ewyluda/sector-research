@@ -1967,3 +1967,31 @@ export interface CompanyHeader {
 export async function getCompanyHeader(ticker: string): Promise<CompanyHeader> {
   return apiFetch<CompanyHeader>(`/api/company/${encodeURIComponent(ticker)}/header`);
 }
+
+export interface StatItem {
+  label: string;
+  value: number | null;
+  unit: "pct" | "x" | "money" | "num" | "int";
+}
+
+export interface StatGroup {
+  title: string;
+  items: StatItem[];
+}
+
+export interface PricePoint {
+  date: string;
+  close: number;
+}
+
+export interface CompanyOverview {
+  ticker: string;
+  sector: string | null;
+  industry: string | null;
+  stats: StatGroup[];
+  prices: PricePoint[];
+}
+
+export async function getCompanyOverview(ticker: string): Promise<CompanyOverview> {
+  return apiFetch<CompanyOverview>(`/api/company/${encodeURIComponent(ticker)}/overview`);
+}
