@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getCompanyOverview } from "@/lib/api";
 import type { CompanyOverview } from "@/lib/api";
@@ -29,7 +29,7 @@ export default function OverviewPage() {
 
   return (
     <div className="space-y-4">
-      {(overview && overview !== undefined) && (
+      {overview && (
         <p className="text-xs text-[var(--text-muted)]">
           {overview.sector}
           {overview.industry ? ` · ${overview.industry}` : ""}
@@ -43,7 +43,9 @@ export default function OverviewPage() {
           {overview && <StatisticsGrid groups={overview.stats} />}
         </>
       )}
-      <BullsBears ticker={ticker} />
+      <Suspense fallback={null}>
+        <BullsBears ticker={ticker} />
+      </Suspense>
     </div>
   );
 }

@@ -1974,7 +1974,7 @@ export interface StatItem {
   unit: "pct" | "x" | "money" | "num" | "int";
 }
 
-export interface StatGroup {
+export interface OverviewStatGroup {
   title: string;
   items: StatItem[];
 }
@@ -1988,7 +1988,7 @@ export interface CompanyOverview {
   ticker: string;
   sector: string | null;
   industry: string | null;
-  stats: StatGroup[];
+  stats: OverviewStatGroup[];
   prices: PricePoint[];
 }
 

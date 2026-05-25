@@ -1,7 +1,7 @@
-import type { StatGroup } from "@/lib/api";
+import type { OverviewStatGroup } from "@/lib/api";
 import { formatStat } from "./formatStat";
 
-export function StatisticsGrid({ groups }: { groups: StatGroup[] }) {
+export function StatisticsGrid({ groups }: { groups: OverviewStatGroup[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {groups.map((g) => (

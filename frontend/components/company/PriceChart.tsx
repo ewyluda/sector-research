@@ -80,27 +80,33 @@ export function PriceChart({ prices }: { prices: PricePoint[] }) {
           ))}
         </div>
       </div>
-      <ResponsiveContainer width="100%" height={280}>
-        <LineChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 8 }}>
-          <XAxis
-            dataKey="date"
-            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-            minTickGap={40}
-            tickFormatter={(d) => (d as string).slice(0, 7)}
-          />
-          <YAxis
-            domain={["auto", "auto"]}
-            tick={{ fontSize: 10, fill: "var(--text-muted)" }}
-            width={48}
-            tickFormatter={(v) => `$${(v as number).toFixed(0)}`}
-          />
-          <Tooltip
-            contentStyle={{ fontSize: 12, background: "var(--surface)", border: "1px solid var(--border)" }}
-            formatter={(value) => [`$${(value as number).toFixed(2)}`, "Close"]}
-          />
-          <Line type="monotone" dataKey="close" stroke={stroke} dot={false} strokeWidth={1.5} />
-        </LineChart>
-      </ResponsiveContainer>
+      {data.length === 0 ? (
+        <div className="flex h-[280px] items-center justify-center text-sm text-[var(--text-muted)]">
+          No data for this range.
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={280}>
+          <LineChart data={data} margin={{ top: 5, right: 8, bottom: 5, left: 8 }}>
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 10, fill: "var(--text-muted)" }}
+              minTickGap={40}
+              tickFormatter={(d) => (d as string).slice(0, 7)}
+            />
+            <YAxis
+              domain={["auto", "auto"]}
+              tick={{ fontSize: 10, fill: "var(--text-muted)" }}
+              width={48}
+              tickFormatter={(v) => `$${(v as number).toFixed(0)}`}
+            />
+            <Tooltip
+              contentStyle={{ fontSize: 12, background: "var(--surface)", border: "1px solid var(--border)" }}
+              formatter={(value) => [`$${(value as number).toFixed(2)}`, "Close"]}
+            />
+            <Line type="monotone" dataKey="close" stroke={stroke} dot={false} strokeWidth={1.5} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }

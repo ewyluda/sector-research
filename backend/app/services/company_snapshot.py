@@ -136,6 +136,10 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
     if market_cap is None:
         market_cap = _f(km, "marketCap")
 
+    # FMP TTM field names below were verified against the live /stable API
+    # (key-metrics-ttm + ratios-ttm). NOTE: these intentionally differ from the
+    # keys graph/nodes.py reads (e.g. returnOnEquityTTM here vs roeTTM there);
+    # the ratios live on ratios-ttm, not key-metrics-ttm. Do not "align" to nodes.py.
     stats = [
         StatGroup(title="Profile", items=[
             StatItem(label="Market Cap", value=market_cap, unit="money"),
