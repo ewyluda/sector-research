@@ -8,6 +8,7 @@ import { FormulaBar } from "@/components/model/FormulaBar";
 import { putModelDraft, saveModelVersion, discardModelDraft, type ModelState as MS, type TickerModelDraft as TMD, type TickerModelVersion as TMV } from "@/lib/api";
 import { ReverseDcfPanel } from "@/components/model/ReverseDcfPanel";
 import { HistoryDiffViewer } from "@/components/model/HistoryDiffViewer";
+import { EmptyState } from "@/components/company/EmptyState";
 
 export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
   const ticker = (tickerProp || "").toUpperCase();
@@ -56,12 +57,11 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
   if (err) return <div className="p-6 text-[var(--error)]">Error: {err}</div>;
   if (!latest) {
     return (
-      <div className="p-6 space-y-3">
-        <h1 className="text-2xl font-semibold text-[var(--text)]">{ticker} — no model yet</h1>
-        <button onClick={handleCreate} className="px-3 py-1.5 bg-[var(--primary)] hover:bg-[var(--primary-dk)] rounded text-white">
-          Create AI baseline
-        </button>
-      </div>
+      <EmptyState
+        title="No model yet"
+        message={`Seed an editable 5-year forecast for ${ticker} from the latest completed research run.`}
+        action={{ label: "Create AI baseline", onClick: handleCreate }}
+      />
     );
   }
 

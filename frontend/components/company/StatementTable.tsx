@@ -99,8 +99,14 @@ function RowGroup(props: {
           <td className="sticky left-0 z-10 bg-[var(--surface)] px-3 py-1 pl-6 text-left text-xs italic">% Chg</td>
           {idx.map((i) => {
             const chg = pctChange(values[i] ?? null, values[i + 1] ?? null);
+            const tone =
+              chg == null
+                ? "text-[var(--text-muted)]"
+                : chg >= 0
+                  ? "text-[var(--success,#16a34a)]"
+                  : "text-[var(--error,#dc2626)]";
             return (
-              <td key={i} className="px-3 py-1 text-right font-mono text-xs italic tabular-nums">
+              <td key={i} className={`px-3 py-1 text-right font-mono text-xs italic tabular-nums ${tone}`}>
                 {chg == null ? "—" : `${chg >= 0 ? "+" : ""}${(chg * 100).toFixed(1)}%`}
               </td>
             );

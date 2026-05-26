@@ -26,7 +26,10 @@ export default function Nav() {
   function goToCompany(e: React.FormEvent) {
     e.preventDefault();
     const t = tickerInput.trim().toUpperCase();
-    if (t) router.push(`/company/${encodeURIComponent(t)}`);
+    if (t) {
+      router.push(`/company/${encodeURIComponent(t)}`);
+      setTickerInput("");
+    }
   }
 
   return (

@@ -11,6 +11,27 @@ import {
 import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
 import { EmptyState } from "./EmptyState";
 
+function highlight(text: string, q: string) {
+  if (!q) return text;
+  const lower = text.toLowerCase();
+  const needle = q.toLowerCase();
+  const out: React.ReactNode[] = [];
+  let from = 0;
+  let at = lower.indexOf(needle, from);
+  while (at !== -1) {
+    if (at > from) out.push(text.slice(from, at));
+    out.push(
+      <mark key={at} className="rounded bg-[var(--accent-bg)] text-[var(--text)]">
+        {text.slice(at, at + q.length)}
+      </mark>,
+    );
+    from = at + q.length;
+    at = lower.indexOf(needle, from);
+  }
+  if (from < text.length) out.push(text.slice(from));
+  return out;
+}
+
 export function TranscriptReader({ ticker }: { ticker: string }) {
   const [events, setEvents] = useState<TranscriptEvent[] | null>(null);
   const [active, setActive] = useState<{ year: number; quarter: number } | null>(null);
@@ -49,14 +70,15 @@ export function TranscriptReader({ ticker }: { ticker: string }) {
     return () => { alive = false; };
   }, [ticker, active]);
 
+  const q = query.trim();
   const filtered = useMemo(() => {
     if (!transcript) return [];
-    const q = query.trim().toLowerCase();
-    if (!q) return transcript.segments;
+    const needle = q.toLowerCase();
+    if (!needle) return transcript.segments;
     return transcript.segments.filter(
-      (s) => s.speaker.toLowerCase().includes(q) || s.text.toLowerCase().includes(q),
+      (s) => s.speaker.toLowerCase().includes(needle) || s.text.toLowerCase().includes(needle),
     );
-  }, [transcript, query]);
+  }, [transcript, q]);
 
   async function onSummarize() {
     if (!active) return;
@@ -80,7 +102,7 @@ export function TranscriptReader({ ticker }: { ticker: string }) {
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[180px_1fr_320px]">
-      <nav className="space-y-1">
+      <nav className="max-h-[50vh] space-y-1 overflow-y-auto pr-1 lg:sticky lg:top-4 lg:max-h-[calc(100vh-7rem)] lg:self-start">
         {events.map((e) => {
           const isActive = active?.year === e.fiscal_year && active?.quarter === e.quarter;
           return (
@@ -117,8 +139,8 @@ export function TranscriptReader({ ticker }: { ticker: string }) {
           <div className="space-y-3">
             {filtered.map((s, i) => (
               <div key={i}>
-                {s.speaker && <div className="text-sm font-semibold text-[var(--text)]">{s.speaker}</div>}
-                <p className="text-sm leading-relaxed text-[var(--text-muted)]">{s.text}</p>
+                {s.speaker && <div className="text-sm font-semibold text-[var(--text)]">{highlight(s.speaker, q)}</div>}
+                <p className="text-sm leading-relaxed text-[var(--text-muted)]">{highlight(s.text, q)}</p>
               </div>
             ))}
             {filtered.length === 0 && (
