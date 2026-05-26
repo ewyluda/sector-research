@@ -212,3 +212,71 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
         stats=stats,
         prices=prices,
     )
+
+
+class CompanyFinancials(BaseModel):
+    ticker: str
+    period: str
+    periods: list[str]
+    income: dict[str, list[Optional[float]]]
+    balance: dict[str, list[Optional[float]]]
+    cashflow: dict[str, list[Optional[float]]]
+
+
+def _period_label(row: dict, period: str) -> str:
+    fy = row.get("fiscalYear")
+    if fy is None:
+        fy = str(row.get("date", ""))[:4]
+    if period == "annual":
+        return str(fy)
+    p = row.get("period", "")
+    return f"{p} {fy}".strip()
+
+
+def _columnize(rows: list, n: int) -> dict[str, list[Optional[float]]]:
+    """Reshape up to n statement rows (newest-first) into {key: [values]} columns,
+    aligned by index, numeric values only (bool excluded). Trailing slots are None
+    when a statement returns fewer periods than the income statement."""
+    out: dict[str, list[Optional[float]]] = {}
+    for i in range(min(n, len(rows))):
+        row = rows[i]
+        if not isinstance(row, dict):
+            continue
+        for k, v in row.items():
+            if isinstance(v, bool):
+                continue
+            if isinstance(v, (int, float)):
+                out.setdefault(k, [None] * n)[i] = float(v)
+    return out
+
+
+async def build_company_financials(
+    fmp, ticker: str, period: str = "quarter", limit: int = 12
+) -> CompanyFinancials:
+    """Reshape the three FMP statements into period-aligned column dicts (fmp-only).
+
+    Periods are derived from the income statement (newest-first, as FMP returns);
+    balance sheet and cash flow are aligned to those periods by index. Only numeric
+    fields are kept. The frontend row-spec selects/orders/labels the keys.
+    """
+    ticker = ticker.upper()
+    inc, bal, cf = await asyncio.gather(
+        _safe_fetch(fmp.get_income_statement(ticker, period=period, limit=limit), []),
+        _safe_fetch(fmp.get_balance_sheet(ticker, period=period, limit=limit), []),
+        _safe_fetch(fmp.get_cash_flow(ticker, period=period, limit=limit), []),
+    )
+    inc = inc if isinstance(inc, list) else []
+    bal = bal if isinstance(bal, list) else []
+    cf = cf if isinstance(cf, list) else []
+
+    periods = [_period_label(r, period) for r in inc if isinstance(r, dict)]
+    n = len(periods)
+
+    return CompanyFinancials(
+        ticker=ticker,
+        period=period,
+        periods=periods,
+        income=_columnize(inc, n),
+        balance=_columnize(bal, n),
+        cashflow=_columnize(cf, n),
+    )
