@@ -2013,3 +2013,44 @@ export async function getCompanyFinancials(
     `/api/company/${encodeURIComponent(ticker)}/financials?period=${period}`,
   );
 }
+
+export interface TranscriptEvent {
+  quarter: number;
+  fiscal_year: number;
+  date: string;
+}
+
+export interface TranscriptList {
+  ticker: string;
+  events: TranscriptEvent[];
+}
+
+export interface TranscriptSegment {
+  speaker: string;
+  text: string;
+}
+
+export interface Transcript {
+  ticker: string;
+  year: number;
+  quarter: number;
+  date: string | null;
+  segments: TranscriptSegment[];
+}
+
+export async function getTranscripts(ticker: string): Promise<TranscriptList> {
+  return apiFetch<TranscriptList>(`/api/company/${encodeURIComponent(ticker)}/transcripts`);
+}
+
+export async function getTranscript(ticker: string, year: number, quarter: number): Promise<Transcript> {
+  return apiFetch<Transcript>(
+    `/api/company/${encodeURIComponent(ticker)}/transcripts/${year}/${quarter}`,
+  );
+}
+
+export async function summarizeTranscript(ticker: string, year: number, quarter: number): Promise<{ summary_md: string }> {
+  return apiFetch<{ summary_md: string }>(
+    `/api/company/${encodeURIComponent(ticker)}/transcripts/${year}/${quarter}/summary`,
+    { method: "POST" },
+  );
+}
