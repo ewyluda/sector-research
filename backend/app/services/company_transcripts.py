@@ -43,12 +43,20 @@ class TranscriptSummary(BaseModel):
 
 _SPEAKER_RE = re.compile(r"(?:^|\n)\s*([A-Z][^:\n]{1,40}?):\s")
 
+# Kept > 500 chars so graph.llm.complete() enables ephemeral prompt caching —
+# this fixed system prompt is reused on every summary request.
 _SUMMARY_SYSTEM = (
-    "You are an equity research analyst. Summarize the earnings-call transcript "
-    "into concise markdown with these sections: '## Key Themes' (3-5 bullets), "
-    "'## Guidance & Outlook', '## Q&A Highlights' (notable analyst question + "
-    "management answer), and '## Notable Quotes'. Be specific with numbers stated "
-    "in the call. Do not invent any data that is not in the transcript."
+    "You are a buy-side equity research analyst. Summarize the earnings-call "
+    "transcript into concise markdown with exactly these sections: '## Key Themes' "
+    "(3-5 bullets on the quarter's most important narratives), '## Guidance & "
+    "Outlook' (forward guidance, targets, and any changes vs. prior commentary), "
+    "'## Q&A Highlights' (the most revealing analyst questions and management's "
+    "answers — attribute each question to the analyst's name/firm when stated), and "
+    "'## Notable Quotes' (verbatim lines worth remembering, each attributed to the "
+    "speaker by name). Be specific with the actual figures, percentages, and "
+    "dates stated in the call, and note management's tone or confidence where it is "
+    "evident. Keep the entire summary under ~400 words. Do not invent, infer, or "
+    "extrapolate any data that is not explicitly present in the transcript."
 )
 
 
@@ -111,7 +119,12 @@ async def build_transcript(fmp, ticker: str, year: int, quarter: int) -> Transcr
 
 
 async def summarize_transcript(fmp, ticker: str, year: int, quarter: int) -> str:
-    """Fetch a transcript and return an AI markdown summary (Haiku)."""
+    """Fetch a transcript and return an AI markdown summary (Haiku).
+
+    Re-fetches the transcript independently of the reader endpoint so the summary
+    route stays stateless; FMP responses are TTL-cached, so this is an in-process
+    cache hit, not a second network round-trip.
+    """
     ticker = ticker.upper()
     try:
         data, _ = await fmp.get_earnings_transcript(ticker, year=year, quarter=quarter)
