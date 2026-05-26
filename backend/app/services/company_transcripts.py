@@ -43,20 +43,26 @@ class TranscriptSummary(BaseModel):
 
 _SPEAKER_RE = re.compile(r"(?:^|\n)\s*([A-Z][^:\n]{1,40}?):\s")
 
-# Kept > 500 chars so graph.llm.complete() enables ephemeral prompt caching —
-# this fixed system prompt is reused on every summary request.
+# The frontend renders this with a lightweight markdown component that supports
+# **bold** and "- " bullet lists separated by blank lines, but NOT ATX "#" headings —
+# so the prompt formats sections as bold labels + blank-line-separated bullet lists.
+# Kept > 500 chars so graph.llm.complete() enables ephemeral prompt caching (this
+# fixed system prompt is reused on every summary request).
 _SUMMARY_SYSTEM = (
     "You are a buy-side equity research analyst. Summarize the earnings-call "
-    "transcript into concise markdown with exactly these sections: '## Key Themes' "
-    "(3-5 bullets on the quarter's most important narratives), '## Guidance & "
-    "Outlook' (forward guidance, targets, and any changes vs. prior commentary), "
-    "'## Q&A Highlights' (the most revealing analyst questions and management's "
-    "answers — attribute each question to the analyst's name/firm when stated), and "
-    "'## Notable Quotes' (verbatim lines worth remembering, each attributed to the "
-    "speaker by name). Be specific with the actual figures, percentages, and "
-    "dates stated in the call, and note management's tone or confidence where it is "
-    "evident. Keep the entire summary under ~400 words. Do not invent, infer, or "
-    "extrapolate any data that is not explicitly present in the transcript."
+    "transcript as concise markdown. Use these four sections in order, each labeled "
+    "with a bold header on its own line and separated from the next section by a "
+    "blank line: **Key Themes** (3-5 bullets on the quarter's most important "
+    "narratives), **Guidance & Outlook** (forward guidance, targets, and any changes "
+    "vs. prior commentary), **Q&A Highlights** (the most revealing analyst questions "
+    "and management's answers — attribute each question to the analyst's name/firm "
+    "when stated), and **Notable Quotes** (verbatim lines worth remembering, each "
+    "attributed to the speaker by name). Format every bullet on its own line starting "
+    "with '- ', and put a blank line between each section and before each bullet list. "
+    "Be specific with the actual figures, percentages, and dates stated in the call, "
+    "and note management's tone or confidence where it is evident. Keep the entire "
+    "summary under ~400 words. Do not invent, infer, or extrapolate any data that is "
+    "not explicitly present in the transcript."
 )
 
 

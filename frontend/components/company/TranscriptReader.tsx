@@ -37,8 +37,8 @@ export function TranscriptReader({ ticker }: { ticker: string }) {
     getTranscript(ticker, active.year, active.quarter)
       .then((t) => {
         if (!alive) return;
-        setTranscript(null);
         setSummary(null);
+        setQuery("");
         setTranscript(t);
       })
       .catch(() => {
@@ -86,7 +86,9 @@ export function TranscriptReader({ ticker }: { ticker: string }) {
           return (
             <button
               key={`${e.fiscal_year}-${e.quarter}`}
-              onClick={() => setActive({ year: e.fiscal_year, quarter: e.quarter })}
+              onClick={() => {
+                if (!isActive) setActive({ year: e.fiscal_year, quarter: e.quarter });
+              }}
               className={`block w-full rounded-md px-3 py-2 text-left text-sm transition-colors ${
                 isActive
                   ? "bg-[var(--accent-bg)] font-medium text-[var(--text)]"
