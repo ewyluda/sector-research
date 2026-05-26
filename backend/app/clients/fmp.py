@@ -258,6 +258,19 @@ class FMPClient:
         )
         return data, citation
 
+    async def get_transcript_dates(self, ticker: str) -> tuple[list[dict], Citation]:
+        """Available earnings-call transcripts for a ticker.
+
+        GET /stable/earning-call-transcript-dates?symbol=X
+        Returns newest-first list of {quarter, fiscalYear, date}.
+        """
+        params = {"symbol": ticker}
+        data = await self._request("earning-call-transcript-dates", params, ttl=TTL_TRANSCRIPT)
+        citation = self._make_citation(
+            "earning-call-transcript-dates", "Transcript Dates", ticker, params
+        )
+        return data if isinstance(data, list) else [], citation
+
     async def get_earnings_calendar(
         self, ticker: str, limit: int = 4
     ) -> tuple[list[dict], Citation]:
