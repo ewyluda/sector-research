@@ -1,0 +1,814 @@
+{
+  "meta": {
+    "project": "sector-research",
+    "tagline": "Personal stock-research app — Discovery (FMP + X signals) + Pipeline (6-phase LangGraph due-diligence) with citations on every data point",
+    "generated_at": "2026-05-20T20:40:00Z",
+    "generator": "claude-opus-4-7",
+    "main_branch": "main",
+    "source_commit": "d06bae4",
+    "source_of_truth_files": ["CLAUDE.md", "CONTEXT.md", "TODO.md", "frontend/AGENTS.md"],
+    "purpose_of_this_file": "Machine-readable architecture index for the next agent. Read before adding a feature: locate the right router/service/table, check invariants, follow cross-references."
+  },
+
+  "tech_stack": {
+    "backend": {
+      "language": "Python 3",
+      "framework": "FastAPI",
+      "orm": "SQLAlchemy 2.x async + asyncpg",
+      "migrations": "Alembic",
+      "graph": "LangGraph (StateGraph)",
+      "llm_sdk": "Anthropic Python SDK",
+      "scheduler": "APScheduler (AsyncIOScheduler in lifespan)",
+      "venv": "backend/venv/",
+      "import_root": "backend.app.*  (absolute imports — uvicorn must be launched from project root)"
+    },
+    "frontend": {
+      "framework": "Next.js 16 (App Router)",
+      "react": "React 19",
+      "styling": "Tailwind v4 via @tailwindcss/postcss",
+      "linter": "eslint flat config (eslint.config.mjs)",
+      "path_alias": "@/* → frontend root",
+      "chart_libs": ["recharts", "lightweight-charts (TradingView candlestick + RSI)"],
+      "data_fetch": "Native fetch through frontend/lib/api.ts only",
+      "next16_warning": "Next.js 16 has breaking changes vs prior releases. Read node_modules/next/dist/docs/ before editing Server Component / middleware / route-handler code. Do not assume training-data conventions apply."
+    },
+    "data": {
+      "primary_db": "PostgreSQL (asyncpg + a sync URL for Alembic)",
+      "external_apis": ["FMP (Financial Modeling Prep)", "X / Twitter v2", "SEC EDGAR (XBRL company facts + filings HTML)", "FRED (macro series)", "Anthropic Claude API"],
+      "models_used": {
+        "sonnet": "claude-sonnet-4-6",
+        "haiku": "claude-haiku-4-5-20251001",
+        "selection_file": "backend/app/graph/llm.py",
+        "prompt_caching": "auto-enabled (cache_control=ephemeral) for system prompts >500 chars"
+      }
+    }
+  },
+
+  "entrypoints": {
+    "backend_dev_server": {
+      "command": "uvicorn backend.app.main:app --reload",
+      "cwd": "PROJECT ROOT (not backend/) — imports are absolute backend.app.*",
+      "default_port": 8000,
+      "app_module": "backend/app/main.py",
+      "lifespan_attaches": ["app.state.edgar", "app.state.fmp", "app.state.fanout", "app.state.workspace", "app.state.prospectus", "AsyncIOScheduler with daily signal + daily earnings cron jobs"]
+    },
+    "backend_migrations": {
+      "alembic_ini": "backend/alembic.ini",
+      "upgrade": "cd backend && alembic upgrade head",
+      "autogen": "cd backend && alembic revision --autogenerate -m 'message'",
+      "env_imports_from": "backend.app.* (needs PYTHONPATH=.. or pip install -e .)"
+    },
+    "backend_tests": {
+      "runner": "python -m unittest backend.tests.<module>",
+      "cwd": "PROJECT ROOT with venv active",
+      "framework": "stdlib unittest (no pytest, no coverage)"
+    },
+    "frontend_dev_server": {
+      "command": "npm run dev",
+      "cwd": "frontend/",
+      "default_port": 3000,
+      "api_base": "NEXT_PUBLIC_API_URL — default http://localhost:8000",
+      "ipv6_gotcha": "Set to http://127.0.0.1:8000 to avoid IPv6 localhost collision with running Docker containers (see invariants[localhost_ipv6_collision])"
+    },
+    "secrets_file": ".env at PROJECT ROOT (single source). backend/app/config.py reads it via env_file='../../.env' relative to backend/app/. Do not move it.",
+    "required_env": ["FMP_API_KEY", "X_BEARER_TOKEN", "ANTHROPIC_API_KEY", "DATABASE_URL (asyncpg)", "DATABASE_URL_SYNC (Alembic)", "SEC_USER_AGENT (must include contact email)"]
+  },
+
+  "subsystems": [
+    {
+      "id": "discovery",
+      "name": "Discovery Engine",
+      "purpose": "Per-theme ranked company cards merging FMP fundamentals with cached X social signals",
+      "primary_service": "backend/app/services/discovery.py",
+      "frontend_route": "/theme/[id]",
+      "key_endpoints": ["GET /api/themes/{id}/discover", "POST /api/themes/{id}/signals/refresh"],
+      "scheduled_jobs": ["Daily X signal refresh at 2 AM (services/signal_scheduler.py)"],
+      "scoring": "40% X velocity + 40% fundamental quality + 20% discovery score when X is fresh; degrades to 80% fund + 20% disc when X is stale/missing"
+    },
+    {
+      "id": "pipeline",
+      "name": "6-phase LangGraph due-diligence pipeline",
+      "purpose": "Per-ticker journey: quick_screen → deep_dive (9 categories) → targeted_followup → thesis_construction → risk_stress_test (optional loop) → position_monitor",
+      "primary_service": "backend/app/services/pipeline.py",
+      "graph_module": "backend/app/graph/pipeline.py",
+      "state_module": "backend/app/graph/state.py (ResearchState dataclass)",
+      "nodes_module": "backend/app/graph/nodes.py",
+      "frontend_route": "/pipeline/[runId] (handles both live SSE and completed report)",
+      "key_endpoints": ["POST /api/runs", "GET /api/runs/{id}/stream (SSE)", "POST /api/runs/{id}/advance", "GET /api/runs/{id}/report"],
+      "dual_source_of_truth_warning": "Phase routing exists in BOTH graph/pipeline.py edges AND services/pipeline.py::_next_phase — update both when adding a phase"
+    },
+    {
+      "id": "edgar",
+      "name": "SEC EDGAR filing pipeline (5 phases A–E)",
+      "purpose": "Filing section extraction → relationship extraction → counterparty resolution → supply-chain graph → fan-out orchestration",
+      "phases": {
+        "A_section_extraction": "services/edgar_sections_ingest.py + services/edgar_html.py",
+        "A_prompt_integration": "FILING_EXCERPT_ROUTING in graph/deep_dive_routing.py + graph/deep_dive_context.py",
+        "B_relationship_extraction": "services/edgar_relationships.py (Haiku, Pydantic structured output)",
+        "C_counterparty_resolution": "services/counterparty_resolver.py (RapidFuzz token_set_ratio)",
+        "D_supply_chain_graph": "services/supply_chain.py (1-hop and 2-hop BFS)",
+        "E_fanout_orchestration": "services/fanout.py + services/relationship_context.py"
+      },
+      "frontend_routes": ["/filings", "/filings/graph"],
+      "key_endpoints": ["POST /api/filings/ingest/{ticker}", "POST /api/filings/extract-relationships/{ticker}", "POST /api/relationships/resolve/{ticker}", "GET /api/relationships/graph/{ticker}", "POST /api/themes/{id}/relationships/fanout", "POST /api/relationships/reconcile"],
+      "filing_excerpt_budget_chars": 5000,
+      "relationship_extraction_budget_chars": 15000
+    },
+    {
+      "id": "workspace",
+      "name": "Workspace loop (5 steps)",
+      "purpose": "Post-thesis refresh: update_refresh → research → challenge → differentiate → validate; produces updated verdict + model deltas",
+      "primary_service": "backend/app/services/workspace.py",
+      "steps_module": "backend/app/services/workspace_steps.py",
+      "schemas_module": "backend/app/models/workspace_schemas.py",
+      "frontend_routes": ["/workspace", "/workspace/[runId]"],
+      "key_endpoints": ["POST /api/workspace/{ticker}/runs", "GET /api/workspace/runs/{id}/stream (SSE)"],
+      "verdict_enum": ["healthy", "imminent", "triggered", "broken"],
+      "model_state_touchpoint": "update_refresh promotes published forecast periods from ai_baseline → historical and warns when previously-edited override cells are evicted (removed_cells payload)"
+    },
+    {
+      "id": "status_board",
+      "name": "Status board + catalysts + questions + read-throughs + earnings",
+      "purpose": "Post-thesis fleet-management surface aggregating over completed research runs",
+      "primary_services": ["status_board.py", "catalyst_promotion.py", "catalyst_dates.py", "read_through.py", "earnings_brief.py", "earnings_verdict.py", "earnings_prints.py", "earnings_scheduler.py", "questions.py"],
+      "frontend_routes": ["/status", "/catalysts", "/questions"],
+      "health_states": ["healthy", "imminent", "stale", "triggered", "broken"],
+      "scheduled_jobs": ["Daily earnings refresh at 21:00 UTC (services/earnings_scheduler.py)"]
+    },
+    {
+      "id": "financial_model",
+      "name": "Editable 5-year financial model + reverse DCF",
+      "purpose": "Per-ticker model AI-seeded from research run with version history, cell-level overrides, and reverse-DCF engine (implied drivers, IRR, 21x21 sensitivity grids)",
+      "primary_services": ["model_baseline.py", "model_balancing.py", "dcf.py", "reverse_dcf.py", "model_diff.py"],
+      "baseline_node": "backend/app/graph/model_baseline_node.py",
+      "schema_module": "backend/app/models/model_state.py + backend/app/models/cell_path.py",
+      "frontend_route": "/model/[ticker] (tabs: #forecast / #reverse-dcf / #history)",
+      "key_endpoints": ["GET /api/models/{ticker}", "POST /api/models/{ticker}/initialize", "PUT /api/models/{ticker}/draft", "POST /api/models/{ticker}/save", "GET /api/models/{ticker}/reverse-dcf"],
+      "cell_path_value_object": "typed CellPath union (DriverPath | StatementCellPath | AssumptionPath) — backend backend/app/models/cell_path.py, frontend frontend/lib/cellPath.ts. AssumptionPath restricted to ModelCell-shaped keys; categorical assumptions intentionally not editable through PUT /draft."
+    },
+    {
+      "id": "outcomes",
+      "name": "Verdict outcome tracker (alpha feedback loop)",
+      "purpose": "Record entry prices at verdict emission, then snapshot ticker / SPY / sector ETF / theme basket returns at 1d/1w/1m/3m/6m horizons",
+      "primary_service": "backend/app/services/outcome_tracker.py",
+      "frontend_route": "/performance",
+      "key_endpoints": ["GET /api/outcomes", "GET /api/outcomes/summary", "POST /api/outcomes/backfill", "GET /api/outcomes/by-source/{source_type}/{source_id}"]
+    },
+    {
+      "id": "transcript_delta",
+      "name": "Transcript delta analysis",
+      "purpose": "Haiku-driven QoQ language deltas across earnings transcripts, scored along several axes",
+      "primary_service": "backend/app/services/transcript_delta.py",
+      "key_endpoints": ["GET /api/transcripts/delta/{ticker}/latest", "POST /api/transcripts/delta/{ticker}"],
+      "merged_pr": "#30 (May 12, 2026)"
+    },
+    {
+      "id": "prospectus",
+      "name": "S-1 prospectus pipeline (4 steps)",
+      "purpose": "Per-S-1/S-1/A: ingest → relationships → categories (7 IPO-tuned) → thesis. Reuses the existing filings/relationships infrastructure under a synthetic_ticker identifier so pre-IPO issuers (e.g. SpaceX) flow through the same plumbing as public companies.",
+      "primary_service": "backend/app/services/prospectus_service.py",
+      "supporting_services": ["prospectus_ingest.py", "prospectus_financials.py", "prospectus_categories.py", "prospectus_thesis.py"],
+      "prompts_module": "backend/app/graph/prospectus_prompts.py",
+      "schemas_module": "backend/app/models/prospectus_schemas.py",
+      "frontend_routes": ["/prospectus", "/prospectus/[reportId]"],
+      "key_endpoints": ["POST /api/prospectus", "GET /api/prospectus", "GET /api/prospectus/{id}", "GET /api/prospectus/{id}/stream (SSE)", "DELETE /api/prospectus/{id}"],
+      "categories": ["Business Quality", "Risk Assessment", "Growth & Earnings", "Management & Governance", "Future Durability", "Macro & Regime", "IPO Mechanics"],
+      "verdict_enum": ["participate", "watch_post_lockup", "pass"],
+      "synthetic_ticker": "Identifier written into filings.ticker / relationships.ticker for pre-IPO issuers. proposed_ticker if disclosed, else uppercase-alphanumeric slug of issuer_name truncated to 16 chars. Lets the existing 5-phase EDGAR pipeline work unchanged.",
+      "section_routing": "S-1 section_keys: s1_business, s1_risk_factors, s1_mda, s1_use_of_proceeds, s1_capitalization, s1_dilution, s1_principal_stockholders, s1_underwriting. Defined in edgar_html.py::_SECTION_DEFS_S1 (PR #31).",
+      "merged_pr": "#31 (May 20, 2026)"
+    }
+  ],
+
+  "backend": {
+    "api_routers": [
+      { "file": "backend/app/api/health.py", "prefix": "(none)", "endpoints": [
+        { "method": "GET", "path": "/health", "handler": "health", "line": 12, "summary": "Simple health check status" },
+        { "method": "GET", "path": "/health/db", "handler": "health_db", "line": 17, "summary": "Verify database connectivity" },
+        { "method": "GET", "path": "/health/fmp", "handler": "health_fmp", "line": 24, "summary": "Verify FMP API connectivity (lightweight quote call)" }
+      ]},
+      { "file": "backend/app/api/themes.py", "prefix": "/api", "endpoints": [
+        { "method": "GET", "path": "/api/themes", "handler": "list_themes", "line": 76, "summary": "List all themes ordered by name" },
+        { "method": "POST", "path": "/api/themes", "handler": "create_theme", "line": 82, "summary": "Create theme with seed tickers and signal weights" },
+        { "method": "GET", "path": "/api/themes/{theme_id}", "handler": "get_theme", "line": 99, "summary": "Get a single theme by ID" },
+        { "method": "PUT", "path": "/api/themes/{theme_id}", "handler": "update_theme", "line": 108, "summary": "Update theme properties" },
+        { "method": "DELETE", "path": "/api/themes/{theme_id}", "handler": "delete_theme", "line": 130, "summary": "Delete theme (cascade per migration 3cf8b874da39 — signals CASCADE, research_runs SET NULL)" },
+        { "method": "POST", "path": "/api/themes/{theme_id}/tickers", "handler": "add_theme_ticker", "line": 140, "summary": "Append ticker to seed_tickers (idempotent)" },
+        { "method": "DELETE", "path": "/api/themes/{theme_id}/tickers/{ticker}", "handler": "remove_theme_ticker", "line": 165, "summary": "Remove ticker from seed_tickers (idempotent)" }
+      ]},
+      { "file": "backend/app/api/discovery.py", "prefix": "/api", "endpoints": [
+        { "method": "GET", "path": "/api/themes/{theme_id}/discover", "handler": "discover_theme", "line": 76, "summary": "Two-pass discovery (FMP screener + cached X signals) → ranked CompanySignalCard list" },
+        { "method": "POST", "path": "/api/themes/{theme_id}/signals/refresh", "handler": "refresh_theme_signals_endpoint", "line": 134, "summary": "Manually trigger X signal refresh (blocks until complete)" },
+        { "method": "GET", "path": "/api/themes/{theme_id}/signals/{ticker}/history", "handler": "get_signal_history_endpoint", "line": 163, "summary": "Time-series signal history for one (ticker, theme, signal_type) — days clamped [1,365]" }
+      ]},
+      { "file": "backend/app/api/pipeline.py", "prefix": "/api", "endpoints": [
+        { "method": "POST", "path": "/api/runs", "handler": "start_run", "line": 105, "summary": "Start new research run (kicks off quick_screen via asyncio.create_task)" },
+        { "method": "GET", "path": "/api/runs", "handler": "list_runs", "line": 127, "summary": "Research Library list with optional filters" },
+        { "method": "GET", "path": "/api/runs/data-gaps", "handler": "get_data_gaps", "line": 158, "summary": "Aggregate data gaps across all runs, ranked by frequency" },
+        { "method": "GET", "path": "/api/runs/{run_id}", "handler": "get_run", "line": 182, "summary": "Full run state including phase outputs" },
+        { "method": "POST", "path": "/api/runs/{run_id}/advance", "handler": "advance_run", "line": 192, "summary": "Human interrupt action (approve|flag|stop) — only post-completion (e.g. trigger position_monitor)" },
+        { "method": "GET", "path": "/api/runs/{run_id}/stream", "handler": "stream_run", "line": 243, "summary": "SSE phase output streaming", "streaming": true },
+        { "method": "GET", "path": "/api/runs/{run_id}/report", "handler": "get_report", "line": 267, "summary": "Full structured report for completed run (used by report page and Obsidian export)" }
+      ]},
+      { "file": "backend/app/api/filings.py", "prefix": "/api", "endpoints": [
+        { "method": "POST", "path": "/api/filings/ingest/{ticker}", "handler": "ingest_ticker", "line": 126, "summary": "Trigger section ingest for one ticker (10-K, 10-Q, DEF 14A)" },
+        { "method": "POST", "path": "/api/filings/ingest/batch", "handler": "ingest_batch", "line": 143, "summary": "Trigger section ingest for a list of tickers" },
+        { "method": "GET", "path": "/api/filings/{ticker}", "handler": "list_filings_for_ticker", "line": 163, "summary": "List filings with ingested sections" },
+        { "method": "POST", "path": "/api/filings/extract-relationships/{ticker}", "handler": "extract_relationships_for_ticker", "line": 209, "summary": "Run Haiku relationship extraction over every ingested section" },
+        { "method": "POST", "path": "/api/filings/extract-relationships/batch", "handler": "extract_relationships_batch", "line": 225, "summary": "Batch relationship extraction" },
+        { "method": "POST", "path": "/api/transcripts/extract-relationships/{ticker}", "handler": "extract_transcript_relationships_for_ticker", "line": 238, "summary": "Extract relationships from last 4 quarters of earnings transcripts" },
+        { "method": "POST", "path": "/api/filings/extract-competition/{ticker}", "handler": "extract_competition_for_ticker", "line": 258, "summary": "Extract competition disclosure from latest 10-K Item 1" },
+        { "method": "GET", "path": "/api/filings/{ticker}/relationships", "handler": "list_relationships_for_ticker", "line": 302, "summary": "All extracted relationships joined with filing metadata" },
+        { "method": "GET", "path": "/api/filings/{ticker}/{accession_number}/sections/{section_key}", "handler": "get_filing_section", "line": 335, "summary": "Full text of one filing section" },
+        { "method": "POST", "path": "/api/relationships/resolve/{ticker}", "handler": "resolve_ticker", "line": 393, "summary": "Resolve unresolved counterparties (alias reuse + exact + fuzzy)" },
+        { "method": "POST", "path": "/api/relationships/resolve/batch", "handler": "resolve_tickers", "line": 410, "summary": "Batch counterparty resolution" },
+        { "method": "GET", "path": "/api/relationships/unresolved", "handler": "list_unresolved", "line": 421, "summary": "Curation queue sorted by occurrence count desc" },
+        { "method": "POST", "path": "/api/relationships/alias", "handler": "create_manual_alias", "line": 445, "summary": "Manual alias override (writes curator_manual alias + backfills)" },
+        { "method": "GET", "path": "/api/relationships/graph/{ticker}", "handler": "get_ticker_graph", "line": 507, "summary": "Supply-chain graph (depth=1|2, direction=out|in|both, optional theme_id gate)" },
+        { "method": "POST", "path": "/api/relationships/reconcile", "handler": "reconcile_all_bilaterals", "line": 570, "summary": "Flip confirmed_bilateral=true on reciprocal pairs" },
+        { "method": "GET", "path": "/api/competition/{ticker}", "handler": "get_competition", "line": 580, "summary": "Structured Competition view from latest 10-K" }
+      ]},
+      { "file": "backend/app/api/fanouts.py", "prefix": "/api", "endpoints": [
+        { "method": "POST", "path": "/api/themes/{theme_id}/relationships/fanout", "handler": "start_theme_fanout", "line": 18, "summary": "Theme-scoped fan-out (202 + fanout_id for polling)" },
+        { "method": "POST", "path": "/api/tickers/{ticker}/relationships/fanout", "handler": "start_ticker_fanout", "line": 36, "summary": "Single-ticker fan-out" },
+        { "method": "GET", "path": "/api/fanouts/{fanout_id}", "handler": "get_fanout", "line": 48, "summary": "Poll fanout status (in-memory — does NOT survive restart)" }
+      ]},
+      { "file": "backend/app/api/catalysts.py", "prefix": "/api", "endpoints": [
+        { "method": "GET", "path": "/api/catalysts", "handler": "list_catalysts", "line": 182, "summary": "Catalysts from latest completed thesis run per ticker (optional ticker / run_id filters)" },
+        { "method": "GET", "path": "/api/catalysts/{catalyst_id}", "handler": "get_catalyst", "line": 238, "summary": "Single catalyst by ID" }
+      ]},
+      { "file": "backend/app/api/status.py", "prefix": "/api", "endpoints": [
+        { "method": "GET", "path": "/api/status/board", "handler": "get_status_board", "line": 133, "summary": "Fleet view: latest run per (ticker, theme) with health, conviction, kill-criteria, next catalyst" },
+        { "method": "POST", "path": "/api/runs/{run_id}/archive", "handler": "archive_run", "line": 149, "summary": "Hide run from status board" },
+        { "method": "POST", "path": "/api/runs/{run_id}/unarchive", "handler": "unarchive_run", "line": 156, "summary": "Restore run to status board" },
+        { "method": "GET", "path": "/api/runs/{run_id}/kill-criteria", "handler": "list_kill_criterion_states", "line": 163, "summary": "Hydrate kill-criterion toggle states" },
+        { "method": "PUT", "path": "/api/runs/{run_id}/kill-criteria/{ordinal}", "handler": "upsert_kill_criterion_state_endpoint", "line": 180, "summary": "Flip one kill criterion (armed/triggered)" }
+      ]},
+      { "file": "backend/app/api/read_through.py", "prefix": "/api", "endpoints": [
+        { "method": "GET", "path": "/api/status/read-throughs", "handler": "get_read_throughs", "line": 85, "summary": "Board-wide read-throughs over 30d window" },
+        { "method": "POST", "path": "/api/status/read-throughs/dismiss", "handler": "dismiss_read_through", "line": 111, "summary": "Dismiss read-through event (idempotent)" },
+        { "method": "POST", "path": "/api/status/read-throughs/summary", "handler": "summarize", "line": 125, "summary": "Generate lazy summary for read-through" }
+      ]},
+      { "file": "backend/app/api/earnings.py", "prefix": "/api", "endpoints": [
+        { "method": "GET", "path": "/api/earnings/board", "handler": "get_earnings_board", "line": 121, "summary": "Earnings board for active thesis runs (upcoming + recent prints)" },
+        { "method": "POST", "path": "/api/runs/{run_id}/earnings/{print_id}/brief", "handler": "post_brief", "line": 219, "summary": "Generate pre-earnings brief (3-5 bullets, Haiku)" },
+        { "method": "POST", "path": "/api/runs/{run_id}/earnings/{print_id}/verdict", "handler": "post_verdict", "line": 242, "summary": "Generate post-print verdict (confirms/threatens/neutral/insufficient)" },
+        { "method": "GET", "path": "/api/earnings/prints/{ticker}", "handler": "get_prints_by_ticker", "line": 264, "summary": "8 most recent earnings prints for ticker" },
+        { "method": "POST", "path": "/api/earnings/refresh/{ticker}", "handler": "post_refresh", "line": 279, "summary": "Manually refresh earnings prints for ticker" }
+      ]},
+      { "file": "backend/app/api/questions.py", "prefix": "/questions", "endpoints": [
+        { "method": "GET", "path": "/questions", "handler": "list_questions_endpoint", "line": 106, "summary": "List questions with filters (ticker, theme_id, status, priority, category) — NOTE: no /api prefix" },
+        { "method": "GET", "path": "/questions/by-ticker", "handler": "by_ticker_endpoint", "line": 128, "summary": "Question rollup by ticker" },
+        { "method": "POST", "path": "/questions/{question_id}/dismiss", "handler": "dismiss_endpoint", "line": 137, "summary": "Dismiss open question with optional note" },
+        { "method": "POST", "path": "/questions/{question_id}/resolve", "handler": "resolve_endpoint", "line": 167, "summary": "Manually resolve with answer text" },
+        { "method": "POST", "path": "/questions/{question_id}/retry-auto", "handler": "retry_auto_endpoint", "line": 198, "summary": "Retry auto-answering a question (re-runs targeted-followup Haiku)" }
+      ]},
+      { "file": "backend/app/api/models_api.py", "prefix": "/api/models", "endpoints": [
+        { "method": "GET", "path": "/api/models/{ticker}", "handler": "get_model", "line": 29, "summary": "Latest version + draft (or both null). Ticker uppercased." },
+        { "method": "POST", "path": "/api/models/{ticker}/initialize", "handler": "initialize", "line": 64, "summary": "Seed or re-seed baseline (force= to rebuild). 400 if no completed research_run." },
+        { "method": "PUT", "path": "/api/models/{ticker}/draft", "handler": "put_draft", "line": 128, "summary": "Apply one cell edit (cell_path string), recompute, persist into ticker_model_drafts. 422 on bad cell_path, 409 on ModelBalanceError." },
+        { "method": "POST", "path": "/api/models/{ticker}/save", "handler": "save_version", "line": 188, "summary": "Promote draft → new ticker_models version, delete draft" },
+        { "method": "DELETE", "path": "/api/models/{ticker}/draft", "handler": "discard_draft", "line": 227, "summary": "Discard draft (idempotent)" },
+        { "method": "GET", "path": "/api/models/{ticker}/reverse-dcf", "handler": "get_reverse_dcf", "line": 273, "summary": "Implied drivers + IRR + 3 sensitivity grids + thesis vs priced-in. price defaults to live FMP quote via app.state.fmp." },
+        { "method": "GET", "path": "/api/models/{ticker}/versions", "handler": "list_versions", "line": 347, "summary": "List saved versions" },
+        { "method": "GET", "path": "/api/models/{ticker}/versions/{version}/diff", "handler": "version_diff", "line": 369, "summary": "Cell-path-keyed diff payload" }
+      ]},
+      { "file": "backend/app/api/workspace.py", "prefix": "/api/workspace", "endpoints": [
+        { "method": "POST", "path": "/api/workspace/{ticker}/runs", "handler": "kick_off_workspace", "line": 30, "summary": "Kick off workspace loop run (202 + run_id)" },
+        { "method": "GET", "path": "/api/workspace/runs/{run_id}", "handler": "get_run", "line": 48, "summary": "Get workspace run by ID" },
+        { "method": "GET", "path": "/api/workspace/runs/{run_id}/stream", "handler": "stream_run", "line": 58, "summary": "SSE workspace event stream", "streaming": true },
+        { "method": "GET", "path": "/api/workspace/{ticker}/history", "handler": "history_for_ticker", "line": 73, "summary": "Workspace run history for a ticker (most recent first)" },
+        { "method": "GET", "path": "/api/workspace/recent", "handler": "recent_runs", "line": 88, "summary": "Recent workspace runs across all tickers" }
+      ]},
+      { "file": "backend/app/api/outcomes.py", "prefix": "/api/outcomes", "endpoints": [
+        { "method": "POST", "path": "/api/outcomes/backfill", "handler": "trigger_backfill", "line": 147, "summary": "One-shot backfill from completed research + workspace runs" },
+        { "method": "GET", "path": "/api/outcomes", "handler": "list_outcomes", "line": 159, "summary": "List outcomes with filters (theme_id, verdict, source_type, superseded, closed)" },
+        { "method": "GET", "path": "/api/outcomes/by-source/{source_type}/{source_id}", "handler": "get_outcome_by_source", "line": 184, "summary": "Single outcome by originating run" },
+        { "method": "GET", "path": "/api/outcomes/summary", "handler": "get_summary", "line": 368, "summary": "Aggregate verdict / theme / signal-bucket rollups" }
+      ]},
+      { "file": "backend/app/api/transcripts_delta.py", "prefix": "/api/transcripts", "endpoints": [
+        { "method": "GET", "path": "/api/transcripts/delta/{ticker}/latest", "handler": "get_latest", "line": 47, "summary": "Latest transcript delta (204 if none)" },
+        { "method": "GET", "path": "/api/transcripts/delta/{ticker}/history", "handler": "get_history", "line": 59, "summary": "Full history of transcript deltas" },
+        { "method": "POST", "path": "/api/transcripts/delta/{ticker}", "handler": "post_compute", "line": 65, "summary": "Compute and store transcript delta (force=true overrides cache)" }
+      ]},
+      { "file": "backend/app/api/prospectus.py", "prefix": "/api/prospectus", "endpoints": [
+        { "method": "POST", "path": "/api/prospectus", "handler": "create_report", "line": 36, "summary": "Kick off a prospectus report (URL or accession; bare accession not yet supported). 202 + report_id." },
+        { "method": "GET", "path": "/api/prospectus", "handler": "list_reports", "line": 73, "summary": "List prospectus reports most-recent-first (limit query param, default 50)" },
+        { "method": "GET", "path": "/api/prospectus/{report_id}", "handler": "get_report", "line": 49, "summary": "Get a single prospectus report including step_outputs JSONB" },
+        { "method": "GET", "path": "/api/prospectus/{report_id}/stream", "handler": "stream_report", "line": 59, "summary": "SSE step events: step_start, step_complete, prospectus_complete, prospectus_failed", "streaming": true },
+        { "method": "DELETE", "path": "/api/prospectus/{report_id}", "handler": "delete_report", "line": 83, "summary": "Delete report (204; 404 if missing)" }
+      ]}
+    ],
+
+    "services": [
+      { "name": "catalyst_dates", "file": "backend/app/services/catalyst_dates.py", "purpose": "Parse free-form catalyst timeframe strings to date windows" },
+      { "name": "catalyst_promotion", "file": "backend/app/services/catalyst_promotion.py", "purpose": "Promote parsed Catalyst objects from thesis runs to first-class DB rows" },
+      { "name": "counterparty_resolver", "file": "backend/app/services/counterparty_resolver.py", "purpose": "Map free-text counterparty names to canonical SEC entities via fuzzy matching (RapidFuzz token_set_ratio ≥95 auto, 80-94 queue, <80 queue-only)" },
+      { "name": "data_gaps", "file": "backend/app/services/data_gaps.py", "purpose": "Detect hard errors and soft data gaps in research run state" },
+      { "name": "dcf", "file": "backend/app/services/dcf.py", "purpose": "Pure DCF engine — no IO, no DB. Reads cash_flow.free_cash_flow from state; caller must recompute() first." },
+      { "name": "discovery", "file": "backend/app/services/discovery.py", "purpose": "Discovery Engine orchestrating FMP screener + cached X signal passes for themes" },
+      { "name": "earnings_brief", "file": "backend/app/services/earnings_brief.py", "purpose": "Pre-earnings brief synthesis (3-5 bullets of what to watch)" },
+      { "name": "earnings_prints", "file": "backend/app/services/earnings_prints.py", "purpose": "Earnings prints indexer (FMP calendar → DB)" },
+      { "name": "earnings_scheduler", "file": "backend/app/services/earnings_scheduler.py", "purpose": "Daily cron for earnings refresh at 21:00 UTC" },
+      { "name": "earnings_verdict", "file": "backend/app/services/earnings_verdict.py", "purpose": "Post-print thesis verdict (Haiku) — extracts guidance direction + computes verdict" },
+      { "name": "edgar_competition", "file": "backend/app/services/edgar_competition.py", "purpose": "Extract structured competition disclosure from 10-K Item 1" },
+      { "name": "edgar_html", "file": "backend/app/services/edgar_html.py", "purpose": "Extract narrative sections from SEC filing HTML (strips inline XBRL, MULTILINE heading regex)" },
+      { "name": "edgar_ingest", "file": "backend/app/services/edgar_ingest.py", "purpose": "Ingest SEC EDGAR XBRL company facts (RPO, debt maturity, credit). NOT customer concentration — that comes from Phase B narrative." },
+      { "name": "edgar_relationships", "file": "backend/app/services/edgar_relationships.py", "purpose": "Phase B — extract business relationships from filing sections via Haiku (Pydantic structured output with assistant_prefill)" },
+      { "name": "edgar_sections_ingest", "file": "backend/app/services/edgar_sections_ingest.py", "purpose": "Phase A — ingest 10-K/10-Q/DEF 14A narrative sections (Item 1, 1A, 7/2, governance); idempotent on (filing_id, section_key)" },
+      { "name": "edgar_transcripts_relationships", "file": "backend/app/services/edgar_transcripts_relationships.py", "purpose": "Extract relationships from earnings call transcripts (last 4 quarters)" },
+      { "name": "fanout", "file": "backend/app/services/fanout.py", "purpose": "Phase E — orchestrator for serial ingest → extract → resolve across many tickers; in-memory FanoutStatus (no restart persistence)" },
+      { "name": "model_balancing", "file": "backend/app/services/model_balancing.py", "purpose": "Pure recompute pipeline: drivers → IS → CF → BS; plug imbalance into retained_earnings; raises ModelBalanceError on tolerance overflow" },
+      { "name": "model_baseline", "file": "backend/app/services/model_baseline.py", "purpose": "Orchestrate AI baseline seeding into ModelState (load research_run + risk-free rate → Sonnet baseline-drivers node → seed historical + forecast drivers → recompute)" },
+      { "name": "model_diff", "file": "backend/app/services/model_diff.py", "purpose": "Cell-path-keyed JSON diff between two ModelStates for history viewer" },
+      { "name": "outcome_tracker", "file": "backend/app/services/outcome_tracker.py", "purpose": "Verdict outcome tracking — resolve entry prices, create outcomes, refresh return snapshots at 1d/1w/1m/3m/6m" },
+      { "name": "peer_comp", "file": "backend/app/services/peer_comp.py", "purpose": "Peer comparison table builder" },
+      { "name": "pipeline", "file": "backend/app/services/pipeline.py", "purpose": "PipelineService — run lifecycle, state persistence, SSE plumbing (in-memory dict[run_id, asyncio.Queue]), holds _next_phase routing (parallel to graph/pipeline.py edges)" },
+      { "name": "prospectus_service", "file": "backend/app/services/prospectus_service.py", "purpose": "ProspectusService — orchestrates the 4-step prospectus pipeline (ingest → relationships → categories → thesis). Mirrors WorkspaceService — in-memory dict[report_id, asyncio.Queue] for SSE; each step runs in its own session with explicit commit." },
+      { "name": "prospectus_ingest", "file": "backend/app/services/prospectus_ingest.py", "purpose": "Resolve, fetch, and extract sections from an S-1 / S-1/A. Persists Filing + FilingSection rows under a synthetic_ticker so the existing downstream pipeline (relationships, resolution, fan-out) works unchanged. parse_source_input handles both URL and bare accession inputs." },
+      { "name": "prospectus_financials", "file": "backend/app/services/prospectus_financials.py", "purpose": "Sonnet pass that pulls structured annual + interim financial rows out of the S-1 MD&A. Returns ProspectusFinancials (annual + interim with source_snippet each)." },
+      { "name": "prospectus_categories", "file": "backend/app/services/prospectus_categories.py", "purpose": "Runs Sonnet over each of 7 IPO-tuned categories defined in graph/prospectus_prompts.py::PROSPECTUS_CATEGORIES. Slot-routes filing excerpts (per CATEGORY_SECTION_ROUTING), counterparty context, and FRED macro into PROSPECTUS_USER. Section budget: 8000 chars/section." },
+      { "name": "prospectus_thesis", "file": "backend/app/services/prospectus_thesis.py", "purpose": "Synthesizes the final ProspectusThesisOutput: thesis statement, key risks (severity + category source), IPO verdict (participate / watch_post_lockup / pass), and a post-IPO research plan." },
+      { "name": "questions", "file": "backend/app/services/questions.py", "purpose": "Question log query helpers + retry-auto orchestration" },
+      { "name": "read_through", "file": "backend/app/services/read_through.py", "purpose": "Read-through engine (peer events against thesis tickers)" },
+      { "name": "relationship_context", "file": "backend/app/services/relationship_context.py", "purpose": "Convert persisted relationships to structured CounterpartyContext (outbound + inbound, capped 20/bucket, magnitude_pct as salience proxy)" },
+      { "name": "reverse_dcf", "file": "backend/app/services/reverse_dcf.py", "purpose": "Reverse-DCF solvers (bisection for implied drivers/IRR), sensitivity grids (21×21), thesis vs priced-in. Driver overrides go through _apply_uniform_override + deepcopy + recompute, NOT the unused dcf() overrides= param." },
+      { "name": "run_timestamps", "file": "backend/app/services/run_timestamps.py", "purpose": "Stable timestamp helpers for research runs" },
+      { "name": "signal_history", "file": "backend/app/services/signal_history.py", "purpose": "Time-series read access to signal_history table" },
+      { "name": "signal_scheduler", "file": "backend/app/services/signal_scheduler.py", "purpose": "Daily X signal refresh — wired up in app.main lifespan as AsyncIOScheduler cron at 2 AM" },
+      { "name": "status_board", "file": "backend/app/services/status_board.py", "purpose": "Status board aggregator (latest run per ticker/theme) with health bucketing" },
+      { "name": "supply_chain", "file": "backend/app/services/supply_chain.py", "purpose": "Phase D — supply-chain graph (depth=1|2 BFS) + bilateral reconciliation. Each node carries hop + in_selected_theme; each edge carries hop + source_ticker." },
+      { "name": "transcript_delta", "file": "backend/app/services/transcript_delta.py", "purpose": "Transcript delta analysis (Haiku QoQ language deltas across multiple axes)" },
+      { "name": "workspace", "file": "backend/app/services/workspace.py", "purpose": "WorkspaceService orchestrating 5-step workspace loop (mirrors PipelineService — in-memory SSE queues, WorkspaceRunInFlight guard per ticker)" },
+      { "name": "workspace_context", "file": "backend/app/services/workspace_context.py", "purpose": "WorkspaceContext dataclass — pure data carrier through steps" },
+      { "name": "workspace_steps", "file": "backend/app/services/workspace_steps.py", "purpose": "Five workspace step implementations (research, validation, challenge, differentiation, update_refresh)" }
+    ],
+
+    "orm_tables": [
+      { "table": "themes", "file": "backend/app/models/theme.py", "purpose": "Investment themes with sub-secular grouping (parent_theme_id self-FK)", "foreign_keys": ["parent_theme_id → themes.id (SET NULL)"], "key_columns": ["id", "name", "description", "parent_theme_id", "seed_tickers (JSONB)", "screener_criteria (JSONB)", "x_search_terms (JSONB)", "signal_weights (JSONB)"] },
+      { "table": "research_runs", "file": "backend/app/models/research_run.py", "purpose": "Single ticker's journey through 6-phase pipeline", "foreign_keys": ["theme_id → themes.id (SET NULL — historical orphans survive theme deletion)"], "key_columns": ["id", "ticker", "theme_id (nullable)", "phase", "status", "state (JSONB — ResearchState round-tripped via to_dict/from_dict)", "loop_count", "archived_at"] },
+      { "table": "signals", "file": "backend/app/models/signal.py", "purpose": "Current X signal values (velocity, narrative, discovery) — one row per (ticker, theme, signal_type)", "foreign_keys": ["theme_id → themes.id (CASCADE)"], "key_columns": ["id", "ticker", "theme_id", "signal_type", "value (JSONB)", "computed_at", "is_stale"] },
+      { "table": "signal_history", "file": "backend/app/models/signal_history.py", "purpose": "Append-only time-series of signal values (per-refresh writes)", "foreign_keys": ["theme_id → themes.id (CASCADE)"], "key_columns": ["id", "ticker", "theme_id", "signal_type", "value (JSONB)", "computed_at"] },
+      { "table": "surprise_alerts", "file": "backend/app/models/surprise_alert.py", "purpose": "Velocity surprises (ratio > 2.0×)", "foreign_keys": ["theme_id → themes.id (CASCADE)"], "key_columns": ["id", "ticker", "theme_id", "prior_velocity_ratio", "current_velocity_ratio", "fired_at", "acknowledged_at"] },
+      { "table": "citations", "file": "backend/app/models/citation.py", "purpose": "Data provenance per metric (CitationRecord ORM persisted form)", "foreign_keys": ["run_id → research_runs.id (CASCADE)"], "key_columns": ["id", "run_id", "metric", "value", "source_name", "source_url", "tier", "retrieved_at", "cell_path (added by migration 2db2e8812418 — links to model cells)"] },
+      { "table": "watchlist", "file": "backend/app/models/watchlist.py", "purpose": "Parked tickers for future re-evaluation", "foreign_keys": ["theme_id → themes.id (CASCADE)", "run_id → research_runs.id"], "key_columns": ["id", "ticker", "theme_id", "trigger_condition", "run_id", "added_at"] },
+      { "table": "filings", "file": "backend/app/models/filing.py", "purpose": "SEC EDGAR filings (10-K, 10-Q, DEF 14A); accession_number UNIQUE", "foreign_keys": [], "key_columns": ["id", "accession_number (UNIQUE)", "cik", "ticker", "form_type", "filing_date", "period_of_report", "primary_document_url"] },
+      { "table": "xbrl_facts", "file": "backend/app/models/filing.py", "purpose": "XBRL numeric facts per filing (RPO, debt maturity, credit). NOT concentration — that's dimensional and lives in relationships table.", "foreign_keys": ["filing_id → filings.id (CASCADE)"], "key_columns": ["id", "filing_id", "ticker", "concept", "unit", "period_start", "period_end", "fiscal_year", "fiscal_period", "value"] },
+      { "table": "filing_sections", "file": "backend/app/models/filing.py", "purpose": "Extracted narrative sections (Item 1 Business, 1A Risk, 7/2 MD&A, DEF 14A governance)", "foreign_keys": ["filing_id → filings.id (CASCADE)"], "key_columns": ["id", "filing_id", "ticker", "section_key", "heading", "text", "char_count", "extraction_method", "relationships_extracted_at (tombstone)", "competition_extracted_at (tombstone)"] },
+      { "table": "filing_segments", "file": "backend/app/models/filing.py", "purpose": "Competition segment narratives", "foreign_keys": ["filing_id → filings.id (CASCADE)"], "key_columns": ["id", "filing_id", "ticker", "section_key", "segment_name", "narrative"] },
+      { "table": "competitor_landscape", "file": "backend/app/models/filing.py", "purpose": "Per-segment competitor lists", "foreign_keys": ["filing_id → filings.id (CASCADE)"], "key_columns": ["id", "filing_id", "ticker", "section_key", "area_of_competition", "competitors (JSONB)"] },
+      { "table": "relationships", "file": "backend/app/models/filing.py", "purpose": "LLM-extracted counterparty relationships (filing OR transcript-sourced); filing_id nullable since dual-source", "foreign_keys": ["filing_id → filings.id (CASCADE, nullable)"], "key_columns": ["id", "filing_id (nullable)", "ticker", "counterparty_name", "relationship_type", "magnitude_pct", "unnamed", "verbatim_quote", "source_type ('filing'|'transcript')", "transcript_year", "transcript_quarter", "resolved_to_cik", "resolved_to_ticker", "confirmed_bilateral"] },
+      { "table": "counterparty_aliases", "file": "backend/app/models/filing.py", "purpose": "Alias resolution registry — alias_normalized PK", "foreign_keys": [], "key_columns": ["alias_normalized (PK)", "alias_name", "canonical_cik", "canonical_ticker", "canonical_name", "source", "confidence_score", "created_by"] },
+      { "table": "transcript_extractions", "file": "backend/app/models/filing.py", "purpose": "Tombstone for transcript extractions; PK on (ticker, year, quarter)", "foreign_keys": [], "key_columns": ["ticker", "year", "quarter", "fingerprint (PK)", "extracted_at"] },
+      { "table": "catalysts", "file": "backend/app/models/catalyst.py", "purpose": "First-class catalyst events promoted from thesis runs", "foreign_keys": ["run_id → research_runs.id (CASCADE)"], "key_columns": ["id", "run_id", "ticker", "ordinal", "timeframe", "description", "type", "signposts (JSONB)", "linked_pillar", "expected_date", "expected_window_start", "expected_window_end", "date_source"] },
+      { "table": "kill_criterion_states", "file": "backend/app/models/kill_criterion_state.py", "purpose": "Manual kill-criterion flags per run", "foreign_keys": ["run_id → research_runs.id (CASCADE)"], "key_columns": ["id", "run_id", "ordinal", "status (armed|triggered)", "flipped_at", "note"] },
+      { "table": "read_through_dismissals", "file": "backend/app/models/read_through_dismissal.py", "purpose": "User dismissals of read-through peer events", "foreign_keys": ["run_id → research_runs.id (CASCADE)"], "key_columns": ["id", "run_id", "event_key", "dismissed_at", "note"] },
+      { "table": "earnings_prints", "file": "backend/app/models/earnings_print.py", "purpose": "Earnings actuals + estimates + guidance (cross-ticker shared)", "foreign_keys": [], "key_columns": ["id", "ticker", "fiscal_year", "fiscal_quarter", "earnings_date", "eps_estimated", "eps_actual", "revenue_estimated", "revenue_actual", "eps_surprise_pct", "revenue_surprise_pct", "guidance_direction", "transcript_year", "transcript_quarter"], "unique": ["(ticker, fiscal_year, fiscal_quarter)"] },
+      { "table": "thesis_print_verdicts", "file": "backend/app/models/thesis_print_verdict.py", "purpose": "Post-print thesis verdict (confirms|threatens|neutral|insufficient)", "foreign_keys": ["run_id → research_runs.id (CASCADE)", "earnings_print_id → earnings_prints.id (CASCADE)"], "key_columns": ["id", "run_id", "earnings_print_id", "verdict", "summary_md", "pillars_addressed (JSONB)", "generated_at"], "unique": ["(run_id, earnings_print_id)"] },
+      { "table": "questions", "file": "backend/app/models/question.py", "purpose": "Q&A lifecycle (open|resolved|dismissed) — minted by pipeline + workspace; auto-answerable Haiku retry path", "foreign_keys": ["theme_id → themes.id (SET NULL)", "created_run_id → research_runs.id (CASCADE)", "resolved_run_id → research_runs.id (SET NULL)"], "key_columns": ["id", "ticker", "theme_id", "category", "question_text", "priority", "auto_answerable", "status", "answer_text", "answer_source", "created_run_id", "resolved_run_id", "dismissed_at", "dismiss_note"] },
+      { "table": "ticker_models", "file": "backend/app/models/ticker_model.py", "purpose": "Versioned per-ticker ModelState (JSONB)", "foreign_keys": ["parent_research_run_id → research_runs.id"], "key_columns": ["id", "ticker", "version", "state (JSONB)", "parent_research_run_id", "label"], "unique": ["(ticker, version)"] },
+      { "table": "ticker_model_drafts", "file": "backend/app/models/ticker_model_draft.py", "purpose": "At most one row per ticker — the unsaved working copy. PK is ticker.", "foreign_keys": ["base_version_id → ticker_models.id"], "key_columns": ["ticker (PK)", "base_version_id", "state (JSONB)", "created_at", "updated_at"] },
+      { "table": "workspace_runs", "file": "backend/app/models/workspace_run.py", "purpose": "Workspace edit sessions with 5-step outputs", "foreign_keys": ["parent_research_run_id → research_runs.id (SET NULL)"], "key_columns": ["id", "ticker", "parent_research_run_id", "ticker_model_version_before", "status", "outcome (JSONB)"], "constraints": ["partial UNIQUE on ticker WHERE status='running'"] },
+      { "table": "verdict_outcomes", "file": "backend/app/models/outcome.py", "purpose": "Alpha feedback loop — entry prices captured at verdict emission, then snapshotted over time", "foreign_keys": ["theme_id → themes.id (SET NULL)", "superseded_by_outcome_id → verdict_outcomes.id (SET NULL, self-ref)"], "key_columns": ["id", "source_type", "source_id", "ticker", "theme_id", "verdict", "verdict_emitted_at", "entry_price", "entry_price_at", "entry_price_source", "spy_entry_price", "sector_etf_ticker", "sector_etf_entry_price", "theme_basket_entry_value", "theme_basket_constituents (JSONB)", "signal_snapshot (JSONB)", "superseded_at", "realized_*_pct", "closed_at"], "unique": ["(source_type, source_id)"] },
+      { "table": "verdict_return_snapshots", "file": "backend/app/models/outcome.py", "purpose": "Return measurements at 1d/1w/1m/3m/6m horizons", "foreign_keys": ["outcome_id → verdict_outcomes.id (CASCADE)"], "key_columns": ["id", "outcome_id", "snapshot_offset", "snapshot_date", "ticker_price", "spy_price", "sector_etf_price", "theme_basket_value", "ticker_return_pct", "spy_excess_pct", "sector_excess_pct", "theme_basket_excess_pct"], "unique": ["(outcome_id, snapshot_offset)"] },
+      { "table": "sector_etf_mapping", "file": "backend/app/models/outcome.py", "purpose": "FMP sector → ETF reference (PK fmp_sector)", "foreign_keys": [], "key_columns": ["fmp_sector (PK)", "etf_ticker", "notes"] },
+      { "table": "transcript_deltas", "file": "backend/app/models/transcript_delta.py", "purpose": "Cached QoQ language deltas per ticker", "foreign_keys": [], "key_columns": ["id", "ticker", "transcripts_window (JSONB)", "transcripts_fingerprint", "axes (JSONB)", "computed_at"], "unique": ["(ticker, transcripts_fingerprint)"] },
+      { "table": "prospectus_reports", "file": "backend/app/models/prospectus_report.py", "purpose": "S-1/S-1/A analytical report. Parallel to research_runs and workspace_runs; step_outputs is a JSONB blob with one keyed entry per pipeline step (ingest / relationships / categories / thesis). synthetic_ticker is a derived @property — proposed_ticker if disclosed else uppercase-alphanumeric slug of issuer_name truncated to 16 chars.", "foreign_keys": ["theme_id → themes.id (SET NULL)"], "key_columns": ["id", "accession_number", "issuer_cik", "issuer_name", "proposed_ticker", "theme_id (nullable)", "status (ingesting|analyzing|completed|failed)", "step_outputs (JSONB)", "error_message"] }
+    ],
+
+    "pydantic_schemas": [
+      { "file": "backend/app/models/model_state.py", "schemas": ["Period", "ModelCell", "ModelAssumptions", "ModelState", "CellSource"], "purpose": "Financial model value objects + state container" },
+      { "file": "backend/app/models/cell_path.py", "schemas": ["DriverPath", "StatementCellPath", "AssumptionPath", "Statement", "CellPath"], "purpose": "Typed cell-path value objects for model edits" },
+      { "file": "backend/app/models/phase_schemas.py", "schemas": ["ThesisOutput", "RiskOutput", "PositionOutput", "DeepDiveCategoryOutput", "QuickScreenOutput"], "purpose": "Deep-dive category results and thesis construction outputs" },
+      { "file": "backend/app/models/workspace_schemas.py", "schemas": ["ResearchOutput", "ValidationOutput", "ChallengeOutput", "DifferentiationOutput", "UpdateRefreshOutput", "WorkspaceVerdict", "PeerCompTable", "PeerCompRow", "ImpliedDriver", "SensitivityGrid", "ThesisVsPriced", "Highlight", "OpenQuestionDelta", "FilingRef", "ChangedCell"], "purpose": "Workspace step outputs and financial model display schemas" },
+      { "file": "backend/app/models/outcome_schemas.py", "schemas": ["EntryPriceBundle", "EntryConstituent", "BackfillSummary", "RefreshSummary", "VerdictOutcomeResponse", "VerdictReturnSnapshotResponse"], "purpose": "Outcome tracker API response schemas" },
+      { "file": "backend/app/models/transcript_delta_schemas.py", "schemas": ["AxisDelta", "AxesDelta", "TranscriptDeltaOutput"], "purpose": "Transcript QoQ delta outputs" },
+      { "file": "backend/app/models/prospectus_schemas.py", "schemas": ["ExtractedSectionSummary", "AnnualFinancialRow", "InterimFinancialRow", "ProspectusFinancials", "IngestStepOutput", "RelationshipSummary", "RelationshipsStepOutput", "ProspectusCategoryResult", "CategoriesStepOutput", "IPOVerdict", "KeyRisk", "PostIPOPlanItem", "ProspectusThesisOutput"], "purpose": "Prospectus step_outputs entries — one schema per step. Round-trip through model_validate / model_dump unchanged so they persist into prospectus_reports.step_outputs JSONB without custom encoders." }
+    ],
+
+    "langgraph_pipeline": {
+      "state_dataclass": "ResearchState (backend/app/graph/state.py)",
+      "graph_module": "backend/app/graph/pipeline.py",
+      "nodes_module": "backend/app/graph/nodes.py",
+      "phases": [
+        { "name": "quick_screen", "model": "Haiku", "purpose": "Structural pre-filter — market cap, sector, industry, volatility" },
+        { "name": "deep_dive", "model": "Sonnet", "purpose": "9 categories in parallel (Business Quality, Financial Health, Growth & Earnings, Management & Governance, Technical & Market Structure, Macro & Regime, Sentiment & Narrative, Risk Assessment, Future Durability). Fetches 10 FMP endpoints + filing sections + XBRL facts + counterparty context + FRED macro." },
+        { "name": "targeted_followup", "model": "Haiku", "purpose": "Retry logic for priority-1 auto-answerable questions from deep-dive" },
+        { "name": "thesis_construction", "model": "Sonnet", "purpose": "Thesis with pillars, bull/bear, catalysts, kill criteria. Receives quick-screen context + deep-dive summary as 'established findings' with no-restate instruction (prompt-dedup)." },
+        { "name": "risk_stress_test", "model": "Sonnet", "purpose": "Scenario stress testing. Optional loop back to deep_dive if loop_count ≤ 2 and loop_required=true." },
+        { "name": "position_monitor", "model": "Haiku", "purpose": "Phase 6 — manually triggered via POST /api/runs/{id}/advance with action='approve' on completed run. Kill-criterion tracking + outcome creation." }
+      ],
+      "deep_dive_routing": {
+        "transcript_routing_module": "backend/app/graph/deep_dive_routing.py — TRANSCRIPT_ROUTING",
+        "macro_routing": "backend/app/graph/deep_dive_routing.py — MACRO_ROUTING (9 FRED series)",
+        "filing_excerpt_routing": "FILING_EXCERPT_ROUTING; 5K chars/section budget",
+        "relationship_routing": "RELATIONSHIP_ROUTING = {Business Quality, Risk Assessment, Future Durability} — display-name keys",
+        "edgar_xbrl_routing": "EDGAR_ROUTING — RPO/debt maturity/credit (NOT concentration)",
+        "context_builders": "backend/app/graph/deep_dive_context.py — 7 pure functions over DeepDiveContext snapshot"
+      },
+      "curated_financials": {
+        "shape_module": "graph/state.py::CuratedFinancials",
+        "purpose": "Built once in node_deep_dive from raw FMP fetch — 8Q income/balance/cashflow, profile, DCF, estimates, key-metrics-ttm, financial-growth, 1Y daily OHLCV. Frontend reads it under phases.deep_dive.curated_financials.",
+        "technical_indicators": "_build_technical_data() computes SMA 9/20/50/100/200 + RSI 14, stored in daily_prices"
+      }
+    },
+
+    "migrations": {
+      "head": "91f56be7821d",
+      "count": 22,
+      "chain": [
+        { "rev": "8eebd8f4659a", "down": null, "name": "initial_schema", "adds": ["themes", "research_runs", "signals", "surprise_alerts", "citations", "watchlist"] },
+        { "rev": "d14ab77781f8", "down": "8eebd8f4659a", "name": "add_filings_and_xbrl_facts", "adds": ["filings", "xbrl_facts"] },
+        { "rev": "f3e1dc0d6911", "down": "d14ab77781f8", "name": "add_filing_sections", "adds": ["filing_sections"] },
+        { "rev": "b62a560f5c8d", "down": "f3e1dc0d6911", "name": "add_relationships", "adds": ["relationships"] },
+        { "rev": "10917446bf8c", "down": "b62a560f5c8d", "name": "add_relationships_extracted_at_to_filing_sections", "adds": [], "alters": "filing_sections.relationships_extracted_at" },
+        { "rev": "1e48a3f6aabc", "down": "10917446bf8c", "name": "add_counterparty_aliases_and_resolved_to_columns", "adds": ["counterparty_aliases"], "alters": "relationships.resolved_to_cik + resolved_to_ticker" },
+        { "rev": "6e374957cafa", "down": "1e48a3f6aabc", "name": "add_competition_tables", "adds": ["filing_segments", "competitor_landscape"], "alters": "filing_sections.competition_extracted_at; one-time DELETE of competitor rows from relationships" },
+        { "rev": "ecaf04c60243", "down": "6e374957cafa", "name": "transcript_relationships_nullable", "adds": ["transcript_extractions"], "alters": "relationships.filing_id NULLABLE + source_type + transcript_year + transcript_quarter; CHECK constraint + 2 partial UNIQUE indexes" },
+        { "rev": "27ee955f03d8", "down": "ecaf04c60243", "name": "add_catalysts_table", "adds": ["catalysts"] },
+        { "rev": "0b7ff9421fa5", "down": "27ee955f03d8", "name": "add_kill_criterion_states_and_archived_at", "adds": ["kill_criterion_states"], "alters": "research_runs.archived_at" },
+        { "rev": "02ec6c96409b", "down": "0b7ff9421fa5", "name": "add_read_through_dismissals", "adds": ["read_through_dismissals"] },
+        { "rev": "771650442ce6", "down": "02ec6c96409b", "name": "add_earnings_prints_and_verdicts", "adds": ["earnings_prints", "thesis_print_verdicts"] },
+        { "rev": "e68b9478e450", "down": "771650442ce6", "name": "add_questions_table", "adds": ["questions"] },
+        { "rev": "2db2e8812418", "down": "e68b9478e450", "name": "add_cell_path_to_citations", "adds": [], "alters": "citations.cell_path (links to model cells)" },
+        { "rev": "8b80bfb7f1dc", "down": "2db2e8812418", "name": "create_ticker_models", "adds": ["ticker_models"] },
+        { "rev": "524c7aed3d24", "down": "8b80bfb7f1dc", "name": "create_ticker_model_drafts", "adds": ["ticker_model_drafts"] },
+        { "rev": "28aa0887373a", "down": "524c7aed3d24", "name": "workspace_runs_table", "adds": ["workspace_runs"], "notable": "partial UNIQUE on ticker WHERE status='running'" },
+        { "rev": "8b4fd10f00d3", "down": "28aa0887373a", "name": "add_signal_history", "adds": ["signal_history"] },
+        { "rev": "3cf8b874da39", "down": "8b4fd10f00d3", "name": "theme_delete_cascade_and_set_null", "adds": [], "notable": "signals + signal_history + surprise_alerts + watchlist.theme_id CASCADE; research_runs.theme_id → NULLABLE + SET NULL; themes.parent_theme_id → SET NULL" },
+        { "rev": "12f874fd1d02", "down": "3cf8b874da39", "name": "verdict_outcomes", "adds": ["sector_etf_mapping", "verdict_outcomes", "verdict_return_snapshots"] },
+        { "rev": "69d806901850", "down": "12f874fd1d02", "name": "transcript_deltas", "adds": ["transcript_deltas"] },
+        { "rev": "91f56be7821d", "down": "69d806901850", "name": "add_prospectus_reports", "adds": ["prospectus_reports"], "notable": "theme_id FK ondelete SET NULL; indexed on accession_number, issuer_cik, theme_id" }
+      ]
+    },
+
+    "scheduled_jobs": [
+      { "service": "signal_scheduler", "cron": "daily at 2 AM", "registered_in": "app/main.py lifespan", "purpose": "Refresh X signals for all themes; dual-writes a signal_history row per signal_type" },
+      { "service": "earnings_scheduler", "cron": "daily at 21:00 UTC", "registered_in": "app/main.py lifespan", "purpose": "Refresh earnings prints from FMP calendar for active board tickers" }
+    ]
+  },
+
+  "frontend": {
+    "pages": [
+      { "route": "/", "file": "frontend/app/page.tsx", "summary": "Theme dashboard — grid of theme cards with seed tickers + creation CTA + delete buttons", "key_components": ["DeleteThemeButton"] },
+      { "route": "/theme/[id]", "file": "frontend/app/theme/[id]/page.tsx", "summary": "Server component fetching theme + discovery data; passes to ThemeDetailClient", "key_components": ["ThemeDetailClient"] },
+      { "route": "/theme/[id] (client)", "file": "frontend/app/theme/[id]/ThemeDetailClient.tsx", "summary": "Two-panel theme explorer — left list with ticker editor + filter/sort, right detail with signal card", "key_components": ["VelocityBadge", "SourceBadge", "ScoreRing", "VelocitySparkline"] },
+      { "route": "/theme/new", "file": "frontend/app/theme/new/page.tsx", "summary": "Create theme form (name, seed_tickers, x_search_terms, screener JSON)", "key_components": [] },
+      { "route": "/catalysts", "file": "frontend/app/catalysts/page.tsx", "summary": "Fleet-wide catalyst calendar bucketed by proximity (this week / 30d / 90d / later / untimed)", "key_components": ["CatalystCalendar"] },
+      { "route": "/filings", "file": "frontend/app/filings/page.tsx", "summary": "SEC EDGAR sections grouped by theme → ticker with inline curation panel", "key_components": ["ThemeFilingsPanel", "CurationPanel"] },
+      { "route": "/filings/graph", "file": "frontend/app/filings/graph/page.tsx", "summary": "Multi-hop supply-chain graph viewer (1-2 hop, optional theme gate) with theme picker", "key_components": ["MultiHopGraphView"] },
+      { "route": "/library", "file": "frontend/app/library/page.tsx", "summary": "Research Library — filtered run list + data-gaps view + pagination", "key_components": ["FilterBar", "RunCard", "DataGapsView"] },
+      { "route": "/status", "file": "frontend/app/status/page.tsx", "summary": "Status board — fleet view of thesis health, conviction, catalysts, read-throughs, earnings drawers. Auto-polls every 60s.", "key_components": ["Row", "HealthPill", "OverflowMenu", "ReadThroughDrawer", "EarningsDrawer"] },
+      { "route": "/performance", "file": "frontend/app/performance/page.tsx", "summary": "Outcome-tracking dashboard — verdict / theme / signal-bucket rollups + outcome list", "key_components": ["PerformanceFilters", "HeroBand", "ByVerdictTable", "ByThemeTable", "BySignalBucketPanel", "OutcomeList"] },
+      { "route": "/questions", "file": "frontend/app/questions/page.tsx", "summary": "Question log — by_ticker rollup tab + by_question list tab with filters", "key_components": ["QuestionRow", "QuestionTickerRollupTable"] },
+      { "route": "/pipeline/new", "file": "frontend/app/pipeline/new/page.tsx", "summary": "New run form (ticker + theme picker) with recent tickers quick-fill", "key_components": [] },
+      { "route": "/pipeline/[runId]", "file": "frontend/app/pipeline/[runId]/page.tsx", "summary": "Unified research page — handles both live SSE streaming and completed report (deep-dive dashboard, thesis/risk/position cards, catalyst calendar, open-questions panel)", "key_components": ["ReportHeader", "DeepDiveDashboard", "ThesisCard", "RiskCard", "PositionCard", "CatalystCalendar", "OpenQuestionsPanel", "CommandPalette", "LiveProgressBar"] },
+      { "route": "/report/[runId]", "file": "frontend/app/report/[runId]/page.tsx", "summary": "Redirect to /pipeline/[runId]", "key_components": [] },
+      { "route": "/workspace", "file": "frontend/app/workspace/page.tsx", "summary": "Fleet-wide workspace runs index", "key_components": ["VerdictBadge"] },
+      { "route": "/workspace/[runId]", "file": "frontend/app/workspace/[runId]/page.tsx", "summary": "Workspace report — dual hydration (REST on mount + SSE live updates), 5 step cards", "key_components": ["WorkspaceReport"] },
+      { "route": "/model/[ticker]", "file": "frontend/app/model/[ticker]/page.tsx", "summary": "Editable financial model with 3 hash tabs (#forecast / #reverse-dcf / #history)", "key_components": ["ForecastGrid", "DriverPanel", "FormulaBar", "ReverseDcfPanel", "SensitivityHeatmap", "ThesisVsPricedTable", "WhatIfScratchPanel", "HistoryDiffViewer"] },
+      { "route": "/prospectus", "file": "frontend/app/prospectus/page.tsx", "summary": "S-1 prospectus reports index — list with NewProspectusButton (URL/accession submit) and VerdictPill chips per report", "key_components": ["ProspectusList", "NewProspectusButton", "VerdictPill"] },
+      { "route": "/prospectus/[reportId]", "file": "frontend/app/prospectus/[reportId]/page.tsx", "summary": "Per-report view — 4 step cards (IngestSummary / Relationships / Categories / Thesis) with SSE-driven live updates", "key_components": ["ProspectusReport", "IngestSummaryCard", "RelationshipsCard", "CategoryCard", "ThesisCard", "VerdictPill"] }
+    ],
+
+    "components": {
+      "root": [
+        { "name": "Nav", "file": "frontend/components/Nav.tsx", "summary": "Top nav with 10 links (home, catalysts, filings, prospectus, questions, library, status, performance, model, workspace)" },
+        { "name": "ScoreRing", "file": "frontend/components/ScoreRing.tsx", "summary": "Circular score badge (0–100)" },
+        { "name": "VelocityBadge", "file": "frontend/components/VelocityBadge.tsx", "summary": "Compact/full velocity signal badge (accelerating/stable/decelerating)" },
+        { "name": "SourceBadge", "file": "frontend/components/SourceBadge.tsx", "summary": "Signal source badge (FMP Only / FMP + X)" },
+        { "name": "ThesisCard", "file": "frontend/components/ThesisCard.tsx", "summary": "Structured thesis display (conviction score, bull/bear, catalysts, kill criteria)" },
+        { "name": "RiskCard", "file": "frontend/components/RiskCard.tsx", "summary": "Risk stress-test output card (R/R ratio, loop count, key risks)" },
+        { "name": "PositionCard", "file": "frontend/components/PositionCard.tsx", "summary": "Position monitor output (entry zones, sizing, monitoring checklist)" },
+        { "name": "CatalystList", "file": "frontend/components/CatalystList.tsx", "summary": "List of catalysts with timeframe/type badges" },
+        { "name": "CatalystRow", "file": "frontend/components/CatalystRow.tsx", "summary": "Single catalyst row" },
+        { "name": "CatalystCalendar", "file": "frontend/components/CatalystCalendar.tsx", "summary": "Bucketed catalyst view by proximity" },
+        { "name": "CitationList", "file": "frontend/components/CitationList.tsx", "summary": "Inline citation refs with source links + tier badges" },
+        { "name": "BullBearColumns", "file": "frontend/components/BullBearColumns.tsx", "summary": "Two-column layout for bull/bear case" }
+      ],
+      "deep-dive": [
+        { "name": "DeepDiveDashboard", "file": "frontend/components/deep-dive/DeepDiveDashboard.tsx", "summary": "Master container for 9 category sections; receives ticker prop for supply-chain card" },
+        { "name": "ReportHeader", "file": "frontend/components/deep-dive/ReportHeader.tsx", "summary": "Company identity + verdict + thesis/risk callouts + ModelStatusBadge (links to /model/{ticker}). NOTE: does NOT call getReverseDcf — that would trigger live FMP quote on every page open." },
+        { "name": "OverviewBanner", "file": "frontend/components/deep-dive/OverviewBanner.tsx", "summary": "Synthesized verdict line + radar + HeadlineMetrics + ScoreBar (single source for these)" },
+        { "name": "CommandPalette", "file": "frontend/components/deep-dive/CommandPalette.tsx", "summary": "⌘K / Ctrl-K jump-to-section (reads same sections.ts registry as SectionNav)" },
+        { "name": "SectionNav", "file": "frontend/components/deep-dive/SectionNav.tsx", "summary": "Sticky horizontal scroll-spy nav, pills grouped (Summary / Financials / Context / Qualitative) with visual dividers" },
+        { "name": "HeadlineMetrics", "file": "frontend/components/deep-dive/HeadlineMetrics.tsx", "summary": "Summary stat cards" },
+        { "name": "ScoreBar", "file": "frontend/components/deep-dive/ScoreBar.tsx", "summary": "Horizontal progress bar for category scores" },
+        { "name": "ScoreRadar", "file": "frontend/components/deep-dive/ScoreRadar.tsx", "summary": "Radar chart of 9 category scores" },
+        { "name": "VelocitySparkline", "file": "frontend/components/deep-dive/VelocitySparkline.tsx", "summary": "30-day velocity signal sparkline (real data)" },
+        { "name": "renderMarkdown", "file": "frontend/components/deep-dive/renderMarkdown.tsx", "summary": "Markdown → JSX renderer" },
+        { "name": "categories.ts", "file": "frontend/components/deep-dive/categories.ts", "summary": "9 category names + display labels — SINGLE SOURCE OF TRUTH (set by PR #30 ad19453)" },
+        { "name": "scoreColors.ts", "file": "frontend/components/deep-dive/scoreColors.ts", "summary": "Shared 4-tier palette at 40/55/70 thresholds — scoreTier / scoreBadge / scoreSegment helpers. DO NOT reintroduce local palettes." },
+        { "name": "scoreKeys.ts", "file": "frontend/components/deep-dive/scoreKeys.ts", "summary": "DISPLAY_TO_KEY + normalizeScoreKeys — use at every backend boundary; report API returns display-name keys while components expect snake_case" },
+        { "name": "sections.ts", "file": "frontend/components/deep-dive/sections.ts", "summary": "Single section registry SectionNav + CommandPalette both read" },
+        { "name": "usePersistedCollapse.ts", "file": "frontend/components/deep-dive/usePersistedCollapse.ts", "summary": "Per-section collapse hook backed by localStorage['sr:collapse:{id}'] with skip-first-write pattern" }
+      ],
+      "deep-dive/charts": [
+        { "name": "BetaGauge", "file": "frontend/components/deep-dive/charts/BetaGauge.tsx" },
+        { "name": "BulletRangeChart", "file": "frontend/components/deep-dive/charts/BulletRangeChart.tsx" },
+        { "name": "CandlestickChart", "file": "frontend/components/deep-dive/charts/CandlestickChart.tsx", "summary": "lightweight-charts TradingView candlestick + RSI" },
+        { "name": "DebtMaturityLadder", "file": "frontend/components/deep-dive/charts/DebtMaturityLadder.tsx" },
+        { "name": "GroupedBarChart", "file": "frontend/components/deep-dive/charts/GroupedBarChart.tsx" },
+        { "name": "RAGStrip", "file": "frontend/components/deep-dive/charts/RAGStrip.tsx" },
+        { "name": "RPOTrend", "file": "frontend/components/deep-dive/charts/RPOTrend.tsx" },
+        { "name": "StackedBarChart", "file": "frontend/components/deep-dive/charts/StackedBarChart.tsx" },
+        { "name": "TrendLineChart", "file": "frontend/components/deep-dive/charts/TrendLineChart.tsx" }
+      ],
+      "deep-dive/sections": [
+        { "name": "BusinessQuality", "file": "frontend/components/deep-dive/sections/BusinessQuality.tsx" },
+        { "name": "Competition", "file": "frontend/components/deep-dive/sections/Competition.tsx" },
+        { "name": "CrossCategoryCorrelation", "file": "frontend/components/deep-dive/sections/CrossCategoryCorrelation.tsx" },
+        { "name": "DataRichSection", "file": "frontend/components/deep-dive/sections/DataRichSection.tsx", "summary": "Generic section shell — renders AICompanionPanel twice (summary inside chart grid, analysis as full-width block below)" },
+        { "name": "FinancialHealth", "file": "frontend/components/deep-dive/sections/FinancialHealth.tsx" },
+        { "name": "FutureDurability", "file": "frontend/components/deep-dive/sections/FutureDurability.tsx" },
+        { "name": "GrowthEarnings", "file": "frontend/components/deep-dive/sections/GrowthEarnings.tsx" },
+        { "name": "MacroRegime", "file": "frontend/components/deep-dive/sections/MacroRegime.tsx" },
+        { "name": "ManagementGovernance", "file": "frontend/components/deep-dive/sections/ManagementGovernance.tsx" },
+        { "name": "MixedSection", "file": "frontend/components/deep-dive/sections/MixedSection.tsx", "summary": "Flexible section — same dual-panel pattern as DataRichSection" },
+        { "name": "QualitativeCard", "file": "frontend/components/deep-dive/sections/QualitativeCard.tsx", "summary": "Single-column layout — renders AICompanionPanel without section prop" },
+        { "name": "RiskAssessment", "file": "frontend/components/deep-dive/sections/RiskAssessment.tsx" },
+        { "name": "SentimentNarrative", "file": "frontend/components/deep-dive/sections/SentimentNarrative.tsx" },
+        { "name": "SupplyChainEcosystem", "file": "frontend/components/deep-dive/sections/SupplyChainEcosystem.tsx", "summary": "Counterparty card after Business Quality; calls getGraph(ticker, {depth:1}); links to /filings/graph?root={ticker}" },
+        { "name": "TechnicalMarket", "file": "frontend/components/deep-dive/sections/TechnicalMarket.tsx" },
+        { "name": "WhatChangedPanel", "file": "frontend/components/deep-dive/sections/WhatChangedPanel.tsx", "summary": "Diff vs prior run" }
+      ],
+      "deep-dive/skeleton": [
+        { "name": "ChartSkeleton", "file": "frontend/components/deep-dive/skeleton/ChartSkeleton.tsx" },
+        { "name": "PanelSkeleton", "file": "frontend/components/deep-dive/skeleton/PanelSkeleton.tsx" }
+      ],
+      "filings": [
+        { "name": "ThemeFilingsPanel", "file": "frontend/components/filings/ThemeFilingsPanel.tsx", "summary": "Collapsible theme panel with per-ticker filing cards" },
+        { "name": "TickerFilingsCard", "file": "frontend/components/filings/TickerFilingsCard.tsx", "summary": "Per-ticker filing card (10-K, 10-Q, DEF 14A list)" },
+        { "name": "SectionReader", "file": "frontend/components/filings/SectionReader.tsx", "summary": "Modal/drawer to read full section text" },
+        { "name": "MultiHopGraphView", "file": "frontend/components/filings/MultiHopGraphView.tsx", "summary": "Calls getGraph(root, {depth:2, theme_id?}); renders RootHeader + nested HopGroup with render-layer edge dedup (same (from,to,type) collapsed with disclosure-count badge)" },
+        { "name": "CurationPanel", "file": "frontend/components/filings/CurationPanel.tsx", "summary": "Trigger batch filing ingest across themes" }
+      ],
+      "model": [
+        { "name": "ForecastGrid", "file": "frontend/components/model/ForecastGrid.tsx", "summary": "Editable DCF grid — sticky title h2 + sticky left line-item column; cells wired to PUT /draft via CellRenderer" },
+        { "name": "FormulaBar", "file": "frontend/components/model/FormulaBar.tsx", "summary": "Active-cell readout" },
+        { "name": "DriverPanel", "file": "frontend/components/model/DriverPanel.tsx", "summary": "Annual + quarterly driver inputs (some keys like interest_income_yield / revolver_rate are surfaced but currently no-op'd by model_balancing.py)" },
+        { "name": "CellRenderer", "file": "frontend/components/model/CellRenderer.tsx", "summary": "Per-cell value + source badge + edit state" },
+        { "name": "ReverseDcfPanel", "file": "frontend/components/model/ReverseDcfPanel.tsx" },
+        { "name": "SensitivityHeatmap", "file": "frontend/components/model/SensitivityHeatmap.tsx", "summary": "21×21 sensitivity grid with diverging palette" },
+        { "name": "HistoryDiffViewer", "file": "frontend/components/model/HistoryDiffViewer.tsx" },
+        { "name": "ThesisVsPricedTable", "file": "frontend/components/model/ThesisVsPricedTable.tsx" },
+        { "name": "WhatIfScratchPanel", "file": "frontend/components/model/WhatIfScratchPanel.tsx" },
+        { "name": "heatmapColors.ts", "file": "frontend/components/model/heatmapColors.ts", "summary": "Diverging palette for sensitivity grid (value-relative). DO NOT replace with scoreColors.ts (which is for score-tier coloring)." },
+        { "name": "modelSections.ts", "file": "frontend/components/model/modelSections.ts" }
+      ],
+      "performance": [
+        { "name": "HeroBand", "file": "frontend/components/performance/HeroBand.tsx" },
+        { "name": "PerformanceFilters", "file": "frontend/components/performance/PerformanceFilters.tsx" },
+        { "name": "ByVerdictTable", "file": "frontend/components/performance/ByVerdictTable.tsx" },
+        { "name": "ByThemeTable", "file": "frontend/components/performance/ByThemeTable.tsx" },
+        { "name": "BySignalBucketPanel", "file": "frontend/components/performance/BySignalBucketPanel.tsx" },
+        { "name": "OutcomeList", "file": "frontend/components/performance/OutcomeList.tsx" },
+        { "name": "ReturnCell", "file": "frontend/components/performance/ReturnCell.tsx" }
+      ],
+      "questions": [
+        { "name": "QuestionRow", "file": "frontend/components/questions/QuestionRow.tsx" },
+        { "name": "OpenQuestionsPanel", "file": "frontend/components/questions/OpenQuestionsPanel.tsx" },
+        { "name": "QuestionTickerRollupTable", "file": "frontend/components/questions/QuestionTickerRollupTable.tsx" }
+      ],
+      "status": [
+        { "name": "ReadThroughDrawer", "file": "frontend/components/status/ReadThroughDrawer.tsx" },
+        { "name": "EarningsDrawer", "file": "frontend/components/status/EarningsDrawer.tsx" }
+      ],
+      "workspace": [
+        { "name": "WorkspaceReport", "file": "frontend/components/workspace/WorkspaceReport.tsx", "summary": "Dual-hydration (REST on mount + SSE live updates) container for 5 step cards" },
+        { "name": "VerdictBadge", "file": "frontend/components/workspace/VerdictBadge.tsx", "summary": "healthy / imminent / triggered / broken" },
+        { "name": "UpdateRefreshCard", "file": "frontend/components/workspace/StepCards/UpdateRefreshCard.tsx", "summary": "Changed cells, new filings, consensus deltas, removed_cells warning" },
+        { "name": "ResearchCard", "file": "frontend/components/workspace/StepCards/ResearchCard.tsx" },
+        { "name": "ValidationCard", "file": "frontend/components/workspace/StepCards/ValidationCard.tsx" },
+        { "name": "ChallengeCard", "file": "frontend/components/workspace/StepCards/ChallengeCard.tsx" },
+        { "name": "DifferentiationCard", "file": "frontend/components/workspace/StepCards/DifferentiationCard.tsx" }
+      ],
+      "themes": [
+        { "name": "DeleteThemeButton", "file": "frontend/components/themes/DeleteThemeButton.tsx" }
+      ],
+      "prospectus": [
+        { "name": "ProspectusList", "file": "frontend/components/prospectus/ProspectusList.tsx", "summary": "Most-recent-first table of reports with status pill and verdict chip" },
+        { "name": "NewProspectusButton", "file": "frontend/components/prospectus/NewProspectusButton.tsx", "summary": "Modal that accepts a SEC primary-document URL (or future bare-accession) and theme_id, then POST /api/prospectus" },
+        { "name": "ProspectusReport", "file": "frontend/components/prospectus/ProspectusReport.tsx", "summary": "Per-report shell; dual-hydrates via REST on mount + SSE stream of step_start / step_complete / prospectus_complete|failed" },
+        { "name": "VerdictPill", "file": "frontend/components/prospectus/VerdictPill.tsx", "summary": "participate / watch_post_lockup / pass pill" },
+        { "name": "IngestSummaryCard", "file": "frontend/components/prospectus/StepCards/IngestSummaryCard.tsx", "summary": "Step 1 — extracted sections + ProspectusFinancials (annual + interim rows) with source snippets" },
+        { "name": "RelationshipsCard", "file": "frontend/components/prospectus/StepCards/RelationshipsCard.tsx", "summary": "Step 2 — counterparty edges (extracted/resolved counts + table)" },
+        { "name": "CategoryCard", "file": "frontend/components/prospectus/StepCards/CategoryCard.tsx", "summary": "Step 3 — one per category (Business Quality, Risk Assessment, Growth & Earnings, Management & Governance, Future Durability, Macro & Regime, IPO Mechanics). NOTE: score color thresholds are IPO-specific — do NOT swap with scoreColors.ts (which uses 40/55/70 equity tiers)." },
+        { "name": "ThesisCard", "file": "frontend/components/prospectus/StepCards/ThesisCard.tsx", "summary": "Step 4 — thesis statement, key risks (severity), verdict pill, price-range commentary, post-IPO research plan" }
+      ]
+    },
+
+    "api_client": {
+      "file": "frontend/lib/api.ts",
+      "namespaces": [
+        { "ns": "themes", "fns": ["list", "get", "create", "update", "delete", "addTicker", "removeTicker"] },
+        { "ns": "filings", "fns": ["list", "getSection", "ingestTicker", "ingestBatch"] },
+        { "ns": "relationships", "fns": ["listForTicker", "extractTicker", "resolveTicker", "listUnresolved", "createAlias", "getGraph", "reconcile"] },
+        { "ns": "competition", "fns": ["get", "extract"] },
+        { "ns": "transcripts", "fns": ["extract"] },
+        { "ns": "fanouts", "fns": ["startTheme", "startTicker", "get"] },
+        { "ns": "discovery", "fns": ["run"] },
+        { "ns": "pipeline", "fns": ["start", "get", "list", "dataGaps", "advance", "report", "streamUrl"] },
+        { "ns": "status", "fns": ["board", "archive", "unarchive"] },
+        { "ns": "killCriteria", "fns": ["list", "set"] },
+        { "ns": "readThroughs", "fns": ["list", "dismiss", "summarize"] },
+        { "ns": "earnings", "fns": ["board", "brief", "verdict", "printsByTicker", "refresh"] },
+        { "ns": "questions", "fns": ["list", "byTicker", "dismiss", "resolve", "retryAuto"] },
+        { "ns": "workspaceApi", "fns": ["kickOff", "get", "history", "recent", "streamUrl"] },
+        { "ns": "outcomesApi", "fns": ["getSummary", "list", "getBySource", "triggerBackfill"] },
+        { "ns": "transcriptDeltaApi", "fns": ["getLatest", "getHistory", "compute"] },
+        { "ns": "prospectusApi", "fns": ["create", "get", "list", "delete", "streamUrl"] }
+      ],
+      "standalone_fns": ["getCatalysts", "getCatalystsForRun", "getCatalyst", "getSignalHistory", "getModel", "initializeModel", "putModelDraft", "saveModelVersion", "discardModelDraft", "getReverseDcf", "getModelVersions", "getModelDiff"],
+      "formatters": ["fmtMarketCap", "fmtPct", "fmtScore"]
+    },
+
+    "lib_utilities": [
+      { "file": "frontend/lib/format.ts", "purpose": "Date/number/percentage formatting" },
+      { "file": "frontend/lib/cellPath.ts", "purpose": "Mirror of backend cell_path.py — builds the cell_path string the PUT /draft endpoint validates" },
+      { "file": "frontend/lib/pipeline-progress.ts", "purpose": "Phase order, ETA constants, phase labels" },
+      { "file": "frontend/lib/questions-ui.ts", "purpose": "Questions filter helpers, URL path building" }
+    ],
+
+    "globals": "frontend/app/globals.css — @media print hides any element with data-print-hide='true'. Tag new sticky UI accordingly so it drops out of PDF."
+  },
+
+  "cross_references": {
+    "description": "Frontend page → primary backend endpoints it consumes",
+    "mappings": [
+      { "frontend": "/", "endpoints": ["GET /api/themes", "DELETE /api/themes/{id}"] },
+      { "frontend": "/theme/[id]", "endpoints": ["GET /api/themes/{id}", "GET /api/themes/{id}/discover", "POST /api/themes/{id}/signals/refresh", "GET /api/themes/{id}/signals/{ticker}/history"] },
+      { "frontend": "/catalysts", "endpoints": ["GET /api/catalysts", "GET /api/catalysts/{id}"] },
+      { "frontend": "/filings", "endpoints": ["GET /api/themes (for grouping)", "GET /api/filings/{ticker}", "POST /api/filings/ingest/{ticker}", "POST /api/filings/extract-relationships/{ticker}", "GET /api/relationships/unresolved", "POST /api/relationships/resolve/{ticker}", "POST /api/relationships/alias", "POST /api/themes/{id}/relationships/fanout", "GET /api/fanouts/{id}", "POST /api/relationships/reconcile"] },
+      { "frontend": "/filings/graph", "endpoints": ["GET /api/relationships/graph/{ticker}?depth=2&theme_id="] },
+      { "frontend": "/status", "endpoints": ["GET /api/status/board", "POST /api/runs/{id}/archive", "GET /api/runs/{id}/kill-criteria", "PUT /api/runs/{id}/kill-criteria/{ordinal}", "GET /api/status/read-throughs", "POST /api/status/read-throughs/dismiss", "POST /api/status/read-throughs/summary", "GET /api/earnings/board", "POST /api/runs/{id}/earnings/{print}/brief", "POST /api/runs/{id}/earnings/{print}/verdict"] },
+      { "frontend": "/questions", "endpoints": ["GET /questions (no /api prefix)", "GET /questions/by-ticker", "POST /questions/{id}/dismiss", "POST /questions/{id}/resolve", "POST /questions/{id}/retry-auto"] },
+      { "frontend": "/library", "endpoints": ["GET /api/runs", "GET /api/runs/data-gaps"] },
+      { "frontend": "/performance", "endpoints": ["GET /api/outcomes/summary", "GET /api/outcomes", "POST /api/outcomes/backfill"] },
+      { "frontend": "/pipeline/new", "endpoints": ["POST /api/runs", "GET /api/themes"] },
+      { "frontend": "/pipeline/[runId]", "endpoints": ["GET /api/runs/{id}", "GET /api/runs/{id}/stream (SSE)", "GET /api/runs/{id}/report", "POST /api/runs/{id}/advance", "GET /api/catalysts?run_id=", "GET /questions?ticker=&theme_id=", "GET /api/relationships/graph/{ticker}?depth=1 (via SupplyChainEcosystem card)", "GET /api/transcripts/delta/{ticker}/latest"] },
+      { "frontend": "/workspace", "endpoints": ["GET /api/workspace/recent"] },
+      { "frontend": "/workspace/[runId]", "endpoints": ["GET /api/workspace/runs/{id}", "GET /api/workspace/runs/{id}/stream (SSE)"] },
+      { "frontend": "/model/[ticker]", "endpoints": ["GET /api/models/{ticker}", "POST /api/models/{ticker}/initialize", "PUT /api/models/{ticker}/draft", "POST /api/models/{ticker}/save", "DELETE /api/models/{ticker}/draft", "GET /api/models/{ticker}/reverse-dcf", "GET /api/models/{ticker}/versions", "GET /api/models/{ticker}/versions/{v}/diff"] },
+      { "frontend": "/prospectus", "endpoints": ["GET /api/prospectus", "POST /api/prospectus", "DELETE /api/prospectus/{id}"] },
+      { "frontend": "/prospectus/[reportId]", "endpoints": ["GET /api/prospectus/{id}", "GET /api/prospectus/{id}/stream (SSE)"] }
+    ]
+  },
+
+  "invariants": [
+    {
+      "id": "uvicorn_cwd",
+      "rule": "Always launch uvicorn from PROJECT ROOT — never from backend/",
+      "why": "Backend uses absolute imports rooted at project root (backend.app.*). Running uvicorn from backend/ breaks every import.",
+      "verify": "Tests + migrations also need PYTHONPATH or pip install -e ."
+    },
+    {
+      "id": "env_file_path",
+      "rule": ".env lives at PROJECT ROOT and stays there",
+      "why": "backend/app/config.py hard-codes env_file='../../.env' (relative to backend/app/). Moving it breaks Settings load.",
+      "verify": "Required keys: FMP_API_KEY, X_BEARER_TOKEN, ANTHROPIC_API_KEY, DATABASE_URL (asyncpg), DATABASE_URL_SYNC, SEC_USER_AGENT"
+    },
+    {
+      "id": "ticker_uppercase",
+      "rule": "Every model/filing/earnings endpoint normalizes ticker = ticker.upper() at entry",
+      "why": "ticker_models, ticker_model_drafts, research_runs, earnings_prints all store tickers upper-case. Lookups against existing rows break otherwise + duplicate-identity drafts possible.",
+      "applies_to": ["backend/app/api/models_api.py", "backend/app/api/filings.py", "backend/app/api/earnings.py"]
+    },
+    {
+      "id": "async_session_commit",
+      "rule": "async_session() does NOT autocommit — explicit await db.commit() required",
+      "why": "expire_on_commit=False but no autocommit. Forgetting this means nothing persists silently.",
+      "applies_to": ["services/fanout.py per-ticker stages", "services/model_baseline.initialize_or_get_model", "any service that opens its own session"]
+    },
+    {
+      "id": "fmp_client_singleton",
+      "rule": "Use app.state.fmp via request.app.state.fmp — do NOT instantiate FMPClient() in endpoints",
+      "why": "Singleton from lifespan owns the rate limiter and shared session. Wraps Request to access it.",
+      "example": "models_api.get_reverse_dcf uses request.app.state.fmp for the live price default"
+    },
+    {
+      "id": "pipeline_routing_dual_truth",
+      "rule": "Pipeline phase routing exists in BOTH graph/pipeline.py edges AND services/pipeline.py::_next_phase",
+      "why": "Parallel sources of truth — both must be updated when adding/reordering phases.",
+      "applies_to": ["backend/app/graph/pipeline.py", "backend/app/services/pipeline.py"]
+    },
+    {
+      "id": "sse_event_sync",
+      "rule": "Python pipeline._emit calls and the TypeScript SSEEvent discriminated union MUST stay in sync",
+      "why": "SSEEvent in frontend/lib/api.ts is a discriminated union. New event types added on the Python side won't be typed on the frontend.",
+      "applies_to": ["backend/app/services/pipeline.py::_emit", "frontend/lib/api.ts::SSEEvent"]
+    },
+    {
+      "id": "citation_three_shapes",
+      "rule": "Three Citation shapes exist — keep them aligned",
+      "shapes": {
+        "Citation": "in-memory dataclass in backend/app/models/citation.py — used for return-tuples from data clients (data, Citation)",
+        "CitationRecord": "ORM persisted form in same file (citations table)",
+        "StateCitation": "JSON-serializable form in backend/app/graph/state.py with ISO-string timestamp — what lives inside ResearchState.state JSONB"
+      },
+      "note": "Adding a new data source requires preserving the (data, Citation) tuple convention. Migration 2db2e8812418 added cell_path so research citations can deep-link to model cells; existing JSONB rows round-trip as dicts."
+    },
+    {
+      "id": "score_keys_normalization",
+      "rule": "Use frontend/components/deep-dive/scoreKeys.ts::normalizeScoreKeys at every backend → frontend boundary",
+      "why": "Report API returns display-name keys ('Macro & Regime') while ScoreBar / radar / chip components expect snake_case. Skipping it silently produces all-em-dash ScoreBar.",
+      "applies_to": ["DeepDiveDashboard", "OverviewBanner", "ScoreRadar"]
+    },
+    {
+      "id": "score_palette",
+      "rule": "Use scoreColors.ts (4-tier at 40/55/70 thresholds) for score-tier coloring; use heatmapColors.ts (diverging, value-relative) for sensitivity grids",
+      "why": "Local if/else palettes at 40/50/70 cluster everything 40-60 into a single amber band. Diverging heatmap palette is for grid coloring, not score tiers — don't swap them.",
+      "applies_to": ["all deep-dive components", "model/SensitivityHeatmap.tsx"]
+    },
+    {
+      "id": "next16_breaking",
+      "rule": "Next.js 16 has breaking changes. Read node_modules/next/dist/docs/ before editing routing, middleware, route handlers, or Server Component APIs.",
+      "why": "Training-data conventions for middleware.ts, route-handler shapes, and caching primitives don't match Next 16.",
+      "applies_to": ["frontend/app/**/*", "frontend/middleware.ts (if/when it exists)"]
+    },
+    {
+      "id": "fanout_in_memory",
+      "rule": "FanoutStatus is in-memory only — does NOT survive backend restart",
+      "why": "Acceptable for personal tool; warning is in CLAUDE.md. If you persist it later, update FanoutService accordingly."
+    },
+    {
+      "id": "fanout_force_semantics",
+      "rule": "force=True on fan-out endpoints only affects the EXTRACT stage; resolve already skips rows with resolved_to_cik IS NOT NULL",
+      "why": "Don't add force-resolve logic — counterparty resolution is intentionally one-way.",
+      "applies_to": ["backend/app/services/fanout.py"]
+    },
+    {
+      "id": "cell_path_value_object",
+      "rule": "cell_path wire format is owned by typed CellPath union on both sides",
+      "shapes": "DriverPath | StatementCellPath | AssumptionPath. AssumptionPath only accepts ModelCell-shaped keys (discount_rate, terminal_multiple, perpetuity_growth, tax_rate). Categorical assumptions (terminal_method, plug_priority) need a separate typed surface — intentionally deferred.",
+      "applies_to": ["backend/app/models/cell_path.py", "frontend/lib/cellPath.ts", "PUT /api/models/{ticker}/draft validator"]
+    },
+    {
+      "id": "concentration_via_narrative_not_xbrl",
+      "rule": "Customer concentration data does NOT live in xbrl_facts — it comes from Phase B relationship extraction with Relationship.unnamed=true",
+      "why": "ConcentrationRiskPercentage1 is always disclosed dimensionally and the SEC companyfacts API only exposes un-dimensioned parent facts. The xbrl_facts table covers RPO, debt maturity, credit only."
+    },
+    {
+      "id": "localhost_ipv6_collision",
+      "rule": "Pin NEXT_PUBLIC_API_URL to http://127.0.0.1:8000 (not localhost) if Docker is running",
+      "why": "Docker dashboard-api-1 can steal IPv6 localhost:8000 from uvicorn — see memory project_localhost_ipv6_docker_collision",
+      "applies_to": ["frontend/.env.local"]
+    },
+    {
+      "id": "print_view_data_attr",
+      "rule": "Tag new sticky UI (nav, action buttons, modals) with data-print-hide='true'",
+      "why": "@media print in app/globals.css hides any element with that attribute and forces opaque surfaces, so the PDF doesn't show chrome."
+    },
+    {
+      "id": "section_dual_panel_pattern",
+      "rule": "DataRichSection and MixedSection render AICompanionPanel twice — once with section='summary' inside the chart grid, once with section='analysis' as a full-width block below",
+      "why": "Prevents the analysis paragraph from making the right column 2x taller than the charts and leaving empty whitespace on the left. QualitativeCard renders it without a section prop (single-column).",
+      "applies_to": ["any new deep-dive section component"]
+    },
+    {
+      "id": "report_api_phases_deep_dive_shape",
+      "rule": "phases.deep_dive in the report API is { categories: Record<str, CategoryOutput>, curated_financials: CuratedFinancials | null } — NOT a flat record",
+      "applies_to": ["backend/app/api/pipeline.py::get_report", "any frontend consumer of /api/runs/{id}/report"]
+    },
+    {
+      "id": "no_pytest",
+      "rule": "Tests run under Python's stdlib unittest — python -m unittest backend.tests.<module> from project root with venv active",
+      "why": "No pytest, no coverage harness. Don't introduce pytest unless intentionally migrating."
+    },
+    {
+      "id": "prospectus_synthetic_ticker",
+      "rule": "Prospectus (S-1) issuers are written into filings.ticker / relationships.ticker under a `synthetic_ticker` — proposed_ticker if disclosed, else uppercase-alphanumeric slug of issuer_name truncated to 16 chars",
+      "why": "Lets the entire existing 5-phase EDGAR pipeline (section extraction, relationship extraction, counterparty resolution, supply-chain graph) work unchanged on pre-IPO issuers. The derived value lives in ProspectusReport.synthetic_ticker (@property in backend/app/models/prospectus_report.py). Don't ticker.upper() it again at endpoint boundary — the property already normalizes.",
+      "applies_to": ["backend/app/services/prospectus_ingest.py", "backend/app/services/prospectus_service.py", "backend/app/models/prospectus_report.py"]
+    },
+    {
+      "id": "prospectus_score_thresholds",
+      "rule": "Prospectus CategoryCard score color thresholds are IPO-specific — do NOT replace with scoreColors.ts (equity 40/55/70 tiers)",
+      "why": "IPO scoring uses a different rubric (0-30 disqualifying, 31-55 uncertain, 56-75 typical, 76-100 standout) defined in graph/prospectus_prompts.py PROSPECTUS_SYSTEM. Equity tiers would map IPO scores wrong.",
+      "applies_to": ["frontend/components/prospectus/StepCards/CategoryCard.tsx"]
+    }
+  ],
+
+  "external_dependencies": {
+    "anthropic_models": { "sonnet": "claude-sonnet-4-6", "haiku": "claude-haiku-4-5-20251001" },
+    "fmp_endpoints_per_deep_dive": ["income-statement (8Q)", "balance-sheet-statement (8Q)", "cash-flow-statement (8Q)", "profile", "DCF", "analyst-estimates (8Q)", "historical-price (1Y daily)", "earnings-call-transcript", "key-metrics-ttm", "financial-growth (8Q)"],
+    "fred_series": "9 macro indicators routed via MACRO_ROUTING in graph/deep_dive_routing.py",
+    "sec_endpoints": ["companyfacts (XBRL)", "submissions (filings index)", "primary_document_url (filing HTML)"],
+    "x_api": "v2 (cached daily, never hit at request time — read from signals table)"
+  },
+
+  "next_agent_hints": [
+    "Start by reading CLAUDE.md (lives at project root) — it has prose context this JSON references but doesn't restate.",
+    "TODO.md tracks live in-progress work and a 'Done (recent)' log — check before starting anything substantive.",
+    "Active specs live in docs/superpowers/specs/ (gitignored, local-only). Old plans recoverable from git history (git log --all --diff-filter=D -- docs/).",
+    "When adding a new HTTP endpoint: (1) add to backend/app/api/<router>.py, (2) ensure main.py mounts the router with the right prefix, (3) add a matching function/namespace in frontend/lib/api.ts (type the response too).",
+    "When adding a new ORM column: write an alembic migration via `cd backend && alembic revision --autogenerate -m '...'`, review the generated file (autogen misses CHECK constraints, partial indexes, and CASCADE changes), then run `alembic upgrade head`.",
+    "When adding a new pipeline phase: edit BOTH graph/pipeline.py (edges) AND services/pipeline.py::_next_phase (routing). Add the new node function to graph/nodes.py. Update SSEEvent in frontend/lib/api.ts to include any new event types.",
+    "When adding a new deep-dive category: update categories.ts (single source of truth) and the section registry in sections.ts. Use scoreColors.ts and normalizeScoreKeys; do not introduce local palettes.",
+    "When adding a new workspace step: define the output schema in models/workspace_schemas.py, implement in services/workspace_steps.py, wire it into WorkspaceService.advance_step, and add a StepCard under components/workspace/StepCards/.",
+    "When touching the model: every cell_path edit goes through put_draft → cell_path.py validator → recompute() → ticker_model_drafts. Don't bypass recompute — formula cells depend on it.",
+    "When adding a new data source: keep the (data, Citation) tuple convention. Persist as CitationRecord; round-trip through state as StateCitation.",
+    "Pre-existing utility hooks you should reuse before writing your own: usePersistedCollapse (localStorage-backed collapse), normalizeScoreKeys (display→snake_case score keys), fmtMarketCap/fmtPct/fmtScore (api.ts formatters), CellPath value object (typed cell paths).",
+    "Prospectus pipeline (PR #31): a parallel 4-step orchestrator for S-1 / S-1/A filings. Reuses the entire filings/relationships/fan-out plumbing under a synthetic_ticker so the new code surface is small. Adding a new prospectus step: define the schema in models/prospectus_schemas.py, implement in services/prospectus_*.py, wire into ProspectusService._run_pipeline, then add a StepCard under components/prospectus/StepCards/. Prompts + section routing live in graph/prospectus_prompts.py (PROSPECTUS_CATEGORIES, CATEGORY_SECTION_ROUTING). S-1 section regexes live in edgar_html.py::_SECTION_DEFS_S1."
+  ]
+}
