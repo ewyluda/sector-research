@@ -74,6 +74,24 @@ class BuildCompanyFinancialsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(fin.income, {})
         self.assertEqual(fin.balance, {})
 
+    async def test_balance_shorter_than_income_pads_trailing_none(self):
+        stub = _StubFMP(
+            inc=[
+                {"date": "2025-06-28", "period": "Q3", "fiscalYear": 2025, "revenue": 100.0},
+                {"date": "2025-03-29", "period": "Q2", "fiscalYear": 2025, "revenue": 90.0},
+            ],
+            bal=[
+                {"date": "2025-06-28", "period": "Q3", "fiscalYear": 2025, "totalAssets": 350.0},
+            ],
+            cf=[],
+        )
+        fin = await build_company_financials(stub, "AAPL", period="quarter")
+        self.assertEqual(fin.periods, ["Q3 2025", "Q2 2025"])
+        # balance has only the first period; second slot padded with None
+        self.assertEqual(fin.balance["totalAssets"], [350.0, None])
+        # cashflow empty entirely → no keys
+        self.assertEqual(fin.cashflow, {})
+
 
 if __name__ == "__main__":
     unittest.main()

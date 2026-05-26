@@ -17,5 +17,5 @@ export function fmtPct(value: number | null): string {
 /** Per-share / raw numeric value (EPS etc.). Null → em-dash. */
 export function fmtNum(value: number | null): string {
   if (value == null || Number.isNaN(value)) return "—";
-  return value.toFixed(2);
+  return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }

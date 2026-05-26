@@ -27,7 +27,7 @@ export const INCOME_SPEC: StatementSpec = {
     { label: "EBITDA", key: "ebitda", kind: "money" },
     { label: "EPS", key: "eps", kind: "num" },
     { label: "EPS (Diluted)", key: "epsDiluted", kind: "num" },
-    { label: "Shares (Diluted)", key: "weightedAverageShsOutDil", kind: "money" },
+    { label: "Shares (Diluted)", key: "weightedAverageShsOutDil", kind: "num" },
   ],
 };
 
