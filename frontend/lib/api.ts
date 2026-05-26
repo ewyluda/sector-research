@@ -1995,3 +1995,21 @@ export interface CompanyOverview {
 export async function getCompanyOverview(ticker: string): Promise<CompanyOverview> {
   return apiFetch<CompanyOverview>(`/api/company/${encodeURIComponent(ticker)}/overview`);
 }
+
+export interface CompanyFinancials {
+  ticker: string;
+  period: "annual" | "quarter";
+  periods: string[];
+  income: Record<string, (number | null)[]>;
+  balance: Record<string, (number | null)[]>;
+  cashflow: Record<string, (number | null)[]>;
+}
+
+export async function getCompanyFinancials(
+  ticker: string,
+  period: "annual" | "quarter",
+): Promise<CompanyFinancials> {
+  return apiFetch<CompanyFinancials>(
+    `/api/company/${encodeURIComponent(ticker)}/financials?period=${period}`,
+  );
+}
