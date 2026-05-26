@@ -185,14 +185,14 @@ export function SupplyChainEcosystem({ ticker }: Props) {
               </div>
 
               <div className="space-y-1">
-                {named.map((e) => (
-                  <EdgeRow key={e.accession_number + e.to_id} entry={e} />
+                {named.map((e, i) => (
+                  <EdgeRow key={`out:${e.accession_number}:${e.to_id}:${i}`} entry={e} />
                 ))}
                 {unnamed.length > 0 && (
                   <UnnamedBucket type={type} entries={unnamed} />
                 )}
-                {inbound.map((e) => (
-                  <EdgeRow key={"in:" + e.accession_number + e.from_id} entry={e} />
+                {inbound.map((e, i) => (
+                  <EdgeRow key={`in:${e.accession_number}:${e.from_id}:${i}`} entry={e} />
                 ))}
               </div>
             </div>

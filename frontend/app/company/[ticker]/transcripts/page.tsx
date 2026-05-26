@@ -1,10 +1,10 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { ModelWorkspace } from "@/components/model/ModelWorkspace";
+import { TranscriptReader } from "@/components/company/TranscriptReader";
 
-export default function ModelPage() {
+export default function TranscriptsPage() {
   const params = useParams<{ ticker: string }>();
   const ticker = (Array.isArray(params.ticker) ? params.ticker[0] : params.ticker ?? "").toUpperCase();
-  return <ModelWorkspace ticker={ticker} />;
+  return <TranscriptReader ticker={ticker} />;
 }

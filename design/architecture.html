@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>sector-research · architecture map</title>
+<style>
+  :root {
+    --bg: #07090d;
+    --bg-1: #0c1119;
+    --bg-2: #131a24;
+    --bg-3: #1a2230;
+    --line: #1f2937;
+    --line-bright: #334155;
+    --ink: #e5e7eb;
+    --muted: #94a3b8;
+    --dim: #64748b;
+    --accent: #6366f1;
+    --accent-2: #22d3ee;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --pink: #f472b6;
+    --violet: #a78bfa;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body { padding: 32px 28px 80px; max-width: 1400px; margin: 0 auto; }
+
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+
+  /* HERO */
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 24px;
+    padding: 28px 32px;
+    background: linear-gradient(135deg, #0d1421 0%, #0a0f1a 100%);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    margin-bottom: 28px;
+  }
+  .hero h1 { margin: 0 0 6px; font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero .tagline { color: var(--muted); margin: 0; font-size: 14px; max-width: 780px; }
+  .hero .meta { font-family: var(--mono); font-size: 11px; color: var(--dim); text-align: right; }
+  .hero .meta div { margin-bottom: 4px; }
+
+  /* SECTIONS */
+  section { margin-top: 36px; }
+  h2 {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+    margin: 0 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 { font-size: 14px; font-weight: 600; margin: 16px 0 8px; color: var(--ink); }
+  h3 .muted { font-weight: 400; color: var(--muted); margin-left: 8px; font-size: 12px; }
+
+  /* GRIDS */
+  .grid { display: grid; gap: 14px; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+  /* CARDS */
+  .card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+  }
+  .card h4 { margin: 0 0 10px; font-size: 13px; font-weight: 600; color: var(--ink); }
+  .card .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-bottom: 4px; }
+  .card ul { margin: 0; padding-left: 18px; color: var(--muted); }
+  .card ul li { margin: 3px 0; }
+  .card code { background: var(--bg-2); padding: 1px 5px; border-radius: 4px; color: var(--accent-2); }
+
+  /* SUBSYSTEM CARDS */
+  .subsys-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .subsys-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent);
+  }
+  .subsys-card[data-color="indigo"]::before { background: var(--accent); }
+  .subsys-card[data-color="cyan"]::before { background: var(--accent-2); }
+  .subsys-card[data-color="green"]::before { background: var(--good); }
+  .subsys-card[data-color="violet"]::before { background: var(--violet); }
+  .subsys-card[data-color="pink"]::before { background: var(--pink); }
+  .subsys-card[data-color="amber"]::before { background: var(--warn); }
+  .subsys-card h4 { margin: 0 0 8px; font-size: 13px; }
+  .subsys-card .purpose { color: var(--muted); margin: 0 0 10px; font-size: 12.5px; }
+  .subsys-card .meta-row { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 8px; }
+  .subsys-card .meta-row strong { color: var(--ink); font-weight: 500; }
+  .subsys-card .meta-row > div { margin-bottom: 3px; }
+
+  /* DETAILS */
+  details {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+  details > summary {
+    cursor: pointer;
+    padding: 12px 16px;
+    list-style: none;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-weight: 500;
+    color: var(--ink);
+  }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before {
+    content: "▸";
+    color: var(--dim);
+    margin-right: 10px;
+    transition: transform 0.15s;
+    display: inline-block;
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+  details > summary:hover { background: var(--bg-2); }
+  details[open] > summary { border-bottom: 1px solid var(--line); }
+  details .details-body { padding: 14px 16px; }
+  details summary .count { color: var(--dim); font-weight: 400; font-size: 12px; }
+  details summary .prefix-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--bg-3);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: var(--accent-2);
+    margin-left: 8px;
+  }
+
+  /* ENDPOINT TABLE */
+  .endpoints { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .endpoints td { padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .endpoints tr:last-child td { border-bottom: none; }
+  .endpoints .method {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 3px;
+    display: inline-block;
+    min-width: 50px;
+    text-align: center;
+  }
+  .method.GET { background: rgba(34, 211, 238, 0.15); color: var(--accent-2); }
+  .method.POST { background: rgba(52, 211, 153, 0.15); color: var(--good); }
+  .method.PUT { background: rgba(251, 191, 36, 0.15); color: var(--warn); }
+  .method.DELETE { background: rgba(248, 113, 113, 0.15); color: var(--bad); }
+  .endpoints .path { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+  .endpoints .path .param { color: var(--violet); }
+  .endpoints .handler { color: var(--dim); font-family: var(--mono); font-size: 11px; }
+  .endpoints .summary-cell { color: var(--muted); font-size: 12px; }
+  .endpoints .stream-badge {
+    font-size: 9px;
+    padding: 1px 5px;
+    background: rgba(244, 114, 182, 0.15);
+    color: var(--pink);
+    border-radius: 3px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* SERVICE / TABLE LISTS */
+  .item-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 16px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 12.5px;
+  }
+  .item-row:last-child { border-bottom: none; }
+  .item-row .name { font-family: var(--mono); color: var(--accent-2); }
+  .item-row .purpose { color: var(--muted); }
+  .item-row .file { font-family: var(--mono); font-size: 10px; color: var(--dim); margin-top: 3px; }
+
+  /* TABLES SECTION */
+  .table-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .table-card .tname { font-family: var(--mono); font-size: 13px; color: var(--accent-2); font-weight: 500; }
+  .table-card .tpurpose { color: var(--muted); font-size: 11.5px; margin: 4px 0 8px; }
+  .table-card .cols { font-family: var(--mono); font-size: 10.5px; color: var(--dim); }
+  .table-card .fk { font-family: var(--mono); font-size: 10.5px; color: var(--violet); margin-top: 4px; }
+
+  /* MIGRATION TIMELINE */
+  .timeline {
+    border-left: 2px solid var(--line-bright);
+    padding-left: 18px;
+    margin-left: 6px;
+  }
+  .timeline .mig {
+    position: relative;
+    padding: 8px 0;
+  }
+  .timeline .mig::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    top: 14px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--bg);
+  }
+  .timeline .mig.head::before { background: var(--good); width: 10px; height: 10px; left: -25px; }
+  .timeline .mig .rev { font-family: var(--mono); font-size: 11px; color: var(--dim); }
+  .timeline .mig .mname { font-family: var(--mono); font-size: 12.5px; color: var(--accent-2); font-weight: 500; margin: 0 8px; }
+  .timeline .mig .badge { font-size: 10px; padding: 1px 6px; background: var(--bg-3); color: var(--good); border-radius: 3px; margin-left: 6px; }
+  .timeline .mig .notable { display: block; color: var(--muted); font-size: 11.5px; margin-top: 2px; padding-left: 0; }
+
+  /* PIPELINE FLOW */
+  .pipeline-flow {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 6px 2px;
+  }
+  .pipeline-flow .phase {
+    flex: 1;
+    min-width: 150px;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    position: relative;
+  }
+  .pipeline-flow .phase .num { font-family: var(--mono); font-size: 10px; color: var(--accent); }
+  .pipeline-flow .phase .pname { font-weight: 600; font-size: 13px; color: var(--ink); margin: 4px 0; font-family: var(--mono); }
+  .pipeline-flow .phase .model {
+    display: inline-block;
+    font-size: 9.5px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .pipeline-flow .phase .model.sonnet { background: rgba(99, 102, 241, 0.15); color: var(--accent); }
+  .pipeline-flow .phase .model.haiku { background: rgba(34, 211, 238, 0.15); color: var(--accent-2); }
+  .pipeline-flow .phase .pp { font-size: 11px; color: var(--muted); }
+  .pipeline-flow .arrow {
+    color: var(--dim);
+    font-size: 18px;
+    align-self: center;
+    flex: 0 0 auto;
+  }
+
+  /* CROSS REFS */
+  .xref { font-family: var(--mono); font-size: 11.5px; line-height: 1.7; }
+  .xref .route { color: var(--accent); font-weight: 500; }
+  .xref .arr { color: var(--dim); margin: 0 6px; }
+  .xref .ep { color: var(--accent-2); }
+  .xref-row { padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .xref-row:last-child { border-bottom: none; }
+
+  /* INVARIANTS */
+  .invariant {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--warn);
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .invariant .iname {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--warn);
+    margin-bottom: 4px;
+  }
+  .invariant .irule { font-weight: 500; color: var(--ink); margin-bottom: 4px; font-size: 13px; }
+  .invariant .iwhy { color: var(--muted); font-size: 12px; }
+  .invariant .iwhy strong { color: var(--ink); font-weight: 500; }
+  .invariant code { background: var(--bg-2); padding: 1px 5px; border-radius: 3px; color: var(--accent-2); font-size: 11.5px; }
+
+  /* SYSTEM MAP */
+  .sysmap {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .sysmap pre {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    line-height: 1.55;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .sysmap pre .b { color: var(--accent); font-weight: 500; }
+  .sysmap pre .c { color: var(--accent-2); }
+  .sysmap pre .v { color: var(--violet); }
+  .sysmap pre .g { color: var(--good); }
+  .sysmap pre .d { color: var(--dim); }
+
+  /* STAT BAR */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .stat {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat .v { font-size: 22px; font-weight: 600; color: var(--ink); font-family: var(--mono); }
+  .stat .l { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim); margin-top: 4px; }
+
+  /* COMPONENTS LIST */
+  .comp-folder { margin-bottom: 12px; }
+  .comp-folder h4 {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent-2);
+    margin: 0 0 6px;
+    font-weight: 500;
+  }
+  .comp-folder ul { margin: 0; padding-left: 16px; color: var(--muted); font-size: 12px; }
+  .comp-folder ul li { margin: 2px 0; }
+  .comp-folder ul li .cname { color: var(--ink); font-family: var(--mono); }
+
+  /* FOOTER */
+  footer {
+    margin-top: 60px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    color: var(--dim);
+    font-size: 11px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div>
+    <h1><span class="accent">sector-research</span> · architecture map</h1>
+    <p class="tagline">Personal stock-research app. Discovery (FMP fundamentals + X social signal) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (status board, workspace loop, financial model, outcome tracker) close the feedback loop.</p>
+  </div>
+  <div class="meta">
+    <div>generated 2026-05-20</div>
+    <div>source d06bae4 · main</div>
+    <div>local-only · no auth</div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats">
+  <div class="stat"><div class="v">9</div><div class="l">subsystems</div></div>
+  <div class="stat"><div class="v">84</div><div class="l">endpoints</div></div>
+  <div class="stat"><div class="v">41</div><div class="l">services</div></div>
+  <div class="stat"><div class="v">29</div><div class="l">db tables</div></div>
+  <div class="stat"><div class="v">19</div><div class="l">pages</div></div>
+  <div class="stat"><div class="v">22</div><div class="l">migrations</div></div>
+</div>
+
+<!-- TECH STACK -->
+<section>
+  <h2>Tech stack</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <h4>Backend</h4>
+      <ul>
+        <li>Python · <code>FastAPI</code></li>
+        <li>SQLAlchemy 2 async + <code>asyncpg</code></li>
+        <li>Alembic migrations</li>
+        <li>LangGraph (<code>StateGraph</code>)</li>
+        <li>Anthropic SDK · Sonnet 4.6 + Haiku 4.5</li>
+        <li>APScheduler in lifespan</li>
+      </ul>
+      <div class="label" style="margin-top:12px">launch</div>
+      <code>uvicorn backend.app.main:app --reload</code><br/>
+      <span style="color:var(--dim); font-size:11px">(from project root — absolute imports)</span>
+    </div>
+    <div class="card">
+      <h4>Frontend</h4>
+      <ul>
+        <li>Next.js 16 · App Router · React 19</li>
+        <li>Tailwind v4 (@tailwindcss/postcss)</li>
+        <li>Recharts + lightweight-charts</li>
+        <li>Native <code>fetch</code> via <code>lib/api.ts</code></li>
+        <li>Path alias <code>@/*</code> → frontend root</li>
+      </ul>
+      <div class="label" style="margin-top:12px">launch</div>
+      <code>cd frontend && npm run dev</code><br/>
+      <span style="color:var(--warn); font-size:11px">⚠ Next 16 has breaking changes vs training data — read <code>node_modules/next/dist/docs/</code></span>
+    </div>
+    <div class="card">
+      <h4>Data</h4>
+      <ul>
+        <li>PostgreSQL (asyncpg + sync URL for Alembic)</li>
+        <li>FMP · X v2 · SEC EDGAR · FRED · Anthropic</li>
+        <li><code>.env</code> at <strong>project root</strong> (hard-coded path)</li>
+        <li>Two cron jobs: signals 2 AM, earnings 21:00 UTC</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- SYSTEM MAP -->
+<section>
+  <h2>System map</h2>
+  <div class="sysmap">
+<pre><span class="d">      external                     ingest                 storage              graph / llm              api               frontend route</span>
+
+   <span class="c">FMP</span>     ──┐                                       ┌─► <span class="v">themes</span>          ┌─► <span class="b">DiscoveryEngine</span>   ─► <span class="g">GET /api/themes/*/discover</span>   ──► <span class="b">/theme/[id]</span>
+   <span class="c">X v2</span>    ──┤                                       ├─► <span class="v">signals</span>         │
+   <span class="c">FRED</span>    ──┼─► <span class="b">signal_scheduler (cron)</span>          ──┴─► <span class="v">signal_history</span>  │
+
+                                                                          <span class="b">LangGraph pipeline</span> ──► <span class="g">POST /api/runs</span>                 ──► <span class="b">/pipeline/new</span>
+                                                                              quick_screen
+                                                                              deep_dive (9 cats)
+                                                                              targeted_followup    ──► <span class="g">SSE /api/runs/{id}/stream</span>  ──► <span class="b">/pipeline/[runId]</span>
+                                                                              thesis_construction
+                                                                              risk_stress_test (loop ≤ 2)
+                                                                              position_monitor
+                                                                                  │
+                                                                                  ▼
+   <span class="c">SEC EDGAR</span> ─► <span class="b">edgar_sections_ingest (A)</span>     ──► <span class="v">filings</span>           │           <span class="g">/api/filings/* + /api/relationships/*</span> ──► <span class="b">/filings</span> · <span class="b">/filings/graph</span>
+                <span class="b">edgar_relationships    (B)</span>     ──► <span class="v">filing_sections</span>   │
+                <span class="b">counterparty_resolver  (C)</span>     ──► <span class="v">relationships</span>     │
+                <span class="b">supply_chain           (D)</span>     ──► <span class="v">counterparty_aliases</span>│
+                <span class="b">fanout                 (E)</span>     ──► <span class="v">competitor_landscape</span>│
+
+                                                                  ┌─► <span class="v">research_runs</span>     ──┐
+                                                                  ├─► <span class="v">citations</span>         │
+                                                                  ├─► <span class="v">catalysts</span>         ├─► <span class="b">status_board</span>          ──► <span class="g">/api/status/* + /api/catalysts/*</span> ──► <span class="b">/status</span> · <span class="b">/catalysts</span> · <span class="b">/questions</span>
+                                                                  ├─► <span class="v">questions</span>         │   <span class="b">earnings_brief/verdict</span>  ──► <span class="g">/api/earnings/*</span>
+                                                                  ├─► <span class="v">kill_criterion_states</span>│   <span class="b">read_through</span>
+                                                                  └─► <span class="v">earnings_prints</span>   ─┘
+
+                                                                                              ┌─► <span class="b">/api/workspace/*</span> ──► <span class="b">/workspace/[runId]</span>
+                                                                  ┌─► <span class="v">workspace_runs</span> ──► <span class="b">WorkspaceService</span> (5 steps)
+                                                                  │                            update_refresh → research → challenge → differentiate → validate
+                                                                  │
+                                                                  ├─► <span class="v">ticker_models</span>    ──► <span class="b">model_baseline + model_balancing + dcf + reverse_dcf</span> ──► <span class="b">/api/models/*</span> ──► <span class="b">/model/[ticker]</span>
+                                                                  ├─► <span class="v">ticker_model_drafts</span> (one per ticker — PK ticker)
+                                                                  │
+                                                                  ├─► <span class="v">verdict_outcomes</span>     ──► <span class="b">outcome_tracker</span> ──► <span class="g">/api/outcomes/*</span>     ──► <span class="b">/performance</span>
+                                                                  ├─► <span class="v">verdict_return_snapshots</span> (1d/1w/1m/3m/6m)
+                                                                  │
+                                                                  └─► <span class="v">transcript_deltas</span> ──► <span class="b">transcript_delta</span> (Haiku QoQ) ──► <span class="g">/api/transcripts/delta/*</span>
+
+   <span class="c">SEC EDGAR (S-1)</span> ─► <span class="b">prospectus_ingest</span>           ──► <span class="v">prospectus_reports</span> ──► <span class="b">ProspectusService</span> (4 steps)             ──► <span class="g">/api/prospectus/*</span> ──► <span class="b">/prospectus</span> · <span class="b">/prospectus/[reportId]</span>
+                       <span class="b">prospectus_financials</span>                                  ingest → relationships → categories → thesis
+                       <span class="b">prospectus_categories</span>                                  (synthetic_ticker writes into filings.ticker /
+                       <span class="b">prospectus_thesis</span>                                       relationships.ticker — reuses full EDGAR plumbing)
+</pre>
+  </div>
+</section>
+
+<!-- SUBSYSTEMS -->
+<section>
+  <h2>Subsystems</h2>
+  <div class="grid grid-4">
+    <div class="subsys-card" data-color="cyan">
+      <h4>Discovery Engine</h4>
+      <p class="purpose">Per-theme ranked company cards merging FMP fundamentals with cached X signals.</p>
+      <div class="meta-row">
+        <div><strong>service</strong> services/discovery.py</div>
+        <div><strong>route</strong> /theme/[id]</div>
+        <div><strong>score</strong> 40 vel + 40 fund + 20 disc</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="indigo">
+      <h4>LangGraph pipeline · 6 phases</h4>
+      <p class="purpose">quick_screen → deep_dive (9 cats) → targeted_followup → thesis_construction → risk (loop ≤ 2) → position_monitor</p>
+      <div class="meta-row">
+        <div><strong>graph</strong> graph/pipeline.py</div>
+        <div><strong>state</strong> ResearchState dataclass</div>
+        <div><strong>route</strong> /pipeline/[runId]</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="violet">
+      <h4>SEC EDGAR · 5 phases A–E</h4>
+      <p class="purpose">Section extraction → relationship extraction (Haiku) → counterparty resolution (RapidFuzz) → supply-chain graph → fan-out orchestration.</p>
+      <div class="meta-row">
+        <div><strong>services</strong> edgar_*.py · supply_chain.py · fanout.py</div>
+        <div><strong>routes</strong> /filings · /filings/graph</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="green">
+      <h4>Workspace loop · 5 steps</h4>
+      <p class="purpose">Post-thesis refresh: update_refresh → research → challenge → differentiate → validate. Updates verdict + model deltas.</p>
+      <div class="meta-row">
+        <div><strong>service</strong> services/workspace.py</div>
+        <div><strong>verdicts</strong> healthy / imminent / triggered / broken</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="amber">
+      <h4>Status board cluster</h4>
+      <p class="purpose">Fleet-management surface: status board, catalyst calendar, questions log, read-throughs, earnings briefs &amp; verdicts.</p>
+      <div class="meta-row">
+        <div><strong>services</strong> status_board, catalyst_*, read_through, earnings_*, questions</div>
+        <div><strong>routes</strong> /status · /catalysts · /questions</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="pink">
+      <h4>Financial model + reverse DCF</h4>
+      <p class="purpose">Editable 5-yr model AI-seeded from research run, version history, cell-level overrides, 21×21 sensitivity grids.</p>
+      <div class="meta-row">
+        <div><strong>services</strong> model_baseline · model_balancing · dcf · reverse_dcf · model_diff</div>
+        <div><strong>route</strong> /model/[ticker]</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="cyan">
+      <h4>Verdict outcome tracker</h4>
+      <p class="purpose">Alpha feedback loop. Captures entry prices at verdict, snapshots ticker / SPY / sector ETF / theme basket at 1d/1w/1m/3m/6m.</p>
+      <div class="meta-row">
+        <div><strong>service</strong> services/outcome_tracker.py</div>
+        <div><strong>route</strong> /performance</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="violet">
+      <h4>Transcript delta</h4>
+      <p class="purpose">Haiku-driven QoQ language deltas across earnings transcripts, scored along several axes. Last merge: PR #30.</p>
+      <div class="meta-row">
+        <div><strong>service</strong> services/transcript_delta.py</div>
+        <div><strong>endpoints</strong> /api/transcripts/delta/*</div>
+      </div>
+    </div>
+    <div class="subsys-card" data-color="indigo">
+      <h4>Prospectus pipeline · 4 steps</h4>
+      <p class="purpose">Per-S-1/S-1/A: ingest → relationships → 7 IPO-tuned categories → thesis. Reuses the EDGAR filings/relationships plumbing under a <code>synthetic_ticker</code> for pre-IPO issuers (e.g. SpaceX). Last merge: PR #31.</p>
+      <div class="meta-row">
+        <div><strong>service</strong> services/prospectus_service.py</div>
+        <div><strong>verdicts</strong> participate / watch_post_lockup / pass</div>
+        <div><strong>routes</strong> /prospectus · /prospectus/[reportId]</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LANGGRAPH PHASES -->
+<section>
+  <h2>LangGraph pipeline · phases</h2>
+  <div class="pipeline-flow">
+    <div class="phase">
+      <div class="num">PHASE 1</div>
+      <div class="pname">quick_screen</div>
+      <span class="model haiku">Haiku</span>
+      <div class="pp">Structural pre-filter — market cap, sector, industry, volatility.</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="phase">
+      <div class="num">PHASE 2</div>
+      <div class="pname">deep_dive</div>
+      <span class="model sonnet">Sonnet</span>
+      <div class="pp">9 categories in parallel. Fetches 10 FMP endpoints + filing sections + XBRL facts + counterparty context + FRED macro.</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="phase">
+      <div class="num">PHASE 3</div>
+      <div class="pname">targeted_followup</div>
+      <span class="model haiku">Haiku</span>
+      <div class="pp">Retry for priority-1 auto-answerable questions from deep-dive.</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="phase">
+      <div class="num">PHASE 4</div>
+      <div class="pname">thesis_construction</div>
+      <span class="model sonnet">Sonnet</span>
+      <div class="pp">Pillars, bull/bear, catalysts, kill criteria. Receives quick-screen + deep-dive summary with no-restate framing.</div>
+    </div>
+    <div class="arrow">→</div>
+    <div class="phase">
+      <div class="num">PHASE 5</div>
+      <div class="pname">risk_stress_test</div>
+      <span class="model sonnet">Sonnet</span>
+      <div class="pp">Scenario stress test. Optional loop back to deep_dive if loop_count ≤ 2.</div>
+    </div>
+    <div class="arrow">⇢</div>
+    <div class="phase">
+      <div class="num">PHASE 6</div>
+      <div class="pname">position_monitor</div>
+      <span class="model haiku">Haiku</span>
+      <div class="pp">Manual: POST /api/runs/{id}/advance with action='approve'. Creates verdict_outcomes row.</div>
+    </div>
+  </div>
+</section>
+
+<!-- BACKEND ENDPOINTS -->
+<section>
+  <h2>Backend endpoints · 16 routers · 84 endpoints</h2>
+
+  <details open>
+    <summary><span>health <span class="prefix-pill">(none)</span></span><span class="count">3 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/health</td><td class="handler">health</td><td class="summary-cell">Simple health check status</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/health/db</td><td class="handler">health_db</td><td class="summary-cell">Verify database connectivity</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/health/fmp</td><td class="handler">health_fmp</td><td class="summary-cell">Verify FMP API (lightweight quote)</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>themes <span class="prefix-pill">/api</span></span><span class="count">7 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/themes</td><td class="handler">list_themes</td><td class="summary-cell">List themes</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/themes</td><td class="handler">create_theme</td><td class="summary-cell">Create theme with seed tickers + signal weights</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span></td><td class="handler">get_theme</td><td class="summary-cell">Get theme by ID</td></tr>
+        <tr><td><span class="method PUT">PUT</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span></td><td class="handler">update_theme</td><td class="summary-cell">Update theme</td></tr>
+        <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span></td><td class="handler">delete_theme</td><td class="summary-cell">Delete (signals CASCADE, research_runs SET NULL — mig 3cf8b874da39)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span>/tickers</td><td class="handler">add_theme_ticker</td><td class="summary-cell">Append ticker (idempotent)</td></tr>
+        <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span>/tickers/<span class="param">{ticker}</span></td><td class="handler">remove_theme_ticker</td><td class="summary-cell">Remove ticker (idempotent)</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>discovery <span class="prefix-pill">/api</span></span><span class="count">3 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span>/discover</td><td class="handler">discover_theme</td><td class="summary-cell">FMP screener + cached X signals → CompanySignalCard[]</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span>/signals/refresh</td><td class="handler">refresh_theme_signals_endpoint</td><td class="summary-cell">Manual X signal refresh (blocks)</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span>/signals/<span class="param">{ticker}</span>/history</td><td class="handler">get_signal_history_endpoint</td><td class="summary-cell">Time-series signal history (days [1,365])</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>pipeline <span class="prefix-pill">/api</span></span><span class="count">7 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs</td><td class="handler">start_run</td><td class="summary-cell">Start new research run</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs</td><td class="handler">list_runs</td><td class="summary-cell">Research Library list</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/data-gaps</td><td class="handler">get_data_gaps</td><td class="summary-cell">Aggregate data gaps ranked by frequency</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span></td><td class="handler">get_run</td><td class="summary-cell">Full state + phase outputs</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/advance</td><td class="handler">advance_run</td><td class="summary-cell">approve|flag|stop · triggers position_monitor</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/stream<span class="stream-badge">SSE</span></td><td class="handler">stream_run</td><td class="summary-cell">Phase output streaming</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/report</td><td class="handler">get_report</td><td class="summary-cell">Structured report (also used by Obsidian export)</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>filings <span class="prefix-pill">/api</span></span><span class="count">16 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/filings/ingest/<span class="param">{ticker}</span></td><td class="handler">ingest_ticker</td><td class="summary-cell">Section ingest (10-K, 10-Q, DEF 14A)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/filings/ingest/batch</td><td class="handler">ingest_batch</td><td class="summary-cell">Batch section ingest</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/filings/<span class="param">{ticker}</span></td><td class="handler">list_filings_for_ticker</td><td class="summary-cell">Filings with ingested sections</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/filings/extract-relationships/<span class="param">{ticker}</span></td><td class="handler">extract_relationships_for_ticker</td><td class="summary-cell">Haiku relationship extraction (Phase B)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/filings/extract-relationships/batch</td><td class="handler">extract_relationships_batch</td><td class="summary-cell">Batch</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/transcripts/extract-relationships/<span class="param">{ticker}</span></td><td class="handler">extract_transcript_relationships_for_ticker</td><td class="summary-cell">Last 4Q earnings transcripts</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/filings/extract-competition/<span class="param">{ticker}</span></td><td class="handler">extract_competition_for_ticker</td><td class="summary-cell">10-K Item 1 competition disclosure</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/filings/<span class="param">{ticker}</span>/relationships</td><td class="handler">list_relationships_for_ticker</td><td class="summary-cell">All relationships + filing metadata</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/filings/<span class="param">{ticker}</span>/<span class="param">{accession_number}</span>/sections/<span class="param">{section_key}</span></td><td class="handler">get_filing_section</td><td class="summary-cell">Full section text</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/resolve/<span class="param">{ticker}</span></td><td class="handler">resolve_ticker</td><td class="summary-cell">Phase C — alias + exact + fuzzy resolution</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/resolve/batch</td><td class="handler">resolve_tickers</td><td class="summary-cell">Batch resolution</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/unresolved</td><td class="handler">list_unresolved</td><td class="summary-cell">Curation queue by occurrence count</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/alias</td><td class="handler">create_manual_alias</td><td class="summary-cell">Manual alias override</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/graph/<span class="param">{ticker}</span></td><td class="handler">get_ticker_graph</td><td class="summary-cell">Phase D — supply-chain graph (depth=1|2)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/reconcile</td><td class="handler">reconcile_all_bilaterals</td><td class="summary-cell">Flip confirmed_bilateral on reciprocal pairs</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/competition/<span class="param">{ticker}</span></td><td class="handler">get_competition</td><td class="summary-cell">Structured Competition view from latest 10-K</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>fanouts <span class="prefix-pill">/api</span></span><span class="count">3 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/themes/<span class="param">{theme_id}</span>/relationships/fanout</td><td class="handler">start_theme_fanout</td><td class="summary-cell">Theme-scoped fan-out (202 + fanout_id)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/tickers/<span class="param">{ticker}</span>/relationships/fanout</td><td class="handler">start_ticker_fanout</td><td class="summary-cell">Single-ticker fan-out</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/fanouts/<span class="param">{fanout_id}</span></td><td class="handler">get_fanout</td><td class="summary-cell">Poll status (in-memory, no restart persistence)</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>catalysts <span class="prefix-pill">/api</span></span><span class="count">2 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/catalysts</td><td class="handler">list_catalysts</td><td class="summary-cell">Catalysts from latest completed thesis run per ticker</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/catalysts/<span class="param">{catalyst_id}</span></td><td class="handler">get_catalyst</td><td class="summary-cell">Single catalyst</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>status <span class="prefix-pill">/api</span></span><span class="count">5 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/status/board</td><td class="handler">get_status_board</td><td class="summary-cell">Fleet view: latest run per (ticker, theme)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/archive</td><td class="handler">archive_run</td><td class="summary-cell">Hide from status board</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/unarchive</td><td class="handler">unarchive_run</td><td class="summary-cell">Restore to board</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/kill-criteria</td><td class="handler">list_kill_criterion_states</td><td class="summary-cell">Toggle states</td></tr>
+        <tr><td><span class="method PUT">PUT</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/kill-criteria/<span class="param">{ordinal}</span></td><td class="handler">upsert_kill_criterion_state_endpoint</td><td class="summary-cell">Flip criterion (armed/triggered)</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>read_through <span class="prefix-pill">/api</span></span><span class="count">3 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/status/read-throughs</td><td class="handler">get_read_throughs</td><td class="summary-cell">Board-wide read-throughs (30d window)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/status/read-throughs/dismiss</td><td class="handler">dismiss_read_through</td><td class="summary-cell">Idempotent dismiss</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/status/read-throughs/summary</td><td class="handler">summarize</td><td class="summary-cell">Lazy summary</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>earnings <span class="prefix-pill">/api</span></span><span class="count">5 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/earnings/board</td><td class="handler">get_earnings_board</td><td class="summary-cell">Active thesis runs · upcoming + recent prints</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/earnings/<span class="param">{print_id}</span>/brief</td><td class="handler">post_brief</td><td class="summary-cell">Pre-earnings brief (3-5 bullets, Haiku)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/earnings/<span class="param">{print_id}</span>/verdict</td><td class="handler">post_verdict</td><td class="summary-cell">Post-print verdict (confirms/threatens/neutral/insufficient)</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/earnings/prints/<span class="param">{ticker}</span></td><td class="handler">get_prints_by_ticker</td><td class="summary-cell">8 most recent prints</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/earnings/refresh/<span class="param">{ticker}</span></td><td class="handler">post_refresh</td><td class="summary-cell">Manually refresh prints</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>questions <span class="prefix-pill">/questions</span></span><span class="count">5 endpoints — note: no /api prefix</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/questions</td><td class="handler">list_questions_endpoint</td><td class="summary-cell">Filter by ticker/theme/status/priority/category</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/questions/by-ticker</td><td class="handler">by_ticker_endpoint</td><td class="summary-cell">Ticker rollup</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/questions/<span class="param">{question_id}</span>/dismiss</td><td class="handler">dismiss_endpoint</td><td class="summary-cell">Dismiss with optional note</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/questions/<span class="param">{question_id}</span>/resolve</td><td class="handler">resolve_endpoint</td><td class="summary-cell">Manual resolve</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/questions/<span class="param">{question_id}</span>/retry-auto</td><td class="handler">retry_auto_endpoint</td><td class="summary-cell">Re-run targeted-followup Haiku</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>models_api <span class="prefix-pill">/api/models</span></span><span class="count">8 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/models/<span class="param">{ticker}</span></td><td class="handler">get_model</td><td class="summary-cell">Latest version + draft</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/models/<span class="param">{ticker}</span>/initialize</td><td class="handler">initialize</td><td class="summary-cell">Seed baseline (force= to rebuild). 400 if no completed run.</td></tr>
+        <tr><td><span class="method PUT">PUT</span></td><td class="path">/api/models/<span class="param">{ticker}</span>/draft</td><td class="handler">put_draft</td><td class="summary-cell">Edit one cell · recompute · persist · 422/409 errors</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/models/<span class="param">{ticker}</span>/save</td><td class="handler">save_version</td><td class="summary-cell">Promote draft → new version</td></tr>
+        <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/models/<span class="param">{ticker}</span>/draft</td><td class="handler">discard_draft</td><td class="summary-cell">Idempotent discard</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/models/<span class="param">{ticker}</span>/reverse-dcf</td><td class="handler">get_reverse_dcf</td><td class="summary-cell">Implied drivers + IRR + 3 sensitivity grids. price defaults to live FMP via app.state.fmp.</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/models/<span class="param">{ticker}</span>/versions</td><td class="handler">list_versions</td><td class="summary-cell">List versions</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/models/<span class="param">{ticker}</span>/versions/<span class="param">{version}</span>/diff</td><td class="handler">version_diff</td><td class="summary-cell">Cell-path-keyed diff</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>workspace <span class="prefix-pill">/api/workspace</span></span><span class="count">5 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/workspace/<span class="param">{ticker}</span>/runs</td><td class="handler">kick_off_workspace</td><td class="summary-cell">202 + run_id</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/workspace/runs/<span class="param">{run_id}</span></td><td class="handler">get_run</td><td class="summary-cell">Get workspace run</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/workspace/runs/<span class="param">{run_id}</span>/stream<span class="stream-badge">SSE</span></td><td class="handler">stream_run</td><td class="summary-cell">Workspace event stream</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/workspace/<span class="param">{ticker}</span>/history</td><td class="handler">history_for_ticker</td><td class="summary-cell">History most-recent-first</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/workspace/recent</td><td class="handler">recent_runs</td><td class="summary-cell">Recent across all tickers</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>outcomes <span class="prefix-pill">/api/outcomes</span></span><span class="count">4 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/outcomes/backfill</td><td class="handler">trigger_backfill</td><td class="summary-cell">One-shot backfill</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/outcomes</td><td class="handler">list_outcomes</td><td class="summary-cell">Filters: theme_id, verdict, source_type, superseded, closed</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/outcomes/by-source/<span class="param">{source_type}</span>/<span class="param">{source_id}</span></td><td class="handler">get_outcome_by_source</td><td class="summary-cell">Single outcome by originating run</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/outcomes/summary</td><td class="handler">get_summary</td><td class="summary-cell">Verdict / theme / signal-bucket rollups</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>transcripts_delta <span class="prefix-pill">/api/transcripts</span></span><span class="count">3 endpoints</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/transcripts/delta/<span class="param">{ticker}</span>/latest</td><td class="handler">get_latest</td><td class="summary-cell">Latest delta (204 if none)</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/transcripts/delta/<span class="param">{ticker}</span>/history</td><td class="handler">get_history</td><td class="summary-cell">Full history</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/transcripts/delta/<span class="param">{ticker}</span></td><td class="handler">post_compute</td><td class="summary-cell">Compute + store (force= overrides cache)</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>prospectus <span class="prefix-pill">/api/prospectus</span></span><span class="count">5 endpoints · PR #31</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/prospectus</td><td class="handler">create_report</td><td class="summary-cell">Kick off S-1 report (URL or accession). 202 + report_id.</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/prospectus</td><td class="handler">list_reports</td><td class="summary-cell">Most-recent-first list (limit query, default 50)</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/prospectus/<span class="param">{report_id}</span></td><td class="handler">get_report</td><td class="summary-cell">Get report + step_outputs JSONB</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/prospectus/<span class="param">{report_id}</span>/stream<span class="stream-badge">SSE</span></td><td class="handler">stream_report</td><td class="summary-cell">step_start · step_complete · prospectus_complete|failed</td></tr>
+        <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/prospectus/<span class="param">{report_id}</span></td><td class="handler">delete_report</td><td class="summary-cell">Delete (204; 404 if missing)</td></tr>
+      </table>
+    </div>
+  </details>
+</section>
+
+<!-- ORM TABLES -->
+<section>
+  <h2>Database schema · 29 tables</h2>
+
+  <h3>Theme + signals <span class="muted">— discovery</span></h3>
+  <div class="grid grid-3">
+    <div class="table-card"><div class="tname">themes</div><div class="tpurpose">Investment themes; parent_theme_id self-FK for sub-secular grouping</div><div class="cols">id · name · description · seed_tickers · screener_criteria · x_search_terms · signal_weights</div><div class="fk">parent_theme_id → themes.id (SET NULL)</div></div>
+    <div class="table-card"><div class="tname">signals</div><div class="tpurpose">Current X signal values per (ticker, theme, signal_type)</div><div class="cols">ticker · theme_id · signal_type · value · computed_at · is_stale</div><div class="fk">theme_id → themes.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">signal_history</div><div class="tpurpose">Append-only signal time-series (per-refresh writes)</div><div class="cols">ticker · theme_id · signal_type · value · computed_at</div><div class="fk">theme_id → themes.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">surprise_alerts</div><div class="tpurpose">Velocity surprises (ratio &gt; 2.0×)</div><div class="cols">ticker · prior_velocity_ratio · current_velocity_ratio · fired_at · acknowledged_at</div><div class="fk">theme_id → themes.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">watchlist</div><div class="tpurpose">Parked tickers for re-evaluation</div><div class="cols">ticker · trigger_condition · added_at</div><div class="fk">theme_id (CASCADE) · run_id → research_runs.id</div></div>
+  </div>
+
+  <h3>Research pipeline <span class="muted">— pipeline + citations + Q&amp;A + catalysts</span></h3>
+  <div class="grid grid-3">
+    <div class="table-card"><div class="tname">research_runs</div><div class="tpurpose">Single ticker's journey through 6-phase pipeline</div><div class="cols">ticker · theme_id (nullable) · phase · status · state (JSONB) · loop_count · archived_at</div><div class="fk">theme_id → themes.id (SET NULL)</div></div>
+    <div class="table-card"><div class="tname">citations</div><div class="tpurpose">Data provenance per metric (ORM persisted form)</div><div class="cols">metric · value · source_name · source_url · tier · retrieved_at · cell_path</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">catalysts</div><div class="tpurpose">First-class catalyst events promoted from thesis runs</div><div class="cols">ordinal · timeframe · description · type · signposts · linked_pillar · expected_date</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">questions</div><div class="tpurpose">Q&amp;A lifecycle (open/resolved/dismissed) with auto-answer retry</div><div class="cols">ticker · theme_id · category · question_text · priority · auto_answerable · status · answer_text · answer_source</div><div class="fk">created_run_id (CASCADE) · resolved_run_id (SET NULL) · theme_id (SET NULL)</div></div>
+    <div class="table-card"><div class="tname">kill_criterion_states</div><div class="tpurpose">Manual kill-criterion flags per run</div><div class="cols">ordinal · status (armed|triggered) · flipped_at · note</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">read_through_dismissals</div><div class="tpurpose">User dismissals of read-through peer events</div><div class="cols">event_key · dismissed_at · note</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
+  </div>
+
+  <h3>SEC filings <span class="muted">— 5-phase EDGAR pipeline</span></h3>
+  <div class="grid grid-3">
+    <div class="table-card"><div class="tname">filings</div><div class="tpurpose">SEC filings (10-K/10-Q/DEF 14A) — accession_number UNIQUE</div><div class="cols">accession_number · cik · ticker · form_type · filing_date · period_of_report · primary_document_url</div><div class="fk">—</div></div>
+    <div class="table-card"><div class="tname">xbrl_facts</div><div class="tpurpose">XBRL numeric facts (RPO/debt maturity/credit only — NOT concentration)</div><div class="cols">concept · unit · period_start · period_end · fiscal_year · fiscal_period · value</div><div class="fk">filing_id → filings.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">filing_sections</div><div class="tpurpose">Narrative sections (Item 1, 1A, 7/2, DEF 14A governance)</div><div class="cols">section_key · heading · text · char_count · extraction_method · relationships_extracted_at · competition_extracted_at</div><div class="fk">filing_id → filings.id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">relationships</div><div class="tpurpose">LLM-extracted counterparty relationships (filing OR transcript-sourced)</div><div class="cols">counterparty_name · relationship_type · magnitude_pct · unnamed · verbatim_quote · source_type · resolved_to_cik · resolved_to_ticker · confirmed_bilateral</div><div class="fk">filing_id → filings.id (CASCADE, nullable)</div></div>
+    <div class="table-card"><div class="tname">counterparty_aliases</div><div class="tpurpose">Alias resolution registry — alias_normalized PK</div><div class="cols">alias_name · canonical_cik · canonical_ticker · canonical_name · source · confidence_score · created_by</div><div class="fk">—</div></div>
+    <div class="table-card"><div class="tname">filing_segments</div><div class="tpurpose">Competition segment narratives</div><div class="cols">segment_name · narrative</div><div class="fk">filing_id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">competitor_landscape</div><div class="tpurpose">Per-segment competitor lists</div><div class="cols">area_of_competition · competitors (JSONB)</div><div class="fk">filing_id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">transcript_extractions</div><div class="tpurpose">Tombstone for transcript extractions; PK on (ticker, year, quarter)</div><div class="cols">ticker · year · quarter · fingerprint · extracted_at</div><div class="fk">—</div></div>
+  </div>
+
+  <h3>Earnings <span class="muted">— prints + verdicts</span></h3>
+  <div class="grid grid-3">
+    <div class="table-card"><div class="tname">earnings_prints</div><div class="tpurpose">Earnings actuals + estimates + guidance (cross-ticker shared)</div><div class="cols">fiscal_year · fiscal_quarter · earnings_date · eps_estimated/actual · revenue_estimated/actual · guidance_direction</div><div class="fk">UNIQUE (ticker, fiscal_year, fiscal_quarter)</div></div>
+    <div class="table-card"><div class="tname">thesis_print_verdicts</div><div class="tpurpose">Post-print thesis verdict (confirms/threatens/neutral/insufficient)</div><div class="cols">verdict · summary_md · pillars_addressed · generated_at</div><div class="fk">run_id (CASCADE) · earnings_print_id (CASCADE)</div></div>
+  </div>
+
+  <h3>Financial model + workspace <span class="muted">— editable model versions</span></h3>
+  <div class="grid grid-3">
+    <div class="table-card"><div class="tname">ticker_models</div><div class="tpurpose">Versioned per-ticker ModelState (JSONB)</div><div class="cols">ticker · version · state · parent_research_run_id · label</div><div class="fk">UNIQUE (ticker, version)</div></div>
+    <div class="table-card"><div class="tname">ticker_model_drafts</div><div class="tpurpose">At most one draft per ticker — PK is ticker</div><div class="cols">ticker (PK) · base_version_id · state · updated_at</div><div class="fk">base_version_id → ticker_models.id</div></div>
+    <div class="table-card"><div class="tname">workspace_runs</div><div class="tpurpose">Workspace edit sessions with 5-step outputs</div><div class="cols">ticker · parent_research_run_id · ticker_model_version_before · status · outcome</div><div class="fk">parent_research_run_id (SET NULL) · partial UNIQUE on ticker WHERE status='running'</div></div>
+  </div>
+
+  <h3>Outcome tracking <span class="muted">— alpha feedback loop</span></h3>
+  <div class="grid grid-3">
+    <div class="table-card"><div class="tname">verdict_outcomes</div><div class="tpurpose">Entry prices captured at verdict emission</div><div class="cols">source_type · source_id · ticker · verdict · entry_price · spy_entry_price · sector_etf_entry_price · theme_basket_entry_value · signal_snapshot · superseded_at · realized_*_pct · closed_at</div><div class="fk">UNIQUE (source_type, source_id) · superseded_by_outcome_id self-ref (SET NULL)</div></div>
+    <div class="table-card"><div class="tname">verdict_return_snapshots</div><div class="tpurpose">Return measurements at 1d/1w/1m/3m/6m horizons</div><div class="cols">snapshot_offset · snapshot_date · ticker_price · spy_excess_pct · sector_excess_pct · theme_basket_excess_pct</div><div class="fk">outcome_id (CASCADE)</div></div>
+    <div class="table-card"><div class="tname">sector_etf_mapping</div><div class="tpurpose">FMP sector → ETF reference (PK fmp_sector)</div><div class="cols">fmp_sector · etf_ticker · notes</div><div class="fk">—</div></div>
+    <div class="table-card"><div class="tname">transcript_deltas</div><div class="tpurpose">Cached QoQ language deltas per ticker</div><div class="cols">transcripts_window · transcripts_fingerprint · axes · computed_at</div><div class="fk">UNIQUE (ticker, transcripts_fingerprint)</div></div>
+  </div>
+
+  <h3>Prospectus <span class="muted">— S-1 / S-1/A reports</span></h3>
+  <div class="grid grid-3">
+    <div class="table-card"><div class="tname">prospectus_reports</div><div class="tpurpose">Parallel to research_runs / workspace_runs. step_outputs JSONB carries one entry per pipeline step (ingest / relationships / categories / thesis). synthetic_ticker is a derived @property.</div><div class="cols">accession_number · issuer_cik · issuer_name · proposed_ticker · status (ingesting|analyzing|completed|failed) · step_outputs · error_message</div><div class="fk">theme_id → themes.id (SET NULL)</div></div>
+  </div>
+</section>
+
+<!-- MIGRATION TIMELINE -->
+<section>
+  <h2>Migration timeline · 22 revisions</h2>
+  <div class="timeline">
+    <div class="mig"><span class="rev">8eebd8f4659a</span><span class="mname">initial_schema</span><span class="notable">themes · research_runs · signals · surprise_alerts · citations · watchlist</span></div>
+    <div class="mig"><span class="rev">d14ab77781f8</span><span class="mname">add_filings_and_xbrl_facts</span></div>
+    <div class="mig"><span class="rev">f3e1dc0d6911</span><span class="mname">add_filing_sections</span></div>
+    <div class="mig"><span class="rev">b62a560f5c8d</span><span class="mname">add_relationships</span></div>
+    <div class="mig"><span class="rev">10917446bf8c</span><span class="mname">add_relationships_extracted_at_to_filing_sections</span><span class="notable">tombstone column</span></div>
+    <div class="mig"><span class="rev">1e48a3f6aabc</span><span class="mname">add_counterparty_aliases_and_resolved_to_columns</span></div>
+    <div class="mig"><span class="rev">6e374957cafa</span><span class="mname">add_competition_tables</span><span class="notable">filing_segments + competitor_landscape; one-time DELETE of competitor rows from relationships</span></div>
+    <div class="mig"><span class="rev">ecaf04c60243</span><span class="mname">transcript_relationships_nullable</span><span class="notable">dual-source: relationships.filing_id NULLABLE + CHECK + 2 partial UNIQUE indexes</span></div>
+    <div class="mig"><span class="rev">27ee955f03d8</span><span class="mname">add_catalysts_table</span></div>
+    <div class="mig"><span class="rev">0b7ff9421fa5</span><span class="mname">add_kill_criterion_states_and_archived_at</span></div>
+    <div class="mig"><span class="rev">02ec6c96409b</span><span class="mname">add_read_through_dismissals</span></div>
+    <div class="mig"><span class="rev">771650442ce6</span><span class="mname">add_earnings_prints_and_verdicts</span></div>
+    <div class="mig"><span class="rev">e68b9478e450</span><span class="mname">add_questions_table</span></div>
+    <div class="mig"><span class="rev">2db2e8812418</span><span class="mname">add_cell_path_to_citations</span><span class="notable">links research citations to model cells</span></div>
+    <div class="mig"><span class="rev">8b80bfb7f1dc</span><span class="mname">create_ticker_models</span></div>
+    <div class="mig"><span class="rev">524c7aed3d24</span><span class="mname">create_ticker_model_drafts</span></div>
+    <div class="mig"><span class="rev">28aa0887373a</span><span class="mname">workspace_runs_table</span><span class="notable">partial UNIQUE on ticker WHERE status='running'</span></div>
+    <div class="mig"><span class="rev">8b4fd10f00d3</span><span class="mname">add_signal_history</span></div>
+    <div class="mig"><span class="rev">3cf8b874da39</span><span class="mname">theme_delete_cascade_and_set_null</span><span class="notable">theme deletion safe — signals CASCADE, research_runs SET NULL</span></div>
+    <div class="mig"><span class="rev">12f874fd1d02</span><span class="mname">verdict_outcomes</span><span class="notable">sector_etf_mapping + verdict_outcomes + verdict_return_snapshots</span></div>
+    <div class="mig"><span class="rev">69d806901850</span><span class="mname">transcript_deltas</span></div>
+    <div class="mig head"><span class="rev">91f56be7821d</span><span class="mname">add_prospectus_reports</span><span class="notable">PR #31 · theme_id SET NULL · indexed on accession_number, issuer_cik, theme_id</span><span class="badge">HEAD</span></div>
+  </div>
+</section>
+
+<!-- FRONTEND PAGES -->
+<section>
+  <h2>Frontend pages · 19 routes</h2>
+  <div class="grid grid-2">
+    <div class="card"><h4>/</h4><div class="label">Theme dashboard</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Grid of theme cards with seed tickers + creation CTA</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/page.tsx</code></div>
+    <div class="card"><h4>/theme/[id]</h4><div class="label">Two-panel theme explorer</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Company list (left) + signal detail (right) with ticker editor</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/theme/[id]/</code></div>
+    <div class="card"><h4>/catalysts</h4><div class="label">Catalyst calendar</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Fleet-wide calendar bucketed by proximity</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/catalysts/page.tsx</code></div>
+    <div class="card"><h4>/filings</h4><div class="label">SEC EDGAR sections</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Grouped by theme → ticker · inline curation panel</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/page.tsx</code></div>
+    <div class="card"><h4>/filings/graph</h4><div class="label">Multi-hop supply-chain graph</div><p style="color:var(--muted);font-size:12px;margin:6px 0">1-2 hop, optional theme gate · render-layer edge dedup</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/graph/page.tsx</code></div>
+    <div class="card"><h4>/library</h4><div class="label">Research Library</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Filtered run list + data-gaps view + pagination</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/library/page.tsx</code></div>
+    <div class="card"><h4>/status</h4><div class="label">Status board</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Fleet thesis view · health/conviction · auto-polls every 60s</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/status/page.tsx</code></div>
+    <div class="card"><h4>/performance</h4><div class="label">Outcome dashboard</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Verdict / theme / signal-bucket rollups + outcome list</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/performance/page.tsx</code></div>
+    <div class="card"><h4>/questions</h4><div class="label">Question log</div><p style="color:var(--muted);font-size:12px;margin:6px 0">By-ticker rollup + by-question list with filters</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/questions/page.tsx</code></div>
+    <div class="card"><h4>/pipeline/new</h4><div class="label">New run form</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Ticker + theme picker · recent tickers quick-fill</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/pipeline/new/page.tsx</code></div>
+    <div class="card"><h4>/pipeline/[runId]</h4><div class="label">Unified research page (live + report)</div><p style="color:var(--muted);font-size:12px;margin:6px 0">SSE streaming · deep-dive dashboard · thesis/risk/position · catalyst calendar</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/pipeline/[runId]/page.tsx</code></div>
+    <div class="card"><h4>/workspace · /workspace/[runId]</h4><div class="label">Workspace loop</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Index + per-run report (dual hydration REST + SSE, 5 step cards)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/workspace/</code></div>
+    <div class="card"><h4>/model/[ticker]</h4><div class="label">Financial model · 3 tabs</div><p style="color:var(--muted);font-size:12px;margin:6px 0">#forecast (editable grid) · #reverse-dcf (sensitivity grids) · #history (version diff)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/model/[ticker]/page.tsx</code></div>
+    <div class="card"><h4>/report/[runId]</h4><div class="label">Redirect</div><p style="color:var(--muted);font-size:12px;margin:6px 0">→ /pipeline/[runId]</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/report/[runId]/page.tsx</code></div>
+    <div class="card"><h4>/theme/new</h4><div class="label">Create theme form</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Name, seed_tickers, x_search_terms, screener JSON</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/theme/new/page.tsx</code></div>
+    <div class="card"><h4>/prospectus</h4><div class="label">S-1 prospectus reports</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Index list with NewProspectusButton (URL/accession submit) + VerdictPill chips</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/prospectus/page.tsx</code></div>
+    <div class="card"><h4>/prospectus/[reportId]</h4><div class="label">Prospectus report (4 step cards)</div><p style="color:var(--muted);font-size:12px;margin:6px 0">IngestSummary · Relationships · Categories · Thesis — REST hydrate + SSE live updates</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/prospectus/[reportId]/page.tsx</code></div>
+  </div>
+</section>
+
+<!-- FRONTEND COMPONENTS -->
+<section>
+  <h2>Frontend components</h2>
+
+  <details open>
+    <summary><span>components/deep-dive <span class="muted" style="color:var(--dim);font-weight:400">— 30+ files across charts/, sections/, panels/, skeleton/</span></span></summary>
+    <div class="details-body">
+      <div class="grid grid-2">
+        <div>
+          <h3 style="margin-top:0">Orchestrators &amp; shared</h3>
+          <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:12.5px;line-height:1.7">
+            <li><code style="color:var(--accent-2)">DeepDiveDashboard</code> — master container; receives ticker prop for supply-chain card</li>
+            <li><code style="color:var(--accent-2)">ReportHeader</code> — identity + verdict + thesis/risk + ModelStatusBadge</li>
+            <li><code style="color:var(--accent-2)">OverviewBanner</code> — synthesized verdict + radar + HeadlineMetrics + ScoreBar</li>
+            <li><code style="color:var(--accent-2)">CommandPalette</code> — ⌘K jump-to-section</li>
+            <li><code style="color:var(--accent-2)">SectionNav</code> — sticky horizontal scroll-spy nav</li>
+            <li><code style="color:var(--accent-2)">VelocitySparkline</code> — 30-day signal sparkline</li>
+            <li><code style="color:var(--accent-2)">categories.ts</code> — single source of truth for 9 category names</li>
+            <li><code style="color:var(--accent-2)">scoreColors.ts</code> — 4-tier palette at 40/55/70 thresholds</li>
+            <li><code style="color:var(--accent-2)">scoreKeys.ts</code> — DISPLAY_TO_KEY + normalizeScoreKeys</li>
+            <li><code style="color:var(--accent-2)">sections.ts</code> — single section registry</li>
+            <li><code style="color:var(--accent-2)">usePersistedCollapse</code> — localStorage-backed collapse hook</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="margin-top:0">9 category sections + charts</h3>
+          <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:12.5px;line-height:1.7">
+            <li><code style="color:var(--accent-2)">sections/</code> · BusinessQuality, FinancialHealth, GrowthEarnings, ManagementGovernance, TechnicalMarket, MacroRegime, SentimentNarrative, RiskAssessment, FutureDurability</li>
+            <li>+ <code style="color:var(--accent-2)">SupplyChainEcosystem</code> (calls getGraph depth=1; links to /filings/graph)</li>
+            <li>+ <code style="color:var(--accent-2)">Competition</code> · <code style="color:var(--accent-2)">CrossCategoryCorrelation</code> · <code style="color:var(--accent-2)">WhatChangedPanel</code></li>
+            <li>shells: <code style="color:var(--accent-2)">DataRichSection</code> · <code style="color:var(--accent-2)">MixedSection</code> · <code style="color:var(--accent-2)">QualitativeCard</code></li>
+            <li><code style="color:var(--accent-2)">charts/</code> · BetaGauge, BulletRangeChart, CandlestickChart (lightweight-charts), DebtMaturityLadder, GroupedBarChart, RAGStrip, RPOTrend, StackedBarChart, TrendLineChart</li>
+            <li><code style="color:var(--accent-2)">skeleton/</code> · ChartSkeleton, PanelSkeleton</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>components/model <span class="muted" style="color:var(--dim);font-weight:400">— editable financial model</span></span></summary>
+    <div class="details-body">
+      <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:12.5px;line-height:1.7">
+        <li><code style="color:var(--accent-2)">ForecastGrid</code> — editable grid · sticky title + sticky left column · cells wired to PUT /draft</li>
+        <li><code style="color:var(--accent-2)">DriverPanel</code> — annual + quarterly inputs</li>
+        <li><code style="color:var(--accent-2)">FormulaBar</code> — active-cell readout</li>
+        <li><code style="color:var(--accent-2)">CellRenderer</code> — per-cell value + source badge + edit state</li>
+        <li><code style="color:var(--accent-2)">ReverseDcfPanel</code> · <code style="color:var(--accent-2)">SensitivityHeatmap</code> (21×21) · <code style="color:var(--accent-2)">ThesisVsPricedTable</code> · <code style="color:var(--accent-2)">WhatIfScratchPanel</code></li>
+        <li><code style="color:var(--accent-2)">HistoryDiffViewer</code> — version diff</li>
+        <li><code style="color:var(--accent-2)">heatmapColors.ts</code> — diverging palette for sensitivity grid · <strong>DO NOT</strong> swap with scoreColors.ts</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>components/filings · workspace · status · questions · performance · themes</span></summary>
+    <div class="details-body">
+      <div class="grid grid-2">
+        <div class="comp-folder">
+          <h4>filings/</h4>
+          <ul>
+            <li><span class="cname">ThemeFilingsPanel</span></li>
+            <li><span class="cname">TickerFilingsCard</span></li>
+            <li><span class="cname">SectionReader</span> (modal)</li>
+            <li><span class="cname">MultiHopGraphView</span> · render-layer edge dedup with disclosure-count badge</li>
+            <li><span class="cname">CurationPanel</span></li>
+          </ul>
+        </div>
+        <div class="comp-folder">
+          <h4>workspace/</h4>
+          <ul>
+            <li><span class="cname">WorkspaceReport</span> · dual hydration REST + SSE</li>
+            <li><span class="cname">VerdictBadge</span> · healthy/imminent/triggered/broken</li>
+            <li><span class="cname">StepCards/</span> · UpdateRefreshCard, ResearchCard, ValidationCard, ChallengeCard, DifferentiationCard</li>
+          </ul>
+        </div>
+        <div class="comp-folder">
+          <h4>status/</h4>
+          <ul>
+            <li><span class="cname">ReadThroughDrawer</span></li>
+            <li><span class="cname">EarningsDrawer</span></li>
+          </ul>
+        </div>
+        <div class="comp-folder">
+          <h4>questions/</h4>
+          <ul>
+            <li><span class="cname">QuestionRow</span></li>
+            <li><span class="cname">OpenQuestionsPanel</span></li>
+            <li><span class="cname">QuestionTickerRollupTable</span></li>
+          </ul>
+        </div>
+        <div class="comp-folder">
+          <h4>performance/</h4>
+          <ul>
+            <li><span class="cname">HeroBand</span> · <span class="cname">PerformanceFilters</span></li>
+            <li><span class="cname">ByVerdictTable</span> · <span class="cname">ByThemeTable</span> · <span class="cname">BySignalBucketPanel</span></li>
+            <li><span class="cname">OutcomeList</span> · <span class="cname">ReturnCell</span></li>
+          </ul>
+        </div>
+        <div class="comp-folder">
+          <h4>themes/ + root</h4>
+          <ul>
+            <li><span class="cname">DeleteThemeButton</span></li>
+            <li>Nav (10 links) · ScoreRing · VelocityBadge · SourceBadge · ThesisCard · RiskCard · PositionCard · CatalystList · CatalystRow · CatalystCalendar · CitationList · BullBearColumns</li>
+          </ul>
+        </div>
+        <div class="comp-folder">
+          <h4>prospectus/ <span style="color:var(--dim);font-weight:400;font-size:11px">— PR #31</span></h4>
+          <ul>
+            <li><span class="cname">ProspectusList</span> · <span class="cname">NewProspectusButton</span> · <span class="cname">ProspectusReport</span> (REST + SSE)</li>
+            <li><span class="cname">VerdictPill</span> · participate / watch_post_lockup / pass</li>
+            <li><span class="cname">StepCards/</span> · IngestSummaryCard, RelationshipsCard, CategoryCard, ThesisCard</li>
+            <li><strong style="color:var(--warn)">⚠</strong> <code>CategoryCard</code> uses IPO-specific score thresholds — do NOT swap with <code>scoreColors.ts</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>lib/api.ts <span class="muted" style="color:var(--dim);font-weight:400">— 18 namespaces, ~85 functions</span></span></summary>
+    <div class="details-body">
+      <div class="grid grid-4">
+        <div class="comp-folder"><h4>themes</h4><ul><li>list, get, create, update, delete</li><li>addTicker, removeTicker</li></ul></div>
+        <div class="comp-folder"><h4>filings</h4><ul><li>list, getSection</li><li>ingestTicker, ingestBatch</li></ul></div>
+        <div class="comp-folder"><h4>relationships</h4><ul><li>listForTicker, extractTicker</li><li>resolveTicker, listUnresolved, createAlias</li><li>getGraph, reconcile</li></ul></div>
+        <div class="comp-folder"><h4>competition</h4><ul><li>get, extract</li></ul></div>
+        <div class="comp-folder"><h4>transcripts</h4><ul><li>extract</li></ul></div>
+        <div class="comp-folder"><h4>fanouts</h4><ul><li>startTheme, startTicker, get</li></ul></div>
+        <div class="comp-folder"><h4>discovery</h4><ul><li>run</li></ul></div>
+        <div class="comp-folder"><h4>pipeline</h4><ul><li>start, get, list, dataGaps</li><li>advance, report, streamUrl</li></ul></div>
+        <div class="comp-folder"><h4>status</h4><ul><li>board, archive, unarchive</li></ul></div>
+        <div class="comp-folder"><h4>killCriteria</h4><ul><li>list, set</li></ul></div>
+        <div class="comp-folder"><h4>readThroughs</h4><ul><li>list, dismiss, summarize</li></ul></div>
+        <div class="comp-folder"><h4>earnings</h4><ul><li>board, brief, verdict</li><li>printsByTicker, refresh</li></ul></div>
+        <div class="comp-folder"><h4>questions</h4><ul><li>list, byTicker</li><li>dismiss, resolve, retryAuto</li></ul></div>
+        <div class="comp-folder"><h4>workspaceApi</h4><ul><li>kickOff, get, history</li><li>recent, streamUrl</li></ul></div>
+        <div class="comp-folder"><h4>outcomesApi</h4><ul><li>getSummary, list</li><li>getBySource, triggerBackfill</li></ul></div>
+        <div class="comp-folder"><h4>transcriptDeltaApi</h4><ul><li>getLatest, getHistory</li><li>compute</li></ul></div>
+        <div class="comp-folder"><h4>prospectusApi <span style="color:var(--dim);font-weight:400;font-size:10px">PR #31</span></h4><ul><li>create, get, list</li><li>delete, streamUrl</li></ul></div>
+        <div class="comp-folder"><h4>standalone</h4><ul><li>getCatalysts, getCatalyst</li><li>getSignalHistory</li><li>getModel, initializeModel</li><li>putModelDraft, saveModelVersion</li><li>discardModelDraft, getReverseDcf</li><li>getModelVersions, getModelDiff</li></ul></div>
+      </div>
+    </div>
+  </details>
+</section>
+
+<!-- SERVICES -->
+<section>
+  <h2>Backend services · 41 files</h2>
+  <details>
+    <summary><span>Full service list</span><span class="count">backend/app/services/*.py</span></summary>
+    <div class="details-body">
+      <div class="item-row"><div><div class="name">catalyst_dates</div><div class="file">services/catalyst_dates.py</div></div><div class="purpose">Parse free-form catalyst timeframe strings to date windows</div></div>
+      <div class="item-row"><div><div class="name">catalyst_promotion</div><div class="file">services/catalyst_promotion.py</div></div><div class="purpose">Promote parsed Catalyst objects from thesis runs to first-class DB rows</div></div>
+      <div class="item-row"><div><div class="name">counterparty_resolver</div><div class="file">services/counterparty_resolver.py</div></div><div class="purpose">RapidFuzz fuzzy matching against company_tickers.json (≥95 auto, 80-94 queue, &lt;80 queue-only)</div></div>
+      <div class="item-row"><div><div class="name">data_gaps</div><div class="file">services/data_gaps.py</div></div><div class="purpose">Detect hard errors and soft data gaps in research run state</div></div>
+      <div class="item-row"><div><div class="name">dcf</div><div class="file">services/dcf.py</div></div><div class="purpose">Pure DCF engine — no IO, no DB. Caller must recompute() first.</div></div>
+      <div class="item-row"><div><div class="name">discovery</div><div class="file">services/discovery.py</div></div><div class="purpose">Discovery Engine — FMP screener + cached X signal passes</div></div>
+      <div class="item-row"><div><div class="name">earnings_brief</div><div class="file">services/earnings_brief.py</div></div><div class="purpose">Pre-earnings brief synthesis (3-5 bullets, Haiku)</div></div>
+      <div class="item-row"><div><div class="name">earnings_prints</div><div class="file">services/earnings_prints.py</div></div><div class="purpose">Earnings prints indexer (FMP calendar → DB)</div></div>
+      <div class="item-row"><div><div class="name">earnings_scheduler</div><div class="file">services/earnings_scheduler.py</div></div><div class="purpose">Daily cron 21:00 UTC for earnings refresh</div></div>
+      <div class="item-row"><div><div class="name">earnings_verdict</div><div class="file">services/earnings_verdict.py</div></div><div class="purpose">Post-print thesis verdict (Haiku)</div></div>
+      <div class="item-row"><div><div class="name">edgar_competition</div><div class="file">services/edgar_competition.py</div></div><div class="purpose">Extract structured competition disclosure from 10-K Item 1</div></div>
+      <div class="item-row"><div><div class="name">edgar_html</div><div class="file">services/edgar_html.py</div></div><div class="purpose">Extract narrative sections from SEC filing HTML (strips inline XBRL)</div></div>
+      <div class="item-row"><div><div class="name">edgar_ingest</div><div class="file">services/edgar_ingest.py</div></div><div class="purpose">Ingest SEC EDGAR XBRL company facts (RPO/debt maturity/credit)</div></div>
+      <div class="item-row"><div><div class="name">edgar_relationships</div><div class="file">services/edgar_relationships.py</div></div><div class="purpose">Phase B — extract relationships via Haiku (Pydantic structured output)</div></div>
+      <div class="item-row"><div><div class="name">edgar_sections_ingest</div><div class="file">services/edgar_sections_ingest.py</div></div><div class="purpose">Phase A — ingest narrative sections (idempotent on filing_id, section_key)</div></div>
+      <div class="item-row"><div><div class="name">edgar_transcripts_relationships</div><div class="file">services/edgar_transcripts_relationships.py</div></div><div class="purpose">Extract relationships from last 4Q earnings transcripts</div></div>
+      <div class="item-row"><div><div class="name">fanout</div><div class="file">services/fanout.py</div></div><div class="purpose">Phase E — serial ingest → extract → resolve orchestrator; in-memory status</div></div>
+      <div class="item-row"><div><div class="name">model_balancing</div><div class="file">services/model_balancing.py</div></div><div class="purpose">Pure recompute: drivers → IS → CF → BS; plug into retained_earnings</div></div>
+      <div class="item-row"><div><div class="name">model_baseline</div><div class="file">services/model_baseline.py</div></div><div class="purpose">Orchestrate AI baseline seeding into ModelState</div></div>
+      <div class="item-row"><div><div class="name">model_diff</div><div class="file">services/model_diff.py</div></div><div class="purpose">Cell-path-keyed JSON diff between two ModelStates</div></div>
+      <div class="item-row"><div><div class="name">outcome_tracker</div><div class="file">services/outcome_tracker.py</div></div><div class="purpose">Resolve entry prices, create outcomes, refresh snapshots at 1d/1w/1m/3m/6m</div></div>
+      <div class="item-row"><div><div class="name">peer_comp</div><div class="file">services/peer_comp.py</div></div><div class="purpose">Peer comparison table builder</div></div>
+      <div class="item-row"><div><div class="name">pipeline</div><div class="file">services/pipeline.py</div></div><div class="purpose">PipelineService — run lifecycle, state persistence, SSE plumbing</div></div>
+      <div class="item-row"><div><div class="name">questions</div><div class="file">services/questions.py</div></div><div class="purpose">Question log query helpers + retry-auto orchestration</div></div>
+      <div class="item-row"><div><div class="name">read_through</div><div class="file">services/read_through.py</div></div><div class="purpose">Read-through engine (peer events against thesis tickers)</div></div>
+      <div class="item-row"><div><div class="name">relationship_context</div><div class="file">services/relationship_context.py</div></div><div class="purpose">CounterpartyContext (outbound + inbound, capped 20/bucket)</div></div>
+      <div class="item-row"><div><div class="name">reverse_dcf</div><div class="file">services/reverse_dcf.py</div></div><div class="purpose">Bisection solvers + 21×21 sensitivity grids + thesis vs priced-in</div></div>
+      <div class="item-row"><div><div class="name">run_timestamps</div><div class="file">services/run_timestamps.py</div></div><div class="purpose">Stable timestamp helpers for research runs</div></div>
+      <div class="item-row"><div><div class="name">signal_history</div><div class="file">services/signal_history.py</div></div><div class="purpose">Time-series read access to signal_history table</div></div>
+      <div class="item-row"><div><div class="name">signal_scheduler</div><div class="file">services/signal_scheduler.py</div></div><div class="purpose">Daily X signal refresh at 2 AM via AsyncIOScheduler</div></div>
+      <div class="item-row"><div><div class="name">status_board</div><div class="file">services/status_board.py</div></div><div class="purpose">Status board aggregator with health bucketing</div></div>
+      <div class="item-row"><div><div class="name">supply_chain</div><div class="file">services/supply_chain.py</div></div><div class="purpose">Phase D — supply-chain graph (depth=1|2 BFS) + bilateral reconciliation</div></div>
+      <div class="item-row"><div><div class="name">transcript_delta</div><div class="file">services/transcript_delta.py</div></div><div class="purpose">Haiku QoQ language deltas across multiple axes</div></div>
+      <div class="item-row"><div><div class="name">workspace</div><div class="file">services/workspace.py</div></div><div class="purpose">WorkspaceService orchestrating 5-step workspace loop</div></div>
+      <div class="item-row"><div><div class="name">workspace_context</div><div class="file">services/workspace_context.py</div></div><div class="purpose">WorkspaceContext dataclass — pure data carrier through steps</div></div>
+      <div class="item-row"><div><div class="name">workspace_steps</div><div class="file">services/workspace_steps.py</div></div><div class="purpose">Five workspace step implementations</div></div>
+      <div class="item-row"><div><div class="name">prospectus_service</div><div class="file">services/prospectus_service.py</div></div><div class="purpose">ProspectusService — 4-step pipeline (ingest → relationships → categories → thesis) · in-memory SSE queues · per-step session+commit</div></div>
+      <div class="item-row"><div><div class="name">prospectus_ingest</div><div class="file">services/prospectus_ingest.py</div></div><div class="purpose">Parse S-1 URL/accession, fetch + extract sections, persist Filing/FilingSection under <code>synthetic_ticker</code></div></div>
+      <div class="item-row"><div><div class="name">prospectus_financials</div><div class="file">services/prospectus_financials.py</div></div><div class="purpose">Sonnet pass over MD&amp;A → ProspectusFinancials (annual + interim rows with source_snippet)</div></div>
+      <div class="item-row"><div><div class="name">prospectus_categories</div><div class="file">services/prospectus_categories.py</div></div><div class="purpose">7 IPO-tuned categories (CATEGORY_SECTION_ROUTING in graph/prospectus_prompts.py); 8K chars/section</div></div>
+      <div class="item-row"><div><div class="name">prospectus_thesis</div><div class="file">services/prospectus_thesis.py</div></div><div class="purpose">Synthesize thesis + key risks + IPO verdict + post-IPO research plan</div></div>
+    </div>
+  </details>
+</section>
+
+<!-- CROSS REFS -->
+<section>
+  <h2>Cross-references · frontend → backend</h2>
+  <div class="xref">
+    <div class="xref-row"><span class="route">/</span><span class="arr">→</span><span class="ep">GET /api/themes</span> · <span class="ep">DELETE /api/themes/{id}</span></div>
+    <div class="xref-row"><span class="route">/theme/[id]</span><span class="arr">→</span><span class="ep">GET /api/themes/{id}</span> · <span class="ep">/discover</span> · <span class="ep">/signals/refresh</span> · <span class="ep">/signals/{ticker}/history</span></div>
+    <div class="xref-row"><span class="route">/catalysts</span><span class="arr">→</span><span class="ep">GET /api/catalysts</span> · <span class="ep">/catalysts/{id}</span></div>
+    <div class="xref-row"><span class="route">/filings</span><span class="arr">→</span><span class="ep">GET /api/themes</span> · <span class="ep">/api/filings/*</span> · <span class="ep">/api/relationships/*</span> · <span class="ep">/api/themes/{id}/relationships/fanout</span> · <span class="ep">/api/fanouts/{id}</span></div>
+    <div class="xref-row"><span class="route">/filings/graph</span><span class="arr">→</span><span class="ep">GET /api/relationships/graph/{ticker}?depth=2&amp;theme_id=</span></div>
+    <div class="xref-row"><span class="route">/status</span><span class="arr">→</span><span class="ep">/api/status/board</span> · <span class="ep">/api/runs/{id}/kill-criteria</span> · <span class="ep">/api/status/read-throughs</span> · <span class="ep">/api/earnings/board</span> · <span class="ep">/api/runs/{id}/earnings/{print}/{brief|verdict}</span></div>
+    <div class="xref-row"><span class="route">/questions</span><span class="arr">→</span><span class="ep">/questions</span> · <span class="ep">/questions/by-ticker</span> · <span class="ep">/questions/{id}/{dismiss|resolve|retry-auto}</span> <span style="color:var(--warn)">⚠ no /api prefix</span></div>
+    <div class="xref-row"><span class="route">/library</span><span class="arr">→</span><span class="ep">GET /api/runs</span> · <span class="ep">/api/runs/data-gaps</span></div>
+    <div class="xref-row"><span class="route">/performance</span><span class="arr">→</span><span class="ep">/api/outcomes/summary</span> · <span class="ep">/api/outcomes</span> · <span class="ep">/api/outcomes/backfill</span></div>
+    <div class="xref-row"><span class="route">/pipeline/new</span><span class="arr">→</span><span class="ep">POST /api/runs</span> · <span class="ep">GET /api/themes</span></div>
+    <div class="xref-row"><span class="route">/pipeline/[runId]</span><span class="arr">→</span><span class="ep">/api/runs/{id}</span> · <span class="ep">/stream (SSE)</span> · <span class="ep">/report</span> · <span class="ep">/advance</span> · <span class="ep">/api/catalysts?run_id=</span> · <span class="ep">/questions?ticker=</span> · <span class="ep">/api/relationships/graph/{ticker}?depth=1</span> · <span class="ep">/api/transcripts/delta/{ticker}/latest</span></div>
+    <div class="xref-row"><span class="route">/workspace · /workspace/[runId]</span><span class="arr">→</span><span class="ep">/api/workspace/recent</span> · <span class="ep">/api/workspace/runs/{id}</span> · <span class="ep">/stream (SSE)</span></div>
+    <div class="xref-row"><span class="route">/model/[ticker]</span><span class="arr">→</span><span class="ep">/api/models/{ticker}</span> · <span class="ep">/initialize</span> · <span class="ep">/draft (PUT/DELETE)</span> · <span class="ep">/save</span> · <span class="ep">/reverse-dcf</span> · <span class="ep">/versions/{v}/diff</span></div>
+    <div class="xref-row"><span class="route">/prospectus</span><span class="arr">→</span><span class="ep">GET /api/prospectus</span> · <span class="ep">POST /api/prospectus</span> · <span class="ep">DELETE /api/prospectus/{id}</span></div>
+    <div class="xref-row"><span class="route">/prospectus/[reportId]</span><span class="arr">→</span><span class="ep">GET /api/prospectus/{id}</span> · <span class="ep">/stream (SSE)</span></div>
+  </div>
+</section>
+
+<!-- INVARIANTS -->
+<section>
+  <h2>Invariants &amp; gotchas <span style="color:var(--warn); font-size:11px">⚠ read before touching code</span></h2>
+
+  <div class="invariant">
+    <div class="iname">uvicorn_cwd</div>
+    <div class="irule">Always launch uvicorn from PROJECT ROOT — never from <code>backend/</code></div>
+    <div class="iwhy"><strong>Why:</strong> backend uses absolute imports rooted at project root (<code>backend.app.*</code>). Running from <code>backend/</code> breaks every import. Tests + migrations also need PYTHONPATH or <code>pip install -e .</code>.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">env_file_path</div>
+    <div class="irule"><code>.env</code> lives at PROJECT ROOT and stays there</div>
+    <div class="iwhy"><strong>Why:</strong> <code>backend/app/config.py</code> hard-codes <code>env_file='../../.env'</code> relative to <code>backend/app/</code>. Moving it breaks Settings load. Required keys: <code>FMP_API_KEY · X_BEARER_TOKEN · ANTHROPIC_API_KEY · DATABASE_URL · DATABASE_URL_SYNC · SEC_USER_AGENT</code>.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">ticker_uppercase</div>
+    <div class="irule">Every model/filing/earnings endpoint normalizes <code>ticker = ticker.upper()</code> at entry</div>
+    <div class="iwhy"><strong>Why:</strong> <code>ticker_models</code>, <code>ticker_model_drafts</code>, <code>research_runs</code>, <code>earnings_prints</code> all store tickers upper-case. Skipping breaks lookups + risks duplicate-identity drafts.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">async_session_commit</div>
+    <div class="irule"><code>async_session()</code> does NOT autocommit — explicit <code>await db.commit()</code> required</div>
+    <div class="iwhy"><strong>Why:</strong> <code>expire_on_commit=False</code> but no autocommit. Forgetting this means nothing persists silently. Applies to <code>services/fanout.py</code> per-ticker stages and <code>services/model_baseline.initialize_or_get_model</code> and any service that opens its own session.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">fmp_client_singleton</div>
+    <div class="irule">Use <code>app.state.fmp</code> via <code>request.app.state.fmp</code> — do NOT instantiate <code>FMPClient()</code> in endpoints</div>
+    <div class="iwhy"><strong>Why:</strong> the singleton from lifespan owns the rate limiter and shared session. Example: <code>models_api.get_reverse_dcf</code> uses <code>request.app.state.fmp</code> for the live price default.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">pipeline_routing_dual_truth</div>
+    <div class="irule">Pipeline phase routing exists in BOTH <code>graph/pipeline.py</code> edges AND <code>services/pipeline.py::_next_phase</code></div>
+    <div class="iwhy"><strong>Why:</strong> parallel sources of truth — both must be updated when adding/reordering phases.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">sse_event_sync</div>
+    <div class="irule">Python <code>pipeline._emit</code> calls and the TypeScript <code>SSEEvent</code> discriminated union MUST stay in sync</div>
+    <div class="iwhy"><strong>Why:</strong> <code>SSEEvent</code> in <code>frontend/lib/api.ts</code> is a discriminated union. New event types added on the Python side won't be typed on the frontend.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">citation_three_shapes</div>
+    <div class="irule">Three Citation shapes exist — keep them aligned</div>
+    <div class="iwhy">
+      <strong>Citation</strong> (dataclass, <code>models/citation.py</code>): used for return tuples <code>(data, Citation)</code> from data clients ·
+      <strong>CitationRecord</strong> (ORM persisted form, same file, citations table) ·
+      <strong>StateCitation</strong> (<code>graph/state.py</code>): JSON-serializable, lives inside <code>ResearchState.state</code> JSONB with ISO-string timestamp.
+      Adding a new data source = preserve the (data, Citation) tuple convention.
+    </div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">score_keys_normalization</div>
+    <div class="irule">Use <code>scoreKeys.ts::normalizeScoreKeys</code> at every backend → frontend boundary</div>
+    <div class="iwhy"><strong>Why:</strong> report API returns display-name keys (<code>"Macro &amp; Regime"</code>) while ScoreBar / radar / chip components expect snake_case. Skipping silently produces all-em-dash ScoreBar.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">score_palette</div>
+    <div class="irule">Use <code>scoreColors.ts</code> for score-tier coloring; use <code>heatmapColors.ts</code> for sensitivity grids</div>
+    <div class="iwhy"><strong>Why:</strong> local <code>if/else</code> palettes at 40/50/70 cluster everything 40-60 into a single amber band. Diverging heatmap palette is for grid coloring, not score tiers — don't swap them.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">next16_breaking</div>
+    <div class="irule">Next.js 16 has breaking changes. Read <code>node_modules/next/dist/docs/</code> before editing routing, middleware, route handlers, or Server Component APIs</div>
+    <div class="iwhy"><strong>Why:</strong> training-data conventions for <code>middleware.ts</code>, route-handler shapes, and caching primitives don't match Next 16.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">cell_path_value_object</div>
+    <div class="irule">cell_path wire format is owned by typed <code>CellPath</code> union on both sides</div>
+    <div class="iwhy"><strong>Shapes:</strong> <code>DriverPath | StatementCellPath | AssumptionPath</code>. AssumptionPath only accepts ModelCell-shaped keys (discount_rate, terminal_multiple, perpetuity_growth, tax_rate). Categorical assumptions (terminal_method, plug_priority) intentionally not editable through <code>PUT /draft</code>.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">concentration_via_narrative_not_xbrl</div>
+    <div class="irule">Customer concentration is in <code>relationships</code> (with <code>unnamed=true</code>), NOT in <code>xbrl_facts</code></div>
+    <div class="iwhy"><strong>Why:</strong> <code>ConcentrationRiskPercentage1</code> is always dimensionally disclosed and the SEC <code>companyfacts</code> API only exposes un-dimensioned parent facts. The <code>xbrl_facts</code> table covers RPO, debt maturity, credit only.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">localhost_ipv6_collision</div>
+    <div class="irule">Pin <code>NEXT_PUBLIC_API_URL</code> to <code>http://127.0.0.1:8000</code> if Docker is running</div>
+    <div class="iwhy"><strong>Why:</strong> Docker <code>dashboard-api-1</code> can steal IPv6 localhost:8000 from uvicorn.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">print_view_data_attr</div>
+    <div class="irule">Tag new sticky UI (nav, action buttons, modals) with <code>data-print-hide="true"</code></div>
+    <div class="iwhy"><strong>Why:</strong> <code>@media print</code> in <code>app/globals.css</code> hides any element with that attribute and forces opaque surfaces — keeps chrome out of the PDF.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">section_dual_panel_pattern</div>
+    <div class="irule"><code>DataRichSection</code> + <code>MixedSection</code> render <code>AICompanionPanel</code> twice — once with <code>section='summary'</code> inside the chart grid, once with <code>section='analysis'</code> as a full-width block below</div>
+    <div class="iwhy"><strong>Why:</strong> prevents the analysis paragraph from making the right column 2× taller than the charts and leaving empty whitespace on the left. <code>QualitativeCard</code> renders it without a section prop (single-column).</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">report_api_phases_deep_dive_shape</div>
+    <div class="irule"><code>phases.deep_dive</code> in the report API is <code>{ categories: Record&lt;str, CategoryOutput&gt;, curated_financials: CuratedFinancials | null }</code> — NOT a flat record</div>
+    <div class="iwhy"><strong>Why:</strong> consumed by every frontend page that reads <code>/api/runs/{id}/report</code>.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">no_pytest</div>
+    <div class="irule">Tests run under Python's stdlib unittest — <code>python -m unittest backend.tests.&lt;module&gt;</code> from project root with venv active</div>
+    <div class="iwhy"><strong>Why:</strong> no pytest, no coverage harness. Don't introduce pytest unless intentionally migrating.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">fanout_in_memory</div>
+    <div class="irule"><code>FanoutStatus</code> is in-memory only — does NOT survive backend restart</div>
+    <div class="iwhy"><strong>Why:</strong> acceptable for personal tool. If you persist it later, update <code>FanoutService</code> accordingly. Also: <code>force=True</code> on fan-out only affects the EXTRACT stage; resolve already skips rows with <code>resolved_to_cik IS NOT NULL</code>.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">prospectus_synthetic_ticker</div>
+    <div class="irule">Prospectus (S-1) issuers are written into <code>filings.ticker</code> / <code>relationships.ticker</code> under a <code>synthetic_ticker</code> — <code>proposed_ticker</code> if disclosed, else uppercase-alphanumeric slug of <code>issuer_name</code> truncated to 16 chars</div>
+    <div class="iwhy"><strong>Why:</strong> lets the entire existing 5-phase EDGAR pipeline (section extraction, relationship extraction, counterparty resolution, supply-chain graph) work unchanged on pre-IPO issuers. The derived value is a <code>@property</code> on <code>ProspectusReport</code> — don't re-normalize at endpoint boundary.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">prospectus_score_thresholds</div>
+    <div class="irule">Prospectus <code>CategoryCard</code> score color thresholds are IPO-specific — do NOT replace with <code>scoreColors.ts</code> (equity 40/55/70 tiers)</div>
+    <div class="iwhy"><strong>Why:</strong> IPO scoring uses a different rubric (0-30 disqualifying, 31-55 uncertain, 56-75 typical, 76-100 standout) defined in <code>graph/prospectus_prompts.py::PROSPECTUS_SYSTEM</code>. Equity tiers would map IPO scores wrong.</div>
+  </div>
+</section>
+
+<!-- ENTRY POINTS -->
+<section>
+  <h2>How to run</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <h4>Backend dev server</h4>
+      <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">source backend/venv/bin/activate</code>
+      <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">uvicorn backend.app.main:app --reload</code>
+      <p style="color:var(--muted); font-size:12px; margin:8px 0 0">Run from PROJECT ROOT · port 8000 · lifespan attaches <code>app.state.{edgar,fmp,fanout,workspace,prospectus}</code> + 2 cron jobs.</p>
+    </div>
+    <div class="card">
+      <h4>Frontend dev server</h4>
+      <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">cd frontend && npm install</code>
+      <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">npm run dev</code>
+      <p style="color:var(--muted); font-size:12px; margin:8px 0 0">Port 3000 · pin <code>NEXT_PUBLIC_API_URL</code> to <code>127.0.0.1:8000</code> if Docker is running.</p>
+    </div>
+    <div class="card">
+      <h4>Database migrations</h4>
+      <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">cd backend && alembic upgrade head</code>
+      <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">cd backend && alembic revision --autogenerate -m "msg"</code>
+      <p style="color:var(--muted); font-size:12px; margin:8px 0 0">Review autogen output for partial indexes / CASCADE / CHECK constraints (autogen misses these).</p>
+    </div>
+    <div class="card">
+      <h4>Backend tests</h4>
+      <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">python -m unittest backend.tests.&lt;module&gt;</code>
+      <p style="color:var(--muted); font-size:12px; margin:8px 0 0">stdlib unittest from project root with venv active. No pytest.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  sector-research · architecture map · generated 2026-05-20 (PR #31 — S-1 prospectus pipeline) · companion JSON at <code>design/architecture.json</code>
+</footer>
+
+</body>
+</html>
