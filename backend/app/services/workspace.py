@@ -57,6 +57,8 @@ class WorkspaceService:
         self._edgar = edgar
         self._anthropic = anthropic
         self._queues: dict[str, asyncio.Queue] = {}
+        self._ticker_locks: dict[str, asyncio.Lock] = {}
+        self._ticker_locks_guard = asyncio.Lock()
 
     # ── SSE plumbing ───────────────────────────────────────────────────────────
 
@@ -88,46 +90,74 @@ class WorkspaceService:
                     yield queue.get_nowait()
                 return
 
+    # ── Per-ticker concurrency guard ───────────────────────────────────────────
+
+    def _acquire_ticker_lock(self, ticker: str):
+        """Async context manager that serializes kick_off per ticker.
+
+        Two concurrent kick_off() calls for the same ticker would otherwise both
+        pass the draft-absence check before either INSERT lands, allowing the
+        second run to race the first model-version write and surface a
+        (ticker, version) IntegrityError. The lock pins them to single-file
+        execution within this process; horizontal scaling is not a concern
+        (single-process local tool).
+        """
+        svc = self
+        ticker = ticker.upper()
+
+        class _LockCtx:
+            async def __aenter__(self_inner):
+                async with svc._ticker_locks_guard:
+                    lock = svc._ticker_locks.get(ticker)
+                    if lock is None:
+                        lock = asyncio.Lock()
+                        svc._ticker_locks[ticker] = lock
+                self_inner._lock = lock
+                await lock.acquire()
+                return self_inner
+
+            async def __aexit__(self_inner, exc_type, exc, tb):
+                self_inner._lock.release()
+
+        return _LockCtx()
+
     # ── Run lifecycle ─────────────────────────────────────────────────────────
 
     async def kick_off(self, ticker: str, *, research_run_id: str | None = None) -> str:
         """Create the workspace_runs row and start the background task. Returns run_id.
 
-        If research_run_id is provided, that ResearchRun is pinned as the parent
-        (so a workspace button on a specific report attaches to the right thesis,
-        not whatever happens to be the latest completed run for the ticker).
-        Falls back to "latest completed for this ticker" when None.
-
-        Raises WorkspaceRunInFlight if a run for this ticker is already running.
+        Holds a per-ticker asyncio.Lock across preflight + INSERT to prevent
+        two parallel callers from both passing the draft-absent check.
         """
-        try:
-            async with unit_of_work() as db:
-                in_flight = (await db.execute(
-                    select(WorkspaceRun)
-                    .where(WorkspaceRun.ticker == ticker, WorkspaceRun.status == "running")
-                    .order_by(WorkspaceRun.created_at.desc())
-                    .limit(1)
-                )).scalar_one_or_none()
-                if in_flight is not None:
-                    raise WorkspaceRunInFlight(run_id=str(in_flight.id))
+        async with self._acquire_ticker_lock(ticker):
+            try:
+                async with unit_of_work() as db:
+                    in_flight = (await db.execute(
+                        select(WorkspaceRun)
+                        .where(WorkspaceRun.ticker == ticker, WorkspaceRun.status == "running")
+                        .order_by(WorkspaceRun.created_at.desc())
+                        .limit(1)
+                    )).scalar_one_or_none()
+                    if in_flight is not None:
+                        raise WorkspaceRunInFlight(run_id=str(in_flight.id))
 
-                ctx_data = await self._preflight(db, ticker, research_run_id=research_run_id)
-                run_id = str(uuid4())
-                row = WorkspaceRun(
-                    id=run_id,
-                    ticker=ticker,
-                    parent_research_run_id=str(ctx_data["research_run"].id),
-                    ticker_model_version_before=ctx_data["ticker_model"].version,
-                    status="running",
-                    step_outputs={},
-                    citations=[],
-                )
-                db.add(row)
-        except IntegrityError:
-            in_flight_id = await self._find_in_flight_run_id(ticker)
-            if in_flight_id is not None:
-                raise WorkspaceRunInFlight(run_id=in_flight_id)
-            raise
+                    ctx_data = await self._preflight(db, ticker, research_run_id=research_run_id)
+                    run_id = str(uuid4())
+                    row = WorkspaceRun(
+                        id=run_id,
+                        ticker=ticker,
+                        parent_research_run_id=str(ctx_data["research_run"].id),
+                        ticker_model_version_before=ctx_data["ticker_model"].version,
+                        status="running",
+                        step_outputs={},
+                        citations=[],
+                    )
+                    db.add(row)
+            except IntegrityError:
+                in_flight_id = await self._find_in_flight_run_id(ticker)
+                if in_flight_id is not None:
+                    raise WorkspaceRunInFlight(run_id=in_flight_id)
+                raise
 
         asyncio.create_task(
             self._run_workspace(

@@ -93,5 +93,54 @@ class TestCheckPreflight(unittest.TestCase):
         self.assertEqual(result.in_flight_run_id, "abc-123")
 
 
+class TestKickOffRaceGuard(unittest.TestCase):
+    def test_concurrent_kick_offs_serialize_on_ticker_lock(self):
+        """Two parallel kick_off() calls for the same ticker must not both pass preflight.
+
+        We stub _preflight to record entry order and sleep, then assert the
+        lock forces serial execution.
+        """
+        from backend.app.services.workspace import WorkspaceService
+        svc = WorkspaceService(fmp=MagicMock(), edgar=MagicMock(), anthropic=MagicMock())
+        entries: list[str] = []
+
+        # Replace the run-lifecycle internals so we only test the lock.
+        async def fake_kick(ticker: str, tag: str):
+            async with svc._acquire_ticker_lock(ticker):
+                entries.append(f"enter:{tag}")
+                await asyncio.sleep(0.05)
+                entries.append(f"exit:{tag}")
+
+        async def run():
+            await asyncio.gather(fake_kick("NVDA", "a"), fake_kick("NVDA", "b"))
+
+        asyncio.run(run())
+        # Either a fully before b or b fully before a — never interleaved.
+        ordering = ",".join(entries)
+        self.assertIn(ordering, {"enter:a,exit:a,enter:b,exit:b", "enter:b,exit:b,enter:a,exit:a"})
+
+    def test_different_tickers_do_not_block(self):
+        from backend.app.services.workspace import WorkspaceService
+        svc = WorkspaceService(fmp=MagicMock(), edgar=MagicMock(), anthropic=MagicMock())
+        entries: list[str] = []
+
+        async def fake_kick(ticker: str, tag: str):
+            async with svc._acquire_ticker_lock(ticker):
+                entries.append(f"enter:{tag}")
+                await asyncio.sleep(0.05)
+                entries.append(f"exit:{tag}")
+
+        async def run():
+            await asyncio.gather(fake_kick("NVDA", "a"), fake_kick("AAPL", "b"))
+
+        asyncio.run(run())
+        # Both enters happen before either exit.
+        idx_enter_a = entries.index("enter:a")
+        idx_enter_b = entries.index("enter:b")
+        idx_exit_a = entries.index("exit:a")
+        idx_exit_b = entries.index("exit:b")
+        self.assertLess(max(idx_enter_a, idx_enter_b), min(idx_exit_a, idx_exit_b))
+
+
 if __name__ == "__main__":
     unittest.main()
