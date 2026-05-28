@@ -1,6 +1,7 @@
 """Transcript delta analysis — Haiku-extracted QoQ language deltas."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -8,6 +9,14 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
+
+# In-flight coordination for concurrent compute_delta callers with the same
+# (ticker, fingerprint). Two concurrent callers could otherwise both pass the
+# cache-check SELECT, both call Haiku, and one would hit the unique constraint
+# with IntegrityError. The leader runs Haiku and inserts; followers wait on
+# the Event and then re-read the cached row.
+_IN_FLIGHT: dict[tuple[str, str], asyncio.Event] = {}
+_IN_FLIGHT_GUARD = asyncio.Lock()
 
 
 class InsufficientTranscriptsError(Exception):
@@ -92,7 +101,14 @@ async def compute_delta(
     fmp: FMPClient,
     force: bool = False,
 ) -> TranscriptDelta:
-    """Fetch the latest TRANSCRIPT_WINDOW transcripts, compute or return cached delta."""
+    """Fetch the latest TRANSCRIPT_WINDOW transcripts, compute or return cached delta.
+
+    Concurrent calls for the same (ticker, fingerprint) coordinate via an
+    in-memory asyncio.Event: the leader runs Haiku and lands the INSERT, while
+    followers wait for the Event then re-read the cached row. This avoids both
+    racing the (ticker, transcripts_fingerprint) unique constraint and the
+    follow-on workspace-run abort that an IntegrityError would trigger.
+    """
     transcripts, _citation = await fetch_recent_transcripts(
         fmp, ticker, limit=TRANSCRIPT_WINDOW,
     )
@@ -103,51 +119,79 @@ async def compute_delta(
 
     window = _window_from_transcripts(transcripts)
     fingerprint = compute_fingerprint(window)
+    key = (ticker, fingerprint)
 
+    # Try cache first — if a prior call already landed, we're done.
     existing = (await db.execute(
         select(TranscriptDelta).where(
             TranscriptDelta.ticker == ticker,
             TranscriptDelta.transcripts_fingerprint == fingerprint,
         )
     )).scalar_one_or_none()
-
     if existing is not None and not force:
         return existing
 
-    raw = await complete(
-        model=HAIKU,
-        system=_SYSTEM_PROMPT,
-        user=_build_user_prompt(transcripts),
-        assistant_prefill='{"axes":',
-        max_tokens=2500,
-    )
-    # Haiku occasionally appends trailing content (whitespace, a stray note)
-    # after the JSON object. raw_decode parses the first JSON value and
-    # ignores anything past it; json.loads would raise "Extra data".
-    parsed, _end = json.JSONDecoder().raw_decode(raw.lstrip())
-    axes = AxesDelta.model_validate(parsed["axes"]).model_dump()
+    # Coordinate concurrent computes for the same key.
+    async with _IN_FLIGHT_GUARD:
+        in_flight_event = _IN_FLIGHT.get(key)
+        is_leader = in_flight_event is None
+        if is_leader:
+            in_flight_event = asyncio.Event()
+            _IN_FLIGHT[key] = in_flight_event
 
-    if existing is not None:
-        # force=True path: refresh in place — avoids unique constraint violation
-        existing.axes = axes
-        existing.computed_at = datetime.now(timezone.utc)
+    if not is_leader:
+        # Follower: wait for the leader to finish, then re-read.
+        await in_flight_event.wait()
+        cached = (await db.execute(
+            select(TranscriptDelta).where(
+                TranscriptDelta.ticker == ticker,
+                TranscriptDelta.transcripts_fingerprint == fingerprint,
+            )
+        )).scalar_one_or_none()
+        if cached is not None:
+            return cached
+        # Leader failed; fall through and try again as a new leader.
+        return await compute_delta(ticker=ticker, db=db, fmp=fmp, force=force)
+
+    try:
+        raw = await complete(
+            model=HAIKU,
+            system=_SYSTEM_PROMPT,
+            user=_build_user_prompt(transcripts),
+            assistant_prefill='{"axes":',
+            max_tokens=2500,
+        )
+        # Haiku occasionally appends trailing content (whitespace, a stray note)
+        # after the JSON object. raw_decode parses the first JSON value and
+        # ignores anything past it; json.loads would raise "Extra data".
+        parsed, _end = json.JSONDecoder().raw_decode(raw.lstrip())
+        axes = AxesDelta.model_validate(parsed["axes"]).model_dump()
+
+        if existing is not None:
+            # force=True path: refresh in place — avoids unique constraint violation
+            existing.axes = axes
+            existing.computed_at = datetime.now(timezone.utc)
+            await db.flush()
+            return existing
+
+        # New fingerprint: insert
+        row = TranscriptDelta(
+            id=str(uuid4()),
+            ticker=ticker,
+            transcripts_window=window,
+            transcripts_fingerprint=fingerprint,
+            axes=axes,
+            computed_at=datetime.now(timezone.utc),
+        )
+        db.add(row)
         await db.flush()
-        return existing
 
-    # New fingerprint: insert
-    row = TranscriptDelta(
-        id=str(uuid4()),
-        ticker=ticker,
-        transcripts_window=window,
-        transcripts_fingerprint=fingerprint,
-        axes=axes,
-        computed_at=datetime.now(timezone.utc),
-    )
-    db.add(row)
-    await db.flush()
-
-    await _trim_history(ticker=ticker, db=db)
-    return row
+        await _trim_history(ticker=ticker, db=db)
+        return row
+    finally:
+        async with _IN_FLIGHT_GUARD:
+            _IN_FLIGHT.pop(key, None)
+        in_flight_event.set()
 
 
 async def _trim_history(*, ticker: str, db: AsyncSession) -> None:
