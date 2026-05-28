@@ -1608,7 +1608,33 @@ export type WorkspaceSSE =
   | { type: "workspace_run_complete"; verdict: WorkspaceVerdict | null; version_after: number | null; status: "completed" | "partial" }
   | { type: "workspace_run_failed"; error: string };
 
+export interface WorkspacePreflight {
+  ok: boolean;
+  missing: (
+    | "no_completed_research_run"
+    | "research_run_not_completed"
+    | "research_run_ticker_mismatch"
+    | "no_ticker_model"
+    | "unsaved_model_draft"
+    | "workspace_run_in_flight"
+  )[];
+  in_flight_run_id: string | null;
+}
+
 export const workspaceApi = {
+  preflight: async (
+    ticker: string,
+    researchRunId?: string,
+  ): Promise<WorkspacePreflight> => {
+    const qs = researchRunId
+      ? `?research_run_id=${encodeURIComponent(researchRunId)}`
+      : "";
+    const r = await fetch(
+      `${BASE}/api/workspace/${encodeURIComponent(ticker)}/preflight${qs}`,
+    );
+    if (!r.ok) throw new Error(`preflight ${r.status}`);
+    return r.json();
+  },
   kickOff: async (
     ticker: string,
     researchRunId?: string,

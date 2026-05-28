@@ -2,6 +2,7 @@
 from __future__ import annotations
 import asyncio
 import logging
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, AsyncIterator, Callable
 from uuid import uuid4
@@ -27,6 +28,25 @@ class WorkspaceRunInFlight(Exception):
     def __init__(self, *, run_id: str) -> None:
         self.run_id = run_id
         super().__init__(f"workspace run {run_id} already in flight")
+
+
+@dataclass
+class PreflightStatus:
+    """Read-only DTO describing whether a workspace run can be kicked off.
+
+    `missing` is a list of stable string codes the frontend can map to copy:
+      - "no_completed_research_run"
+      - "research_run_not_completed"
+      - "research_run_ticker_mismatch"
+      - "no_ticker_model"
+      - "unsaved_model_draft"
+      - "workspace_run_in_flight"
+    `in_flight_run_id` is populated when "workspace_run_in_flight" is in missing
+    so the frontend can deep-link to the running report instead of starting a new one.
+    """
+    ok: bool
+    missing: list[str] = field(default_factory=list)
+    in_flight_run_id: str | None = None
 
 
 class WorkspaceService:
@@ -129,37 +149,27 @@ class WorkspaceService:
             )).scalar_one_or_none()
             return str(row.id) if row is not None else None
 
-    async def _preflight(
+    async def _gather_preflight_facts(
         self,
         db: AsyncSession,
         ticker: str,
         *,
         research_run_id: str | None = None,
     ) -> dict:
-        """Verify the ticker has a completed research_run and a ticker_models row.
+        """Single DB pass collecting every fact the preflight needs.
 
-        When research_run_id is provided it pins the parent run; the row must
-        exist, belong to this ticker, and be completed. Otherwise we fall back
-        to the latest completed run for the ticker.
-
-        Raises ValueError on missing prerequisites — caller maps to HTTP 400.
+        Returns a dict of booleans + the optional in-flight run id. Callers
+        decide whether to raise (kick_off path) or return a DTO (HTTP preflight).
         """
-        from backend.app.models import ResearchRun, TickerModel, TickerModelDraft  # local import to avoid cycles
+        from backend.app.models import ResearchRun, TickerModel, TickerModelDraft
 
         if research_run_id is not None:
             rr = (await db.execute(
                 select(ResearchRun).where(ResearchRun.id == research_run_id)
             )).scalar_one_or_none()
-            if rr is None:
-                raise ValueError(f"research_run {research_run_id} not found")
-            if rr.ticker != ticker:
-                raise ValueError(
-                    f"research_run {research_run_id} ticker {rr.ticker} != requested ticker {ticker}"
-                )
-            if rr.status != "completed":
-                raise ValueError(
-                    f"research_run {research_run_id} status is {rr.status}; must be completed"
-                )
+            rr_found = rr is not None
+            rr_completed = bool(rr and rr.status == "completed")
+            rr_ticker_matches = bool(rr and rr.ticker == ticker)
         else:
             rr = (await db.execute(
                 select(ResearchRun)
@@ -167,8 +177,9 @@ class WorkspaceService:
                 .order_by(ResearchRun.updated_at.desc())
                 .limit(1)
             )).scalar_one_or_none()
-            if rr is None:
-                raise ValueError(f"no completed research_run for ticker {ticker}")
+            rr_found = rr is not None
+            rr_completed = rr_found  # filtered in the query
+            rr_ticker_matches = rr_found
 
         tm = (await db.execute(
             select(TickerModel)
@@ -176,20 +187,85 @@ class WorkspaceService:
             .order_by(TickerModel.version.desc())
             .limit(1)
         )).scalar_one_or_none()
-        if tm is None:
-            raise ValueError(f"no ticker_model exists for ticker {ticker}; initialize one first")
 
         draft = (await db.execute(
-            select(TickerModelDraft)
-            .where(TickerModelDraft.ticker == ticker)
+            select(TickerModelDraft).where(TickerModelDraft.ticker == ticker).limit(1)
+        )).scalar_one_or_none()
+
+        in_flight = (await db.execute(
+            select(WorkspaceRun)
+            .where(WorkspaceRun.ticker == ticker, WorkspaceRun.status == "running")
+            .order_by(WorkspaceRun.created_at.desc())
             .limit(1)
         )).scalar_one_or_none()
-        if draft is not None:
+
+        return {
+            "research_run": rr,
+            "ticker_model": tm,
+            "research_run_found": rr_found,
+            "research_run_completed": rr_completed,
+            "research_run_ticker_matches": rr_ticker_matches,
+            "ticker_model_found": tm is not None,
+            "draft_present": draft is not None,
+            "in_flight_run_id": str(in_flight.id) if in_flight is not None else None,
+        }
+
+    async def check_preflight(
+        self,
+        *,
+        db: AsyncSession,
+        ticker: str,
+        research_run_id: str | None = None,
+    ) -> PreflightStatus:
+        """Non-raising preflight check for UI use."""
+        facts = await self._gather_preflight_facts(db, ticker, research_run_id=research_run_id)
+        missing: list[str] = []
+        if not facts["research_run_found"]:
+            missing.append("no_completed_research_run")
+        elif not facts["research_run_completed"]:
+            missing.append("research_run_not_completed")
+        elif not facts["research_run_ticker_matches"]:
+            missing.append("research_run_ticker_mismatch")
+        if not facts["ticker_model_found"]:
+            missing.append("no_ticker_model")
+        if facts["draft_present"]:
+            missing.append("unsaved_model_draft")
+        if facts["in_flight_run_id"] is not None:
+            missing.append("workspace_run_in_flight")
+        return PreflightStatus(
+            ok=len(missing) == 0,
+            missing=missing,
+            in_flight_run_id=facts["in_flight_run_id"],
+        )
+
+    async def _preflight(
+        self,
+        db: AsyncSession,
+        ticker: str,
+        *,
+        research_run_id: str | None = None,
+    ) -> dict:
+        """Raising preflight used by kick_off / _build_context. Returns {research_run, ticker_model}."""
+        facts = await self._gather_preflight_facts(db, ticker, research_run_id=research_run_id)
+        if not facts["research_run_found"]:
+            if research_run_id is not None:
+                raise ValueError(f"research_run {research_run_id} not found")
+            raise ValueError(f"no completed research_run for ticker {ticker}")
+        if not facts["research_run_ticker_matches"]:
+            raise ValueError(
+                f"research_run {research_run_id} ticker {facts['research_run'].ticker} != requested ticker {ticker}"
+            )
+        if not facts["research_run_completed"]:
+            raise ValueError(
+                f"research_run {research_run_id} status is {facts['research_run'].status}; must be completed"
+            )
+        if not facts["ticker_model_found"]:
+            raise ValueError(f"no ticker_model exists for ticker {ticker}; initialize one first")
+        if facts["draft_present"]:
             raise ValueError(
                 f"unsaved model draft exists for ticker {ticker}; save or discard it before workspace refresh"
             )
-
-        return {"research_run": rr, "ticker_model": tm}
+        return {"research_run": facts["research_run"], "ticker_model": facts["ticker_model"]}
 
     async def _build_context(
         self,

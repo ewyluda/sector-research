@@ -27,7 +27,10 @@ class TestWorkspaceServiceSkeleton(unittest.IsolatedAsyncioTestCase):
             return r
 
         db = AsyncMock()
-        db.execute = AsyncMock(side_effect=[result(rr), result(tm), result(draft)])
+        # _gather_preflight_facts now also queries for in-flight workspace runs
+        # (4th SELECT). Append result(None) so the mock's side_effect list has
+        # enough entries for the new query.
+        db.execute = AsyncMock(side_effect=[result(rr), result(tm), result(draft), result(None)])
 
         with self.assertRaisesRegex(ValueError, "unsaved model draft"):
             await service._preflight(db, "NVDA", research_run_id="rr-1")

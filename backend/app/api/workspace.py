@@ -55,6 +55,21 @@ async def get_run(run_id: UUID, db: AsyncSession = Depends(get_db)):
     return _serialize_run(row)
 
 
+@router.get("/{ticker}/preflight")
+async def preflight(
+    ticker: Ticker = Depends(TickerPath),
+    research_run_id: str | None = None,
+    db: AsyncSession = Depends(get_db),
+    svc: WorkspaceService = Depends(get_workspace_service),
+):
+    status = await svc.check_preflight(db=db, ticker=ticker, research_run_id=research_run_id)
+    return {
+        "ok": status.ok,
+        "missing": status.missing,
+        "in_flight_run_id": status.in_flight_run_id,
+    }
+
+
 @router.get("/runs/{run_id}/stream")
 async def stream_run(
     run_id: UUID,
