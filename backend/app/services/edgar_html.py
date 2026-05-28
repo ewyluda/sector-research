@@ -105,6 +105,48 @@ _SECTION_DEFS_DEF14A: list[tuple[str, list[str]]] = [
     (_BOUNDARY_PREFIX + "audit", [r"\bAUDIT\s+COMMITTEE\s+REPORT\b"]),
 ]
 
+_SECTION_DEFS_20F: list[tuple[str, list[str]]] = [
+    # 20-F is the annual report for foreign private issuers (NOK, ERIC,
+    # NBIS, etc.). Item numbering differs from 10-K, so we remap to the
+    # same section_keys the rest of the pipeline already routes on:
+    #   20-F Item 3.D Risk Factors  -> item_1a_risk_factors
+    #   20-F Item 4   Information on the Company -> item_1_business
+    #   20-F Item 5   Operating and Financial Review and Prospects -> item_7_mda
+    #   20-F Item 6   Directors, Senior Management and Employees -> def14a_governance
+    #
+    # Two heading shapes show up in the wild:
+    #   "Item 3.D. Risk Factors"  (combined item label)
+    #   Separate "Item 3. Key Information" header followed by "D. Risk Factors"
+    #     on its own line (NBIS uses this style).
+    # The second pattern is anchored at line start AND end so it doesn't fire
+    # on in-prose cross-references like "described under Part I, Item 3.D. Risk
+    # Factors".
+    ("item_1a_risk_factors", [
+        r"^\s*ITEM\s+3\.?\s*D\.?\s+R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S\b",
+        r"^\s*D\.?\s+R\s*I\s*S\s*K\s+F\s*A\s*C\s*T\s*O\s*R\s*S\s*$",
+    ]),
+    # Item 4. The "\s+" between ITEM and 4 tolerates XBRL/markup that splits
+    # "Item" and "4." onto separate lines (NBIS renders "Item\n \n4.").
+    ("item_1_business", [
+        r"^\s*ITEM\s+4\.?\s*INFORMATION\s+ON\s+THE\s+COMPANY\b",
+    ]),
+    # Item 4A "Unresolved Staff Comments" — often a one-line "Not applicable"
+    # for foreign issuers, but kept as a boundary so Item 4 body doesn't bleed
+    # into it on 20-Fs that include substantive 4A content.
+    (_BOUNDARY_PREFIX + "item_4a_20f", [r"\bITEM\s+4A\.?\s+UNRESOLVED"]),
+    # Item 5 — Operating and Financial Review and Prospects (foreign-issuer MD&A).
+    ("item_7_mda", [
+        r"^\s*ITEM\s+5\.?\s*OPERATING\s+AND\s+FINANCIAL\s+REVIEW\s+AND\s+PROSPECTS\b",
+    ]),
+    # Item 6 — Directors, Senior Management and Employees (governance equivalent).
+    ("def14a_governance", [
+        r"^\s*ITEM\s+6\.?\s*DIRECTORS,?\s*SENIOR\s+MANAGEMENT\s+AND\s+EMPLOYEES\b",
+    ]),
+    # Boundary past Item 6 so the Directors body doesn't bleed into Item 7+.
+    (_BOUNDARY_PREFIX + "item_7_20f", [r"\bITEM\s+7\.?\s+MAJOR\s+SHAREHOLDERS"]),
+]
+
+
 _SECTION_DEFS_S1: list[tuple[str, list[str]]] = [
     # Headings on S-1s are not "ITEM N." prefixed — they are standalone
     # section titles in all caps. Anchor each to a word boundary.
@@ -182,6 +224,8 @@ def _pick_section_defs(form_type: str) -> list[tuple[str, list[str]]]:
         return _SECTION_DEFS_DEF14A
     if key.startswith("S-1") or key.startswith("S1"):
         return _SECTION_DEFS_S1
+    if "20-F" in key or "20F" in key:
+        return _SECTION_DEFS_20F
     return []
 
 

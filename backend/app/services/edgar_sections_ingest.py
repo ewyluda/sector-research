@@ -30,7 +30,7 @@ from backend.app.services.edgar_html import extract_sections
 
 logger = logging.getLogger(__name__)
 
-TARGET_FORMS: tuple[str, ...] = ("10-K", "10-Q", "DEF 14A")
+TARGET_FORMS: tuple[str, ...] = ("10-K", "10-Q", "DEF 14A", "20-F")
 
 
 def _parse_date(s: str | None) -> date | None:
