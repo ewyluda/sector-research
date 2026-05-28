@@ -15,11 +15,67 @@ from backend.app.db import unit_of_work
 from backend.app.models.workspace_run import WorkspaceRun
 from backend.app.models.signal import Signal
 from backend.app.models.kill_criterion_state import KillCriterionState
+from backend.app.models.workspace_schemas import (
+    ChallengeOutput,
+    DifferentiationOutput,
+    ResearchOutput,
+    UpdateRefreshOutput,
+    ValidationOutput,
+)
 from backend.app.services import outcome_tracker
 from backend.app.services.workspace_context import WorkspaceContext
 from backend.app.services.workspace_steps import run_steps_in_sequence
 
 logger = logging.getLogger(__name__)
+
+
+_STEP_SCHEMAS = {
+    "update_refresh": UpdateRefreshOutput,
+    "research": ResearchOutput,
+    "validation": ValidationOutput,
+    "challenge": ChallengeOutput,
+    "differentiation": DifferentiationOutput,
+}
+
+
+def _validate_step_outputs(outputs: dict) -> tuple[dict, bool]:
+    """Validate each step's JSONB payload against its Pydantic schema.
+
+    Returns (validated_outputs, had_error). Entries already shaped as
+    {"error": "..."} pass through (existing per-step partial contract) and
+    flip had_error to True. Entries that fail schema validation are replaced
+    with {"error": "schema_validation_failed: <detail>"} so the persisted row
+    is always either a valid schema dump or an explicit error sentinel —
+    never silent corrupted data the frontend will crash on.
+
+    Unknown step names pass through untouched: this function must not gate
+    schema evolution to a hard whitelist that breaks when a new step is added.
+    """
+    from pydantic import ValidationError
+
+    validated: dict = {}
+    had_error = False
+    for step_name, payload in outputs.items():
+        if isinstance(payload, dict) and "error" in payload:
+            validated[step_name] = payload
+            had_error = True
+            continue
+        schema = _STEP_SCHEMAS.get(step_name)
+        if schema is None:
+            validated[step_name] = payload
+            continue
+        try:
+            validated[step_name] = schema.model_validate(payload).model_dump()
+        except ValidationError as e:
+            validated[step_name] = {
+                "error": f"schema_validation_failed: {e.errors()[0]['msg'] if e.errors() else str(e)}",
+            }
+            had_error = True
+            logger.warning(
+                "step_outputs validation failed for step=%s payload_keys=%s",
+                step_name, list(payload.keys()) if isinstance(payload, dict) else type(payload).__name__,
+            )
+    return validated, had_error
 
 
 class WorkspaceRunInFlight(Exception):
@@ -359,11 +415,9 @@ class WorkspaceService:
                 )
                 outputs = await run_steps_in_sequence(ctx, emit)
 
+            outputs, had_step_error = _validate_step_outputs(outputs)
             version_after = outputs.get("update_refresh", {}).get("version_after")
             verdict_str = outputs.get("challenge", {}).get("proposed_verdict")
-            had_step_error = any(
-                isinstance(v, dict) and "error" in v for v in outputs.values()
-            )
             final_status = "partial" if had_step_error else "completed"
 
             async with unit_of_work() as write_db:
