@@ -16,6 +16,7 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
   const [latest, setLatest] = useState<TickerModelVersion | null>(null);
   const [draft, setDraft] = useState<TickerModelDraft | null>(null);
   const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -50,6 +51,35 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
       setErr(String(e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleSave() {
+    const label = prompt("Version label (optional):", "");
+    if (label === null) return;
+    setBusy(true);
+    try {
+      await saveModelVersion(ticker, label || null);
+      const r = await getModel(ticker);
+      if (r.latest_version) setLatest(r.latest_version);
+      setDraft(null);
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDiscard() {
+    if (!confirm("Discard draft?")) return;
+    setBusy(true);
+    try {
+      await discardModelDraft(ticker);
+      setDraft(null);
+    } catch (e) {
+      alert(String(e));
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -89,6 +119,37 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
           ))}
         </nav>
       </header>
+      {draft && (
+        <div
+          data-print-hide="true"
+          className="mt-3 mx-6 flex items-center justify-between gap-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+        >
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-500" aria-hidden />
+            <span>
+              <strong>Unsaved draft</strong> — workspace runs are blocked until you save or discard.
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleDiscard}
+              disabled={busy}
+              className="text-xs px-2 py-1 rounded border border-amber-400 hover:bg-amber-100 disabled:opacity-40"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={busy}
+              className="text-xs px-2 py-1 rounded bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-40"
+            >
+              Save version
+            </button>
+          </div>
+        </div>
+      )}
       <main className="flex-1 overflow-auto">
         {tab === "forecast" && (
           <ForecastTabContent
@@ -96,11 +157,10 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
             draft={draft}
             latest={latest}
             ticker={ticker}
+            busy={busy}
             onDraftChange={setDraft}
-            onSaved={(v: TickerModelVersion) => {
-              setLatest(v);
-              setDraft(null);
-            }}
+            onSave={handleSave}
+            onDiscard={handleDiscard}
           />
         )}
         {tab === "reverse-dcf" && <ReverseDcfTabContent ticker={ticker} hasDraft={!!draft} />}
@@ -111,54 +171,36 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
 }
 
 function ForecastTabContent({
-  state, draft, latest, ticker, onDraftChange, onSaved,
+  state, draft, latest, ticker, busy, onDraftChange, onSave, onDiscard,
 }: {
   state: MS;
   draft: TMD | null;
   latest: TMV;
   ticker: string;
+  busy: boolean;
   onDraftChange: (d: TMD | null) => void;
-  onSaved: (v: TMV) => void;
+  onSave: () => void | Promise<void>;
+  onDiscard: () => void | Promise<void>;
 }) {
   const [focused, setFocused] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [editBusy, setEditBusy] = useState(false);
 
   async function handleEdit(cellPath: string, value: number | null) {
-    setBusy(true);
+    setEditBusy(true);
     try {
       const updated = await putModelDraft(ticker, { cell_path: cellPath, value });
       onDraftChange(updated);
     } catch (e) {
       alert(String(e));
     } finally {
-      setBusy(false);
-    }
-  }
-  async function handleSave() {
-    const label = prompt("Version label:", "");
-    if (label === null) return;
-    setBusy(true);
-    try {
-      await saveModelVersion(ticker, label || null);
-      const r = await import("@/lib/api").then((m) => m.getModel(ticker));
-      onSaved(r.latest_version!);
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function handleDiscard() {
-    if (!confirm("Discard draft?")) return;
-    setBusy(true);
-    try {
-      await discardModelDraft(ticker);
-      onDraftChange(null);
-    } finally {
-      setBusy(false);
+      setEditBusy(false);
     }
   }
 
   // Suppress 'latest' unused warning — kept in props for future cross-version reads.
   void latest;
+
+  const disabled = !draft || busy || editBusy;
 
   return (
     <>
@@ -166,10 +208,10 @@ function ForecastTabContent({
       <DriverPanel state={state} focused={focused} onFocus={setFocused} onEdit={handleEdit} />
       <ForecastGrid state={state} focused={focused} onFocus={setFocused} onEdit={handleEdit} />
       <div className="sticky bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] px-6 py-2 flex gap-2 justify-end" data-print-hide="true">
-        <button onClick={handleDiscard} disabled={!draft || busy} className="px-3 py-1 text-sm rounded-md border border-[var(--border)] bg-[var(--surface-alt)] hover:bg-[var(--accent-bg)] text-[var(--text)] disabled:opacity-40">
+        <button onClick={onDiscard} disabled={disabled} className="px-3 py-1 text-sm rounded-md border border-[var(--border)] bg-[var(--surface-alt)] hover:bg-[var(--accent-bg)] text-[var(--text)] disabled:opacity-40">
           Discard draft
         </button>
-        <button onClick={handleSave} disabled={!draft || busy} className="px-3 py-1 text-sm rounded-md bg-[var(--primary)] hover:bg-[var(--primary-dk)] disabled:opacity-40 text-white">
+        <button onClick={onSave} disabled={disabled} className="px-3 py-1 text-sm rounded-md bg-[var(--primary)] hover:bg-[var(--primary-dk)] disabled:opacity-40 text-white">
           Save Version
         </button>
       </div>
