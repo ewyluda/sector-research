@@ -332,6 +332,24 @@ class FMPClient:
         )
         return result, citation
 
+    async def get_stock_peers(self, ticker: str) -> tuple[list[str], Citation]:
+        """Peer tickers from FMP's stock-peers endpoint.
+
+        GET /stable/stock-peers?symbol=X → list of {symbol, companyName, ...}.
+        Returns uppercased peer symbols, excluding the input ticker itself.
+        """
+        params = {"symbol": ticker}
+        data = await self._request("stock-peers", params, ttl=TTL_FUNDAMENTAL)
+        peers = [
+            str(d["symbol"]).upper()
+            for d in (data if isinstance(data, list) else [])
+            if isinstance(d, dict)
+            and d.get("symbol")
+            and str(d["symbol"]).upper() != ticker.upper()
+        ]
+        citation = self._make_citation("stock-peers", "Stock Peers", ticker, params)
+        return peers, citation
+
     async def get_historical_price(
         self, ticker: str, from_date: str, to_date: str
     ) -> tuple[list[dict], Citation]:
