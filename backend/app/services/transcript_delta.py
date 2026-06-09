@@ -10,11 +10,15 @@ from uuid import uuid4
 
 logger = logging.getLogger(__name__)
 
-# In-flight coordination for concurrent compute_delta callers with the same
-# (ticker, fingerprint). Two concurrent callers could otherwise both pass the
-# cache-check SELECT, both call Haiku, and one would hit the unique constraint
-# with IntegrityError. The leader runs Haiku and inserts; followers wait on
-# the Event and then re-read the cached row.
+# Best-effort in-flight coordination for concurrent compute_delta callers with
+# the same (ticker, fingerprint) within this process: the leader runs Haiku and
+# inserts; followers wait on the Event and then re-read the cached row. This is
+# NOT airtight across sessions — the Event fires after the leader's flush, but
+# the row is only visible to other sessions once the leader's caller COMMITs
+# (the workspace run holds its session open across all 5 steps). A follower
+# whose re-read misses retries as a new leader, so the unique-constraint race
+# is ultimately resolved by the savepoint + winner re-read around the INSERT
+# in compute_delta, not by this dict.
 _IN_FLIGHT: dict[tuple[str, str], asyncio.Event] = {}
 _IN_FLIGHT_GUARD = asyncio.Lock()
 
@@ -34,6 +38,7 @@ def compute_fingerprint(window: list[dict]) -> str:
 
 
 from sqlalchemy import select  # noqa: E402
+from sqlalchemy.exc import IntegrityError  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from backend.app.clients.fmp import FMPClient  # noqa: E402
@@ -103,11 +108,13 @@ async def compute_delta(
 ) -> TranscriptDelta:
     """Fetch the latest TRANSCRIPT_WINDOW transcripts, compute or return cached delta.
 
-    Concurrent calls for the same (ticker, fingerprint) coordinate via an
-    in-memory asyncio.Event: the leader runs Haiku and lands the INSERT, while
-    followers wait for the Event then re-read the cached row. This avoids both
-    racing the (ticker, transcripts_fingerprint) unique constraint and the
-    follow-on workspace-run abort that an IntegrityError would trigger.
+    Concurrent calls for the same (ticker, fingerprint) coordinate two ways:
+    an in-memory asyncio.Event dedups Haiku calls within this process
+    (best-effort — see the _IN_FLIGHT note above), and the INSERT itself runs
+    under a SAVEPOINT so a caller that loses a cross-session race on the
+    (ticker, transcripts_fingerprint) unique constraint returns the winner's
+    committed row instead of raising IntegrityError into a 30-40s workspace
+    run or an API request.
     """
     transcripts, _citation = await fetch_recent_transcripts(
         fmp, ticker, limit=TRANSCRIPT_WINDOW,
@@ -174,7 +181,13 @@ async def compute_delta(
             await db.flush()
             return existing
 
-        # New fingerprint: insert
+        # New fingerprint: insert under a SAVEPOINT. A concurrent caller in
+        # another session can commit the same (ticker, fingerprint) while we
+        # were in Haiku — its row stays invisible to us until its COMMIT, so
+        # the Event coordination can't prevent this collision. The savepoint
+        # keeps the IntegrityError from poisoning the caller's outer
+        # transaction (the workspace-run session holds prior step writes),
+        # and the loser returns the winner's row.
         row = TranscriptDelta(
             id=str(uuid4()),
             ticker=ticker,
@@ -183,8 +196,24 @@ async def compute_delta(
             axes=axes,
             computed_at=datetime.now(timezone.utc),
         )
-        db.add(row)
-        await db.flush()
+        try:
+            async with db.begin_nested():
+                db.add(row)
+                await db.flush()
+        except IntegrityError:
+            winner = (await db.execute(
+                select(TranscriptDelta).where(
+                    TranscriptDelta.ticker == ticker,
+                    TranscriptDelta.transcripts_fingerprint == fingerprint,
+                )
+            )).scalar_one_or_none()
+            if winner is not None:
+                logger.info(
+                    "transcript_delta lost insert race for %s; returning winner row",
+                    ticker,
+                )
+                return winner
+            raise
 
         await _trim_history(ticker=ticker, db=db)
         return row

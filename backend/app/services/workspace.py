@@ -65,7 +65,10 @@ def _validate_step_outputs(outputs: dict) -> tuple[dict, bool]:
             validated[step_name] = payload
             continue
         try:
-            validated[step_name] = schema.model_validate(payload).model_dump()
+            # mode="json" for parity with run_steps_in_sequence's dumps — a
+            # python-mode dump would hand JSONB a datetime the moment a step
+            # schema grows one, crashing the persist at the end of the run.
+            validated[step_name] = schema.model_validate(payload).model_dump(mode="json")
         except ValidationError as e:
             validated[step_name] = {
                 "error": f"schema_validation_failed: {e.errors()[0]['msg'] if e.errors() else str(e)}",
