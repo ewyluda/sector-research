@@ -338,6 +338,7 @@ class FMPClient:
         GET /stable/stock-peers?symbol=X → list of {symbol, companyName, ...}.
         Returns uppercased peer symbols, excluding the input ticker itself.
         """
+        ticker = ticker.upper()
         params = {"symbol": ticker}
         data = await self._request("stock-peers", params, ttl=TTL_FUNDAMENTAL)
         peers = [
@@ -345,7 +346,7 @@ class FMPClient:
             for d in (data if isinstance(data, list) else [])
             if isinstance(d, dict)
             and d.get("symbol")
-            and str(d["symbol"]).upper() != ticker.upper()
+            and str(d["symbol"]).upper() != ticker
         ]
         citation = self._make_citation("stock-peers", "Stock Peers", ticker, params)
         return peers, citation
