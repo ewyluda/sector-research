@@ -9,8 +9,11 @@ test_peers_api.CompareRouteTests.test_compare_not_shadowed_by_ticker_route.
 Session ownership: peer_sets service functions write without committing;
 the handlers here commit after any write (seed or update).
 """
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
@@ -18,6 +21,8 @@ from backend.app.models.peer_comp import PeerCompTable, PeerError
 from backend.app.models.ticker import Ticker, TickerPath, normalize_ticker
 from backend.app.services.peer_comp import build_peer_comp_table
 from backend.app.services.peer_sets import get_or_seed_peer_set, update_peer_set
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/peers", tags=["peers"])
 
@@ -45,10 +50,21 @@ async def _build_table(focus: str, peers: list[str], fmp) -> PeerCompResponse:
             focus_ticker=focus, peer_tickers=peers, fmp=fmp
         )
     except Exception as e:  # noqa: BLE001 — focus-ticker fetch failure
+        logger.exception("peer-comp build failed for %s", focus)
         raise HTTPException(
             status_code=502, detail=f"failed to fetch data for {focus}: {e}"
         )
     return PeerCompResponse(table=table, errors=errors)
+
+
+async def _commit_seed(db: AsyncSession) -> None:
+    """Commit a seed write, tolerating the concurrent-first-visit race: if
+    another request seeded the same ticker first, the PK collision rolls
+    back and the locally computed peers are still the right response."""
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
 
 
 @router.get("/compare")
@@ -57,7 +73,9 @@ async def compare(
     tickers: str = Query(
         ..., description="Comma-separated tickers; first is the default focus."
     ),
-    focus: str | None = None,
+    focus: str | None = Query(
+        None, description="Focus ticker; defaults to the first in tickers."
+    ),
 ) -> PeerCompResponse:
     try:
         parsed = [normalize_ticker(t) for t in tickers.split(",") if t.strip()]
@@ -92,7 +110,7 @@ async def get_peer_set(
 ) -> PeerSetResponse:
     peers, seeded = await get_or_seed_peer_set(ticker, db, request.app.state.fmp)
     if seeded:
-        await db.commit()
+        await _commit_seed(db)
     return PeerSetResponse(ticker=ticker, peers=peers, seeded=seeded)
 
 
@@ -118,7 +136,7 @@ async def peer_comp(
 ) -> PeerCompResponse:
     peers, seeded = await get_or_seed_peer_set(ticker, db, request.app.state.fmp)
     if seeded:
-        await db.commit()
+        await _commit_seed(db)
     if not peers:
         return PeerCompResponse(table=None, errors=[])
     return await _build_table(ticker, peers, request.app.state.fmp)
