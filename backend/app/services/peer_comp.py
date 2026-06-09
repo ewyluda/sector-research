@@ -96,6 +96,10 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
     tables). ratios-ttm names carry fallbacks because the /stable/ API has
     shifted fields between endpoints before — see get_ratios_ttm docstring.
     """
+    # Intentionally no return_exceptions here: partial data for a ticker is
+    # worse than a clean per-ticker error — the outer gather in
+    # build_peer_comp_table contains the failure (PeerError for peers,
+    # raise for the focus ticker).
     (km, _), (ratios, _), (fg, _), (profile, _) = await asyncio.gather(
         fmp.get_key_metrics_ttm(ticker),
         fmp.get_ratios_ttm(ticker),
@@ -123,13 +127,15 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
         gross_margin=_first((ratios, "grossProfitMarginTTM")),
         operating_margin=_first((ratios, "operatingProfitMarginTTM")),
         ebitda_margin=_first((ratios, "ebitdaMarginTTM")),
-        fcf_margin=_first(
-            (ratios, "freeCashFlowMarginTTM"), (ratios, "fcfMarginTTM")
-        ),
+        # Only one candidate — FMP /stable/ doesn't surface an FCF-margin
+        # field today (verified 2026-06-09); stays None until it does.
+        fcf_margin=_first((ratios, "freeCashFlowMarginTTM")),
         roe=_first((km, "returnOnEquityTTM"), (km, "roeTTM")),
         roic=_first((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM")),
+        # returnOnAssetsTTM is on km (verified 2026-06-09); tangible-assets
+        # variant is the last fallback in case a ticker is missing the true key.
         roa=_first(
-            (km, "returnOnTangibleAssetsTTM"), (km, "returnOnAssetsTTM")
+            (km, "returnOnAssetsTTM"), (km, "returnOnTangibleAssetsTTM")
         ),
         market_cap=_first((profile, "marketCap"), (profile, "mktCap")),
     )

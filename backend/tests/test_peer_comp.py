@@ -6,13 +6,13 @@ from backend.app.services.peer_comp import build_peer_comp_table
 # Per-ticker fake payloads for the four endpoints _fetch_one now hits.
 KM = {
     "NVDA": {"returnOnEquityTTM": 0.5, "returnOnInvestedCapitalTTM": 0.4,
-             "returnOnTangibleAssetsTTM": 0.3},
+             "returnOnAssetsTTM": 0.3},
     "AMD":  {"returnOnEquityTTM": 0.2, "returnOnInvestedCapitalTTM": 0.15,
-             "returnOnTangibleAssetsTTM": 0.1},
+             "returnOnAssetsTTM": 0.1},
     "INTC": {"returnOnEquityTTM": 0.05, "returnOnInvestedCapitalTTM": 0.04,
-             "returnOnTangibleAssetsTTM": 0.03},
+             "returnOnAssetsTTM": 0.03},
     "MU":   {"returnOnEquityTTM": 0.1, "returnOnInvestedCapitalTTM": 0.08,
-             "returnOnTangibleAssetsTTM": 0.06},
+             "returnOnAssetsTTM": 0.06},
 }
 RATIOS = {
     "NVDA": {"priceToEarningsRatioTTM": 30.0, "enterpriseValueMultipleTTM": 25.0,
@@ -133,6 +133,14 @@ class TestPeerComp(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(errors), 1)
         self.assertEqual(errors[0].peer_ticker, "BADCO")
         self.assertEqual(len(table.rows), 2)  # focus + AMD
+
+    async def test_all_peers_fail_returns_none(self):
+        table, errors = await build_peer_comp_table(
+            focus_ticker="NVDA", peer_tickers=["BAD1", "BAD2"],
+            fmp=make_fake_fmp(fail={"BAD1", "BAD2"}),
+        )
+        self.assertIsNone(table)
+        self.assertEqual({e.peer_ticker for e in errors}, {"BAD1", "BAD2"})
 
     async def test_focus_failure_raises(self):
         with self.assertRaises(RuntimeError):
