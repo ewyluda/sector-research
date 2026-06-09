@@ -17,4 +17,4 @@ class PeerSet(Base, TimestampMixin):
     __tablename__ = "peer_sets"
 
     ticker: Mapped[str] = mapped_column(String(16), primary_key=True)
-    peers: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    peers: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
