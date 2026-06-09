@@ -25,6 +25,7 @@ from backend.app.services.reverse_dcf import (
     thesis_vs_priced_in,
 )
 from backend.app.services.peer_comp import build_peer_comp_table
+from backend.app.services.peer_sets import peers_for_ticker
 
 
 def _fmp_period_label(row: dict) -> str | None:
@@ -647,26 +648,10 @@ PEER_CAP = 8
 
 
 async def _fetch_resolved_peers(ctx: WorkspaceContext) -> list[str]:
-    """Pull resolved competitor tickers from competitor_landscape for this ticker.
-    Cap at PEER_CAP. De-dup. Excludes the focus ticker itself."""
-    from sqlalchemy import select
-    from backend.app.models.filing import CompetitorLandscape
-
-    rows = (await ctx.db.execute(
-        select(CompetitorLandscape).where(CompetitorLandscape.ticker == ctx.ticker)
-    )).scalars().all()
-
-    seen: set[str] = set()
-    peers: list[str] = []
-    for row in rows:
-        for c in (row.competitors or []):
-            t = (c.get("resolved_to_ticker") or "").upper()
-            if t and t != ctx.ticker.upper() and t not in seen:
-                seen.add(t)
-                peers.append(t)
-                if len(peers) >= PEER_CAP:
-                    return peers
-    return peers
+    """Peer list for differentiation: the user-curated peer_sets row when
+    present and non-empty, else resolved competitor tickers from
+    competitor_landscape."""
+    return await peers_for_ticker(ctx.ticker, ctx.db, cap=PEER_CAP)
 
 
 async def _fetch_read_throughs_for_ticker(ctx: WorkspaceContext) -> list[dict]:

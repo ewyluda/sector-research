@@ -7,6 +7,7 @@ import clsx from "clsx";
 const TABS: { seg: string; label: string }[] = [
   { seg: "", label: "Overview" },
   { seg: "financials", label: "Financials" },
+  { seg: "peers", label: "Peers" },
   { seg: "transcripts", label: "Transcripts" },
   { seg: "research", label: "Research" },
   { seg: "model", label: "Model" },
