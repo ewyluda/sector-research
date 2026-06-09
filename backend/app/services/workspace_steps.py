@@ -25,6 +25,7 @@ from backend.app.services.reverse_dcf import (
     thesis_vs_priced_in,
 )
 from backend.app.services.peer_comp import build_peer_comp_table
+from backend.app.services.peer_sets import peers_for_ticker
 
 
 def _fmp_period_label(row: dict) -> str | None:
@@ -649,10 +650,7 @@ PEER_CAP = 8
 async def _fetch_resolved_peers(ctx: WorkspaceContext) -> list[str]:
     """Peer list for differentiation: the user-curated peer_sets row when
     present and non-empty, else resolved competitor tickers from
-    competitor_landscape (the original derivation, now shared via
-    services/peer_sets.py)."""
-    from backend.app.services.peer_sets import peers_for_ticker
-
+    competitor_landscape."""
     return await peers_for_ticker(ctx.ticker, ctx.db, cap=PEER_CAP)
 
 
