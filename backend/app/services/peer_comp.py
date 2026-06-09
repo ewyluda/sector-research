@@ -91,10 +91,11 @@ async def build_peer_comp_table(
 async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
     """Fetch key-metrics, ratios, growth, and profile for one ticker.
 
-    Wire-name notes: the key-metrics-ttm names below are production-proven
-    (same names consumed by graph/nodes.py for the deep-dive valuation
-    tables). ratios-ttm names carry fallbacks because the /stable/ API has
-    shifted fields between endpoints before — see get_ratios_ttm docstring.
+    Wire-name notes (live-verified 2026-06-09): the /stable/ API serves the
+    valuation multiples from ratios-ttm — the key-metrics-ttm spellings
+    (peRatioTTM etc., still read by graph/nodes.py) are no longer present
+    there and are kept only as legacy fallbacks. Returns (ROE/ROIC/ROA) come
+    from key-metrics-ttm, margins from ratios-ttm, market cap from profile.
     """
     # Intentionally no return_exceptions here: partial data for a ticker is
     # worse than a clean per-ticker error — the outer gather in
@@ -110,18 +111,18 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
 
     return PeerCompRow(
         ticker=ticker,
-        pe=_first((km, "peRatioTTM"), (ratios, "priceToEarningsRatioTTM")),
+        pe=_first((ratios, "priceToEarningsRatioTTM"), (km, "peRatioTTM")),
         ev_ebitda=_first(
-            (km, "enterpriseValueOverEBITDATTM"),
             (ratios, "enterpriseValueMultipleTTM"),
+            (km, "enterpriseValueOverEBITDATTM"),
         ),
-        p_b=_first((km, "priceToBookRatioTTM"), (ratios, "priceToBookRatioTTM")),
+        p_b=_first((ratios, "priceToBookRatioTTM"), (km, "priceToBookRatioTTM")),
         p_fcf=_first(
-            (km, "priceToFreeCashFlowsRatioTTM"),
             (ratios, "priceToFreeCashFlowRatioTTM"),
+            (km, "priceToFreeCashFlowsRatioTTM"),
         ),
-        p_s=_first((km, "priceToSalesRatioTTM"), (ratios, "priceToSalesRatioTTM")),
-        peg=_first((km, "pegRatioTTM"), (ratios, "priceToEarningsGrowthRatioTTM")),
+        p_s=_first((ratios, "priceToSalesRatioTTM"), (km, "priceToSalesRatioTTM")),
+        peg=_first((ratios, "priceToEarningsGrowthRatioTTM"), (km, "pegRatioTTM")),
         revenue_yoy=_first((fg_row, "revenueGrowth")),
         eps_yoy=_first((fg_row, "epsGrowth"), (fg_row, "epsgrowth")),
         gross_margin=_first((ratios, "grossProfitMarginTTM")),

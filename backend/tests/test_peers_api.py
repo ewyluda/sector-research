@@ -79,9 +79,23 @@ class CompareRouteTests(unittest.TestCase):
 
     def test_compare_rejects_over_cap(self):
         client, _ = make_client()
-        tickers = ",".join(f"T{i}" for i in range(13))
+        # 14 tickers = 13 peers + focus — one past the 12-peer cap.
+        tickers = ",".join(f"T{i}" for i in range(14))
         resp = client.get(f"/api/peers/compare?tickers={tickers}")
         self.assertEqual(resp.status_code, 400)
+
+    def test_compare_allows_full_peer_set_plus_focus(self):
+        """The Peers-tab deep link sends focus + up to 12 curated peers
+        (13 tickers total) — the cap counts peers, not tickers."""
+        client, _ = make_client()
+        tickers = ",".join(f"T{i}" for i in range(13))
+        with patch(
+            "backend.app.api.peers.build_peer_comp_table",
+            new=AsyncMock(return_value=(_fake_table(focus="T0"), [])),
+        ) as build:
+            resp = client.get(f"/api/peers/compare?tickers={tickers}")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(build.await_args.kwargs["peer_tickers"]), 12)
 
     def test_compare_rejects_focus_not_in_tickers(self):
         client, _ = make_client()

@@ -179,8 +179,10 @@ export function PeerCompTable({ table }: { table: PeerCompTableData }) {
             </td>
             {ALL_METRICS.map((m) => {
               const d = table.delta_vs_median_pct[m.key];
+              // Judgment-free metrics (market cap) stay muted — size delta
+              // is context, not good/bad.
               const color =
-                d == null
+                d == null || m.better == null
                   ? "text-[var(--text-muted)]"
                   : d > 0
                     ? "text-[var(--success)]"

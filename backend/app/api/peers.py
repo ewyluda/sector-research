@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/peers", tags=["peers"])
 
-MAX_COMPARE_TICKERS = 12
+MAX_COMPARE_PEERS = 12  # matches peer_sets.MAX_PEERS; focus ticker rides on top
 
 
 class PeersPayload(BaseModel):
@@ -87,11 +87,6 @@ async def compare(
         )
     seen: set[str] = set()
     parsed = [t for t in parsed if not (t in seen or seen.add(t))]
-    if len(parsed) > MAX_COMPARE_TICKERS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"at most {MAX_COMPARE_TICKERS} tickers per comparison",
-        )
     try:
         focus_t = normalize_ticker(focus) if focus else parsed[0]
     except ValueError as e:
@@ -99,6 +94,16 @@ async def compare(
     if focus_t not in parsed:
         raise HTTPException(status_code=400, detail="focus must be one of tickers")
     peers = [t for t in parsed if t != focus_t]
+    # Cap counts PEERS (focus excluded) so a full 12-peer curated set plus
+    # its focus ticker — the "Open in compare →" deep link — stays valid.
+    if len(peers) > MAX_COMPARE_PEERS:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"at most {MAX_COMPARE_PEERS} peers per comparison"
+                " (plus the focus ticker)"
+            ),
+        )
     return await _build_table(focus_t, peers, request.app.state.fmp)
 
 
