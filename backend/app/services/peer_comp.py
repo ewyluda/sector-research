@@ -1,11 +1,16 @@
-"""Peer comparison table builder — fetches FMP data and computes median/delta metrics."""
+"""Peer comparison table builder — fetches FMP data and computes median/delta metrics.
+
+Shared by three consumers: the /api/peers router, the /compare page (via that
+router), and workspace step 5 (differentiation). One builder, one set of
+numbers everywhere.
+"""
 from __future__ import annotations
 
 import asyncio
 from statistics import median
 from typing import Any
 
-from backend.app.models.workspace_schemas import PeerCompTable, PeerCompRow, PeerError
+from backend.app.models.peer_comp import PeerCompTable, PeerCompRow, PeerError
 
 METRIC_FIELDS = (
     "pe",
@@ -13,11 +18,17 @@ METRIC_FIELDS = (
     "p_b",
     "p_fcf",
     "p_s",
-    "roe",
+    "peg",
     "revenue_yoy",
     "eps_yoy",
     "gross_margin",
+    "operating_margin",
     "ebitda_margin",
+    "fcf_margin",
+    "roe",
+    "roic",
+    "roa",
+    "market_cap",
 )
 
 
@@ -78,33 +89,62 @@ async def build_peer_comp_table(
 
 
 async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
-    """Fetch key_metrics and financial_growth for one ticker, return PeerCompRow."""
-    km, _ = await fmp.get_key_metrics_ttm(ticker)
-    fg, _ = await fmp.get_financial_growth(ticker)
+    """Fetch key-metrics, ratios, growth, and profile for one ticker.
 
-    # Map FMP wire-format names to schema-side names.
-    # key_metrics_ttm endpoint field names.
-    metrics_dict = {
-        "pe": _safe(km, "peRatioTTM"),
-        "ev_ebitda": _safe(km, "enterpriseValueOverEBITDATTM"),
-        "p_b": _safe(km, "priceToBookRatioTTM"),
-        "p_fcf": _safe(km, "priceToFreeCashFlowsRatioTTM"),
-        "p_s": _safe(km, "priceToSalesRatioTTM"),
-        "roe": _safe(km, "roeTTM"),
-    }
-
-    # financial_growth endpoint: returns list of dicts. Use most recent (index 0).
+    Wire-name notes: the key-metrics-ttm names below are production-proven
+    (same names consumed by graph/nodes.py for the deep-dive valuation
+    tables). ratios-ttm names carry fallbacks because the /stable/ API has
+    shifted fields between endpoints before — see get_ratios_ttm docstring.
+    """
+    (km, _), (ratios, _), (fg, _), (profile, _) = await asyncio.gather(
+        fmp.get_key_metrics_ttm(ticker),
+        fmp.get_ratios_ttm(ticker),
+        fmp.get_financial_growth(ticker),
+        fmp.get_company_profile(ticker),
+    )
     fg_row = fg[0] if isinstance(fg, list) and fg else {}
-    metrics_dict.update(
-        {
-            "revenue_yoy": _safe(fg_row, "revenueGrowth"),
-            "eps_yoy": _safe(fg_row, "epsGrowth") or _safe(fg_row, "epsgrowth"),
-            "gross_margin": None,  # Not available in financial_growth
-            "ebitda_margin": None,  # Not available in financial_growth
-        }
+
+    return PeerCompRow(
+        ticker=ticker,
+        pe=_first((km, "peRatioTTM"), (ratios, "priceToEarningsRatioTTM")),
+        ev_ebitda=_first(
+            (km, "enterpriseValueOverEBITDATTM"),
+            (ratios, "enterpriseValueMultipleTTM"),
+        ),
+        p_b=_first((km, "priceToBookRatioTTM"), (ratios, "priceToBookRatioTTM")),
+        p_fcf=_first(
+            (km, "priceToFreeCashFlowsRatioTTM"),
+            (ratios, "priceToFreeCashFlowRatioTTM"),
+        ),
+        p_s=_first((km, "priceToSalesRatioTTM"), (ratios, "priceToSalesRatioTTM")),
+        peg=_first((km, "pegRatioTTM"), (ratios, "priceToEarningsGrowthRatioTTM")),
+        revenue_yoy=_first((fg_row, "revenueGrowth")),
+        eps_yoy=_first((fg_row, "epsGrowth"), (fg_row, "epsgrowth")),
+        gross_margin=_first((ratios, "grossProfitMarginTTM")),
+        operating_margin=_first((ratios, "operatingProfitMarginTTM")),
+        ebitda_margin=_first((ratios, "ebitdaMarginTTM")),
+        fcf_margin=_first(
+            (ratios, "freeCashFlowMarginTTM"), (ratios, "fcfMarginTTM")
+        ),
+        roe=_first((km, "returnOnEquityTTM"), (km, "roeTTM")),
+        roic=_first((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM")),
+        roa=_first(
+            (km, "returnOnTangibleAssetsTTM"), (km, "returnOnAssetsTTM")
+        ),
+        market_cap=_first((profile, "marketCap"), (profile, "mktCap")),
     )
 
-    return PeerCompRow(ticker=ticker, **metrics_dict)
+
+def _first(*candidates: tuple[Any, str]) -> float | None:
+    """First non-None value across (dict, key) candidates.
+
+    Distinct from `x or y` — a legitimate 0.0 value short-circuits correctly.
+    """
+    for d, key in candidates:
+        v = _safe(d, key)
+        if v is not None:
+            return v
+    return None
 
 
 def _safe(d: Any, key: str) -> float | None:
