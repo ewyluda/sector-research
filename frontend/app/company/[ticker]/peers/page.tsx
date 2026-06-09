@@ -43,19 +43,31 @@ export default function PeersPage() {
     setBusy(true);
     setError(null);
     setPeers(next);
+    let saved: Awaited<ReturnType<typeof peersApi.update>>;
     try {
-      const saved = await peersApi.update(ticker, next);
+      saved = await peersApi.update(ticker, next);
       setPeers(saved.peers);
-      setComp(saved.peers.length > 0 ? await peersApi.comp(ticker) : { table: null, errors: [] });
     } catch (e) {
       setPeers(prev);
       setError(e instanceof Error ? e.message : "Failed to update peers");
-    } finally {
       setBusy(false);
+      return;
     }
+    // PUT succeeded — a comp failure must NOT roll back peers; leave the
+    // previous table visible rather than desyncing from the server.
+    try {
+      setComp(
+        saved.peers.length > 0
+          ? await peersApi.comp(ticker)
+          : { table: null, errors: [] }
+      );
+    } catch {
+      // stale table stays; peers are correct on the server
+    }
+    setBusy(false);
   }
 
-  if (comp === undefined) {
+  if (comp === undefined && peers == null) {
     return <div className="text-sm text-[var(--error)]">Failed to load peer data.</div>;
   }
 
@@ -79,6 +91,11 @@ export default function PeersPage() {
         <PeerSetEditor focus={ticker} peers={peers} busy={busy} onChange={handleChange} />
       )}
       {error && <div className="text-xs text-[var(--error)]">{error}</div>}
+      {comp === undefined && peers != null && (
+        <div className="text-xs text-[var(--error)]">
+          Comparison data failed to load — edit the peer set or reload to retry.
+        </div>
+      )}
 
       {comp?.errors && comp.errors.length > 0 && (
         <div className="text-xs text-[var(--text-muted)]">

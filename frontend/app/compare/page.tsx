@@ -36,6 +36,8 @@ function CompareInner() {
         }
       });
     return () => { alive = false; };
+    // tickers is re-derived each render (new array identity); `key` is the
+    // stable string dependency that captures tickers + focus.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
