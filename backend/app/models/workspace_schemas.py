@@ -264,52 +264,13 @@ class ChallengeOutput(BaseModel):
 
 # ── Step 5: Differentiation (Peer Comp + Read-Throughs) ──────────────────────
 
-class PeerCompRow(BaseModel):
-    """A single row in the peer comparison table."""
-
-    ticker: str = Field(
-        description="The peer ticker (or focus ticker for the highlighted row)."
-    )
-    pe: float | None = Field(default=None, description="Price-to-earnings.")
-    ev_ebitda: float | None = Field(default=None, description="EV/EBITDA.")
-    p_b: float | None = Field(default=None, description="Price-to-book.")
-    p_fcf: float | None = Field(default=None, description="Price-to-FCF.")
-    p_s: float | None = Field(default=None, description="Price-to-sales.")
-    roe: float | None = Field(default=None, description="Return on equity.")
-    revenue_yoy: float | None = Field(
-        default=None, description="Revenue YoY growth %."
-    )
-    eps_yoy: float | None = Field(
-        default=None, description="EPS YoY growth %."
-    )
-    gross_margin: float | None = Field(
-        default=None, description="Gross margin %."
-    )
-    ebitda_margin: float | None = Field(
-        default=None, description="EBITDA margin %."
-    )
-
-
-class PeerCompTable(BaseModel):
-    """The full peer comparison table."""
-
-    focus_ticker: str = Field(description="Focus company ticker.")
-    rows: list[PeerCompRow] = Field(
-        default_factory=list, description="Peer rows (focus row first)."
-    )
-    median: PeerCompRow = Field(
-        description="Computed peer median (focus excluded)."
-    )
-    delta_vs_median_pct: PeerCompRow = Field(
-        description="Focus row deltas vs. median (all metrics in %)."
-    )
-
-
-class PeerError(BaseModel):
-    """Error during peer resolution or data fetch."""
-
-    peer_ticker: str = Field(description="Peer ticker that failed.")
-    error_message: str = Field(description="Error detail.")
+# PeerCompRow / PeerCompTable / PeerError moved to models/peer_comp.py
+# (2026-06-09) — re-exported here so existing imports keep working.
+from backend.app.models.peer_comp import (  # noqa: F401, E402
+    PeerCompRow,
+    PeerCompTable,
+    PeerError,
+)
 
 
 class DifferentiationOutput(BaseModel):
