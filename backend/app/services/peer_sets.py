@@ -48,8 +48,8 @@ async def resolved_competitor_peers(
 async def get_or_seed_peer_set(
     ticker: str, db: AsyncSession, fmp
 ) -> tuple[list[str], bool]:
-    """Return (peers, seeded). Seeds + persists on first call for a ticker.
-    Commits on the seed path."""
+    """Return (peers, seeded). Seeds on first call for a ticker. Writes
+    without committing — the caller owns the session and must commit."""
     focus = ticker.upper()
     row = (
         await db.execute(select(PeerSet).where(PeerSet.ticker == focus))
@@ -72,8 +72,11 @@ async def get_or_seed_peer_set(
                 if len(peers) >= PEER_CAP:
                     break
 
+    # NOTE: no ON CONFLICT handling — two concurrent seeds for the same
+    # ticker would make the second commit raise IntegrityError on the PK.
+    # Acceptable for a single-user tool: the row exists afterwards and a
+    # retry returns it via the hit path.
     db.add(PeerSet(ticker=focus, peers=peers))
-    await db.commit()
     return peers, True
 
 
@@ -82,7 +85,8 @@ async def update_peer_set(
 ) -> list[str]:
     """Replace the persisted peer list. Normalizes + de-dupes, drops the
     set's own ticker, allows [] (clears). Raises ValueError on an invalid
-    ticker or an over-cap list (API maps both to 400). Commits."""
+    ticker or an over-cap list (API maps both to 400). Writes without
+    committing — the caller owns the session and must commit."""
     focus = ticker.upper()
     seen: set[str] = set()
     cleaned: list[str] = []
@@ -101,7 +105,6 @@ async def update_peer_set(
         db.add(PeerSet(ticker=focus, peers=cleaned))
     else:
         row.peers = cleaned
-    await db.commit()
     return cleaned
 
 

@@ -72,7 +72,7 @@ class GetOrSeedTests(unittest.IsolatedAsyncioTestCase):
         # landscape first, then fmp fill (INTC deduped), capped at 8
         self.assertEqual(peers, ["AMD", "INTC", "AVGO", "QCOM", "TSM", "MU", "ARM", "TXN"])
         db.add.assert_called_once()
-        db.commit.assert_awaited()
+        db.commit.assert_not_awaited()
 
     async def test_seed_tolerates_fmp_failure(self):
         landscape = [_landscape_row([{"resolved_to_ticker": "AMD"}])]
@@ -91,6 +91,7 @@ class GetOrSeedTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(peers, [])
         self.assertTrue(seeded)
         db.add.assert_called_once()  # empty row persisted — no re-seed next visit
+        db.commit.assert_not_awaited()
 
 
 class UpdateTests(unittest.IsolatedAsyncioTestCase):
@@ -101,7 +102,7 @@ class UpdateTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(peers, ["AMD", "INTC"])
         db.add.assert_called_once()
-        db.commit.assert_awaited()
+        db.commit.assert_not_awaited()
 
     async def test_replaces_existing_row(self):
         existing = PeerSet(ticker="NVDA", peers=["OLD"])
@@ -110,6 +111,7 @@ class UpdateTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(peers, ["AMD"])
         self.assertEqual(existing.peers, ["AMD"])
         db.add.assert_not_called()
+        db.commit.assert_not_awaited()
 
     async def test_empty_list_clears(self):
         existing = PeerSet(ticker="NVDA", peers=["AMD"])
