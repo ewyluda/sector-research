@@ -31,6 +31,11 @@ METRIC_FIELDS = (
     "market_cap",
 )
 
+# Max tickers fetched concurrently (4 FMP calls each) — same reason
+# DiscoveryEngine batches 10 at a time: don't hammer FMP with a
+# 50-request burst on a full 13-ticker compare.
+FETCH_CONCURRENCY = 10
+
 
 async def build_peer_comp_table(
     *, focus_ticker: str, peer_tickers: list[str], fmp,
@@ -44,8 +49,15 @@ async def build_peer_comp_table(
         return None, []
 
     tickers = [focus_ticker] + list(peer_tickers)
+
+    sem = asyncio.Semaphore(FETCH_CONCURRENCY)
+
+    async def _fetch_limited(t: str) -> PeerCompRow:
+        async with sem:
+            return await _fetch_one(t, fmp)
+
     results = await asyncio.gather(
-        *(_fetch_one(t, fmp) for t in tickers),
+        *(_fetch_limited(t) for t in tickers),
         return_exceptions=True,
     )
 

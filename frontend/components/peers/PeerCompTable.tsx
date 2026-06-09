@@ -68,7 +68,12 @@ function bestValues(rows: PeerCompRow[]): Partial<Record<MetricKey, number>> {
   const best: Partial<Record<MetricKey, number>> = {};
   for (const m of ALL_METRICS) {
     if (!m.better) continue;
-    const vals = rows.map((r) => r[m.key]).filter((v): v is number => v != null);
+    const vals = rows
+      .map((r) => r[m.key])
+      .filter((v): v is number => v != null)
+      // Negative valuation multiples (loss-making P/E, negative PEG) aren't
+      // "cheap" — exclude them from lower-is-better best-in-class.
+      .filter((v) => m.better === "high" || v > 0);
     if (vals.length === 0) continue;
     best[m.key] = m.better === "low" ? Math.min(...vals) : Math.max(...vals);
   }
@@ -171,20 +176,20 @@ export function PeerCompTable({ table }: { table: PeerCompTableData }) {
             ))}
           </tr>
 
-          {/* Δ vs median — relative delta computed backend-side; green/red signals direction
-              only. The best-in-class tint on company rows above is the judgment layer. */}
+          {/* Δ vs median — relative delta computed backend-side; colored by
+              metric direction (above-median P/E is red, above-median margin
+              is green). Judgment-free metrics (market cap) stay muted. */}
           <tr>
             <td className="sticky left-0 bg-[var(--surface)] z-10 text-left py-1.5 px-2 font-medium text-[var(--text-muted)]">
               Δ vs median
             </td>
             {ALL_METRICS.map((m) => {
               const d = table.delta_vs_median_pct[m.key];
-              // Judgment-free metrics (market cap) stay muted — size delta
-              // is context, not good/bad.
+              const good = m.better === "high" ? d != null && d > 0 : d != null && d < 0;
               const color =
-                d == null || m.better == null
+                d == null || d === 0 || m.better == null
                   ? "text-[var(--text-muted)]"
-                  : d > 0
+                  : good
                     ? "text-[var(--success)]"
                     : "text-[var(--error)]";
               return (

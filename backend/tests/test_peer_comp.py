@@ -156,6 +156,44 @@ class TestPeerComp(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(table)
         self.assertEqual(errors, [])
 
+    async def test_fetch_concurrency_capped(self):
+        """No more than FETCH_CONCURRENCY tickers are in flight at once —
+        a full 13-ticker compare must not burst 50+ FMP calls."""
+        import asyncio
+
+        from backend.app.services.peer_comp import FETCH_CONCURRENCY
+
+        active = 0
+        peak = 0
+
+        fmp = AsyncMock()
+
+        async def km(ticker):
+            nonlocal active, peak
+            active += 1
+            peak = max(peak, active)
+            await asyncio.sleep(0.01)
+            active -= 1
+            return {}, MagicMock()
+
+        async def empty(ticker):
+            return {}, MagicMock()
+
+        async def empty_list(ticker):
+            return [], MagicMock()
+
+        fmp.get_key_metrics_ttm = km
+        fmp.get_ratios_ttm = empty
+        fmp.get_financial_growth = empty_list
+        fmp.get_company_profile = empty
+
+        await build_peer_comp_table(
+            focus_ticker="T0",
+            peer_tickers=[f"T{i}" for i in range(1, 13)],
+            fmp=fmp,
+        )
+        self.assertLessEqual(peak, FETCH_CONCURRENCY)
+
 
 if __name__ == "__main__":
     unittest.main()
