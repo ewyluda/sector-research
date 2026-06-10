@@ -61,7 +61,7 @@ class Universe:
     """Theme seeds ∪ active theses (spec decision #1)."""
 
     tickers: set[str]
-    thesis_runs: dict[str, str]  # ticker -> latest active run_id
+    thesis_runs: dict[str, str]  # ticker -> an active run_id (first CTE row wins)
 
 
 def _citation_out(c: Citation) -> CitationOut:
@@ -165,3 +165,100 @@ async def get_universe(db: AsyncSession) -> Universe:
     tickers.update(thesis_runs)
 
     return Universe(tickers=tickers, thesis_runs=thesis_runs)
+
+
+# ── Thesis catalysts ──────────────────────────────────────────────────────────
+
+# Same "latest run with structured thesis" CTE as the List view
+# (api/catalysts._build_list_catalysts_sql) — kept in sync by the pin test.
+# Range filter happens in SQL: windowed rows by overlap, dated rows by BETWEEN.
+# Undated rows are excluded by construction (spec: they live in the List view).
+CATALYST_RANGE_SQL = """
+    WITH latest AS (
+        SELECT DISTINCT ON (ticker) id, ticker, created_at
+        FROM research_runs
+        WHERE jsonb_typeof(state->'phase_outputs'->'thesis'->'structured') = 'object'
+        ORDER BY ticker, created_at DESC
+    )
+    SELECT c.*
+    FROM catalysts c
+    JOIN latest l ON c.run_id = l.id
+    WHERE (
+        (c.expected_window_end IS NOT NULL
+         AND COALESCE(c.expected_window_start, c.expected_date) <= :end_date
+         AND c.expected_window_end >= :start_date)
+        OR
+        (c.expected_window_end IS NULL
+         AND c.expected_date IS NOT NULL
+         AND c.expected_date BETWEEN :start_date AND :end_date)
+    )
+    ORDER BY c.expected_date NULLS LAST, c.ticker, c.ordinal
+"""
+
+
+def _catalyst_events(rows: list[dict]) -> list[CalendarEvent]:
+    out: list[CalendarEvent] = []
+    for r in rows:
+        windowed = r["expected_window_end"] is not None
+        d = r["expected_date"] or r["expected_window_end"]
+        out.append(CalendarEvent(
+            kind="catalyst",
+            date=d,
+            ticker=r["ticker"],
+            title=r["description"],
+            detail={
+                "run_id": str(r["run_id"]),
+                "catalyst_id": str(r["id"]),
+                "type": r["type"],
+                "timeframe": r["timeframe"],
+                "linked_pillar": r["linked_pillar"],
+                "windowed": windowed,
+                "window_start": r["expected_window_start"].isoformat()
+                if r["expected_window_start"] else None,
+                "window_end": r["expected_window_end"].isoformat()
+                if r["expected_window_end"] else None,
+            },
+            citation=None,  # catalysts carry provenance via their run
+        ))
+    return out
+
+
+# ── Merge orchestrator ────────────────────────────────────────────────────────
+
+_KIND_ORDER = {"economic": 0, "earnings": 1, "catalyst": 2}
+
+
+async def get_calendar_events(
+    db: AsyncSession, fmp: FMPClient, start: date, end: date
+) -> CalendarResponse:
+    """Merge the three sources. FMP failures degrade to warnings — never
+    500 on a partial outage (spec error-handling section)."""
+    universe = await get_universe(db)
+    events: list[CalendarEvent] = []
+    warnings: list[str] = []
+
+    try:
+        rows, cit = await fmp.get_economic_calendar(start.isoformat(), end.isoformat())
+        events.extend(_econ_events(rows, cit))
+    except Exception:
+        logger.exception("economic calendar fetch failed")
+        warnings.append("Economic calendar unavailable (FMP error)")
+
+    try:
+        rows, cit = await fmp.get_earnings_calendar_range(start.isoformat(), end.isoformat())
+        events.extend(_earnings_events(rows, universe, cit))
+    except Exception:
+        logger.exception("earnings calendar fetch failed")
+        warnings.append("Earnings calendar unavailable (FMP error)")
+
+    cat_rows = (await db.execute(
+        text(CATALYST_RANGE_SQL), {"start_date": start, "end_date": end}
+    )).mappings().all()
+    events.extend(_catalyst_events(list(cat_rows)))
+
+    events.sort(key=lambda e: (e.date, _KIND_ORDER[e.kind], e.ticker or ""))
+    return CalendarResponse(
+        events=events,
+        universe_size=len(universe.tickers),
+        warnings=warnings,
+    )

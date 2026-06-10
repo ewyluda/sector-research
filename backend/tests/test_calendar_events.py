@@ -65,6 +65,14 @@ class EconEventsTests(unittest.TestCase):
         events = ce._econ_events(rows, _cit())
         self.assertEqual(events[0].date, date(2026, 6, 10))
 
+    def test_non_string_date_value_is_handled(self):
+        # Drivers may hand back datetime objects; str() renders them
+        # parseable ("YYYY-MM-DD HH:MM:SS") instead of raising TypeError.
+        rows = [{"country": "US", "impact": "High", "event": "X",
+                 "date": datetime(2026, 6, 10, 12, 30)}]
+        events = ce._econ_events(rows, _cit())
+        self.assertEqual(events[0].date, date(2026, 6, 10))
+
 
 class EarningsEventsTests(unittest.TestCase):
     def _universe(self):
@@ -163,6 +171,127 @@ class CitationOutTests(unittest.TestCase):
             tier=1,
         )
         self.assertEqual(ce._citation_out(cit).value, "4.2")
+
+
+class CatalystRangeSqlTests(unittest.TestCase):
+    def test_sql_pins_latest_thesis_cte_and_range_overlap(self):
+        sql = ce.CATALYST_RANGE_SQL
+        # Same latest-run semantics as the List view (api/catalysts.py)
+        self.assertIn(
+            "jsonb_typeof(state->'phase_outputs'->'thesis'->'structured') = 'object'",
+            sql,
+        )
+        # Windowed rows: overlap test; dated rows: BETWEEN
+        self.assertIn("c.expected_window_end >= :start_date", sql)
+        self.assertIn("BETWEEN :start_date AND :end_date", sql)
+
+
+class CatalystEventsTests(unittest.TestCase):
+    def _row(self, **overrides):
+        base = {
+            "id": "cat-1", "run_id": "run-1", "ticker": "NVDA",
+            "ordinal": 1, "timeframe": "Q3 2026", "description": "Rubin volume ship",
+            "type": "product", "linked_pillar": None,
+            "expected_date": date(2026, 8, 15),
+            "expected_window_start": None, "expected_window_end": None,
+        }
+        base.update(overrides)
+        return base
+
+    def test_dated_row_maps_to_event(self):
+        events = ce._catalyst_events([self._row()])
+        ev = events[0]
+        self.assertEqual(ev.kind, "catalyst")
+        self.assertEqual(ev.date, date(2026, 8, 15))
+        self.assertEqual(ev.ticker, "NVDA")
+        self.assertEqual(ev.title, "Rubin volume ship")
+        self.assertEqual(ev.detail["run_id"], "run-1")
+        self.assertEqual(ev.detail["catalyst_id"], "cat-1")
+        self.assertFalse(ev.detail["windowed"])
+        self.assertIsNone(ev.citation)  # catalysts cite via their run
+
+    def test_windowed_row_flagged_and_carries_window(self):
+        events = ce._catalyst_events([self._row(
+            expected_window_start=date(2026, 7, 1),
+            expected_window_end=date(2026, 9, 30),
+        )])
+        ev = events[0]
+        self.assertTrue(ev.detail["windowed"])
+        self.assertEqual(ev.detail["window_start"], "2026-07-01")
+        self.assertEqual(ev.detail["window_end"], "2026-09-30")
+
+    def test_windowed_row_without_midpoint_uses_window_end_as_date(self):
+        events = ce._catalyst_events([self._row(
+            expected_date=None,
+            expected_window_start=date(2026, 7, 1),
+            expected_window_end=date(2026, 9, 30),
+        )])
+        self.assertEqual(events[0].date, date(2026, 9, 30))
+
+
+class GetCalendarEventsTests(unittest.IsolatedAsyncioTestCase):
+    def _db(self):
+        db = AsyncMock()
+        db.execute.side_effect = [
+            _Result([["NVDA"]]),                                  # seeds
+            _Result([{"ticker": "NVDA", "id": "run-1"}]),         # latest runs
+            _Result([]),                                          # catalysts
+        ]
+        return db
+
+    async def test_partial_failure_warns_and_returns_other_sources(self):
+        fmp = AsyncMock()
+        fmp.get_economic_calendar.side_effect = RuntimeError("FMP down")
+        fmp.get_earnings_calendar_range.return_value = (
+            [{"symbol": "NVDA", "date": "2026-06-10", "epsEstimated": 1.0}],
+            _cit(),
+        )
+
+        resp = await ce.get_calendar_events(
+            self._db(), fmp, date(2026, 6, 8), date(2026, 6, 22)
+        )
+
+        self.assertEqual(len(resp.warnings), 1)
+        self.assertIn("Economic calendar unavailable", resp.warnings[0])
+        self.assertEqual([e.kind for e in resp.events], ["earnings"])
+        self.assertEqual(resp.universe_size, 1)
+
+    async def test_events_sorted_by_date_then_kind(self):
+        fmp = AsyncMock()
+        fmp.get_economic_calendar.return_value = (
+            [{"country": "US", "impact": "High", "event": "CPI",
+              "date": "2026-06-10 12:30:00"}],
+            _cit(),
+        )
+        fmp.get_earnings_calendar_range.return_value = (
+            [{"symbol": "NVDA", "date": "2026-06-09"},
+             {"symbol": "NVDA", "date": "2026-06-10"}],
+            _cit(),
+        )
+
+        resp = await ce.get_calendar_events(
+            self._db(), fmp, date(2026, 6, 8), date(2026, 6, 22)
+        )
+
+        self.assertEqual(
+            [(e.date.isoformat(), e.kind) for e in resp.events],
+            [("2026-06-09", "earnings"),
+             ("2026-06-10", "economic"),
+             ("2026-06-10", "earnings")],
+        )
+
+
+class LatestRunsSqlContractTests(unittest.TestCase):
+    def test_status_board_sql_emits_columns_and_archive_filter(self):
+        # get_universe reads r["ticker"] / r["id"] off this SQL and relies on
+        # include_archived=False excluding archived runs. Pin the contract.
+        from backend.app.services.status_board import _build_latest_runs_sql
+
+        sql, params = _build_latest_runs_sql(theme_id=None, include_archived=False)
+        self.assertIn("r.id", sql)
+        self.assertIn("r.ticker", sql)
+        self.assertIn("archived_at IS NULL", sql)
+        self.assertEqual(params, {})
 
 
 if __name__ == "__main__":
