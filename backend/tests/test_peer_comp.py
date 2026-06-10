@@ -98,8 +98,9 @@ class TestPeerComp(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(focus.gross_margin, 0.75)
         self.assertEqual(focus.operating_margin, 0.60)
         self.assertEqual(focus.ebitda_margin, 0.62)
-        # fcf_margin: freeCashFlowMarginTTM absent from FMP live API — degrades to None
-        self.assertIsNone(focus.fcf_margin)
+        # fcf_margin: freeCashFlowMarginTTM absent from FMP live API — derived
+        # as FCF/sales = p_s ÷ p_fcf (20.0 / 28.0)
+        self.assertAlmostEqual(focus.fcf_margin, 20.0 / 28.0)
         self.assertEqual(focus.roic, 0.4)
         self.assertEqual(focus.roa, 0.3)
         self.assertEqual(focus.market_cap, 2.5e12)
@@ -155,6 +156,44 @@ class TestPeerComp(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIsNone(table)
         self.assertEqual(errors, [])
+
+    async def test_fcf_margin_derivation_edge_cases(self):
+        """Derived only when both p_s and p_fcf are present; a wire-served
+        freeCashFlowMarginTTM (should FMP ever add one) takes precedence."""
+        from backend.app.services.peer_comp import _fetch_one
+
+        cases = [
+            # (ratios payload, expected fcf_margin)
+            ({"priceToSalesRatioTTM": 20.0, "priceToFreeCashFlowRatioTTM": 28.0},
+             20.0 / 28.0),
+            ({"priceToSalesRatioTTM": 20.0}, None),               # no p_fcf
+            ({"priceToFreeCashFlowRatioTTM": 28.0}, None),        # no p_s
+            ({"priceToSalesRatioTTM": 20.0, "priceToFreeCashFlowRatioTTM": 0.0},
+             None),                                               # zero divisor
+            ({"priceToSalesRatioTTM": 20.0, "priceToFreeCashFlowRatioTTM": 28.0,
+              "freeCashFlowMarginTTM": 0.5}, 0.5),                # wire wins
+        ]
+        for ratios_payload, expected in cases:
+            fmp = AsyncMock()
+
+            async def km(t):
+                return {}, MagicMock()
+
+            async def ratios(t, _p=ratios_payload):
+                return _p, MagicMock()
+
+            async def fg(t):
+                return [], MagicMock()
+
+            fmp.get_key_metrics_ttm = km
+            fmp.get_ratios_ttm = ratios
+            fmp.get_financial_growth = fg
+            fmp.get_company_profile = km
+            row = await _fetch_one("TEST", fmp)
+            if expected is None:
+                self.assertIsNone(row.fcf_margin, msg=str(ratios_payload))
+            else:
+                self.assertAlmostEqual(row.fcf_margin, expected, msg=str(ratios_payload))
 
     async def test_fetch_concurrency_capped(self):
         """No more than FETCH_CONCURRENCY tickers are in flight at once —

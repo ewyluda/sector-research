@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { peersApi } from "@/lib/api";
@@ -17,10 +17,15 @@ export default function PeersPage() {
   const [comp, setComp] = useState<PeerCompResponse | null | undefined>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Fetch-sequence counter: a slow mount-time comp fetch must not land after
+  // (and overwrite) a fresher post-edit comp fetch. Only the latest sequence
+  // is allowed to setComp.
+  const compSeq = useRef(0);
 
   useEffect(() => {
     if (!ticker) return;
     let alive = true;
+    const seq = ++compSeq.current;
     // Sequential on purpose: GET /{ticker} seeds the row; firing comp in
     // parallel could double-seed (PK violation on the second insert).
     (async () => {
@@ -29,9 +34,9 @@ export default function PeersPage() {
         if (!alive) return;
         setPeers(set.peers);
         const c = await peersApi.comp(ticker);
-        if (alive) setComp(c);
+        if (alive && seq === compSeq.current) setComp(c);
       } catch {
-        if (alive) setComp(undefined);
+        if (alive && seq === compSeq.current) setComp(undefined);
       }
     })();
     return () => { alive = false; };
@@ -55,12 +60,13 @@ export default function PeersPage() {
     }
     // PUT succeeded — a comp failure must NOT roll back peers; leave the
     // previous table visible rather than desyncing from the server.
+    const seq = ++compSeq.current;
     try {
-      setComp(
+      const next =
         saved.peers.length > 0
           ? await peersApi.comp(ticker)
-          : { table: null, errors: [] }
-      );
+          : { table: null, errors: [] };
+      if (seq === compSeq.current) setComp(next);
     } catch {
       // stale table stays; peers are correct on the server
     }
