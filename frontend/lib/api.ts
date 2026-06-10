@@ -1044,6 +1044,64 @@ export async function getCatalyst(id: string): Promise<CatalystRow> {
   return apiFetch<CatalystRow>(`/api/catalysts/${encodeURIComponent(id)}`);
 }
 
+// ── Unified calendar (GET /api/catalysts/calendar) ──────────────────────────
+
+export interface EconomicEventDetail {
+  estimate: number | null;
+  previous: number | null;
+  actual: number | null;
+  unit: string | null;
+}
+
+export interface EarningsEventDetail {
+  eps_estimated: number | null;
+  eps_actual: number | null;
+  revenue_estimated: number | null;
+  revenue_actual: number | null;
+  has_thesis: boolean;
+  run_id: string | null;
+}
+
+export interface CatalystEventDetail {
+  run_id: string;
+  catalyst_id: string;
+  type: string | null;
+  timeframe: string;
+  linked_pillar: string | null;
+  windowed: boolean;
+  window_start: string | null;
+  window_end: string | null;
+}
+
+interface CalendarEventBase {
+  date: string;             // YYYY-MM-DD
+  timestamp: string | null; // econ rows carry intraday UTC time
+  title: string;
+  citation: Citation | null;
+}
+
+export type CalendarEvent =
+  | (CalendarEventBase & { kind: "economic"; ticker: null; detail: EconomicEventDetail })
+  | (CalendarEventBase & { kind: "earnings"; ticker: string; detail: EarningsEventDetail })
+  | (CalendarEventBase & { kind: "catalyst"; ticker: string; detail: CatalystEventDetail });
+
+export type CalendarEventKind = CalendarEvent["kind"];
+
+export interface CalendarResponse {
+  events: CalendarEvent[];
+  universe_size: number;
+  warnings: string[];
+}
+
+export async function getCalendarEvents(
+  start: string,
+  end: string
+): Promise<CalendarResponse> {
+  return apiFetch<CalendarResponse>(
+    `/api/catalysts/calendar?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`
+  );
+}
+
 // ── Status board ─────────────────────────────────────────────────────────────
 
 export type Health = "healthy" | "imminent" | "stale" | "triggered" | "broken";
