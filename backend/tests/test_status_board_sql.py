@@ -56,14 +56,24 @@ class TestStatusBoardSql(unittest.TestCase):
             theme_id="theme-1",
             include_archived=True,
         )
-        assert "archived_at IS NULL" not in sql_with_archived
+        assert "archived_at is null" not in sql_with_archived.lower()
 
     def test_theme_id_parameterization(self) -> None:
-        sql_with_archived, _ = _build_latest_runs_sql(
+        # With theme_id: bind placeholder in SQL and value in params dict.
+        sql_with_theme, params_with_theme = _build_latest_runs_sql(
             theme_id="theme-1",
-            include_archived=True,
+            include_archived=False,
         )
-        assert "archived_at IS NULL" not in sql_with_archived
+        assert ":theme_id" in sql_with_theme
+        assert params_with_theme == {"theme_id": "theme-1"}
+
+        # Without theme_id: no placeholder in SQL and empty params dict.
+        sql_no_theme, params_no_theme = _build_latest_runs_sql(
+            theme_id=None,
+            include_archived=False,
+        )
+        assert ":theme_id" not in sql_no_theme
+        assert params_no_theme == {}
 
 
 if __name__ == "__main__":
