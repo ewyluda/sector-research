@@ -75,7 +75,7 @@ function ScoreModel({
     <div className="rounded-lg border border-[var(--color-border)] px-3 py-2">
       <p className="text-[10px] uppercase tracking-wide text-[var(--color-text-muted)]">{title}</p>
       {naReason ? (
-        <p className="text-[11px] text-[var(--color-text-muted)] mt-1">n/a — financial sector</p>
+        <p className="text-[11px] text-[var(--color-text-muted)] mt-1">n/a — {naReason}</p>
       ) : value === null ? (
         <p className="text-[11px] text-[var(--color-text-muted)] mt-1">insufficient data</p>
       ) : (
@@ -98,15 +98,23 @@ function SlopeRow({ label, slope, quarters }: { label: string; slope: number | n
     );
   }
   const up = slope > 0;
+  const color =
+    slope === 0 ? "text-[var(--color-text-muted)]" : up ? "text-emerald-400" : "text-red-400";
+  const arrow = slope === 0 ? "→" : up ? "▲" : "▼";
   return (
     <div className="flex items-center justify-between text-[11px]">
       <span className="text-[var(--color-text-secondary)]">{label}</span>
-      <span className={up ? "text-emerald-400" : "text-red-400"}>
-        {up ? "▲" : "▼"} {slope > 0 ? "+" : ""}
+      <span className={color}>
+        {arrow} {slope > 0 ? "+" : ""}
         {slope.toFixed(2)} pp/q <span className="text-[var(--color-text-muted)]">({quarters}q)</span>
       </span>
     </div>
   );
+}
+
+function slopeProps(fp: QuantFingerprintData, key: "gross" | "operating" | "net") {
+  const entry = fp.margin_slopes?.[key];
+  return { slope: entry?.slope_pp_per_quarter ?? null, quarters: entry?.quarters ?? 0 };
 }
 
 export function QuantFingerprint({ financials }: QuantFingerprintProps) {
@@ -143,6 +151,9 @@ export function QuantFingerprint({ financials }: QuantFingerprintProps) {
               {fp.piotroski.components.map((c) => (
                 <PiotroskiCheck key={c.key} component={c} />
               ))}
+              {fp.piotroski.components.length === 0 && (
+                <p className="text-[11px] text-[var(--color-text-muted)]">insufficient data</p>
+              )}
             </div>
           </div>
           <div className="space-y-4">
@@ -196,9 +207,4 @@ export function QuantFingerprint({ financials }: QuantFingerprintProps) {
       </div>
     </section>
   );
-}
-
-function slopeProps(fp: QuantFingerprintData, key: "gross" | "operating" | "net") {
-  const entry = fp.margin_slopes?.[key];
-  return { slope: entry?.slope_pp_per_quarter ?? null, quarters: entry?.quarters ?? 0 };
 }
