@@ -185,6 +185,21 @@ class CatalystRangeSqlTests(unittest.TestCase):
         self.assertIn("c.expected_window_end >= :start_date", sql)
         self.assertIn("BETWEEN :start_date AND :end_date", sql)
 
+    def test_latest_cte_identical_to_list_view(self):
+        # The "kept in sync by the pin test" comment in calendar_events.py
+        # is enforced here: the latest-run CTE must stay character-identical
+        # (modulo whitespace) to the List view's run_id-less branch.
+        from backend.app.api.catalysts import _build_list_catalysts_sql
+
+        def _cte(sql: str) -> str:
+            normalized = " ".join(sql.split())
+            start = normalized.index("WITH latest AS (")
+            end = normalized.index(")", normalized.index("ORDER BY ticker, created_at DESC"))
+            return normalized[start:end + 1]
+
+        list_sql, _ = _build_list_catalysts_sql(ticker=None, run_id=None)
+        self.assertEqual(_cte(ce.CATALYST_RANGE_SQL), _cte(list_sql))
+
 
 class CatalystEventsTests(unittest.TestCase):
     def _row(self, **overrides):
@@ -256,6 +271,23 @@ class GetCalendarEventsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([e.kind for e in resp.events], ["earnings"])
         self.assertEqual(resp.universe_size, 1)
 
+    async def test_earnings_failure_warns_and_returns_other_sources(self):
+        fmp = AsyncMock()
+        fmp.get_economic_calendar.return_value = (
+            [{"country": "US", "impact": "High", "event": "CPI",
+              "date": "2026-06-10 12:30:00"}],
+            _cit(),
+        )
+        fmp.get_earnings_calendar_range.side_effect = RuntimeError("FMP down")
+
+        resp = await ce.get_calendar_events(
+            self._db(), fmp, date(2026, 6, 8), date(2026, 6, 22)
+        )
+
+        self.assertEqual(len(resp.warnings), 1)
+        self.assertIn("Earnings calendar unavailable", resp.warnings[0])
+        self.assertEqual([e.kind for e in resp.events], ["economic"])
+
     async def test_events_sorted_by_date_then_kind(self):
         fmp = AsyncMock()
         fmp.get_economic_calendar.return_value = (
@@ -279,6 +311,38 @@ class GetCalendarEventsTests(unittest.IsolatedAsyncioTestCase):
              ("2026-06-10", "economic"),
              ("2026-06-10", "earnings")],
         )
+
+
+    async def test_catalyst_rows_merged_and_params_are_date_objects(self):
+        db = AsyncMock()
+        db.execute.side_effect = [
+            _Result([["NVDA"]]),
+            _Result([{"ticker": "NVDA", "id": "run-1"}]),
+            _Result([{
+                "id": "cat-1", "run_id": "run-1", "ticker": "NVDA",
+                "ordinal": 1, "timeframe": "June 2026",
+                "description": "Rubin launch", "type": "product",
+                "linked_pillar": None,
+                "expected_date": date(2026, 6, 10),
+                "expected_window_start": None, "expected_window_end": None,
+            }]),
+        ]
+        fmp = AsyncMock()
+        fmp.get_economic_calendar.return_value = ([], _cit())
+        fmp.get_earnings_calendar_range.return_value = (
+            [{"symbol": "NVDA", "date": "2026-06-10"}], _cit()
+        )
+
+        resp = await ce.get_calendar_events(
+            db, fmp, date(2026, 6, 8), date(2026, 6, 22)
+        )
+
+        self.assertEqual(
+            [e.kind for e in resp.events], ["earnings", "catalyst"]
+        )
+        catalyst_params = db.execute.call_args_list[2].args[1]
+        self.assertEqual(catalyst_params["start_date"], date(2026, 6, 8))
+        self.assertEqual(catalyst_params["end_date"], date(2026, 6, 22))
 
 
 class LatestRunsSqlContractTests(unittest.TestCase):

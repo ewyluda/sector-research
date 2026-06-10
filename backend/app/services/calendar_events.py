@@ -173,6 +173,9 @@ async def get_universe(db: AsyncSession) -> Universe:
 # (api/catalysts._build_list_catalysts_sql) — kept in sync by the pin test.
 # Range filter happens in SQL: windowed rows by overlap, dated rows by BETWEEN.
 # Undated rows are excluded by construction (spec: they live in the List view).
+# A windowed row whose FMP-overridden expected_date (date_source='fmp_earnings',
+# up to 30d outside the window) falls in range is included even when its
+# window doesn't overlap — matches the List view, which buckets by expected_date.
 CATALYST_RANGE_SQL = """
     WITH latest AS (
         SELECT DISTINCT ON (ticker) id, ticker, created_at
@@ -185,8 +188,12 @@ CATALYST_RANGE_SQL = """
     JOIN latest l ON c.run_id = l.id
     WHERE (
         (c.expected_window_end IS NOT NULL
-         AND COALESCE(c.expected_window_start, c.expected_date) <= :end_date
-         AND c.expected_window_end >= :start_date)
+         AND (
+            (COALESCE(c.expected_window_start, c.expected_date) <= :end_date
+             AND c.expected_window_end >= :start_date)
+            OR (c.expected_date IS NOT NULL
+                AND c.expected_date BETWEEN :start_date AND :end_date)
+         ))
         OR
         (c.expected_window_end IS NULL
          AND c.expected_date IS NOT NULL
