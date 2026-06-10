@@ -1,9 +1,9 @@
 /**
  * Page — /catalysts
  *
- * Fleet-wide catalyst calendar. Server component fetches the proximity-
- * bucketed catalyst list (latest run per ticker); the bucket sections
- * and per-row signposts toggle are client components.
+ * Unified calendar (default) + proximity-bucket list behind a toggle.
+ * Server component fetches the bucketed catalyst list for the List view;
+ * the Calendar view fetches its own merged events client-side.
  */
 
 import { CatalystsView } from "@/components/catalysts/CatalystsView";

@@ -372,6 +372,15 @@ export default function StatusPage() {
     };
   }, []);
 
+  // Deep link from the unified calendar: /status?expand_earnings=<run_id>
+  // auto-opens that run's EarningsDrawer once the board has loaded.
+  useEffect(() => {
+    const runId = new URLSearchParams(window.location.search).get("expand_earnings");
+    if (runId && earningsByRun[runId]) {
+      setEarningsExpanded((prev) => (prev[runId] ? prev : { ...prev, [runId]: true }));
+    }
+  }, [earningsByRun]);
+
   const counts = useMemo(() => {
     const c: Record<Health | "all", number> = {
       all: entries.length,
