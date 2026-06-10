@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { journalApi } from "@/lib/api";
 import type { JournalSummary, TradeDetail } from "@/lib/api";
 import { TradeForm } from "./TradeForm";
@@ -13,23 +13,10 @@ export type FormState =
   | { mode: "edit"; trade: TradeDetail }
   | { mode: "close"; trade: TradeDetail };
 
-// Read + consume the one-shot ?log_trade=TICKER query param at init time.
-function consumeLogTradeParam(): FormState | null {
-  if (typeof window === "undefined") return null;
-  const t = new URLSearchParams(window.location.search).get("log_trade");
-  if (!t) return null;
-  const url = new URL(window.location.href);
-  url.searchParams.delete("log_trade");
-  window.history.replaceState({}, "", url.toString());
-  return { mode: "create", ticker: t.toUpperCase() };
-}
-
 export function TradeJournalSection() {
   const [trades, setTrades] = useState<TradeDetail[]>([]);
   const [summary, setSummary] = useState<JournalSummary | null>(null);
-  // Lazy initializer handles the one-shot deep link: /performance?log_trade=TICKER
-  // (pattern: /status?expand_earnings). consumeLogTradeParam() runs once at mount.
-  const [form, setForm] = useState<FormState | null>(consumeLogTradeParam);
+  const [form, setForm] = useState<FormState | null>(null);
 
   const refresh = useCallback(() => {
     journalApi.list().then(setTrades).catch(() => setTrades([]));
@@ -39,6 +26,23 @@ export function TradeJournalSection() {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  // Deep link: /performance?log_trade=TICKER auto-opens the create form,
+  // prefilled. One-shot (pattern: /status?expand_earnings): consumed ref +
+  // URL cleanup so refresh/back doesn't reopen a form the user dismissed.
+  const logTradeConsumed = useRef(false);
+  useEffect(() => {
+    if (logTradeConsumed.current) return;
+    const t = new URLSearchParams(window.location.search).get("log_trade");
+    if (!t) return;
+    logTradeConsumed.current = true;
+    // One-shot URL param read on mount; empty dep array is intentional.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setForm({ mode: "create", ticker: t.toUpperCase() });
+    const url = new URL(window.location.href);
+    url.searchParams.delete("log_trade");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
 
   return (
     <section className="px-4 py-4 border-t border-[var(--border)]">
