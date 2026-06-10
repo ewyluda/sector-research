@@ -103,8 +103,8 @@ def build_piotroski(income: list[dict], balance: list[dict], cashflow: list[dict
     lev_prior = _div(_f(b4, "longTermDebt"), ta4)
     cr_now = _div(_f(b0, "totalCurrentAssets"), _f(b0, "totalCurrentLiabilities"))
     cr_prior = _div(_f(b4, "totalCurrentAssets"), _f(b4, "totalCurrentLiabilities"))
-    shares_now = _avg_window(income, "weightedAverageShsOutDil", 0)   # share count is a stock, not a flow — average the window, don't sum it
-    shares_prior = _avg_window(income, "weightedAverageShsOutDil", 4)  # share count is a stock, not a flow — average the window, don't sum it
+    shares_now = _avg_window(income, "weightedAverageShsOutDil", 0)   # stock, not flow — average the window
+    shares_prior = _avg_window(income, "weightedAverageShsOutDil", 4)  # stock, not flow — average the window
     gm_now = _div(_ttm(income, "grossProfit"), rev_ttm)
     gm_prior = _div(_prior_ttm(income, "grossProfit"), rev_prior)
     ato_now = _div(rev_ttm, ta0)
@@ -167,7 +167,12 @@ def build_altman_z(income: list[dict], balance: list[dict], profile: dict) -> di
 
     a = _div(None if ca0 is None or cl0 is None else ca0 - cl0, ta0)
     b = _div(_f(b0, "retainedEarnings"), ta0)
-    c = _div(_ttm(income, "ebit"), ta0)
+    # FMP serves ebit on /stable/ income statements; fall back to the
+    # operatingIncome proxy if a payload omits it.
+    ebit_ttm = _ttm(income, "ebit")
+    if ebit_ttm is None:
+        ebit_ttm = _ttm(income, "operatingIncome")
+    c = _div(ebit_ttm, ta0)
     d = _div(mcap, _f(b0, "totalLiabilities"))
     e = _div(_ttm(income, "revenue"), ta0)
     if any(v is None for v in (a, b, c, d, e)):
@@ -175,6 +180,76 @@ def build_altman_z(income: list[dict], balance: list[dict], profile: dict) -> di
     z = 1.2 * a + 1.4 * b + 3.3 * c + 0.6 * d + 1.0 * e
     zone = "safe" if z > 2.99 else ("grey" if z >= 1.81 else "distress")
     return {"z": round(z, 4), "zone": zone, "not_applicable_reason": None}
+
+
+# ── Beneish M-score (8-ratio; non-financials only) ───────────────────────────
+
+def build_beneish_m(income: list[dict], balance: list[dict],
+                    cashflow: list[dict], profile: dict) -> dict:
+    base = {"m": None, "zone": None, "ratios": {},
+            "inputs_missing": [], "not_applicable_reason": None}
+    if _is_financial(profile):
+        base["not_applicable_reason"] = "Beneish M is not meaningful for financial-sector companies"
+        return base
+
+    b0 = balance[0] if balance else None
+    b4 = balance[4] if len(balance) > 4 else None
+    ta0, ta4 = _f(b0, "totalAssets"), _f(b4, "totalAssets")
+    rev_ttm, rev_prior = _ttm(income, "revenue"), _prior_ttm(income, "revenue")
+    ni_ttm = _ttm(income, "netIncome")
+    cfo_ttm = _ttm(cashflow, "operatingCashFlow")
+    da_ttm = _ttm(cashflow, "depreciationAndAmortization")
+    da_prior = _prior_ttm(cashflow, "depreciationAndAmortization")
+    sga_ttm = _ttm(income, "sellingGeneralAndAdministrativeExpenses")
+    sga_prior = _prior_ttm(income, "sellingGeneralAndAdministrativeExpenses")
+    gm_now = _div(_ttm(income, "grossProfit"), rev_ttm)
+    gm_prior = _div(_prior_ttm(income, "grossProfit"), rev_prior)
+
+    def asset_quality(b: dict | None, ta: float | None) -> float | None:
+        # AQ = 1 - (CA + PPE + securities)/TA. longTermInvestments is the
+        # securities term; short-term investments already sit inside CA.
+        ca, ppe, lti = (_f(b, "totalCurrentAssets"),
+                        _f(b, "propertyPlantEquipmentNet"),
+                        _f(b, "longTermInvestments"))
+        if None in (ca, ppe, lti) or not ta:
+            return None
+        return 1 - (ca + ppe + lti) / ta
+
+    def leverage(b: dict | None, ta: float | None) -> float | None:
+        ltd, cl = _f(b, "longTermDebt"), _f(b, "totalCurrentLiabilities")
+        if None in (ltd, cl) or not ta:
+            return None
+        return (ltd + cl) / ta
+
+    def dep_rate(da: float | None, b: dict | None) -> float | None:
+        ppe = _f(b, "propertyPlantEquipmentNet")
+        if da is None or ppe is None or (da + ppe) == 0:
+            return None
+        return da / (da + ppe)
+
+    ratios = {
+        "dsri": _div(_div(_f(b0, "netReceivables"), rev_ttm),
+                     _div(_f(b4, "netReceivables"), rev_prior)),
+        "gmi": _div(gm_prior, gm_now),
+        "aqi": _div(asset_quality(b0, ta0), asset_quality(b4, ta4)),
+        "sgi": _div(rev_ttm, rev_prior),
+        "depi": _div(dep_rate(da_prior, b4), dep_rate(da_ttm, b0)),
+        "sgai": _div(_div(sga_ttm, rev_ttm), _div(sga_prior, rev_prior)),
+        "lvgi": _div(leverage(b0, ta0), leverage(b4, ta4)),
+        "tata": _div(None if ni_ttm is None or cfo_ttm is None else ni_ttm - cfo_ttm, ta0),
+    }
+    base["ratios"] = {k: _round(v) for k, v in ratios.items()}
+    missing = [k for k, v in ratios.items() if v is None]
+    if missing:
+        base["inputs_missing"] = missing
+        return base
+
+    m = (-4.84 + 0.92 * ratios["dsri"] + 0.528 * ratios["gmi"]
+         + 0.404 * ratios["aqi"] + 0.892 * ratios["sgi"] + 0.115 * ratios["depi"]
+         - 0.172 * ratios["sgai"] + 4.679 * ratios["tata"] - 0.327 * ratios["lvgi"])
+    base["m"] = round(m, 4)
+    base["zone"] = "flag" if m > -1.78 else ("caution" if m >= -2.22 else "unlikely")
+    return base
 
 
 # ── Top-level ────────────────────────────────────────────────────────────────
@@ -213,8 +288,7 @@ def build_quant_fingerprint(
     return QuantFingerprint(
         piotroski=build_piotroski(income, balance, cashflow),
         altman_z=build_altman_z(income, balance, profile),
-        beneish_m={"m": None, "zone": None, "ratios": {},
-                   "inputs_missing": [], "not_applicable_reason": None},
+        beneish_m=build_beneish_m(income, balance, cashflow, profile),
         accruals_ratio=None,
         fcf_conversion=None,
         sbc={"sbc_pct_revenue": None, "share_growth_yoy_pct": None},

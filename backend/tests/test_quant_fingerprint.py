@@ -194,5 +194,52 @@ class AltmanZTests(unittest.TestCase):
         self.assertAlmostEqual(a["z"], 9.3767, places=3)
 
 
+class AltmanZEbitFallbackTests(unittest.TestCase):
+    def test_ebit_fallback_to_operating_income(self):
+        income = [{k: v for k, v in q.items() if k != "ebit"} for q in INCOME]
+        a = fingerprint(income=income)["altman_z"]
+        # operatingIncome == ebit in the fixture, so Z is unchanged
+        self.assertAlmostEqual(a["z"], 9.3767, places=3)
+
+
+class BeneishMTests(unittest.TestCase):
+    """Hand-computed ratios for the fixture:
+    DSRI=(40/400)/(45/360)=0.8        GMI=(200/360)/(240/400)=0.9259
+    AQI=(1-320/400)/(1-295/380)=0.8941  SGI=400/360=1.1111
+    DEPI=(20/115)/(20/120)=1.0435     SGAI=(40/400)/(40/360)=0.9
+    LVGI=(150/400)/(160/380)=0.8906   TATA=(80-120)/400=-0.1
+    M = -4.84 + .92(.8)+.528(.9259)+.404(.8941)+.892(1.1111)
+        +.115(1.0435)-.172(.9)+4.679(-.1)-.327(.8906) = -3.0567 -> unlikely"""
+
+    def test_m_value_zone_and_ratios(self):
+        b = fingerprint()["beneish_m"]
+        self.assertAlmostEqual(b["m"], -3.0567, places=3)
+        self.assertEqual(b["zone"], "unlikely")
+        self.assertEqual(b["inputs_missing"], [])
+        self.assertAlmostEqual(b["ratios"]["dsri"], 0.8, places=4)
+        self.assertAlmostEqual(b["ratios"]["tata"], -0.1, places=4)
+        self.assertAlmostEqual(b["ratios"]["lvgi"], 0.8906, places=3)
+
+    def test_missing_sga_nulls_m_with_reason(self):
+        income = [{k: v for k, v in q.items()
+                   if k != "sellingGeneralAndAdministrativeExpenses"} for q in INCOME]
+        b = fingerprint(income=income)["beneish_m"]
+        self.assertIsNone(b["m"])
+        self.assertIsNone(b["zone"])
+        self.assertIn("sgai", b["inputs_missing"])
+
+    def test_four_quarters_nulls_m(self):
+        b = fingerprint(INCOME[:4], BALANCE[:4], CASHFLOW[:4])["beneish_m"]
+        self.assertIsNone(b["m"])
+        # TATA is current-window-only and stays computable.
+        self.assertNotIn("tata", b["inputs_missing"])
+        self.assertIn("dsri", b["inputs_missing"])
+
+    def test_financial_sector_not_applicable(self):
+        b = fingerprint(profile={"marketCap": 2000, "sector": "Financial Services"})["beneish_m"]
+        self.assertIsNone(b["m"])
+        self.assertIn("financial", b["not_applicable_reason"].lower())
+
+
 if __name__ == "__main__":
     unittest.main()
