@@ -112,12 +112,33 @@ async def update_trade(
     field). Raises ValueError on invariant violations (exit before entry,
     exit fields on an open trade), PriceUnavailableError when a close has
     no resolvable price."""
+    entry_date_moved = (
+        "entry_date" in changes
+        and changes["entry_date"] is not None
+        and changes["entry_date"] != trade.entry_date
+    )
+    exit_date_moved = (
+        changes.get("exit_date") is not None
+        and changes["exit_date"] != trade.exit_date
+    )
+
     if "entry_price" in changes and changes["entry_price"] is not None:
         trade.entry_price = changes["entry_price"]
         trade.entry_price_source = "manual"
     for field in ("entry_date", "quantity", "direction", "outcome_id", "entry_rationale"):
         if field in changes:
             setattr(trade, field, changes[field])
+
+    if entry_date_moved:
+        if trade.entry_price_source == "fmp_eod_adjusted":
+            found = await adjusted_close_on_or_before(fmp, trade.ticker, trade.entry_date)
+            if found is None:
+                raise PriceUnavailableError(
+                    f"no adjusted close for {trade.ticker} on or before {trade.entry_date}"
+                )
+            trade.entry_price = found[0]
+        spy = await adjusted_close_on_or_before(fmp, "SPY", trade.entry_date)
+        trade.spy_entry_price = spy[0] if spy else None
 
     if "exit_date" in changes and changes["exit_date"] is None:
         for field in _EXIT_FIELDS:
@@ -136,6 +157,13 @@ async def update_trade(
 
     if trade.exit_date < trade.entry_date:
         raise ValueError("exit_date is before entry_date")
+
+    if exit_date_moved:
+        # date moved — FMP-sourced fills for the old session are stale
+        if trade.exit_price_source == "fmp_eod_adjusted":
+            trade.exit_price = None
+            trade.exit_price_source = None
+        trade.spy_exit_price = None
 
     if changes.get("exit_price") is not None:
         trade.exit_price = changes["exit_price"]
@@ -186,19 +214,16 @@ async def list_trades(
     limit: int = 100,
     offset: int = 0,
 ) -> list[JournalTrade]:
-    stmt = (
-        select(JournalTrade)
-        .options(_eager_options())
-        .order_by(JournalTrade.entry_date.desc(), JournalTrade.created_at.desc())
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = select(JournalTrade).options(_eager_options())
     if status == "open":
         stmt = stmt.where(JournalTrade.exit_date.is_(None))
     elif status == "closed":
         stmt = stmt.where(JournalTrade.exit_date.is_not(None))
     if ticker:
         stmt = stmt.where(JournalTrade.ticker == ticker.upper())
+    stmt = stmt.order_by(
+        JournalTrade.entry_date.desc(), JournalTrade.created_at.desc()
+    ).limit(limit).offset(offset)
     return list((await db.execute(stmt)).scalars().all())
 
 

@@ -159,6 +159,48 @@ class UpdateTradeTests(unittest.IsolatedAsyncioTestCase):
                       "exit_reason", "exit_note", "spy_exit_price"):
             self.assertIsNone(getattr(trade, field), field)
 
+    async def test_reclose_with_moved_date_refreshes_fmp_sourced_fills(self):
+        rows = [{"date": "2026-06-10", "adjClose": 120.0}]
+        fmp = _fmp_with_history(rows)
+        trade = _open_trade(
+            exit_date=date(2026, 6, 8), exit_price=Decimal("110"),
+            exit_price_source="fmp_eod_adjusted", spy_exit_price=Decimal("510"),
+        )
+        await journal.update_trade(_db(), fmp, trade, {"exit_date": date(2026, 6, 10)})
+        self.assertEqual(trade.exit_price, Decimal("120.0"))
+        self.assertEqual(trade.exit_price_source, "fmp_eod_adjusted")
+        self.assertEqual(trade.spy_exit_price, Decimal("120.0"))
+
+    async def test_reclose_with_moved_date_keeps_manual_price_sticky(self):
+        rows = [{"date": "2026-06-10", "adjClose": 120.0}]
+        fmp = _fmp_with_history(rows)
+        trade = _open_trade(
+            exit_date=date(2026, 6, 8), exit_price=Decimal("111"),
+            exit_price_source="manual", spy_exit_price=Decimal("510"),
+        )
+        await journal.update_trade(_db(), fmp, trade, {"exit_date": date(2026, 6, 10)})
+        self.assertEqual(trade.exit_price, Decimal("111"))  # manual stays
+        self.assertEqual(trade.exit_price_source, "manual")
+        self.assertEqual(trade.spy_exit_price, Decimal("120.0"))  # benchmark refreshed
+
+    async def test_entry_date_move_refreshes_fmp_sourced_entry(self):
+        rows = [{"date": "2026-06-03", "adjClose": 95.0}]
+        fmp = _fmp_with_history(rows)
+        trade = _open_trade(
+            entry_price_source="fmp_eod_adjusted", spy_entry_price=Decimal("500"),
+        )
+        await journal.update_trade(_db(), fmp, trade, {"entry_date": date(2026, 6, 3)})
+        self.assertEqual(trade.entry_price, Decimal("95.0"))
+        self.assertEqual(trade.spy_entry_price, Decimal("95.0"))
+
+    async def test_entry_date_move_with_manual_source_keeps_price(self):
+        rows = [{"date": "2026-06-03", "adjClose": 95.0}]
+        fmp = _fmp_with_history(rows)
+        trade = _open_trade()  # entry_price_source="manual"
+        await journal.update_trade(_db(), fmp, trade, {"entry_date": date(2026, 6, 3)})
+        self.assertEqual(trade.entry_price, Decimal("100"))  # manual stays
+        self.assertEqual(trade.spy_entry_price, Decimal("95.0"))  # benchmark refreshed
+
 
 if __name__ == "__main__":
     unittest.main()
