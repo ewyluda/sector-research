@@ -162,6 +162,43 @@ class PatchTradeTests(unittest.TestCase):
             })
         self.assertEqual(r.status_code, 422)
 
+    def test_patch_null_entry_date_422(self):
+        trade = _trade()
+        with patch("backend.app.api.journal.journal.get_trade",
+                   new=AsyncMock(return_value=trade)):
+            r = _client().patch(f"/api/journal/trades/{trade.id}", json={
+                "entry_date": None,
+            })
+        self.assertEqual(r.status_code, 422)
+
+    def test_patch_reopen_with_exit_fields_422(self):
+        trade = _closed_trade()
+        with patch("backend.app.api.journal.journal.get_trade",
+                   new=AsyncMock(return_value=trade)):
+            r = _client().patch(f"/api/journal/trades/{trade.id}", json={
+                "exit_date": None, "exit_price": "50",
+            })
+        self.assertEqual(r.status_code, 422)
+
+    def test_patch_explicit_null_outcome_id_reaches_service(self):
+        trade = _trade(outcome_id=str(uuid4()))
+        captured = {}
+
+        async def _capture(db, fmp, t, changes):
+            captured.update(changes)
+            return t
+
+        with patch("backend.app.api.journal.journal.get_trade",
+                   new=AsyncMock(return_value=trade)), \
+             patch("backend.app.api.journal.journal.update_trade",
+                   new=AsyncMock(side_effect=_capture)):
+            r = _client().patch(f"/api/journal/trades/{trade.id}", json={
+                "outcome_id": None,
+            })
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("outcome_id", captured)
+        self.assertIsNone(captured["outcome_id"])
+
 
 class ListTradesTests(unittest.TestCase):
     def test_list_embeds_linked_outcome_and_comparison(self):

@@ -45,6 +45,9 @@ export function TradeForm({
   const [exitReason, setExitReason] = useState<ExitReason | "">(editing?.exit_reason ?? "");
   const [exitNote, setExitNote] = useState(editing?.exit_note ?? "");
 
+  const [entryPriceDirty, setEntryPriceDirty] = useState(false);
+  const [exitPriceDirty, setExitPriceDirty] = useState(false);
+
   const [candidates, setCandidates] = useState<LinkCandidate[]>([]);
   const [priceHint, setPriceHint] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -56,20 +59,23 @@ export function TradeForm({
   useEffect(() => {
     if (!ticker || !hintDate) return;
     let alive = true;
-    journalApi
-      .pricePreview(ticker, hintDate)
-      .then((p) => {
-        if (!alive) return;
-        hintSetter((prev) => (prev ? prev : p.price));
-        setPriceHint(
-          p.price_date === hintDate
-            ? `EOD close ${p.price}`
-            : `EOD close ${p.price} (session ${p.price_date})`
-        );
-      })
-      .catch(() => alive && setPriceHint("no price found — enter manually"));
+    const timer = setTimeout(() => {
+      journalApi
+        .pricePreview(ticker, hintDate)
+        .then((p) => {
+          if (!alive) return;
+          hintSetter((prev) => (prev ? prev : p.price));
+          setPriceHint(
+            p.price_date === hintDate
+              ? `EOD close ${p.price}`
+              : `EOD close ${p.price} (session ${p.price_date})`
+          );
+        })
+        .catch(() => alive && setPriceHint("no price found — enter manually"));
+    }, 300);
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ticker, hintDate]);
@@ -78,12 +84,15 @@ export function TradeForm({
   useEffect(() => {
     if (closing || !ticker) return;
     let alive = true;
-    journalApi
-      .linkCandidates(ticker)
-      .then((c) => alive && setCandidates(c))
-      .catch(() => alive && setCandidates([]));
+    const timer = setTimeout(() => {
+      journalApi
+        .linkCandidates(ticker)
+        .then((c) => alive && setCandidates(c))
+        .catch(() => alive && setCandidates([]));
+    }, 300);
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, [ticker, closing]);
 
@@ -95,7 +104,7 @@ export function TradeForm({
         await journalApi.create({
           ticker,
           entry_date: entryDate,
-          entry_price: entryPrice || undefined,
+          entry_price: entryPriceDirty && entryPrice ? entryPrice : undefined,
           quantity: quantity || undefined,
           direction,
           outcome_id: outcomeId || undefined,
@@ -104,18 +113,18 @@ export function TradeForm({
       } else if (state.mode === "close") {
         await journalApi.update(state.trade.id, {
           exit_date: exitDate,
-          exit_price: exitPrice || undefined,
+          exit_price: exitPriceDirty && exitPrice ? exitPrice : undefined,
           exit_reason: (exitReason || undefined) as ExitReason | undefined,
           exit_note: exitNote || undefined,
         });
       } else {
         await journalApi.update(state.trade.id, {
           entry_date: entryDate,
-          entry_price: entryPrice || undefined,
-          quantity: quantity || undefined,
+          entry_price: entryPriceDirty && entryPrice ? entryPrice : undefined,
+          quantity: quantity === "" ? null : quantity,
           direction,
-          outcome_id: outcomeId || undefined,
-          entry_rationale: rationale || undefined,
+          outcome_id: outcomeId === "" ? null : outcomeId,
+          entry_rationale: rationale === "" ? null : rationale,
         });
       }
       onDone();
@@ -178,7 +187,10 @@ export function TradeForm({
                 <input
                   className={inputCls}
                   value={entryPrice}
-                  onChange={(e) => setEntryPrice(e.target.value)}
+                  onChange={(e) => {
+                    setEntryPrice(e.target.value);
+                    setEntryPriceDirty(true);
+                  }}
                   placeholder="auto-fill"
                 />
               </div>
@@ -198,6 +210,9 @@ export function TradeForm({
                   onChange={(e) => setOutcomeId(e.target.value)}
                 >
                   <option value="">— none —</option>
+                  {outcomeId && !candidates.some((c) => c.id === outcomeId) && (
+                    <option value={outcomeId}>current link (superseded)</option>
+                  )}
                   {candidates.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.verdict} · {c.source_type === "research_run" ? "research" : "workspace"} ·{" "}
@@ -235,7 +250,10 @@ export function TradeForm({
               <input
                 className={inputCls}
                 value={exitPrice}
-                onChange={(e) => setExitPrice(e.target.value)}
+                onChange={(e) => {
+                  setExitPrice(e.target.value);
+                  setExitPriceDirty(true);
+                }}
                 placeholder="auto-fill"
               />
             </div>

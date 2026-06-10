@@ -201,6 +201,33 @@ class UpdateTradeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(trade.entry_price, Decimal("100"))  # manual stays
         self.assertEqual(trade.spy_entry_price, Decimal("95.0"))  # benchmark refreshed
 
+    async def test_null_entry_date_or_direction_raises(self):
+        for field in ("entry_date", "direction"):
+            with self.assertRaises(ValueError):
+                await journal.update_trade(
+                    _db(), _fmp_with_history([]), _open_trade(), {field: None}
+                )
+
+    async def test_explicit_null_clears_nullable_fields(self):
+        trade = _open_trade(quantity=Decimal("10"), entry_rationale="note",
+                            outcome_id="some-outcome-id")
+        await journal.update_trade(
+            _db(), _fmp_with_history([]), trade,
+            {"quantity": None, "entry_rationale": None, "outcome_id": None},
+        )
+        self.assertIsNone(trade.quantity)
+        self.assertIsNone(trade.entry_rationale)
+        self.assertIsNone(trade.outcome_id)
+
+    async def test_reopen_with_exit_fields_raises(self):
+        trade = _open_trade(exit_date=date(2026, 6, 8), exit_price=Decimal("110"),
+                            exit_price_source="manual")
+        with self.assertRaises(ValueError):
+            await journal.update_trade(
+                _db(), _fmp_with_history([]), trade,
+                {"exit_date": None, "exit_price": Decimal("50")},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

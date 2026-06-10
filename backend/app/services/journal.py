@@ -127,6 +127,8 @@ async def update_trade(
         trade.entry_price_source = "manual"
     for field in ("entry_date", "quantity", "direction", "outcome_id", "entry_rationale"):
         if field in changes:
+            if changes[field] is None and field in ("entry_date", "direction"):
+                raise ValueError(f"{field} cannot be null")
             setattr(trade, field, changes[field])
 
     if entry_date_moved:
@@ -141,6 +143,10 @@ async def update_trade(
         trade.spy_entry_price = spy[0] if spy else None
 
     if "exit_date" in changes and changes["exit_date"] is None:
+        bad = [k for k in ("exit_price", "exit_reason", "exit_note")
+               if changes.get(k) is not None]
+        if bad:
+            raise ValueError(f"cannot set {bad[0]} while reopening (exit_date is null)")
         for field in _EXIT_FIELDS:
             setattr(trade, field, None)
         return trade

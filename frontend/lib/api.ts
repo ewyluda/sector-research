@@ -2032,10 +2032,10 @@ export interface TradeCreateBody {
 export interface TradeUpdateBody {
   entry_date?: string;
   entry_price?: string;
-  quantity?: string;
+  quantity?: string | null;
   direction?: TradeDirection;
-  outcome_id?: string;
-  entry_rationale?: string;
+  outcome_id?: string | null;
+  entry_rationale?: string | null;
   exit_date?: string | null;
   exit_price?: string;
   exit_reason?: ExitReason;
