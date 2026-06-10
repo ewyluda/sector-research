@@ -4,6 +4,7 @@ from backend.app.models.citation import Citation, CitationRecord
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship, XBRLFact
 from backend.app.models.insider_transaction import InsiderTransaction  # noqa: F401
+from backend.app.models.journal_trade import JournalTrade  # noqa: F401
 from backend.app.models.kill_criterion_state import KillCriterionState
 from backend.app.models.material_event import MaterialEvent  # noqa: F401
 from backend.app.models.peer_set import PeerSet  # noqa: F401
@@ -32,6 +33,7 @@ __all__ = [
     "Filing",
     "FilingSection",
     "InsiderTransaction",
+    "JournalTrade",
     "KillCriterionState",
     "MaterialEvent",
     "PeerSet",
