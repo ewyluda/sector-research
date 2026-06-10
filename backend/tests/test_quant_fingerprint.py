@@ -147,6 +147,51 @@ class PiotroskiTests(unittest.TestCase):
         by_key = {c["key"]: c for c in p["components"]}
         self.assertIsNone(by_key["roa_delta"]["passed"])
         self.assertIsNone(by_key["no_dilution"]["passed"])
+        self.assertTrue(by_key["roa_positive"]["passed"])
+        self.assertTrue(by_key["cfo_positive"]["passed"])
+        self.assertTrue(by_key["accruals_quality"]["passed"])
+
+
+class AltmanZTests(unittest.TestCase):
+    """Hand-computed: A=(200-100)/400=.25, B=120/400=.3, C=120/400=.3,
+    D=2000/180=11.1111, E=400/400=1.0
+    Z = 1.2(.25)+1.4(.3)+3.3(.3)+0.6(11.1111)+1.0 = 9.3767 -> safe."""
+
+    def test_z_value_and_zone(self):
+        a = fingerprint()["altman_z"]
+        self.assertAlmostEqual(a["z"], 9.3767, places=3)
+        self.assertEqual(a["zone"], "safe")
+        self.assertIsNone(a["not_applicable_reason"])
+
+    def test_zones(self):
+        # Shrink market cap so D collapses: mcap=100 -> D=0.5556, 0.6D=0.3333
+        # Z = .3+.42+.99+.3333+1.0 = 3.0433 -> still safe (>2.99).
+        a = fingerprint(profile={"marketCap": 100, "sector": "Technology"})["altman_z"]
+        self.assertEqual(a["zone"], "safe")
+        # mcap=50 -> 0.6D=0.1667, Z=2.8767 -> grey
+        a = fingerprint(profile={"marketCap": 50, "sector": "Technology"})["altman_z"]
+        self.assertEqual(a["zone"], "grey")
+        # mcap=1 + gut EBIT/revenue via zero-revenue income would null Z;
+        # instead drop retained earnings & ebit through balance/income edits:
+        income = [_iq(100, 60, 20, -200, 10, 102)] * 4 + [_iq(90, 50, 15, 25, 10, 100)] * 4
+        a = fingerprint(income=income, profile={"marketCap": 1, "sector": "Technology"})["altman_z"]
+        self.assertEqual(a["zone"], "distress")
+
+    def test_financial_sector_not_applicable(self):
+        a = fingerprint(profile={"marketCap": 2000, "sector": "Financial Services"})["altman_z"]
+        self.assertIsNone(a["z"])
+        self.assertIsNone(a["zone"])
+        self.assertIn("financial", a["not_applicable_reason"].lower())
+
+    def test_missing_inputs_null_z_without_reason(self):
+        bal = [{k: v for k, v in b.items() if k != "retainedEarnings"} for b in BALANCE]
+        a = fingerprint(balance=bal)["altman_z"]
+        self.assertIsNone(a["z"])
+        self.assertIsNone(a["not_applicable_reason"])
+
+    def test_mktcap_legacy_fallback(self):
+        a = fingerprint(profile={"mktCap": 2000, "sector": "Technology"})["altman_z"]
+        self.assertAlmostEqual(a["z"], 9.3767, places=3)
 
 
 if __name__ == "__main__":

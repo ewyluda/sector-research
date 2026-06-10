@@ -103,8 +103,8 @@ def build_piotroski(income: list[dict], balance: list[dict], cashflow: list[dict
     lev_prior = _div(_f(b4, "longTermDebt"), ta4)
     cr_now = _div(_f(b0, "totalCurrentAssets"), _f(b0, "totalCurrentLiabilities"))
     cr_prior = _div(_f(b4, "totalCurrentAssets"), _f(b4, "totalCurrentLiabilities"))
-    shares_now = _avg_window(income, "weightedAverageShsOutDil", 0)
-    shares_prior = _avg_window(income, "weightedAverageShsOutDil", 4)
+    shares_now = _avg_window(income, "weightedAverageShsOutDil", 0)   # share count is a stock, not a flow — average the window, don't sum it
+    shares_prior = _avg_window(income, "weightedAverageShsOutDil", 4)  # share count is a stock, not a flow — average the window, don't sum it
     gm_now = _div(_ttm(income, "grossProfit"), rev_ttm)
     gm_prior = _div(_prior_ttm(income, "grossProfit"), rev_prior)
     ato_now = _div(rev_ttm, ta0)
@@ -151,6 +151,32 @@ def build_piotroski(income: list[dict], balance: list[dict], cashflow: list[dict
     }
 
 
+# ── Altman Z-score (original 1968 formula; non-financials only) ──────────────
+
+def build_altman_z(income: list[dict], balance: list[dict], profile: dict) -> dict:
+    if _is_financial(profile):
+        return {"z": None, "zone": None,
+                "not_applicable_reason": "Altman Z is not meaningful for financial-sector companies"}
+    b0 = balance[0] if balance else None
+    ta0 = _f(b0, "totalAssets")
+    ca0 = _f(b0, "totalCurrentAssets")
+    cl0 = _f(b0, "totalCurrentLiabilities")
+    mcap = _f(profile, "marketCap")
+    if mcap is None:
+        mcap = _f(profile, "mktCap")
+
+    a = _div(None if ca0 is None or cl0 is None else ca0 - cl0, ta0)
+    b = _div(_f(b0, "retainedEarnings"), ta0)
+    c = _div(_ttm(income, "ebit"), ta0)
+    d = _div(mcap, _f(b0, "totalLiabilities"))
+    e = _div(_ttm(income, "revenue"), ta0)
+    if any(v is None for v in (a, b, c, d, e)):
+        return {"z": None, "zone": None, "not_applicable_reason": None}
+    z = 1.2 * a + 1.4 * b + 3.3 * c + 0.6 * d + 1.0 * e
+    zone = "safe" if z > 2.99 else ("grey" if z >= 1.81 else "distress")
+    return {"z": round(z, 4), "zone": zone, "not_applicable_reason": None}
+
+
 # ── Top-level ────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -186,7 +212,7 @@ def build_quant_fingerprint(
 
     return QuantFingerprint(
         piotroski=build_piotroski(income, balance, cashflow),
-        altman_z={"z": None, "zone": None, "not_applicable_reason": None},
+        altman_z=build_altman_z(income, balance, profile),
         beneish_m={"m": None, "zone": None, "ratios": {},
                    "inputs_missing": [], "not_applicable_reason": None},
         accruals_ratio=None,
