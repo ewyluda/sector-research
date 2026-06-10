@@ -121,6 +121,19 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
     )
     fg_row = fg[0] if isinstance(fg, list) and fg else {}
 
+    p_fcf = _first(
+        (ratios, "priceToFreeCashFlowRatioTTM"),
+        (km, "priceToFreeCashFlowsRatioTTM"),
+    )
+    p_s = _first((ratios, "priceToSalesRatioTTM"), (km, "priceToSalesRatioTTM"))
+
+    # FMP /stable/ doesn't surface an FCF-margin field today (verified
+    # 2026-06-09), so derive it: FCF/sales = (mcap/sales) ÷ (mcap/FCF)
+    # = p_s ÷ p_fcf. A wire-served value takes precedence if FMP adds one.
+    fcf_margin = _first((ratios, "freeCashFlowMarginTTM"))
+    if fcf_margin is None and p_s is not None and p_fcf:
+        fcf_margin = p_s / p_fcf
+
     return PeerCompRow(
         ticker=ticker,
         pe=_first((ratios, "priceToEarningsRatioTTM"), (km, "peRatioTTM")),
@@ -129,20 +142,15 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
             (km, "enterpriseValueOverEBITDATTM"),
         ),
         p_b=_first((ratios, "priceToBookRatioTTM"), (km, "priceToBookRatioTTM")),
-        p_fcf=_first(
-            (ratios, "priceToFreeCashFlowRatioTTM"),
-            (km, "priceToFreeCashFlowsRatioTTM"),
-        ),
-        p_s=_first((ratios, "priceToSalesRatioTTM"), (km, "priceToSalesRatioTTM")),
+        p_fcf=p_fcf,
+        p_s=p_s,
         peg=_first((ratios, "priceToEarningsGrowthRatioTTM"), (km, "pegRatioTTM")),
         revenue_yoy=_first((fg_row, "revenueGrowth")),
         eps_yoy=_first((fg_row, "epsGrowth"), (fg_row, "epsgrowth")),
         gross_margin=_first((ratios, "grossProfitMarginTTM")),
         operating_margin=_first((ratios, "operatingProfitMarginTTM")),
         ebitda_margin=_first((ratios, "ebitdaMarginTTM")),
-        # Only one candidate — FMP /stable/ doesn't surface an FCF-margin
-        # field today (verified 2026-06-09); stays None until it does.
-        fcf_margin=_first((ratios, "freeCashFlowMarginTTM")),
+        fcf_margin=fcf_margin,
         roe=_first((km, "returnOnEquityTTM"), (km, "roeTTM")),
         roic=_first((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM")),
         # returnOnAssetsTTM is on km (verified 2026-06-09); tangible-assets
