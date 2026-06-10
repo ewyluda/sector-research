@@ -94,6 +94,25 @@ def _extract_key_findings(text: str) -> list[str]:
     return findings
 
 
+def _first_metric(*candidates: tuple[dict | None, str]) -> float | None:
+    """First non-None float across (dict, key) candidates — same contract as
+    services.peer_comp._first; lives here to keep graph/ free of service imports.
+
+    Distinct from `x or y` — a legitimate 0.0 value short-circuits correctly.
+    """
+    for d, key in candidates:
+        if not isinstance(d, dict):
+            continue
+        v = d.get(key)
+        if v is None:
+            continue
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
 def _fmt_fundamentals(
     ticker: str,
     income: list,
@@ -104,6 +123,7 @@ def _fmt_fundamentals(
     dcf: dict | None = None,
     estimates: list | None = None,
     key_metrics: dict | None = None,
+    ratios: dict | None = None,
     fin_growth: list | None = None,
     grade_consensus: dict | None = None,
     price_target: dict | None = None,
@@ -138,38 +158,41 @@ def _fmt_fundamentals(
         parts.append(f"Beta: {profile.get('beta', 'N/A')}")
         parts.append(f"Description: {str(profile.get('description', ''))[:300]}")
 
-    # ── Valuation ratios (from key_metrics_ttm) ──────────────────────────
-    if key_metrics and isinstance(key_metrics, dict):
+    # ── Valuation ratios — ratios-ttm first, legacy key-metrics-ttm fallback
+    # (the /stable/ API serves multiples on ratios-ttm; live-verified 2026-06-09) ──
+    rt = ratios if isinstance(ratios, dict) else {}
+    km = key_metrics if isinstance(key_metrics, dict) else {}
+    if rt or km:
         parts.append("\nValuation Ratios (TTM):")
-        for label, field in [
-            ("P/E", "peRatioTTM"),
-            ("EV/EBITDA", "enterpriseValueOverEBITDATTM"),
-            ("P/B", "priceToBookRatioTTM"),
-            ("P/FCF", "priceToFreeCashFlowsRatioTTM"),
-            ("P/S", "priceToSalesRatioTTM"),
-            ("PEG", "pegRatioTTM"),
-            ("Dividend Yield", "dividendYieldTTM"),
+        for label, candidates in [
+            ("P/E", ((rt, "priceToEarningsRatioTTM"), (km, "peRatioTTM"))),
+            ("EV/EBITDA", ((rt, "enterpriseValueMultipleTTM"), (km, "enterpriseValueOverEBITDATTM"))),
+            ("P/B", ((rt, "priceToBookRatioTTM"), (km, "priceToBookRatioTTM"))),
+            ("P/FCF", ((rt, "priceToFreeCashFlowRatioTTM"), (km, "priceToFreeCashFlowsRatioTTM"))),
+            ("P/S", ((rt, "priceToSalesRatioTTM"), (km, "priceToSalesRatioTTM"))),
+            ("PEG", ((rt, "priceToEarningsGrowthRatioTTM"), (km, "pegRatioTTM"))),
+            ("Dividend Yield", ((rt, "dividendYieldTTM"), (km, "dividendYieldTTM"))),
         ]:
-            v = key_metrics.get(field)
+            v = _first_metric(*candidates)
             if v is not None:
                 if "Yield" in label:
-                    parts.append(f"  {label}: {float(v)*100:.2f}%")
+                    parts.append(f"  {label}: {v*100:.2f}%")
                 else:
-                    parts.append(f"  {label}: {float(v):.2f}")
+                    parts.append(f"  {label}: {v:.2f}")
 
         parts.append("\nReturn Metrics (TTM):")
-        for label, field in [
-            ("ROE", "roeTTM"),
-            ("ROIC", "roicTTM"),
-            ("ROA", "returnOnTangibleAssetsTTM"),
+        for label, candidates in [
+            ("ROE", ((km, "returnOnEquityTTM"), (km, "roeTTM"))),
+            ("ROIC", ((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM"))),
+            ("ROA", ((km, "returnOnAssetsTTM"), (km, "returnOnTangibleAssetsTTM"))),
         ]:
-            v = key_metrics.get(field)
+            v = _first_metric(*candidates)
             if v is not None:
-                parts.append(f"  {label}: {float(v)*100:.1f}%")
+                parts.append(f"  {label}: {v*100:.1f}%")
 
-        ic = key_metrics.get("interestCoverageTTM")
+        ic = _first_metric((rt, "interestCoverageRatioTTM"), (km, "interestCoverageTTM"))
         if ic is not None:
-            parts.append(f"  Interest Coverage: {float(ic):.1f}x")
+            parts.append(f"  Interest Coverage: {ic:.1f}x")
 
     # ── Quarterly income trend (up to 8Q) ────────────────────────────────
     if income:
@@ -541,6 +564,7 @@ def _build_curated_financials(
     dcf: dict | None,
     estimates: list[dict],
     key_metrics: dict | None = None,
+    ratios: dict | None = None,
 ) -> "CuratedFinancials":
     """Extract a curated subset of FMP data for frontend dashboard charts."""
     from backend.app.graph.state import CuratedFinancials, QuarterlyMetric, EstimateMetric
@@ -642,14 +666,10 @@ def _build_curated_financials(
         if eps_est is not None:
             fwd_eps.append(EstimateMetric(period=period, estimate=float(eps_est), actual=float(eps_act) if eps_act is not None else None))
 
-    # Key metrics (valuation + returns)
-    def _safe_float(d: dict | None, key: str) -> float | None:
-        if not d:
-            return None
-        v = d.get(key)
-        return float(v) if v is not None else None
-
+    # Valuation + returns — ratios-ttm first, legacy key-metrics-ttm fallback
+    # (same wire-name mapping as _fmt_fundamentals / services.peer_comp._fetch_one)
     km = key_metrics or {}
+    rt = ratios or {}
 
     return CuratedFinancials(
         ticker=ticker,
@@ -675,17 +695,17 @@ def _build_curated_financials(
         dcf_gap_percent=dcf_gap,
         forward_revenue_estimates=fwd_rev,
         forward_eps_estimates=fwd_eps,
-        pe_ratio=_safe_float(km, "peRatioTTM"),
-        ev_to_ebitda=_safe_float(km, "enterpriseValueOverEBITDATTM"),
-        price_to_book=_safe_float(km, "priceToBookRatioTTM"),
-        price_to_fcf=_safe_float(km, "priceToFreeCashFlowsRatioTTM"),
-        price_to_sales=_safe_float(km, "priceToSalesRatioTTM"),
-        peg_ratio=_safe_float(km, "pegRatioTTM"),
-        roe=_safe_float(km, "roeTTM"),
-        roic=_safe_float(km, "roicTTM"),
-        roa=_safe_float(km, "returnOnTangibleAssetsTTM"),
-        interest_coverage=_safe_float(km, "interestCoverageTTM"),
-        dividend_yield=_safe_float(km, "dividendYieldTTM"),
+        pe_ratio=_first_metric((rt, "priceToEarningsRatioTTM"), (km, "peRatioTTM")),
+        ev_to_ebitda=_first_metric((rt, "enterpriseValueMultipleTTM"), (km, "enterpriseValueOverEBITDATTM")),
+        price_to_book=_first_metric((rt, "priceToBookRatioTTM"), (km, "priceToBookRatioTTM")),
+        price_to_fcf=_first_metric((rt, "priceToFreeCashFlowRatioTTM"), (km, "priceToFreeCashFlowsRatioTTM")),
+        price_to_sales=_first_metric((rt, "priceToSalesRatioTTM"), (km, "priceToSalesRatioTTM")),
+        peg_ratio=_first_metric((rt, "priceToEarningsGrowthRatioTTM"), (km, "pegRatioTTM")),
+        roe=_first_metric((km, "returnOnEquityTTM"), (km, "roeTTM")),
+        roic=_first_metric((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM")),
+        roa=_first_metric((km, "returnOnAssetsTTM"), (km, "returnOnTangibleAssetsTTM")),
+        interest_coverage=_first_metric((rt, "interestCoverageRatioTTM"), (km, "interestCoverageTTM")),
+        dividend_yield=_first_metric((rt, "dividendYieldTTM"), (km, "dividendYieldTTM")),
         beta=beta,
         fifty_two_week_high=fifty_two_high,
         fifty_two_week_low=fifty_two_low,
@@ -821,7 +841,7 @@ async def node_deep_dive(
         one_year_ago = (today - timedelta(days=365)).isoformat()
         today_str = today.isoformat()
 
-        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _), (transcripts, transcript_cit), (key_metrics, _), (fin_growth, _) = (
+        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _), (transcripts, transcript_cit), (key_metrics, _), (ratios_ttm, _), (fin_growth, _) = (
             await asyncio.gather(
                 fmp.get_income_statement(state.ticker, period="quarter", limit=8),
                 fmp.get_balance_sheet(state.ticker, period="quarter", limit=8),
@@ -832,6 +852,7 @@ async def node_deep_dive(
                 fmp.get_historical_price(state.ticker, one_year_ago, today_str),
                 fetch_recent_transcripts(fmp, state.ticker, limit=TRANSCRIPT_QUARTER_LIMIT),
                 fmp.get_key_metrics_ttm(state.ticker),
+                fmp.get_ratios_ttm(state.ticker),
                 fmp.get_financial_growth(state.ticker, period="quarter", limit=8),
             )
         )
@@ -865,6 +886,7 @@ async def node_deep_dive(
             dcf=dcf if isinstance(dcf, dict) else None,
             estimates=estimates if isinstance(estimates, list) else [],
             key_metrics=key_metrics if isinstance(key_metrics, dict) else None,
+            ratios=ratios_ttm if isinstance(ratios_ttm, dict) else None,
             fin_growth=fin_growth if isinstance(fin_growth, list) else [],
             grade_consensus=grade_consensus if isinstance(grade_consensus, dict) else {},
             price_target=price_target if isinstance(price_target, dict) else {},
@@ -885,6 +907,7 @@ async def node_deep_dive(
             dcf=dcf if isinstance(dcf, dict) else None,
             estimates=estimates if isinstance(estimates, list) else [],
             key_metrics=key_metrics if isinstance(key_metrics, dict) else None,
+            ratios=ratios_ttm if isinstance(ratios_ttm, dict) else None,
         )
         curated.daily_prices = _build_technical_data(
             hist_prices if isinstance(hist_prices, list) else []
