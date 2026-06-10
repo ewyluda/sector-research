@@ -140,5 +140,39 @@ class PersistInsiderSignalTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(signals[0].computed_at, now)
 
 
+class OrchestratorFaultIsolationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_edgar_failure_does_not_suppress_insider_ingest(self):
+        from backend.app.services import material_events_scheduler as mes
+
+        db = MagicMock()
+        empty = MagicMock()
+        empty.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(return_value=empty)
+        db.commit = AsyncMock()
+        db.rollback = AsyncMock()
+        db.add = MagicMock()
+
+        session_cm = MagicMock()
+        session_cm.__aenter__ = AsyncMock(return_value=db)
+        session_cm.__aexit__ = AsyncMock(return_value=False)
+
+        edgar = MagicMock()
+        edgar.get_ticker_to_cik = AsyncMock(return_value=("0001045810", MagicMock()))
+        edgar.get_submissions = AsyncMock(side_effect=RuntimeError("EDGAR 503"))
+
+        fmp = MagicMock()
+        fmp.get_insider_trading = AsyncMock(return_value=([], MagicMock()))
+
+        with patch.object(mes, "async_session", MagicMock(return_value=session_cm)), \
+             patch.object(mes, "_theme_universe", new=AsyncMock(return_value={"theme-1": {"NVDA"}})):
+            summary = await mes.run_daily_material_scan(edgar=edgar, fmp=fmp)
+
+        fmp.get_insider_trading.assert_awaited_once()
+        db.rollback.assert_awaited()
+        self.assertEqual(summary["tickers_scanned"], 1)
+        self.assertEqual(summary["signals_written"], 1)
+        self.assertTrue(any("8-K scan" in e for e in summary["errors"]))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -207,24 +207,32 @@ async def run_daily_material_scan(*, edgar: EdgarClient, fmp: FMPClient) -> dict
     async with async_session() as db:
         theme_universe = await _theme_universe(db)
     all_tickers = sorted(set().union(*theme_universe.values())) if theme_universe else []
-    since = date.today() - timedelta(days=LOOKBACK_DAYS)
-    window_cutoff = date.today() - timedelta(days=WINDOW_DAYS)
+    today = date.today()
+    since = today - timedelta(days=LOOKBACK_DAYS)
+    window_cutoff = today - timedelta(days=WINDOW_DAYS)
     insider_values: dict[str, dict] = {}
 
     for ticker in all_tickers:
         try:
             async with async_session() as db:
-                cik, _ = await edgar.get_ticker_to_cik(ticker)
-                if cik:
-                    counts = await _scan_ticker_8ks(
-                        ticker=ticker, cik=cik, edgar=edgar, db=db, since=since
-                    )
-                    summary["events_created"] += counts["events_created"]
-                    summary["events_skipped_prefilter"] += counts["skipped_prefilter"]
-                    summary["events_skipped_existing"] += counts["skipped_existing"]
-                    summary["errors"].extend(f"{ticker} {e}" for e in counts["errors"])
-                else:
-                    summary["errors"].append(f"{ticker}: no CIK in EDGAR ticker map")
+                # 8-K side — isolated so an EDGAR/Haiku failure can't
+                # suppress the (more reliable) insider ingest below.
+                try:
+                    cik, _ = await edgar.get_ticker_to_cik(ticker)
+                    if cik:
+                        counts = await _scan_ticker_8ks(
+                            ticker=ticker, cik=cik, edgar=edgar, db=db, since=since
+                        )
+                        summary["events_created"] += counts["events_created"]
+                        summary["events_skipped_prefilter"] += counts["skipped_prefilter"]
+                        summary["events_skipped_existing"] += counts["skipped_existing"]
+                        summary["errors"].extend(f"{ticker} {e}" for e in counts["errors"])
+                    else:
+                        summary["errors"].append(f"{ticker}: no CIK in EDGAR ticker map")
+                except Exception as e:
+                    logger.exception("8-K scan failed for %s", ticker)
+                    summary["errors"].append(f"{ticker} 8-K scan: {e}")
+                    await db.rollback()  # discard any partial 8-K rows so the insider write commits clean
 
                 rows, _ = await fmp.get_insider_trading(ticker, limit=FMP_INSIDER_LIMIT)
                 ins = await upsert_insider_transactions(db, ticker, rows)
@@ -236,7 +244,7 @@ async def run_daily_material_scan(*, edgar: EdgarClient, fmp: FMPClient) -> dict
                         InsiderTransaction.transaction_date >= window_cutoff,
                     )
                 )).scalars().all()
-                agg = compute_insider_aggregate(window_rows, date.today())
+                agg = compute_insider_aggregate(window_rows, today)
                 insider_values[ticker] = signal_value(agg)
 
                 await db.commit()
