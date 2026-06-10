@@ -33,6 +33,7 @@ TTL_QUOTE = 300          # 5 minutes
 TTL_FUNDAMENTAL = 86400  # 24 hours
 TTL_OPTIONS = 900        # 15 minutes
 TTL_TRANSCRIPT = 604800  # 7 days
+TTL_CALENDAR = 21600    # 6 hours — calendar contents shift slowly, but same-day actuals should refresh a few times daily
 
 # ── Retry config ──────────────────────────────────────────────────────────────
 MAX_RETRIES = 3
@@ -296,6 +297,47 @@ class FMPClient:
             params,
         )
         return data, citation
+
+    async def get_economic_calendar(
+        self, from_date: str, to_date: str
+    ) -> tuple[list[dict], Citation]:
+        """Economic releases (all countries/impacts) for a date range.
+
+        GET /stable/economic-calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
+        Rows: {date: 'YYYY-MM-DD HH:MM:SS' (UTC), country, event, impact
+        (Low|Medium|High), estimate, previous, actual, unit, currency,
+        change, changePercentage}. Filtering (US/High) is the caller's job.
+        """
+        params = {"from": from_date, "to": to_date}
+        data = await self._request("economic-calendar", params, ttl=TTL_CALENDAR)
+        citation = self._make_citation(
+            "economic-calendar",
+            "Economic Calendar",
+            f"{from_date}..{to_date}",
+            params,
+        )
+        return data if isinstance(data, list) else [], citation
+
+    async def get_earnings_calendar_range(
+        self, from_date: str, to_date: str
+    ) -> tuple[list[dict], Citation]:
+        """Global earnings firehose for a date range (all exchanges).
+
+        GET /stable/earnings-calendar?from=&to=
+        Rows: {symbol, date: 'YYYY-MM-DD', epsActual, epsEstimated,
+        revenueActual, revenueEstimated, lastUpdated}. Distinct from the
+        per-symbol get_earnings_calendar (/stable/earnings) — this variant
+        ignores `symbol`; callers filter to their universe.
+        """
+        params = {"from": from_date, "to": to_date}
+        data = await self._request("earnings-calendar", params, ttl=TTL_CALENDAR)
+        citation = self._make_citation(
+            "earnings-calendar",
+            "Earnings Calendar",
+            f"{from_date}..{to_date}",
+            params,
+        )
+        return data if isinstance(data, list) else [], citation
 
     async def get_analyst_estimates(
         self, ticker: str, period: str = "annual", limit: int = 4

@@ -1,12 +1,12 @@
 /**
  * Page — /catalysts
  *
- * Fleet-wide catalyst calendar. Server component fetches the proximity-
- * bucketed catalyst list (latest run per ticker); the bucket sections
- * and per-row signposts toggle are client components.
+ * Unified calendar (default) + proximity-bucket list behind a toggle.
+ * Server component fetches the bucketed catalyst list for the List view;
+ * the Calendar view fetches its own merged events client-side.
  */
 
-import { CatalystCalendar } from "@/components/CatalystCalendar";
+import { CatalystsView } from "@/components/catalysts/CatalystsView";
 import { getCatalysts } from "@/lib/api";
 import type { CatalystListResponse } from "@/lib/api";
 
@@ -29,7 +29,7 @@ export default async function CatalystsPage() {
           Catalysts
         </h1>
         <p className="text-xs text-[var(--text-muted)] mt-1">
-          Upcoming events from the latest thesis run for each tracked ticker.
+          Economic releases, universe earnings, and thesis catalysts in one view.
         </p>
       </header>
 
@@ -39,7 +39,7 @@ export default async function CatalystsPage() {
         </div>
       )}
 
-      {data && <CatalystCalendar buckets={data.buckets} />}
+      {data && <CatalystsView buckets={data.buckets} />}
     </main>
   );
 }
