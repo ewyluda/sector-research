@@ -466,6 +466,15 @@ class BuildQuantContextTests(unittest.TestCase):
         self.assertIn("quant", all_ctx["Financial Health"])
         self.assertIn("Piotroski", all_ctx["Financial Health"]["quant"])
 
+    def test_unevaluated_piotroski_renders_nothing(self):
+        fp = dict(QUANT_FP)
+        fp["piotroski"] = {"score": 0, "components_evaluated": 0, "components": [
+            {"key": "roa_positive", "label": "ROA positive (TTM)", "passed": None, "detail": "insufficient data"},
+        ]}
+        ctx = _ctx(curated_financials={"quant_fingerprint": fp})
+        out = build_quant_context(ctx, "Financial Health")
+        self.assertNotIn("Piotroski", out)
+
 
 if __name__ == "__main__":
     unittest.main()

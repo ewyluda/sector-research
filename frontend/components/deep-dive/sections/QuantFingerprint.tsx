@@ -129,7 +129,7 @@ export function QuantFingerprint({ financials }: QuantFingerprintProps) {
       <div className="px-5 py-3 border-b border-[var(--color-border)] bg-[var(--color-bg)]/40">
         <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Quant Fingerprint</h3>
         <p className="text-[10px] text-[var(--color-text-muted)] mt-0.5">
-          Computed deterministically from {fp.meta.quarters_available} quarters (TTM vs prior-TTM) — not AI-generated
+          Computed deterministically from {fp.meta.quarters_available} quarters (TTM vs prior-TTM) — not AI-generated. Altman Z uses the original 1968 manufacturer formula.
         </p>
       </div>
       <div className="p-5 space-y-5">

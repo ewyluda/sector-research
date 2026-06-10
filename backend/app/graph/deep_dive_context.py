@@ -275,6 +275,8 @@ def _render_quant_metric(key: str, fp: dict) -> str:
             return ""
         if p.get("score") is None:
             return ""
+        if not p.get("components_evaluated"):
+            return ""
         marks = {True: "✓", False: "✗", None: "—"}
         detail = ", ".join(f"{marks[c.get('passed')]} {c.get('key')}" for c in comps)
         return (f"Piotroski F-score: {p.get('score')}/9 "
@@ -286,7 +288,8 @@ def _render_quant_metric(key: str, fp: dict) -> str:
         if a.get("z") is None:
             return "Altman Z: null (insufficient inputs)"
         return (f"Altman Z: {a['z']} ({a['zone'] or 'unknown'}; "
-                ">2.99 safe, 1.81–2.99 grey, <1.81 distress)")
+                ">2.99 safe, 1.81–2.99 grey, <1.81 distress; "
+                "original 1968 manufacturer formula — interpret with caution for asset-light sectors)")
     if key == "beneish_m":
         b = fp.get("beneish_m") or {}
         if b.get("not_applicable_reason"):
@@ -298,7 +301,9 @@ def _render_quant_metric(key: str, fp: dict) -> str:
         ratio_str = ", ".join(f"{k}={v}" for k, v in ratios.items() if v is not None)
         suffix = f" [{ratio_str}]" if ratio_str else ""
         return (f"Beneish M: {b['m']} ({b['zone'] or 'unknown'}; >-1.78 flag, "
-                f"-2.22 to -1.78 caution, <-2.22 unlikely){suffix}")
+                f"-2.22 to -1.78 caution, <-2.22 unlikely; "
+                f"high SGI alone can push fast growers toward flag — check which ratios dominate)"
+                f"{suffix}")
     if key == "accruals":
         v = fp.get("accruals_ratio")
         if v is None:
