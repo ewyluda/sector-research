@@ -102,5 +102,68 @@ class EarningsEventsTests(unittest.TestCase):
         self.assertEqual(ce._earnings_events(rows, self._universe(), _cit()), [])
 
 
+class _Result:
+    """Mimics the two access patterns the service uses on db.execute results."""
+
+    def __init__(self, rows):
+        self._rows = rows
+
+    def scalars(self):
+        return SimpleNamespace(all=lambda: self._rows)
+
+    def mappings(self):
+        return SimpleNamespace(all=lambda: self._rows)
+
+
+class GetUniverseTests(unittest.IsolatedAsyncioTestCase):
+    async def test_union_of_seeds_and_active_theses_uppercased(self):
+        db = AsyncMock()
+        db.execute.side_effect = [
+            # SELECT seed_tickers FROM themes → one JSONB list per theme
+            _Result([["nvda", "ASML"], ["amd"], None]),
+            # latest-runs CTE rows (status board semantics)
+            _Result([
+                {"ticker": "NVDA", "id": "run-nvda-1"},
+                {"ticker": "pltr", "id": "run-pltr-1"},
+            ]),
+        ]
+
+        universe = await ce.get_universe(db)
+
+        self.assertEqual(universe.tickers, {"NVDA", "ASML", "AMD", "PLTR"})
+        self.assertEqual(
+            universe.thesis_runs,
+            {"NVDA": "run-nvda-1", "PLTR": "run-pltr-1"},
+        )
+
+    async def test_duplicate_thesis_ticker_keeps_first_run(self):
+        # DISTINCT ON (ticker, theme_id) can emit one row per theme for the
+        # same ticker; the first row wins (setdefault).
+        db = AsyncMock()
+        db.execute.side_effect = [
+            _Result([]),
+            _Result([
+                {"ticker": "NVDA", "id": "run-a"},
+                {"ticker": "NVDA", "id": "run-b"},
+            ]),
+        ]
+
+        universe = await ce.get_universe(db)
+
+        self.assertEqual(universe.thesis_runs, {"NVDA": "run-a"})
+
+
+class CitationOutTests(unittest.TestCase):
+    def test_float_value_coerced_to_str(self):
+        cit = Citation(
+            value=4.2,
+            metric="Economic Calendar",
+            source_name="FMP /economic-calendar",
+            source_url="https://example/economic-calendar",
+            tier=1,
+        )
+        self.assertEqual(ce._citation_out(cit).value, "4.2")
+
+
 if __name__ == "__main__":
     unittest.main()

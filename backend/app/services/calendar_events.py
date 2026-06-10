@@ -84,7 +84,7 @@ def _econ_events(rows: list[dict], citation: Citation) -> list[CalendarEvent]:
     for r in rows:
         if r.get("country") != "US" or r.get("impact") != "High":
             continue
-        raw = r.get("date") or ""
+        raw = str(r.get("date") or "")
         ts: datetime | None = None
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
@@ -143,3 +143,25 @@ def _earnings_events(
             citation=cit,
         ))
     return out
+
+
+# ── Universe ──────────────────────────────────────────────────────────────────
+
+
+async def get_universe(db: AsyncSession) -> Universe:
+    """Theme seeds ∪ active theses (latest completed/watchlist, non-archived
+    run per (ticker, theme) — the status board's universe)."""
+    tickers: set[str] = set()
+
+    seed_rows = (await db.execute(text("SELECT seed_tickers FROM themes"))).scalars().all()
+    for seeds in seed_rows:
+        tickers.update(str(s).upper() for s in (seeds or []))
+
+    sql, params = _build_latest_runs_sql(theme_id=None, include_archived=False)
+    run_rows = (await db.execute(text(sql), params)).mappings().all()
+    thesis_runs: dict[str, str] = {}
+    for r in run_rows:
+        thesis_runs.setdefault(str(r["ticker"]).upper(), str(r["id"]))
+    tickers.update(thesis_runs)
+
+    return Universe(tickers=tickers, thesis_runs=thesis_runs)
