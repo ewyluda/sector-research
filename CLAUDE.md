@@ -72,7 +72,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with citations on every data point). No auth — local-only tool.
 
-Seven top-level workspaces (see `frontend/components/Nav.tsx`):
+Eight top-level workspaces (see `frontend/components/Nav.tsx`):
 
 - **Today** (`/`) — morning briefing: summary banner, 4-day calendar slice, needs-attention list (status-board health + open P1 questions). Pure frontend composition of the board/calendar/questions endpoints.
 - **Themes / Discovery** (`/themes`, `/theme/[id]`) — ranked companies per theme.

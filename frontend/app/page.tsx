@@ -119,11 +119,11 @@ export default function TodayDashboard() {
         </p>
       </div>
 
-      {!boardError && !questionsError && <SummaryBanner summary={summary} />}
+      {!boardError && <SummaryBanner summary={summary} />}
 
       {now && <TodayLanes events={events ?? []} warnings={warnings} error={calendarError} today={now} />}
 
-      <AttentionList rows={attentionRows} error={attentionError} />
+      {now && <AttentionList rows={attentionRows} error={attentionError} />}
     </div>
   );
 }
