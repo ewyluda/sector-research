@@ -28,6 +28,7 @@ export const SECTION_GROUPS: SectionGroup[] = [
       { id: "growth_earnings", label: "Growth & Earnings" },
       { id: "technical_market_structure", label: "Technical", title: "Technical & Market Structure" },
       { id: "cross_category", label: "Correlations", title: "Cross-Category Correlations" },
+      { id: "quant_fingerprint", label: "Quant", title: "Quant Fingerprint" },
     ],
   },
   {

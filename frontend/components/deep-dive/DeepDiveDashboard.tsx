@@ -13,6 +13,7 @@ import { ManagementGovernance } from "./sections/ManagementGovernance";
 import { SentimentNarrative } from "./sections/SentimentNarrative";
 import { FutureDurability } from "./sections/FutureDurability";
 import { CrossCategoryCorrelation } from "./sections/CrossCategoryCorrelation";
+import { QuantFingerprint } from "./sections/QuantFingerprint";
 import { SectionNav } from "./SectionNav";
 import { normalizeScoreKeys } from "./scoreKeys";
 
@@ -74,6 +75,9 @@ export function DeepDiveDashboard({ ticker, themeId, financials, categories: raw
 
         {/* Cross-Category Correlations */}
         <CrossCategoryCorrelation financials={financials} isLive={isLive} />
+
+        {/* Quant Fingerprint — deterministic scores computed backend-side */}
+        <QuantFingerprint financials={financials} />
 
         {/* Mixed */}
         <BusinessQuality
