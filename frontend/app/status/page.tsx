@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   status as statusApi,
@@ -374,9 +374,14 @@ export default function StatusPage() {
 
   // Deep link from the unified calendar: /status?expand_earnings=<run_id>
   // auto-opens that run's EarningsDrawer once the board has loaded.
+  // One-shot: the board refetches on a 60s poll, and re-applying would
+  // fight a user who closed the drawer.
+  const expandEarningsConsumed = useRef(false);
   useEffect(() => {
+    if (expandEarningsConsumed.current) return;
     const runId = new URLSearchParams(window.location.search).get("expand_earnings");
     if (runId && earningsByRun[runId]) {
+      expandEarningsConsumed.current = true;
       setEarningsExpanded((prev) => (prev[runId] ? prev : { ...prev, [runId]: true }));
     }
   }, [earningsByRun]);
