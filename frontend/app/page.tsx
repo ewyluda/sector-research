@@ -115,7 +115,7 @@ export default function TodayDashboard() {
       <div>
         <h1 className="text-xl font-semibold text-[var(--text)]">Today</h1>
         <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          {now ? HEADER_FMT.format(now) : " "}
+          {now ? HEADER_FMT.format(now) : " "}
         </p>
       </div>
 

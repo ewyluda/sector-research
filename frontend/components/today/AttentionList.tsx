@@ -23,17 +23,21 @@ export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: st
         Needs attention
       </h2>
 
-      {error ? (
-        <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]">
+      {error && (
+        <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)] mb-1.5">
           {error}
         </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-muted)]">
-          All clear ✓{" "}
-          <Link href="/status" className="text-[var(--primary)] hover:underline">
-            View status board →
-          </Link>
-        </div>
+      )}
+
+      {rows.length === 0 ? (
+        !error && (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-muted)]">
+            All clear ✓{" "}
+            <Link href="/status" className="text-[var(--primary)] hover:underline">
+              View status board →
+            </Link>
+          </div>
+        )
       ) : (
         <div className="space-y-1.5">
           {rows.map((row) =>
