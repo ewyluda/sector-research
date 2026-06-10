@@ -1956,6 +1956,168 @@ export const outcomesApi = {
   },
 };
 
+// ── Trade journal ───────────────────────────────────────────────────────────
+
+export type TradeDirection = "long" | "short";
+export type ExitReason =
+  | "thesis_played_out"
+  | "kill_criterion"
+  | "stop_loss"
+  | "better_opportunity"
+  | "rebalance"
+  | "mistake"
+  | "other";
+
+export interface TradeReturnsRead {
+  return_pct: string | null;
+  spy_excess_pct: string | null;
+  holding_days: number | null;
+  unrealized: boolean;
+}
+
+export interface DecisionComparisonRead {
+  offset: SnapshotOffset;
+  trade_return_pct: string;
+  trade_spy_excess_pct: string | null;
+  paper_return_pct: string;
+  paper_spy_excess_pct: string | null;
+  execution_delta_pct: string | null;
+}
+
+export interface LinkedOutcomeSummary {
+  id: string;
+  verdict: string;
+  source_type: SourceType;
+  source_id: string;
+  theme_id: string | null;
+  verdict_emitted_at: string;
+  entry_price_at: string;
+  realized_spy_excess_pct: string | null;
+}
+
+export interface TradeDetail {
+  id: string;
+  ticker: string;
+  direction: TradeDirection;
+  status: "open" | "closed";
+  entry_date: string;
+  entry_price: string;
+  entry_price_source: string;
+  exit_date: string | null;
+  exit_price: string | null;
+  exit_price_source: string | null;
+  quantity: string | null;
+  spy_entry_price: string | null;
+  spy_exit_price: string | null;
+  outcome_id: string | null;
+  entry_rationale: string | null;
+  exit_reason: ExitReason | null;
+  exit_note: string | null;
+  returns: TradeReturnsRead | null;
+  linked_outcome: LinkedOutcomeSummary | null;
+  comparison: DecisionComparisonRead | null;
+  created_at: string;
+}
+
+export interface TradeCreateBody {
+  ticker: string;
+  entry_date: string;
+  entry_price?: string;
+  quantity?: string;
+  direction?: TradeDirection;
+  outcome_id?: string;
+  entry_rationale?: string;
+}
+
+export interface TradeUpdateBody {
+  entry_date?: string;
+  entry_price?: string;
+  quantity?: string | null;
+  direction?: TradeDirection;
+  outcome_id?: string | null;
+  entry_rationale?: string | null;
+  exit_date?: string | null;
+  exit_price?: string;
+  exit_reason?: ExitReason;
+  exit_note?: string;
+}
+
+export interface ExitReasonStat {
+  exit_reason: string;
+  count: number;
+  avg_return_pct: string | null;
+  avg_spy_excess_pct: string | null;
+}
+
+export interface JournalSummary {
+  trade_count: number;
+  open_count: number;
+  closed_count: number;
+  hit_rate: number | null;
+  excess_basis_count: number;
+  avg_return_pct: string | null;
+  median_return_pct: string | null;
+  avg_spy_excess_pct: string | null;
+  avg_holding_days: number | null;
+  execution_vs_paper: { n: number; avg_delta_pct: string | null };
+  by_exit_reason: ExitReasonStat[];
+  coverage: { outcomes_traded: number; outcomes_total: number };
+}
+
+export interface PricePreview {
+  price: string;
+  price_date: string;
+  source: string;
+}
+
+export interface LinkCandidate {
+  id: string;
+  verdict: string;
+  source_type: SourceType;
+  theme_id: string | null;
+  verdict_emitted_at: string;
+  entry_price_at: string;
+}
+
+export const journalApi = {
+  async list(q: { status?: "open" | "closed" | "all"; ticker?: string } = {}): Promise<TradeDetail[]> {
+    const params = new URLSearchParams();
+    if (q.status) params.set("status", q.status);
+    if (q.ticker) params.set("ticker", q.ticker);
+    return apiFetch(`/api/journal/trades?${params.toString()}`);
+  },
+
+  async create(body: TradeCreateBody): Promise<TradeDetail> {
+    return apiFetch(`/api/journal/trades`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async update(id: string, body: TradeUpdateBody): Promise<TradeDetail> {
+    return apiFetch(`/api/journal/trades/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  },
+
+  async remove(id: string): Promise<void> {
+    return apiFetch(`/api/journal/trades/${id}`, { method: "DELETE" });
+  },
+
+  async getSummary(): Promise<JournalSummary> {
+    return apiFetch(`/api/journal/summary`);
+  },
+
+  async pricePreview(ticker: string, date: string): Promise<PricePreview> {
+    return apiFetch(`/api/journal/price-preview?ticker=${encodeURIComponent(ticker)}&date=${date}`);
+  },
+
+  async linkCandidates(ticker: string): Promise<LinkCandidate[]> {
+    return apiFetch(`/api/journal/link-candidates?ticker=${encodeURIComponent(ticker)}`);
+  },
+};
+
 // ── Transcript delta ────────────────────────────────────────────────────────
 
 export type TranscriptAxisDirection = "softening" | "strengthening" | "stable";

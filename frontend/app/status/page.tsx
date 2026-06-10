@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   status as statusApi,
   themes as themesApi,
@@ -634,6 +635,13 @@ export default function StatusPage() {
                         }
                         return null;
                       })()}
+                      <Link
+                        href={`/performance?log_trade=${e.ticker}`}
+                        data-print-hide="true"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[var(--border)] text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)]"
+                      >
+                        Log trade
+                      </Link>
                       <WorkspaceButton ticker={e.ticker} researchRunId={e.run_id} />
                     </>
                   }
