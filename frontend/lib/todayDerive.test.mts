@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { deriveAttention, deriveSummary } from "./todayDerive.ts";
-import type { QuestionTickerRollup, StatusBoardEntry } from "./api.ts";
+import type { MaterialEvent, QuestionTickerRollup, StatusBoardEntry } from "./api.ts";
 
 function entry(over: Partial<StatusBoardEntry>): StatusBoardEntry {
   return {
@@ -127,4 +127,59 @@ test("deriveSummary counts buckets; all-clear is all zeros", () => {
     { alerts: 2, stale: 1, p1Tickers: 1 },
   );
   assert.deepEqual(deriveSummary([], []), { alerts: 0, stale: 0, p1Tickers: 0 });
+});
+
+function matEvent(over: Partial<MaterialEvent>): MaterialEvent {
+  return {
+    id: "ev-1",
+    ticker: "NVDA",
+    event_type: "guidance",
+    materiality: "high",
+    headline: "Guidance cut",
+    summary: "Cut FY outlook.",
+    item_codes: "2.02",
+    filing_date: "2026-06-08",
+    document_url: null,
+    dismissed_at: null,
+    ...over,
+  };
+}
+
+test("event rows slot between health rows and question rows", () => {
+  const rows = deriveAttention(
+    [entry({ ticker: "BROKE", health: "broken" })],
+    [rollup({ ticker: "QQQ", p1_count: 1, open_count: 1 })],
+    [matEvent({ ticker: "NVDA" })],
+  );
+  assert.deepEqual(
+    rows.map((r) => r.kind),
+    ["health", "event", "questions"],
+  );
+  const ev = rows[1];
+  assert.equal(ev.kind, "event");
+  if (ev.kind === "event") {
+    assert.equal(ev.ticker, "NVDA");
+    assert.equal(ev.severity, "amber");
+    assert.equal(ev.headline, "Guidance cut");
+  }
+});
+
+test("events default arg keeps old call sites working", () => {
+  const rows = deriveAttention([], []);
+  assert.deepEqual(rows, []);
+});
+
+test("event rows sort newest first", () => {
+  const rows = deriveAttention(
+    [],
+    [],
+    [
+      matEvent({ id: "a", filing_date: "2026-06-05", ticker: "OLD" }),
+      matEvent({ id: "b", filing_date: "2026-06-09", ticker: "NEW" }),
+    ],
+  );
+  assert.deepEqual(
+    rows.map((r) => (r.kind === "event" ? r.ticker : "")),
+    ["NEW", "OLD"],
+  );
 });
