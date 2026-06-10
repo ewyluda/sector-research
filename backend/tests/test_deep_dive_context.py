@@ -18,6 +18,7 @@ from backend.app.graph.deep_dive_context import (
     build_edgar_context,
     build_filing_excerpt_context,
     build_macro_context,
+    build_quant_context,
     build_sentiment_context,
     build_technical_context,
     build_transcript_context,
@@ -390,11 +391,89 @@ class BuildAllContextsTests(unittest.TestCase):
         for cat, kinds in out.items():
             self.assertEqual(
                 set(kinds.keys()),
-                {"transcript", "macro", "technical", "sentiment", "edgar", "filing", "counterparty"},
+                {"transcript", "macro", "technical", "sentiment", "edgar", "filing", "counterparty", "quant"},
             )
 
     def test_empty_categories_returns_empty_dict(self):
         self.assertEqual(build_all_contexts(_ctx()), {})
+
+
+# ── quant ───────────────────────────────────────────────────────────────────
+
+QUANT_FP = {
+    "piotroski": {"score": 8, "components_evaluated": 9, "components": [
+        {"key": "roa_positive", "label": "ROA positive (TTM)", "passed": True, "detail": "ROA 0.2"},
+        {"key": "no_dilution", "label": "No net share issuance YoY", "passed": False, "detail": "102 now vs 100 prior"},
+    ]},
+    "altman_z": {"z": 9.3767, "zone": "safe", "not_applicable_reason": None},
+    "beneish_m": {"m": -3.0567, "zone": "unlikely", "ratios": {"dsri": 0.8, "tata": -0.1},
+                  "inputs_missing": [], "not_applicable_reason": None},
+    "accruals_ratio": -0.1026,
+    "fcf_conversion": 1.25,
+    "sbc": {"sbc_pct_revenue": 4.0, "share_growth_yoy_pct": 2.0},
+    "margin_slopes": {"gross": {"slope_pp_per_quarter": 0.85, "quarters": 8},
+                      "operating": {"slope_pp_per_quarter": None, "quarters": 3},
+                      "net": {"slope_pp_per_quarter": -0.1, "quarters": 8}},
+    "meta": {"quarters_available": 8, "basis": "ttm_vs_prior_ttm", "sector": "Technology"},
+}
+
+
+class BuildQuantContextTests(unittest.TestCase):
+    def test_empty_when_category_unrouted(self):
+        ctx = _ctx(curated_financials={"quant_fingerprint": QUANT_FP})
+        self.assertEqual(build_quant_context(ctx, "Macro & Regime"), "")
+
+    def test_empty_when_no_fingerprint(self):
+        self.assertEqual(build_quant_context(_ctx(), "Financial Health"), "")
+        ctx = _ctx(curated_financials={})
+        self.assertEqual(build_quant_context(ctx, "Financial Health"), "")
+
+    def test_routed_renders_only_routed_groups(self):
+        ctx = _ctx(curated_financials={"quant_fingerprint": QUANT_FP})
+        out = build_quant_context(ctx, "Risk Assessment")  # altman, beneish, accruals
+        self.assertIn("Altman Z: 9.3767 (safe", out)
+        self.assertIn("Beneish M: -3.0567 (unlikely", out)
+        self.assertIn("Accruals ratio", out)
+        self.assertNotIn("Piotroski", out)
+        self.assertNotIn("SBC", out)
+
+    def test_header_framing_pinned(self):
+        ctx = _ctx(curated_financials={"quant_fingerprint": QUANT_FP})
+        out = build_quant_context(ctx, "Financial Health")
+        self.assertIn("Do NOT recompute these; interpret them", out)
+        self.assertIn("Piotroski F-score: 8/9 (9 evaluated)", out)
+        self.assertIn("✗ no_dilution", out)
+
+    def test_not_applicable_rendered_as_gap(self):
+        fp = dict(QUANT_FP)
+        fp["altman_z"] = {"z": None, "zone": None,
+                          "not_applicable_reason": "Altman Z is not meaningful for financial-sector companies"}
+        ctx = _ctx(curated_financials={"quant_fingerprint": fp})
+        out = build_quant_context(ctx, "Risk Assessment")
+        self.assertIn("Altman Z: n/a — Altman Z is not meaningful", out)
+
+    def test_margin_slopes_skip_null_entries(self):
+        ctx = _ctx(curated_financials={"quant_fingerprint": QUANT_FP})
+        out = build_quant_context(ctx, "Growth & Earnings")
+        self.assertIn("gross +0.85pp/q over 8q", out)
+        self.assertIn("net -0.1pp/q over 8q", out)
+        self.assertNotIn("operating", out.split("Margin trend slopes")[1].split("\n")[0])
+
+    def test_build_all_contexts_includes_quant_kind(self):
+        ctx = _ctx(categories=["Financial Health"],
+                   curated_financials={"quant_fingerprint": QUANT_FP})
+        all_ctx = build_all_contexts(ctx)
+        self.assertIn("quant", all_ctx["Financial Health"])
+        self.assertIn("Piotroski", all_ctx["Financial Health"]["quant"])
+
+    def test_unevaluated_piotroski_renders_nothing(self):
+        fp = dict(QUANT_FP)
+        fp["piotroski"] = {"score": 0, "components_evaluated": 0, "components": [
+            {"key": "roa_positive", "label": "ROA positive (TTM)", "passed": None, "detail": "insufficient data"},
+        ]}
+        ctx = _ctx(curated_financials={"quant_fingerprint": fp})
+        out = build_quant_context(ctx, "Financial Health")
+        self.assertNotIn("Piotroski", out)
 
 
 if __name__ == "__main__":

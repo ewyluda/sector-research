@@ -21,6 +21,7 @@ from backend.app.graph.deep_dive_routing import (
     FILING_EXCERPT_BUDGET_CHARS,
     FILING_EXCERPT_ROUTING,
     MACRO_ROUTING,
+    QUANT_ROUTING,
     RELATIONSHIP_ROUTING,
     TRANSCRIPT_ROUTING,
 )
@@ -258,6 +259,97 @@ def build_counterparty_context(ctx: DeepDiveContext, category: str) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+_QUANT_HEADER = (
+    "Deterministic quant metrics (computed in pure Python from the FMP statements "
+    "above — Tier 1, established facts. Do NOT recompute these; interpret them. "
+    "Where a metric is null or marked not-applicable, treat it as a stated data "
+    "gap, not a derivable value.)"
+)
+
+
+def _render_quant_metric(key: str, fp: dict) -> str:
+    if key == "piotroski":
+        p = fp.get("piotroski") or {}
+        comps = p.get("components") or []
+        if not comps:
+            return ""
+        if p.get("score") is None:
+            return ""
+        if not p.get("components_evaluated"):
+            return ""
+        marks = {True: "✓", False: "✗", None: "—"}
+        detail = ", ".join(f"{marks[c.get('passed')]} {c.get('key')}" for c in comps)
+        return (f"Piotroski F-score: {p.get('score')}/9 "
+                f"({p.get('components_evaluated')} evaluated): {detail}")
+    if key == "altman_z":
+        a = fp.get("altman_z") or {}
+        if a.get("not_applicable_reason"):
+            return f"Altman Z: n/a — {a['not_applicable_reason']}"
+        if a.get("z") is None:
+            return "Altman Z: null (insufficient inputs)"
+        return (f"Altman Z: {a['z']} ({a['zone'] or 'unknown'}; "
+                ">2.99 safe, 1.81–2.99 grey, <1.81 distress; "
+                "original 1968 manufacturer formula — interpret with caution for asset-light sectors)")
+    if key == "beneish_m":
+        b = fp.get("beneish_m") or {}
+        if b.get("not_applicable_reason"):
+            return f"Beneish M: n/a — {b['not_applicable_reason']}"
+        if b.get("m") is None:
+            missing = ", ".join(b.get("inputs_missing") or []) or "insufficient inputs"
+            return f"Beneish M: null (missing: {missing})"
+        ratios = b.get("ratios") or {}
+        ratio_str = ", ".join(f"{k}={v}" for k, v in ratios.items() if v is not None)
+        suffix = f" [{ratio_str}]" if ratio_str else ""
+        return (f"Beneish M: {b['m']} ({b['zone'] or 'unknown'}; >-1.78 flag, "
+                f"-2.22 to -1.78 caution, <-2.22 unlikely; "
+                f"high SGI alone can push fast growers toward flag — check which ratios dominate)"
+                f"{suffix}")
+    if key == "accruals":
+        v = fp.get("accruals_ratio")
+        if v is None:
+            return ""
+        return (f"Accruals ratio ((NI−CFO)/avg TA, TTM): {v} "
+                "(large positive ⇒ earnings outrunning cash)")
+    if key == "fcf_conversion":
+        v = fp.get("fcf_conversion")
+        return "" if v is None else f"FCF conversion (FCF/NI, TTM): {v}"
+    if key == "sbc":
+        s = fp.get("sbc") or {}
+        parts = []
+        if s.get("sbc_pct_revenue") is not None:
+            parts.append(f"SBC {s['sbc_pct_revenue']}% of revenue (TTM)")
+        if s.get("share_growth_yoy_pct") is not None:
+            parts.append(f"diluted shares {s['share_growth_yoy_pct']:+g}% YoY")
+        return "; ".join(parts)
+    if key == "margin_slopes":
+        m = fp.get("margin_slopes") or {}
+        parts = []
+        for label in ("gross", "operating", "net"):
+            entry = m.get(label) or {}
+            slope = entry.get("slope_pp_per_quarter")
+            if slope is not None:
+                parts.append(f"{label} {slope:+g}pp/q over {entry.get('quarters')}q")
+        return "Margin trend slopes (OLS): " + ", ".join(parts) if parts else ""
+    return ""
+
+
+def build_quant_context(ctx: DeepDiveContext, category: str) -> str:
+    metric_keys = QUANT_ROUTING.get(category)
+    if not metric_keys:
+        return ""
+    fp = (ctx.curated_financials or {}).get("quant_fingerprint")
+    if not fp or not isinstance(fp, dict):
+        return ""
+    lines = [_QUANT_HEADER]
+    for key in metric_keys:
+        rendered = _render_quant_metric(key, fp)
+        if rendered:
+            lines.append(rendered)
+    if len(lines) == 1:
+        return ""
+    return "\n".join(lines)
+
+
 # ── Dispatcher ──────────────────────────────────────────────────────────────
 
 
@@ -276,6 +368,7 @@ def build_all_contexts(ctx: DeepDiveContext) -> dict[str, dict[str, str]]:
             "edgar": build_edgar_context(ctx, cat),
             "filing": build_filing_excerpt_context(ctx, cat),
             "counterparty": build_counterparty_context(ctx, cat),
+            "quant": build_quant_context(ctx, cat),
         }
         for cat in ctx.categories
     }

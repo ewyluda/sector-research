@@ -11,6 +11,7 @@ from backend.app.graph.deep_dive_routing import (
     EDGAR_ROUTING,
     FILING_EXCERPT_ROUTING,
     MACRO_ROUTING,
+    QUANT_ROUTING,
     RELATIONSHIP_ROUTING,
     TRANSCRIPT_ROUTING,
     routing_for,
@@ -91,6 +92,35 @@ class TableInvariantTests(unittest.TestCase):
         for cat, passes in TRANSCRIPT_ROUTING.items():
             for p in passes:
                 self.assertTrue(p.startswith("pass"), f"{cat}: {p} missing pass prefix")
+
+
+class QuantRoutingTests(unittest.TestCase):
+    def test_financial_health_quant_metrics(self):
+        r = routing_for("Financial Health")
+        self.assertEqual(r.quant_metrics,
+                         ["piotroski", "altman_z", "accruals", "fcf_conversion"])
+
+    def test_risk_assessment_gets_forensic_scores(self):
+        r = routing_for("Risk Assessment")
+        self.assertEqual(r.quant_metrics, ["altman_z", "beneish_m", "accruals"])
+
+    def test_unrouted_category_empty(self):
+        self.assertEqual(routing_for("Technical & Market Structure").quant_metrics, [])
+        self.assertEqual(routing_for("Macro & Regime").quant_metrics, [])
+
+    def test_table_uses_known_metric_keys_only(self):
+        known = {"piotroski", "altman_z", "beneish_m", "accruals",
+                 "fcf_conversion", "sbc", "margin_slopes"}
+        for cat, keys in QUANT_ROUTING.items():
+            self.assertTrue(set(keys) <= known, f"{cat} routes unknown key")
+
+    def test_remaining_categories_pinned(self):
+        self.assertEqual(routing_for("Growth & Earnings").quant_metrics,
+                         ["margin_slopes", "sbc", "fcf_conversion"])
+        self.assertEqual(routing_for("Business Quality").quant_metrics,
+                         ["margin_slopes", "piotroski"])
+        self.assertEqual(routing_for("Management & Governance").quant_metrics,
+                         ["sbc", "beneish_m"])
 
 
 if __name__ == "__main__":

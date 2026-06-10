@@ -61,6 +61,7 @@ from backend.app.graph.deep_dive_context import (  # noqa: E402
 from backend.app.graph.deep_dive_helpers import (  # noqa: E402
     unwrap_gather_result as _unwrap,
 )
+from backend.app.services.quant_fingerprint import build_quant_fingerprint
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -499,6 +500,7 @@ async def _run_one_category(
     edgar_context: str = "",
     filing_excerpts_context: str = "",
     counterparty_context_text: str = "",
+    quant_context: str = "",
     prior_questions_text: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
@@ -518,6 +520,7 @@ async def _run_one_category(
                     edgar_data=edgar_context,
                     filing_excerpts=filing_excerpts_context,
                     counterparty_context=counterparty_context_text,
+                    quant_data=quant_context,
                     prior_questions=prior_questions_text,
                     loop_context=loop_context,
                 ),
@@ -671,7 +674,7 @@ def _build_curated_financials(
     km = key_metrics or {}
     rt = ratios or {}
 
-    return CuratedFinancials(
+    curated = CuratedFinancials(
         ticker=ticker,
         company_name=company_name,
         sector=sector,
@@ -711,6 +714,14 @@ def _build_curated_financials(
         fifty_two_week_low=fifty_two_low,
         volume_avg=vol_avg,
     )
+    # Defensive: a quant bug must not null out the whole curated payload.
+    try:
+        curated.quant_fingerprint = build_quant_fingerprint(
+            income, balance, cashflow, prof
+        ).to_dict()
+    except Exception as e:
+        logger.warning("[%s] quant fingerprint computation failed: %s", ticker, e)
+    return curated
 
 
 def _build_technical_data(prices: list[dict]) -> list[dict]:
@@ -977,6 +988,7 @@ async def node_deep_dive(
             ("EDGAR XBRL context", ctx.get("edgar", "")),
             ("Filing excerpt context", ctx.get("filing", "")),
             ("Counterparty context", ctx.get("counterparty", "")),
+            ("Quant context", ctx.get("quant", "")),
         ]:
             if text:
                 parts.append(f"{label}:\n{text}")
@@ -1000,6 +1012,7 @@ async def node_deep_dive(
             category_contexts[cat]["edgar"],
             category_contexts[cat]["filing"],
             category_contexts[cat]["counterparty"],
+            category_contexts[cat]["quant"],
             _render_prior_questions_slot(prior_q_map[cat]),
         )
         for cat in categories_to_run

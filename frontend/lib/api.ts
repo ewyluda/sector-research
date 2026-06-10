@@ -786,6 +786,41 @@ export interface EdgarFact {
 // Values are most-recent-first, up to 12 entries per concept (report endpoint cap).
 export type EdgarFacts = Record<string, EdgarFact[]>;
 
+export interface PiotroskiComponent {
+  key: string;
+  label: string;
+  passed: boolean | null;
+  detail: string;
+}
+
+export interface QuantFingerprint {
+  piotroski: {
+    score: number;
+    components_evaluated: number;
+    components: PiotroskiComponent[];
+  };
+  altman_z: {
+    z: number | null;
+    zone: "safe" | "grey" | "distress" | null;
+    not_applicable_reason: string | null;
+  };
+  beneish_m: {
+    m: number | null;
+    zone: "unlikely" | "caution" | "flag" | null;
+    ratios: Record<string, number | null>;
+    inputs_missing: string[];
+    not_applicable_reason: string | null;
+  };
+  accruals_ratio: number | null;
+  fcf_conversion: number | null;
+  sbc: { sbc_pct_revenue: number | null; share_growth_yoy_pct: number | null };
+  margin_slopes: Record<
+    "gross" | "operating" | "net",
+    { slope_pp_per_quarter: number | null; quarters: number }
+  >;
+  meta: { quarters_available: number; basis: string; sector: string };
+}
+
 export interface CuratedFinancials {
   ticker: string;
   company_name: string;
@@ -830,6 +865,8 @@ export interface CuratedFinancials {
   volume_avg: number | null;
   daily_prices: DailyPrice[];
   macro_indicators: MacroIndicators | null;
+  // Absent on runs persisted before the quant layer shipped.
+  quant_fingerprint?: QuantFingerprint | null;
 }
 
 export interface CategoryOutput {
