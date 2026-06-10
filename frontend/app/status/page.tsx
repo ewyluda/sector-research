@@ -7,15 +7,18 @@ import {
   themes as themesApi,
   readThroughs,
   earnings as earningsApi,
+  events as eventsApi,
   type Health,
   type ReadThroughsByRun,
   type StatusBoardEntry,
   type Theme,
   type EarningsBoardEntry,
   type ThesisPrintVerdictRow,
+  type MaterialEvent,
 } from "@/lib/api";
 import { ReadThroughDrawer } from "@/components/status/ReadThroughDrawer";
 import { EarningsDrawer } from "@/components/status/EarningsDrawer";
+import { MaterialEventsDrawer } from "@/components/status/MaterialEventsDrawer";
 import { WorkspaceButton } from "@/components/status/WorkspaceButton";
 
 const HEALTH_PILL: Record<Health, string> = {
@@ -43,6 +46,12 @@ const VERDICT_BADGE: Record<"confirms" | "threatens" | "neutral" | "insufficient
   threatens:    "border-red-500/30 bg-red-500/10 text-red-400",
   neutral:      "border-slate-500/30 bg-slate-500/10 text-slate-400",
   insufficient: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+};
+
+const EVENT_BADGE: Record<string, string> = {
+  high: "bg-rose-900/40 text-rose-200 ring-rose-700 hover:bg-rose-900/60",
+  medium: "bg-amber-900/40 text-amber-200 ring-amber-700 hover:bg-amber-900/60",
+  low: "bg-slate-800 text-slate-300 ring-slate-700 hover:bg-slate-700",
 };
 
 function daysUntil(isoDate: string): number {
@@ -230,6 +239,8 @@ export default function StatusPage() {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
   const [earningsByRun, setEarningsByRun] = useState<Record<string, EarningsBoardEntry>>({});
   const [earningsExpanded, setEarningsExpanded] = useState<Record<string, boolean>>({});
+  const [eventsByTicker, setEventsByTicker] = useState<Record<string, MaterialEvent[]>>({});
+  const [eventsExpanded, setEventsExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     themesApi.list().then(setThemes).catch(() => {});
@@ -340,6 +351,36 @@ export default function StatusPage() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const out = await eventsApi.list({ since_days: 14 });
+        if (cancelled) return;
+        const grouped: Record<string, MaterialEvent[]> = {};
+        for (const ev of out.events) {
+          (grouped[ev.ticker] ??= []).push(ev);
+        }
+        setEventsByTicker(grouped);
+      } catch {
+        // best-effort — leave previous data on the screen
+      }
+    }
+    load();
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, []);
+
   // Deep link from the unified calendar: /status?expand_earnings=<run_id>
   // auto-opens that run's EarningsDrawer once the board has loaded.
   // One-shot: the board refetches on a 60s poll, and re-applying would
@@ -353,6 +394,22 @@ export default function StatusPage() {
       setEarningsExpanded((prev) => (prev[runId] ? prev : { ...prev, [runId]: true }));
     }
   }, [earningsByRun]);
+
+  // Deep link from Today: /status?expand_events=<ticker> auto-opens that
+  // ticker's MaterialEventsDrawer once board + events have loaded. One-shot.
+  const expandEventsConsumed = useRef(false);
+  useEffect(() => {
+    if (expandEventsConsumed.current) return;
+    const ticker = new URLSearchParams(window.location.search)
+      .get("expand_events")
+      ?.toUpperCase();
+    if (!ticker || entries.length === 0) return;
+    const entry = entries.find((en) => en.ticker === ticker);
+    if (entry && (eventsByTicker[ticker] ?? []).length > 0) {
+      expandEventsConsumed.current = true;
+      setEventsExpanded((prev) => ({ ...prev, [entry.run_id]: true }));
+    }
+  }, [entries, eventsByTicker]);
 
   const counts = useMemo(() => {
     const c: Record<Health | "all", number> = {
@@ -390,6 +447,14 @@ export default function StatusPage() {
       ...prev,
       [runId]: (prev[runId] ?? []).filter((it) => it.event_key !== eventKey),
     }));
+  }
+
+  function handleEventDismissed(ticker: string, eventId: string) {
+    setEventsByTicker((prev) => ({
+      ...prev,
+      [ticker]: (prev[ticker] ?? []).filter((ev) => ev.id !== eventId),
+    }));
+    fetchBoard(); // refresh the badge summary
   }
 
   return (
@@ -508,6 +573,22 @@ export default function StatusPage() {
                           ⟿ {items.length}
                         </button>
                       )}
+                      {e.material_events && (
+                        <button
+                          type="button"
+                          data-print-hide="true"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setEventsExpanded((m) => ({ ...m, [e.run_id]: !m[e.run_id] }));
+                          }}
+                          title={e.material_events.latest_headline}
+                          className={`rounded px-1.5 py-0.5 text-[11px] ring-1 ${
+                            EVENT_BADGE[e.material_events.max_materiality] ?? EVENT_BADGE.low
+                          }`}
+                        >
+                          8-K ×{e.material_events.count_14d}
+                        </button>
+                      )}
                       {(() => {
                         const eb = earningsByRun[e.run_id];
                         if (!eb || !eb.print) return null;
@@ -563,6 +644,14 @@ export default function StatusPage() {
                       runId={e.run_id}
                       items={items}
                       onDismissed={(ek) => handleReadThroughDismissed(e.run_id, ek)}
+                    />
+                  </div>
+                )}
+                {eventsExpanded[e.run_id] && (
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)]">
+                    <MaterialEventsDrawer
+                      items={eventsByTicker[e.ticker] ?? []}
+                      onDismissed={(id) => handleEventDismissed(e.ticker, id)}
                     />
                   </div>
                 )}

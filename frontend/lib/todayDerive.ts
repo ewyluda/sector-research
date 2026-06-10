@@ -4,7 +4,7 @@
  * Kept free of React/fetch so it's unit-testable via node --test.
  */
 
-import type { Health, QuestionTickerRollup, StatusBoardEntry } from "./api";
+import type { Health, MaterialEvent, QuestionTickerRollup, StatusBoardEntry } from "./api";
 
 export interface HealthAttentionRow {
   kind: "health";
@@ -27,7 +27,17 @@ export interface QuestionsAttentionRow {
   openCount: number;
 }
 
-export type AttentionRow = HealthAttentionRow | QuestionsAttentionRow;
+export interface EventAttentionRow {
+  kind: "event";
+  severity: "amber";
+  ticker: string;
+  headline: string;
+  eventType: string;
+  filingDate: string;
+  eventId: string;
+}
+
+export type AttentionRow = HealthAttentionRow | QuestionsAttentionRow | EventAttentionRow;
 
 export interface TodaySummary {
   alerts: number;     // broken + triggered theses
@@ -44,6 +54,7 @@ const HEALTH_BUCKET: Partial<Record<Health, number>> = {
 export function deriveAttention(
   entries: StatusBoardEntry[],
   rollup: QuestionTickerRollup[],
+  events: MaterialEvent[] = [],
 ): AttentionRow[] {
   const healthRows = entries
     .filter((e) => e.health in HEALTH_BUCKET)
@@ -81,7 +92,21 @@ export function deriveAttention(
       }),
     );
 
-  return [...healthRows, ...questionRows];
+  const eventRows = [...events]
+    .sort((a, b) => b.filing_date.localeCompare(a.filing_date))
+    .map(
+      (ev): EventAttentionRow => ({
+        kind: "event",
+        severity: "amber",
+        ticker: ev.ticker,
+        headline: ev.headline,
+        eventType: ev.event_type,
+        filingDate: ev.filing_date,
+        eventId: ev.id,
+      }),
+    );
+
+  return [...healthRows, ...eventRows, ...questionRows];
 }
 
 export function deriveSummary(

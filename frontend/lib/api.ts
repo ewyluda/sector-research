@@ -49,6 +49,15 @@ export interface XSignalSnapshot {
   is_stale: boolean;
 }
 
+export interface InsiderSnapshot {
+  modifier: number;
+  buy_count: number;
+  sell_count: number;
+  cluster_buy: boolean;
+  net_value: number | null;
+  is_stale: boolean;
+}
+
 export interface Citation {
   metric: string;
   source_name: string;
@@ -73,6 +82,7 @@ export interface CompanySignalCard {
   last_thesis_status: string | null;
   fmp: FMPSnapshot;
   x_signal: XSignalSnapshot;
+  insider: InsiderSnapshot;
   citations: Citation[];
 }
 
@@ -1119,6 +1129,12 @@ export interface KillCriteriaSummary {
   triggered: number;
 }
 
+export interface MaterialEventsSummary {
+  count_14d: number;
+  max_materiality: "high" | "medium" | "low";
+  latest_headline: string;
+}
+
 export interface StatusBoardEntry {
   ticker: string;
   theme_id: string;
@@ -1132,6 +1148,7 @@ export interface StatusBoardEntry {
   health_reasons: string[];
   next_catalyst: NextCatalyst | null;
   kill_criteria_summary: KillCriteriaSummary;
+  material_events: MaterialEventsSummary | null;
 }
 
 export interface StatusBoardResponse {
@@ -1224,6 +1241,47 @@ export const readThroughs = {
       body: JSON.stringify({ run_id, event_key }),
     });
   },
+};
+
+// ── Material events (classified 8-Ks) ───────────────────────────────────────
+
+export interface MaterialEvent {
+  id: string;
+  ticker: string;
+  event_type: "guidance" | "personnel" | "ma" | "financing" | "other";
+  materiality: "high" | "medium" | "low";
+  headline: string;
+  summary: string;
+  item_codes: string | null;
+  filing_date: string;
+  document_url: string | null;
+  dismissed_at: string | null;
+}
+
+export interface EventListResponse {
+  events: MaterialEvent[];
+  total: number;
+}
+
+export const events = {
+  list: (params?: {
+    since_days?: number;
+    ticker?: string;
+    materiality?: string;
+    include_dismissed?: boolean;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.since_days) qs.set("since_days", String(params.since_days));
+    if (params?.ticker) qs.set("ticker", params.ticker);
+    if (params?.materiality) qs.set("materiality", params.materiality);
+    if (params?.include_dismissed) qs.set("include_dismissed", "true");
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    return apiFetch<EventListResponse>(`/api/events${suffix}`);
+  },
+  dismiss: (id: string) =>
+    apiFetch<void>(`/api/events/${encodeURIComponent(id)}/dismiss`, {
+      method: "POST",
+    }),
 };
 
 // ── Earnings cycle navigator ────────────────────────────────────────────────

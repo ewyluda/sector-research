@@ -12,10 +12,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  events as eventsApi,
   getCalendarEvents,
   questions as questionsApi,
   status as statusApi,
   type CalendarEvent,
+  type MaterialEvent,
   type QuestionTickerRollup,
   type StatusBoardEntry,
 } from "@/lib/api";
@@ -40,9 +42,11 @@ export default function TodayDashboard() {
   const [calendarError, setCalendarError] = useState<string | null>(null);
   const [rollup, setRollup] = useState<QuestionTickerRollup[] | null>(null);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
+  const [materialEvents, setMaterialEvents] = useState<MaterialEvent[] | null>(null);
+  const [eventsError, setEventsError] = useState<string | null>(null);
   // Tracks which sources have loaded at least once, so polling failures
   // after a successful first load keep last-good data without an error note.
-  const loadedRef = useRef({ board: false, calendar: false, questions: false });
+  const loadedRef = useRef({ board: false, calendar: false, questions: false, events: false });
 
   useEffect(() => {
     let cancelled = false;
@@ -53,10 +57,11 @@ export default function TodayDashboard() {
       const start = isoLocal(today);
       const end = isoLocal(addDays(today, 3));
 
-      const [boardRes, calRes, qRes] = await Promise.allSettled([
+      const [boardRes, calRes, qRes, evRes] = await Promise.allSettled([
         statusApi.board(),
         getCalendarEvents(start, end),
         questionsApi.byTicker(),
+        eventsApi.list({ since_days: 7, materiality: "high" }),
       ]);
       if (cancelled) return;
       setNow(today);
@@ -85,6 +90,14 @@ export default function TodayDashboard() {
       } else if (!loadedRef.current.questions) {
         setQuestionsError("Could not load open questions.");
       }
+
+      if (evRes.status === "fulfilled") {
+        loadedRef.current.events = true;
+        setMaterialEvents(evRes.value.events);
+        setEventsError(null);
+      } else if (!loadedRef.current.events) {
+        setEventsError("Could not load material events.");
+      }
     }
 
     fetchAll();
@@ -103,12 +116,17 @@ export default function TodayDashboard() {
   }, []);
 
   const summary = useMemo(() => deriveSummary(board ?? [], rollup ?? []), [board, rollup]);
-  const attentionRows = useMemo(() => deriveAttention(board ?? [], rollup ?? []), [board, rollup]);
+  const attentionRows = useMemo(
+    () => deriveAttention(board ?? [], rollup ?? [], materialEvents ?? []),
+    [board, rollup, materialEvents],
+  );
 
   // Attention section: board failure dominates (rows would be misleadingly
   // empty); a questions-only failure still shows health rows with a note.
   const attentionError =
-    boardError ?? (questionsError ? `${questionsError} Health rows may be incomplete.` : null);
+    boardError ??
+    (questionsError ? `${questionsError} Health rows may be incomplete.` : null) ??
+    (eventsError ? `${eventsError} 8-K rows may be missing.` : null);
 
   return (
     <div className="space-y-6">

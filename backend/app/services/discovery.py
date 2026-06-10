@@ -26,6 +26,7 @@ from backend.app.models.citation import Citation
 from backend.app.models.signal import Signal
 from backend.app.models.theme import Theme
 from backend.app.models.surprise_alert import SurpriseAlert
+from backend.app.services.insider_signal import INSIDER_STALE_HOURS
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +53,24 @@ class XSignalSnapshot:
 
 
 @dataclass
+class InsiderSnapshot:
+    """Cached Form 4 signal as applied to this card. modifier is 0 when the
+    signal is stale or absent (i.e., what was actually applied).
+
+    NOTE: is_stale means "signal present but no modifier was applied" — it is
+    True both for genuinely stale (>48h) signals AND for fresh signals whose
+    modifier is legitimately 0 (no notable insider activity). Don't read it
+    as a pure age check; the only current consumer is the modifier!=0 chip,
+    which never reads it. Rename before giving it a second consumer."""
+    modifier: int = 0
+    buy_count: int = 0
+    sell_count: int = 0
+    cluster_buy: bool = False
+    net_value: float | None = None
+    is_stale: bool = True
+
+
+@dataclass
 class CompanySignalCard:
     """The complete per-company object rendered in the Theme Detail view."""
     ticker: str
@@ -62,6 +81,7 @@ class CompanySignalCard:
 
     fmp: FMPSnapshot = field(default_factory=FMPSnapshot)
     x_signal: XSignalSnapshot = field(default_factory=XSignalSnapshot)
+    insider: InsiderSnapshot = field(default_factory=InsiderSnapshot)
 
     combined_score: float = 0.0
     fundamental_quality_score: float = 0.0
@@ -177,6 +197,31 @@ def compute_combined_score(
         + disc_normalized * w_disc,
         1,
     )
+
+
+def apply_insider_modifier(
+    base_score: float, insider_data: dict, now: datetime
+) -> tuple[float, int]:
+    """Clamped combined-score adjustment from the cached insider signal.
+
+    Bounded modifier, NOT a 4th weight (spec): insider activity is sparse —
+    a weight would multiply zeros most days and force a rework of per-theme
+    weights and the cold-start collapse. Stale (>48h) or absent → unchanged.
+    Returns (adjusted_score, applied_modifier).
+    """
+    if not insider_data:
+        return base_score, 0
+    raw = insider_data.get("computed_at")
+    try:
+        computed = datetime.fromisoformat(raw) if raw else None
+    except (ValueError, TypeError):
+        computed = None
+    if computed is None or computed < now - timedelta(hours=INSIDER_STALE_HOURS):
+        return base_score, 0
+    modifier = int(insider_data.get("modifier", 0) or 0)
+    if modifier == 0:
+        return base_score, 0
+    return round(min(100.0, max(0.0, base_score + modifier)), 1), modifier
 
 
 # ── FMP data extraction helpers ───────────────────────────────────────────────
@@ -471,6 +516,19 @@ class DiscoveryEngine:
                 has_x_signal=has_x_signal and not is_stale,
             )
 
+            insider_data = ticker_signals.get("insider", {})
+            combined, applied_modifier = apply_insider_modifier(
+                combined, insider_data, datetime.now(timezone.utc)
+            )
+            insider_snap = InsiderSnapshot(
+                modifier=applied_modifier,
+                buy_count=int(insider_data.get("buy_count", 0) or 0),
+                sell_count=int(insider_data.get("sell_count", 0) or 0),
+                cluster_buy=bool(insider_data.get("cluster_buy", False)),
+                net_value=insider_data.get("net_value"),
+                is_stale=applied_modifier == 0 and bool(insider_data),
+            )
+
             badge = "FMP + X Signal" if (has_x_signal and not is_stale) else "FMP Only (X signal pending)"
 
             # Check for active surprise alert
@@ -493,6 +551,7 @@ class DiscoveryEngine:
                 industry=profile.get("industry") if isinstance(profile, dict) else None,
                 fmp=fmp_snap,
                 x_signal=x_snap,
+                insider=insider_snap,
                 combined_score=combined,
                 fundamental_quality_score=fund_score,
                 signal_source_badge=badge,

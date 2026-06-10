@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from sqlalchemy import func, select, text
@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.api.catalysts import CatalystRow, nearest_catalyst
 from backend.app.models import Catalyst, KillCriterionState, Theme
+from backend.app.models.material_event import MaterialEvent
 from backend.app.models.workspace_run import WorkspaceRun
 from backend.app.services.run_timestamps import completed_at_sql
 
@@ -48,6 +49,17 @@ class NextCatalyst:
     days_until: int | None
 
 
+EVENT_WINDOW_DAYS = 14
+_MATERIALITY_RANK = {"high": 2, "medium": 1, "low": 0}
+
+
+@dataclass
+class MaterialEventsSummary:
+    count_14d: int
+    max_materiality: str  # high | medium | low
+    latest_headline: str
+
+
 @dataclass
 class StatusBoardEntry:
     ticker: str
@@ -64,6 +76,7 @@ class StatusBoardEntry:
     kill_criteria_summary: KillCriteriaSummary = field(
         default_factory=lambda: KillCriteriaSummary(0, 0)
     )
+    material_events: MaterialEventsSummary | None = None
 
 
 @dataclass
@@ -109,6 +122,24 @@ def _build_next_catalyst(rows: list[CatalystRow], today: date) -> NextCatalyst |
         expected_window_end=chosen.expected_window_end,
         days_until=days,
     )
+
+
+def _summarize_material_events(events: list) -> dict[str, MaterialEventsSummary]:
+    """Group undismissed events (ordered filing_date DESC) per ticker."""
+    out: dict[str, MaterialEventsSummary] = {}
+    for ev in events:
+        s = out.get(ev.ticker)
+        if s is None:
+            out[ev.ticker] = MaterialEventsSummary(
+                count_14d=1,
+                max_materiality=ev.materiality,
+                latest_headline=ev.headline,
+            )
+        else:
+            s.count_14d += 1
+            if _MATERIALITY_RANK.get(ev.materiality, 0) > _MATERIALITY_RANK.get(s.max_materiality, 0):
+                s.max_materiality = ev.materiality
+    return out
 
 
 def _build_latest_runs_sql(
@@ -282,6 +313,20 @@ async def build_status_board(
         str(r.parent_research_run_id): r.latest_created_at for r in ws_result.all()
     }
 
+    # Material events (last 14 days, undismissed) for the board's tickers —
+    # one query, grouped in Python; same summary on every theme row of a ticker.
+    board_tickers = list({row["ticker"] for row in run_rows})
+    ev_result = await db.execute(
+        select(MaterialEvent)
+        .where(
+            MaterialEvent.ticker.in_(board_tickers),
+            MaterialEvent.filing_date >= today - timedelta(days=EVENT_WINDOW_DAYS),
+            MaterialEvent.dismissed_at.is_(None),
+        )
+        .order_by(MaterialEvent.filing_date.desc())
+    )
+    events_by_ticker = _summarize_material_events(list(ev_result.scalars()))
+
     entries: list[StatusBoardEntry] = []
     for row in run_rows:
         run_id = str(row["id"])
@@ -342,6 +387,7 @@ async def build_status_board(
                 kill_criteria_summary=KillCriteriaSummary(
                     total=kc_total, triggered=kc_triggered
                 ),
+                material_events=events_by_ticker.get(row["ticker"]),
             )
         )
 

@@ -16,6 +16,14 @@ const HEALTH_LABEL: Record<string, string> = {
   stale: "Stale",
 };
 
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  guidance: "Guidance",
+  personnel: "Personnel",
+  ma: "M&A",
+  financing: "Financing",
+  other: "8-K",
+};
+
 export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: string | null }) {
   return (
     <section>
@@ -66,6 +74,23 @@ export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: st
                   <WorkspaceButton ticker={row.ticker} researchRunId={row.runId} />
                 </span>
               </div>
+            ) : row.kind === "event" ? (
+              <Link
+                key={`event-${row.eventId}`}
+                href={`/status?expand_events=${row.ticker}`}
+                className={`flex items-center gap-3 rounded-lg border border-[var(--border)] border-l-[3px] ${ROW_BORDER[row.severity]} bg-[var(--surface)] px-3 py-2 hover:bg-[var(--surface-alt)] transition-colors`}
+              >
+                <span className="font-mono font-bold text-sm text-[var(--text)] tracking-wide shrink-0">
+                  {row.ticker}
+                </span>
+                <span className="text-[11px] text-[var(--text-muted)] shrink-0">
+                  {EVENT_TYPE_LABEL[row.eventType] ?? "8-K"} · {row.filingDate}
+                </span>
+                <span className="text-xs text-[var(--text-muted)] truncate flex-1">
+                  <span className="font-semibold text-[var(--text)]">8-K</span> — {row.headline}
+                </span>
+                <span className="text-[11px] text-[var(--primary)] shrink-0">View →</span>
+              </Link>
             ) : (
               <Link
                 key={`questions-${row.ticker}`}

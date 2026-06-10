@@ -42,6 +42,12 @@ class NextCatalystOut(BaseModel):
     days_until: int | None
 
 
+class MaterialEventsSummaryOut(BaseModel):
+    count_14d: int
+    max_materiality: str
+    latest_headline: str
+
+
 class StatusBoardEntryOut(BaseModel):
     ticker: str
     theme_id: str
@@ -55,6 +61,7 @@ class StatusBoardEntryOut(BaseModel):
     health_reasons: list[str]
     next_catalyst: NextCatalystOut | None
     kill_criteria_summary: KillCriteriaSummaryOut
+    material_events: MaterialEventsSummaryOut | None
 
 
 class StatusBoardResponseOut(BaseModel):
@@ -106,6 +113,15 @@ def _serialize_entry(e: ServiceEntry) -> StatusBoardEntryOut:
         kill_criteria_summary=KillCriteriaSummaryOut(
             total=e.kill_criteria_summary.total,
             triggered=e.kill_criteria_summary.triggered,
+        ),
+        material_events=(
+            MaterialEventsSummaryOut(
+                count_14d=e.material_events.count_14d,
+                max_materiality=e.material_events.max_materiality,
+                latest_headline=e.material_events.latest_headline,
+            )
+            if e.material_events
+            else None
         ),
     )
 
