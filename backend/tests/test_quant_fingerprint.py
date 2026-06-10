@@ -312,5 +312,43 @@ class MarginSlopeTests(unittest.TestCase):
         self.assertEqual(slopes["gross"]["quarters"], 3)
 
 
+class CuratedAttachTests(unittest.TestCase):
+    def test_build_curated_financials_attaches_fingerprint(self):
+        from backend.app.graph.nodes import _build_curated_financials
+        curated = _build_curated_financials(
+            ticker="TEST", income=INCOME, balance=BALANCE, cashflow=CASHFLOW,
+            profile=PROFILE, dcf=None, estimates=[],
+        )
+        fp = curated.quant_fingerprint
+        self.assertIsNotNone(fp)
+        self.assertEqual(fp["piotroski"]["score"], 8)
+        self.assertEqual(fp["meta"]["quarters_available"], 8)
+
+    def test_empty_payloads_still_attach_null_metrics(self):
+        from backend.app.graph.nodes import _build_curated_financials
+        curated = _build_curated_financials(
+            ticker="TEST", income=[], balance=[], cashflow=[],
+            profile={}, dcf=None, estimates=[],
+        )
+        self.assertIsNotNone(curated.quant_fingerprint)
+        self.assertIsNone(curated.quant_fingerprint["altman_z"]["z"])
+
+    def test_curated_financials_round_trip(self):
+        from backend.app.graph.state import CuratedFinancials
+        cf = CuratedFinancials(ticker="TEST", company_name="T", sector="",
+                               industry="", market_cap=0, current_price=0)
+        cf.quant_fingerprint = fingerprint()
+        rehydrated = CuratedFinancials.from_dict(cf.to_dict())
+        self.assertEqual(rehydrated.quant_fingerprint["piotroski"]["score"], 8)
+
+    def test_old_payload_without_key_round_trips_none(self):
+        from backend.app.graph.state import CuratedFinancials
+        cf = CuratedFinancials(ticker="TEST", company_name="T", sector="",
+                               industry="", market_cap=0, current_price=0)
+        d = cf.to_dict()
+        d.pop("quant_fingerprint", None)  # simulate an old persisted run
+        self.assertIsNone(CuratedFinancials.from_dict(d).quant_fingerprint)
+
+
 if __name__ == "__main__":
     unittest.main()

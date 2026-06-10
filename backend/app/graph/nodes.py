@@ -61,6 +61,7 @@ from backend.app.graph.deep_dive_context import (  # noqa: E402
 from backend.app.graph.deep_dive_helpers import (  # noqa: E402
     unwrap_gather_result as _unwrap,
 )
+from backend.app.services.quant_fingerprint import build_quant_fingerprint
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -671,7 +672,7 @@ def _build_curated_financials(
     km = key_metrics or {}
     rt = ratios or {}
 
-    return CuratedFinancials(
+    curated = CuratedFinancials(
         ticker=ticker,
         company_name=company_name,
         sector=sector,
@@ -711,6 +712,14 @@ def _build_curated_financials(
         fifty_two_week_low=fifty_two_low,
         volume_avg=vol_avg,
     )
+    # Defensive: a quant bug must not null out the whole curated payload.
+    try:
+        curated.quant_fingerprint = build_quant_fingerprint(
+            income, balance, cashflow, prof
+        ).to_dict()
+    except Exception as e:
+        logger.warning("[%s] quant fingerprint computation failed: %s", ticker, e)
+    return curated
 
 
 def _build_technical_data(prices: list[dict]) -> list[dict]:
