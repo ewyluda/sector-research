@@ -74,7 +74,8 @@ Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X
 
 Seven top-level workspaces (see `frontend/components/Nav.tsx`):
 
-- **Themes / Discovery** (`/`, `/theme/[id]`) — ranked companies per theme.
+- **Today** (`/`) — morning briefing: summary banner, 4-day calendar slice, needs-attention list (status-board health + open P1 questions). Pure frontend composition of the board/calendar/questions endpoints.
+- **Themes / Discovery** (`/themes`, `/theme/[id]`) — ranked companies per theme.
 - **Filings** (`/filings`, `/filings/graph`) — SEC EDGAR filing extraction, relationship graph (1- or 2-hop, optionally theme-gated), counterparty resolution.
 - **Catalysts** (`/catalysts`) — upcoming-event calendar feeding the same data the status board surfaces.
 - **Status** (`/status`) — fleet-management view: every active thesis bucketed by health (Healthy / Imminent / Stale / Triggered / Broken), kill-criteria toggles, read-through and earnings drawers.
@@ -317,7 +318,7 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 
 ### Frontend layout
 
-- `app/` — App Router pages: `/` (themes), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/filings/graph` (multi-hop supply-chain graph view), `/catalysts`, `/status` (fleet board), `/workspace` + `/workspace/[runId]` (workspace-loop runs), `/questions`, `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports), `/model/[ticker]` (editable financial model + reverse-DCF tabs). `/report/[runId]` redirects to `/pipeline/[runId]`.
+- `app/` — App Router pages: `/` (Today dashboard), `/themes` (themes grid), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/filings/graph` (multi-hop supply-chain graph view), `/catalysts`, `/status` (fleet board), `/workspace` + `/workspace/[runId]` (workspace-loop runs), `/questions`, `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports), `/model/[ticker]` (editable financial model + reverse-DCF tabs). `/report/[runId]` redirects to `/pipeline/[runId]`.
 - `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
 - `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
 - `components/filings/` — `ThemeFilingsPanel`, `TickerFilingsCard`, `SectionReader` (modal), `CurationPanel` (counterparty resolution queue), `MultiHopGraphView` + `RootHeader` + `HopGroup` + `EdgeRowBody` (the `/filings/graph` page)
@@ -326,6 +327,7 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 - `components/questions/` — `OpenQuestionsPanel`, `QuestionRow`, `QuestionTickerRollupTable`
 - `components/peers/` — `PeerCompTable` (grouped comparison table shared by the company Peers tab and `/compare`), `PeerSetEditor` (chip editor)
 - `components/themes/` — `DeleteThemeButton`
+- `components/today/` — `SummaryBanner`, `TodayLanes` (reuses catalysts `EventCard`), `AttentionList` (reuses `components/status/WorkspaceButton`, extracted from the status page); derivation logic in `lib/todayDerive.ts` (unit-tested via `node --test`)
 - `components/deep-dive/` — 30+ component module for the financial dashboard: `DeepDiveDashboard` orchestrator (receives `ticker` prop for supply-chain card), `SectionNav` (sticky horizontal scroll-spy nav, pills grouped into Summary / Financials / Context / Qualitative clusters with visual dividers), `CommandPalette` (⌘K / Ctrl-K fuzzy jump over the same `sections.ts` registry), `ReportHeader` (company identity + verdict + thesis/risk callouts — the scoreboards live in `OverviewBanner`, not here), `OverviewBanner` (synthesized verdict line + radar + HeadlineMetrics + ScoreBar, single source for these), `VelocitySparkline` (X signal badge), `sections/` (9 category sections + CrossCategoryCorrelation + `SupplyChainEcosystem`), `charts/` (Recharts bar/line/trend + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
 - **Shared utilities under `components/deep-dive/`:**
   - `scoreKeys.ts` — `DISPLAY_TO_KEY` + `normalizeScoreKeys`. Use at every boundary where the backend hands you a `scores` object; the report API returns display-name keys (`"Macro & Regime"`) while the chip/radar components expect snake_case. Skipping this normalizer silently produces an all-em-dash ScoreBar.
