@@ -105,9 +105,9 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
 
     Wire-name notes (live-verified 2026-06-09): the /stable/ API serves the
     valuation multiples from ratios-ttm — the key-metrics-ttm spellings
-    (peRatioTTM etc., still read by graph/nodes.py) are no longer present
-    there and are kept only as legacy fallbacks. Returns (ROE/ROIC/ROA) come
-    from key-metrics-ttm, margins from ratios-ttm, market cap from profile.
+    (peRatioTTM etc.) are no longer present there and are kept only as legacy
+    fallbacks (graph/nodes.py mirrors this mapping). Returns (ROE/ROIC/ROA)
+    come from key-metrics-ttm, margins from ratios-ttm, market cap from profile.
     """
     # Intentionally no return_exceptions here: partial data for a ticker is
     # worse than a clean per-ticker error — the outer gather in
