@@ -92,6 +92,8 @@ Category: {category}
 Available data:
 {data}
 
+{quant_data}
+
 {transcript_data}
 
 {macro_data}

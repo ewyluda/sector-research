@@ -500,6 +500,7 @@ async def _run_one_category(
     edgar_context: str = "",
     filing_excerpts_context: str = "",
     counterparty_context_text: str = "",
+    quant_context: str = "",
     prior_questions_text: str = "",
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
@@ -519,6 +520,7 @@ async def _run_one_category(
                     edgar_data=edgar_context,
                     filing_excerpts=filing_excerpts_context,
                     counterparty_context=counterparty_context_text,
+                    quant_data=quant_context,
                     prior_questions=prior_questions_text,
                     loop_context=loop_context,
                 ),
@@ -986,6 +988,7 @@ async def node_deep_dive(
             ("EDGAR XBRL context", ctx.get("edgar", "")),
             ("Filing excerpt context", ctx.get("filing", "")),
             ("Counterparty context", ctx.get("counterparty", "")),
+            ("Quant context", ctx.get("quant", "")),
         ]:
             if text:
                 parts.append(f"{label}:\n{text}")
@@ -1009,6 +1012,7 @@ async def node_deep_dive(
             category_contexts[cat]["edgar"],
             category_contexts[cat]["filing"],
             category_contexts[cat]["counterparty"],
+            category_contexts[cat]["quant"],
             _render_prior_questions_slot(prior_q_map[cat]),
         )
         for cat in categories_to_run
