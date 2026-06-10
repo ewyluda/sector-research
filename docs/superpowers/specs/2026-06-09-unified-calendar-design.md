@@ -38,9 +38,9 @@ New TTL constant `TTL_CALENDAR = 21600` (6 h): calendar contents shift slowly, b
 
 New module. Read-only; no commits (matches the `peer_sets` "callers own the session" convention).
 
-- `get_universe(db) -> set[str]` — union of:
+- `get_universe(db) -> Universe` — dataclass `{tickers: set[str], thesis_runs: dict[str, str]}` (ticker → latest active run_id, needed for the EarningsDrawer deep link). Union of:
   - every ticker in every theme's `seed_tickers` (JSONB list), and
-  - tickers from the status board's latest-completed-non-archived-runs CTE. Reuse/extract that SQL from `services/status_board.py` rather than duplicating it (extract a shared helper if needed — surgical, don't refactor the board).
+  - tickers from the status board's latest-completed-non-archived-runs CTE. Reuse that SQL from `services/status_board.py` rather than duplicating it.
   - Tickers normalized upper-case.
 - `get_calendar_events(db, fmp, start: date, end: date) -> CalendarResponse` — merge pipeline:
   1. Econ: fetch range, keep `country == "US" and impact == "High"`.
@@ -62,7 +62,7 @@ CalendarEvent:
 
 # detail by kind:
 #   economic: {estimate, previous, actual, unit}
-#   earnings: {eps_estimated, eps_actual, revenue_estimated, revenue_actual, has_thesis}
+#   earnings: {eps_estimated, eps_actual, revenue_estimated, revenue_actual, has_thesis, run_id}
 #   catalyst: {run_id, catalyst_id, type, timeframe, windowed, window_start, window_end, linked_pillar}
 
 CalendarResponse:
@@ -95,7 +95,7 @@ If either FMP call raises, log it, append a human-readable note to `warnings`, a
 - `WeekLanes.tsx` — 7-column current-week strip; today's column outlined; rich cards (econ: estimate · prev; earnings: EPS est; catalyst: description).
 - `AgendaList.tsx` — day-grouped rows below; windowed catalysts render dimmed at the bottom of the agenda.
 - `EventCard.tsx` / `AgendaRow.tsx` — kind-discriminated rendering. Color code: economic purple, earnings blue, catalyst amber — consistent across both sections, with a legend.
-- Linking: earnings rows with `has_thesis` link to the status board's earnings flow (`EarningsDrawer`); catalyst rows link to `/pipeline/{run_id}`; economic rows don't link.
+- Linking: earnings rows with `has_thesis` link to `/status?expand_earnings={run_id}` (the status page gains a small effect that auto-opens that run's `EarningsDrawer` once the board loads); catalyst rows link to `/pipeline/{run_id}`; economic rows don't link.
 
 ### Page (`frontend/app/catalysts/page.tsx`)
 
