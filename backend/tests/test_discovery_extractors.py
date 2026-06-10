@@ -42,10 +42,11 @@ class TestExtractHelpersFailuresAreLogged(unittest.TestCase):
             self.assertIsNone(_extract_roic(balance, cashflow))
 
     def test_empty_input_still_returns_none_without_exception_noise(self):
-        # The guarded early-return paths (no data) are NOT exceptions -> no log requirement.
-        self.assertIsNone(_extract_gross_margin([]))
-        self.assertIsNone(_extract_revenue_growth([{"revenue": 1.0}]))
-        self.assertIsNone(_extract_roic([], []))
+        # Guarded early-return paths (no data) are NOT exceptions -> nothing logged.
+        with self.assertNoLogs("backend.app.services.discovery"):
+            self.assertIsNone(_extract_gross_margin([]))
+            self.assertIsNone(_extract_revenue_growth([{"revenue": 1.0}]))
+            self.assertIsNone(_extract_roic([], []))
 
 
 if __name__ == "__main__":

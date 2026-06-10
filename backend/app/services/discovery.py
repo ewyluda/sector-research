@@ -247,6 +247,8 @@ def _extract_roic(balance: list[dict], cashflow: list[dict]) -> float | None:
 
 def _extract_gross_margin(income: list[dict]) -> float | None:
     try:
+        if not income:
+            return None
         i = income[0]
         revenue = i.get("revenue", 0)
         gross_profit = i.get("grossProfit", 0)
