@@ -297,7 +297,7 @@ def _render_quant_metric(key: str, fp: dict) -> str:
         ratios = b.get("ratios") or {}
         ratio_str = ", ".join(f"{k}={v}" for k, v in ratios.items() if v is not None)
         suffix = f" [{ratio_str}]" if ratio_str else ""
-        return (f"Beneish M: {b['m']} ({b['zone']}; >-1.78 flag, "
+        return (f"Beneish M: {b['m']} ({b['zone'] or 'unknown'}; >-1.78 flag, "
                 f"-2.22 to -1.78 caution, <-2.22 unlikely){suffix}")
     if key == "accruals":
         v = fp.get("accruals_ratio")
