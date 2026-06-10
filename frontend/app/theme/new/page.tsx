@@ -91,7 +91,7 @@ export default function NewThemePage() {
       {/* Header */}
       <div>
         <Link
-          href="/"
+          href="/themes"
           className="text-xs text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
         >
           ← Back to themes
@@ -248,7 +248,7 @@ export default function NewThemePage() {
           </p>
           <div className="flex items-center gap-2">
             <Link
-              href="/"
+              href="/themes"
               className="text-sm px-3 py-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-alt)] transition-colors"
             >
               Cancel

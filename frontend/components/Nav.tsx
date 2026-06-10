@@ -6,7 +6,8 @@ import { useState } from "react";
 import clsx from "clsx";
 
 const links = [
-  { href: "/",              label: "Themes"   },
+  { href: "/",              label: "Today"    },
+  { href: "/themes",        label: "Themes"   },
   { href: "/filings",       label: "Filings"  },
   { href: "/catalysts",     label: "Catalysts" },
   { href: "/status",        label: "Status"   },
