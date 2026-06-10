@@ -24,6 +24,7 @@ from backend.app.api.earnings import router as earnings_router
 from backend.app.api.questions import router as questions_router
 from backend.app.api.models_api import router as models_router
 from backend.app.api.company import router as company_router
+from backend.app.api.events import router as events_router
 from backend.app.services.pipeline import PipelineService
 from backend.app.services.fanout import FanoutService
 from backend.app.services.workspace import WorkspaceService
@@ -118,10 +119,18 @@ async def lifespan(app: FastAPI):
         id="outcome_snapshot_refresh",
         replace_existing=True,
     )
+    scheduler.add_job(
+        _daily_material_scan_job,
+        CronTrigger(hour=6, minute=30, timezone="UTC"),
+        args=[app],
+        id="daily_material_scan",
+        name="Daily 8-K + Form 4 Scan",
+        replace_existing=True,
+    )
 
     scheduler.start()
     app.state.scheduler = scheduler
-    logger.info("Schedulers started: X signals @ 02:00 UTC, earnings @ 21:00 UTC, outcomes @ 03:00 UTC")
+    logger.info("Schedulers started: X signals @ 02:00 UTC, earnings @ 21:00 UTC, outcomes @ 03:00 UTC, material events @ 06:30 UTC")
 
     yield
 
@@ -148,6 +157,18 @@ async def _daily_earnings_refresh_job(app: FastAPI) -> None:
         logger.info("Daily earnings refresh: %s", summary)
     except Exception:
         logger.exception("Daily earnings refresh crashed")
+
+
+async def _daily_material_scan_job(app: FastAPI) -> None:
+    """APScheduler entry point — wraps run_daily_material_scan with logging."""
+    from backend.app.services.material_events_scheduler import run_daily_material_scan
+    try:
+        summary = await run_daily_material_scan(
+            edgar=app.state.edgar, fmp=app.state.fmp
+        )
+        logger.info("Daily material scan: %s", summary)
+    except Exception:
+        logger.exception("Daily material scan crashed")
 
 
 app = FastAPI(
@@ -178,6 +199,7 @@ app.include_router(read_through_router, prefix="/api")
 app.include_router(earnings_router, prefix="/api")
 app.include_router(questions_router, prefix="/api")
 app.include_router(company_router, prefix="/api")
+app.include_router(events_router, prefix="/api")
 app.include_router(models_router)
 app.include_router(workspace_api.router)
 app.include_router(outcomes_api.router)
