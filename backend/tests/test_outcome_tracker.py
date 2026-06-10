@@ -284,6 +284,9 @@ CREATE TABLE IF NOT EXISTS verdict_return_snapshots (
 """
 
 
+_TEST_ENGINES = []
+
+
 def _build_async_test_session():
     """Spin up an in-memory async sqlite engine + session for ORM tests.
 
@@ -303,8 +306,21 @@ def _build_async_test_session():
             await conn.execute(text(_DDL_VERDICT_RETURN_SNAPSHOTS))
 
     asyncio.run(_setup())
+    _TEST_ENGINES.append(engine)
     Session = sessionmaker(engine, class_=SAAsyncSession, expire_on_commit=False)
     return engine, Session
+
+
+def tearDownModule():
+    """Dispose every test engine so aiosqlite's non-daemon connection worker
+    threads exit before interpreter shutdown — undisposed pools intermittently
+    hang the full suite at Py_FinalizeEx (wait_for_thread_shutdown)."""
+    async def _dispose():
+        for engine in _TEST_ENGINES:
+            await engine.dispose()
+
+    asyncio.run(_dispose())
+    _TEST_ENGINES.clear()
 
 
 class TestRecordVerdict(unittest.TestCase):
