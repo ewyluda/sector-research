@@ -6,7 +6,7 @@
  * and per-row signposts toggle are client components.
  */
 
-import { CatalystCalendar } from "@/components/CatalystCalendar";
+import { CatalystsView } from "@/components/catalysts/CatalystsView";
 import { getCatalysts } from "@/lib/api";
 import type { CatalystListResponse } from "@/lib/api";
 
@@ -29,7 +29,7 @@ export default async function CatalystsPage() {
           Catalysts
         </h1>
         <p className="text-xs text-[var(--text-muted)] mt-1">
-          Upcoming events from the latest thesis run for each tracked ticker.
+          Economic releases, universe earnings, and thesis catalysts in one view.
         </p>
       </header>
 
@@ -39,7 +39,7 @@ export default async function CatalystsPage() {
         </div>
       )}
 
-      {data && <CatalystCalendar buckets={data.buckets} />}
+      {data && <CatalystsView buckets={data.buckets} />}
     </main>
   );
 }
