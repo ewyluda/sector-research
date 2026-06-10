@@ -2,7 +2,7 @@
 import unittest
 
 from backend.app.models.model_state import ModelCell
-from backend.app.services.model_balancing import compute_income_statement
+from backend.app.services.model_balancing import compute_income_statement, recompute
 from backend.tests.model_fixtures import make_minimal_state
 
 
@@ -41,7 +41,6 @@ class TestModelBalancing(unittest.TestCase):
         s.balance_sheet["retained_earnings"]["2025Y"] = ModelCell(value=290.0, source="historical")
         # 2025 BS check: assets = 800; liabilities = 310; equity = 490 → balances ✓
 
-        from backend.app.services.model_balancing import recompute
         s2 = recompute(s)
 
         assets = sum((s2.balance_sheet[li]["2026Y"].value or 0.0) for li in [
@@ -58,8 +57,6 @@ class TestModelBalancing(unittest.TestCase):
 
     def test_statement_overrides_survive_recompute(self):
         """A user override should remain the stored value after the recompute pass."""
-        from backend.app.services.model_balancing import recompute
-
         s = make_minimal_state()
         s.income_statement["net_income"]["2026Y"] = ModelCell(value=9999.0, source="override")
         s.cash_flow["free_cash_flow"]["2026Y"] = ModelCell(value=7777.0, source="override")
@@ -76,8 +73,6 @@ class TestModelBalancing(unittest.TestCase):
 
     def test_share_count_rolls_forward_without_forecast_seed(self):
         """Baseline states may only have historical share count; forecast shares should still populate."""
-        from backend.app.services.model_balancing import recompute
-
         s = make_minimal_state()
         del s.income_statement["shares_diluted"]["2026Y"]
 

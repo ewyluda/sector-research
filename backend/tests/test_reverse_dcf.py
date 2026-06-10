@@ -3,13 +3,19 @@ import unittest
 
 from backend.app.models.model_state import ModelCell
 from backend.app.services.dcf import dcf
-from backend.app.services.reverse_dcf import solve_implied_driver
+from backend.app.services.model_balancing import recompute
+from backend.app.services.reverse_dcf import (
+    _apply_uniform_override,
+    sensitivity_grid,
+    solve_implied_driver,
+    solve_implied_irr,
+    thesis_vs_priced_in,
+)
 from backend.tests.model_fixtures import make_flat_fixture, make_minimal_state
 
 
 def _make_recompute_state():
     """Build and recompute a minimal state suitable for driver-dimension solvers."""
-    from backend.app.services.model_balancing import recompute
     state = make_minimal_state()
     state.balance_sheet["cash_and_equivalents"]["2025Y"] = ModelCell(value=200.0, source="historical")
     state.balance_sheet["accounts_receivable"]["2025Y"] = ModelCell(value=120.0, source="historical")
@@ -46,14 +52,12 @@ class TestReverseDcf(unittest.TestCase):
     def test_implied_irr_round_trip(self):
         state = make_flat_fixture(fcf_per_year=100.0, share_count=100.0, discount=0.10, exit_mult=12.0, ebitda=150.0)
         target_per_share = 14.9677  # the baseline at r=10%
-        from backend.app.services.reverse_dcf import solve_implied_irr
         irr = solve_implied_irr(state, target_per_share=target_per_share)
         assert abs(irr - 0.10) < 0.005, f"implied IRR should ≈ 10%, got {irr}"
 
     def test_sensitivity_grid_shape(self):
         # Use the recompute-ready fixture since both driver dimensions go through recompute()
         state = _make_recompute_state()
-        from backend.app.services.reverse_dcf import sensitivity_grid
         grid = sensitivity_grid(
             state,
             x_dim="revenue_growth_pct", x_range=(-0.05, 0.15),
@@ -71,7 +75,6 @@ class TestReverseDcf(unittest.TestCase):
     def test_thesis_vs_priced_in_shape(self):
         # Use the recompute-ready fixture since driver dimensions go through recompute()
         state = _make_recompute_state()
-        from backend.app.services.reverse_dcf import thesis_vs_priced_in
         baseline = dcf(state).intrinsic_per_share
         target = baseline * 0.8   # below baseline → market less optimistic than thesis
         out = thesis_vs_priced_in(state, target_per_share=target)
@@ -94,8 +97,6 @@ class TestReverseDcf(unittest.TestCase):
 
     def test_ebit_margin_dimension_sets_ebit_margin_not_gross_margin(self):
         """The ebit_margin_pct reverse-DCF dimension should target EBIT/revenue, not gross margin."""
-        from backend.app.services.reverse_dcf import _apply_uniform_override
-
         state = _make_recompute_state()
         target_margin = 0.30
         out = _apply_uniform_override(state, "ebit_margin_pct", target_margin)
