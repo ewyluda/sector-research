@@ -16,6 +16,7 @@ os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
 from backend.app.services.event_classifier import (
     EventClassification,
+    _strip_html,
     classify_8k,
     should_classify,
 )
@@ -103,6 +104,15 @@ class ClassifyTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertIsNone(result)
         self.assertIn("haiku_call_failed", err)
+
+
+class StripHtmlTests(unittest.TestCase):
+    def test_unwraps_inline_xbrl_and_tags(self):
+        html = "<html><body><ix:nonFraction>5.5</ix:nonFraction> grew <b>10%</b></body></html>"
+        self.assertEqual(_strip_html(html), "5.5 grew 10%")
+
+    def test_plain_text_passthrough(self):
+        self.assertEqual(_strip_html("no markup here"), "no markup here")
 
 
 if __name__ == "__main__":
