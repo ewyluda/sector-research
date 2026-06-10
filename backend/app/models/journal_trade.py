@@ -18,7 +18,7 @@ from backend.app.models.base import Base, TimestampMixin
 from backend.app.models.outcome import VerdictOutcome
 
 
-class JournalTrade(TimestampMixin, Base):
+class JournalTrade(Base, TimestampMixin):
     __tablename__ = "journal_trades"
     __table_args__ = (
         # open-trades list is the hot read path
@@ -48,8 +48,11 @@ class JournalTrade(TimestampMixin, Base):
     exit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
     exit_price_source: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
+    # optional share count — decision-quality stats are per-trade; sizing only if entered
     quantity: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
 
+    # trade-level SPY benchmark anchors (FMP adjusted close at entry/exit, best-effort);
+    # distinct from VerdictOutcome.spy_entry_price, which anchors at verdict emission
     spy_entry_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
     spy_exit_price: Mapped[Decimal | None] = mapped_column(Numeric(20, 6), nullable=True)
 
