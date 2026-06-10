@@ -5,6 +5,8 @@ import json
 from datetime import datetime, timezone
 from typing import Callable
 
+from sqlalchemy.exc import IntegrityError as _IntegrityError
+
 from backend.app.services.workspace_context import WorkspaceContext
 from backend.app.models.workspace_schemas import (
     UpdateRefreshOutput, ChangedCell, FilingRef,
@@ -400,6 +402,13 @@ async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
         )
         transcript_delta_block = _format_transcript_delta(delta_row)
     except transcript_delta_svc.InsufficientTranscriptsError:
+        transcript_delta_block = ""
+    except _IntegrityError as exc:
+        # Belt-and-suspenders: the in-flight guard in transcript_delta.compute_delta
+        # should make a (ticker, fingerprint) unique-constraint race impossible
+        # within one process, but any stray IntegrityError from elsewhere must
+        # not abort a 30-40s workspace run — degrade to no transcript delta.
+        _log.warning("transcript_delta race in step_research for %s: %s", ctx.ticker, exc)
         transcript_delta_block = ""
     except Exception as exc:  # noqa: BLE001 — best-effort enrichment
         _log.warning("transcript_delta failed for %s: %r", ctx.ticker, exc)

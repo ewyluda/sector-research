@@ -1,6 +1,7 @@
 """Transcript delta analysis — Haiku-extracted QoQ language deltas."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -8,6 +9,18 @@ from datetime import datetime, timezone
 from uuid import uuid4
 
 logger = logging.getLogger(__name__)
+
+# Best-effort in-flight coordination for concurrent compute_delta callers with
+# the same (ticker, fingerprint) within this process: the leader runs Haiku and
+# inserts; followers wait on the Event and then re-read the cached row. This is
+# NOT airtight across sessions — the Event fires after the leader's flush, but
+# the row is only visible to other sessions once the leader's caller COMMITs
+# (the workspace run holds its session open across all 5 steps). A follower
+# whose re-read misses retries as a new leader, so the unique-constraint race
+# is ultimately resolved by the savepoint + winner re-read around the INSERT
+# in compute_delta, not by this dict.
+_IN_FLIGHT: dict[tuple[str, str], asyncio.Event] = {}
+_IN_FLIGHT_GUARD = asyncio.Lock()
 
 
 class InsufficientTranscriptsError(Exception):
@@ -25,6 +38,7 @@ def compute_fingerprint(window: list[dict]) -> str:
 
 
 from sqlalchemy import select  # noqa: E402
+from sqlalchemy.exc import IntegrityError  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from backend.app.clients.fmp import FMPClient  # noqa: E402
@@ -92,7 +106,16 @@ async def compute_delta(
     fmp: FMPClient,
     force: bool = False,
 ) -> TranscriptDelta:
-    """Fetch the latest TRANSCRIPT_WINDOW transcripts, compute or return cached delta."""
+    """Fetch the latest TRANSCRIPT_WINDOW transcripts, compute or return cached delta.
+
+    Concurrent calls for the same (ticker, fingerprint) coordinate two ways:
+    an in-memory asyncio.Event dedups Haiku calls within this process
+    (best-effort — see the _IN_FLIGHT note above), and the INSERT itself runs
+    under a SAVEPOINT so a caller that loses a cross-session race on the
+    (ticker, transcripts_fingerprint) unique constraint returns the winner's
+    committed row instead of raising IntegrityError into a 30-40s workspace
+    run or an API request.
+    """
     transcripts, _citation = await fetch_recent_transcripts(
         fmp, ticker, limit=TRANSCRIPT_WINDOW,
     )
@@ -103,51 +126,101 @@ async def compute_delta(
 
     window = _window_from_transcripts(transcripts)
     fingerprint = compute_fingerprint(window)
+    key = (ticker, fingerprint)
 
+    # Try cache first — if a prior call already landed, we're done.
     existing = (await db.execute(
         select(TranscriptDelta).where(
             TranscriptDelta.ticker == ticker,
             TranscriptDelta.transcripts_fingerprint == fingerprint,
         )
     )).scalar_one_or_none()
-
     if existing is not None and not force:
         return existing
 
-    raw = await complete(
-        model=HAIKU,
-        system=_SYSTEM_PROMPT,
-        user=_build_user_prompt(transcripts),
-        assistant_prefill='{"axes":',
-        max_tokens=2500,
-    )
-    # Haiku occasionally appends trailing content (whitespace, a stray note)
-    # after the JSON object. raw_decode parses the first JSON value and
-    # ignores anything past it; json.loads would raise "Extra data".
-    parsed, _end = json.JSONDecoder().raw_decode(raw.lstrip())
-    axes = AxesDelta.model_validate(parsed["axes"]).model_dump()
+    # Coordinate concurrent computes for the same key.
+    async with _IN_FLIGHT_GUARD:
+        in_flight_event = _IN_FLIGHT.get(key)
+        is_leader = in_flight_event is None
+        if is_leader:
+            in_flight_event = asyncio.Event()
+            _IN_FLIGHT[key] = in_flight_event
 
-    if existing is not None:
-        # force=True path: refresh in place — avoids unique constraint violation
-        existing.axes = axes
-        existing.computed_at = datetime.now(timezone.utc)
-        await db.flush()
-        return existing
+    if not is_leader:
+        # Follower: wait for the leader to finish, then re-read.
+        await in_flight_event.wait()
+        cached = (await db.execute(
+            select(TranscriptDelta).where(
+                TranscriptDelta.ticker == ticker,
+                TranscriptDelta.transcripts_fingerprint == fingerprint,
+            )
+        )).scalar_one_or_none()
+        if cached is not None:
+            return cached
+        # Leader failed; fall through and try again as a new leader.
+        return await compute_delta(ticker=ticker, db=db, fmp=fmp, force=force)
 
-    # New fingerprint: insert
-    row = TranscriptDelta(
-        id=str(uuid4()),
-        ticker=ticker,
-        transcripts_window=window,
-        transcripts_fingerprint=fingerprint,
-        axes=axes,
-        computed_at=datetime.now(timezone.utc),
-    )
-    db.add(row)
-    await db.flush()
+    try:
+        raw = await complete(
+            model=HAIKU,
+            system=_SYSTEM_PROMPT,
+            user=_build_user_prompt(transcripts),
+            assistant_prefill='{"axes":',
+            max_tokens=2500,
+        )
+        # Haiku occasionally appends trailing content (whitespace, a stray note)
+        # after the JSON object. raw_decode parses the first JSON value and
+        # ignores anything past it; json.loads would raise "Extra data".
+        parsed, _end = json.JSONDecoder().raw_decode(raw.lstrip())
+        axes = AxesDelta.model_validate(parsed["axes"]).model_dump()
 
-    await _trim_history(ticker=ticker, db=db)
-    return row
+        if existing is not None:
+            # force=True path: refresh in place — avoids unique constraint violation
+            existing.axes = axes
+            existing.computed_at = datetime.now(timezone.utc)
+            await db.flush()
+            return existing
+
+        # New fingerprint: insert under a SAVEPOINT. A concurrent caller in
+        # another session can commit the same (ticker, fingerprint) while we
+        # were in Haiku — its row stays invisible to us until its COMMIT, so
+        # the Event coordination can't prevent this collision. The savepoint
+        # keeps the IntegrityError from poisoning the caller's outer
+        # transaction (the workspace-run session holds prior step writes),
+        # and the loser returns the winner's row.
+        row = TranscriptDelta(
+            id=str(uuid4()),
+            ticker=ticker,
+            transcripts_window=window,
+            transcripts_fingerprint=fingerprint,
+            axes=axes,
+            computed_at=datetime.now(timezone.utc),
+        )
+        try:
+            async with db.begin_nested():
+                db.add(row)
+                await db.flush()
+        except IntegrityError:
+            winner = (await db.execute(
+                select(TranscriptDelta).where(
+                    TranscriptDelta.ticker == ticker,
+                    TranscriptDelta.transcripts_fingerprint == fingerprint,
+                )
+            )).scalar_one_or_none()
+            if winner is not None:
+                logger.info(
+                    "transcript_delta lost insert race for %s; returning winner row",
+                    ticker,
+                )
+                return winner
+            raise
+
+        await _trim_history(ticker=ticker, db=db)
+        return row
+    finally:
+        async with _IN_FLIGHT_GUARD:
+            _IN_FLIGHT.pop(key, None)
+        in_flight_event.set()
 
 
 async def _trim_history(*, ticker: str, db: AsyncSession) -> None:
