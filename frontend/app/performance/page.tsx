@@ -5,6 +5,7 @@ import { ByVerdictTable } from "@/components/performance/ByVerdictTable";
 import { ByThemeTable } from "@/components/performance/ByThemeTable";
 import { BySignalBucketPanel } from "@/components/performance/BySignalBucketPanel";
 import { OutcomeList } from "@/components/performance/OutcomeList";
+import { TradeJournalSection } from "@/components/journal/TradeJournalSection";
 import type { Benchmark, SnapshotOffset, SourceType, Window } from "@/lib/api";
 
 interface PageProps {
@@ -50,6 +51,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       <ByThemeTable summary={summary} />
       <BySignalBucketPanel summary={summary} />
       <OutcomeList outcomes={outcomes} />
+      <TradeJournalSection />
     </main>
   );
 }
