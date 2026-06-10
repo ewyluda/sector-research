@@ -114,6 +114,14 @@ class QuantRoutingTests(unittest.TestCase):
         for cat, keys in QUANT_ROUTING.items():
             self.assertTrue(set(keys) <= known, f"{cat} routes unknown key")
 
+    def test_remaining_categories_pinned(self):
+        self.assertEqual(routing_for("Growth & Earnings").quant_metrics,
+                         ["margin_slopes", "sbc", "fcf_conversion"])
+        self.assertEqual(routing_for("Business Quality").quant_metrics,
+                         ["margin_slopes", "piotroski"])
+        self.assertEqual(routing_for("Management & Governance").quant_metrics,
+                         ["sbc", "beneish_m"])
+
 
 if __name__ == "__main__":
     unittest.main()

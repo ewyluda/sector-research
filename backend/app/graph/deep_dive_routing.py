@@ -7,7 +7,7 @@ EDGAR XBRL, filing excerpts, supply-chain relationships, quant fingerprint).
 
 Consolidated here so:
   - Adding a new deep-dive category is a single `routing_for()` lookup,
-    not a five-dict survey.
+    not a six-dict survey.
   - The per-category contract is grokable in one dataclass.
   - The tables themselves remain as the source of truth for routing
     decisions — re-exported for backward compat with existing call sites
