@@ -25,10 +25,11 @@ export function eventHref(ev: CalendarEvent): string | null {
 
 export function eventSubtitle(ev: CalendarEvent): string {
   if (ev.kind === "economic") {
+    const unit = ev.detail.unit ?? "";
     const parts: string[] = [];
-    if (ev.detail.actual !== null) parts.push(`actual ${fmtNum(ev.detail.actual)}`);
-    if (ev.detail.estimate !== null) parts.push(`est ${fmtNum(ev.detail.estimate)}`);
-    if (ev.detail.previous !== null) parts.push(`prev ${fmtNum(ev.detail.previous)}`);
+    if (ev.detail.actual !== null) parts.push(`actual ${fmtNum(ev.detail.actual)}${unit}`);
+    if (ev.detail.estimate !== null) parts.push(`est ${fmtNum(ev.detail.estimate)}${unit}`);
+    if (ev.detail.previous !== null) parts.push(`prev ${fmtNum(ev.detail.previous)}${unit}`);
     return parts.join(" · ");
   }
   if (ev.kind === "earnings") {

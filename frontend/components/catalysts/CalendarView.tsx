@@ -32,6 +32,7 @@ export function CalendarView() {
   const [error, setError] = useState<string | null>(null);
   const hasDataRef = useRef(false);
   const loading = data === null && !error;
+  const failedInitialLoad = error !== null && data === null;
 
   const monday = useMemo(() => mondayOf(new Date()), []);
   const sundayIso = useMemo(() => isoLocal(addDays(monday, 6)), [monday]);
@@ -117,7 +118,7 @@ export function CalendarView() {
 
       {loading ? (
         <p className="text-xs text-[var(--text-muted)] py-6">Loading calendar…</p>
-      ) : (
+      ) : !failedInitialLoad ? (
         <>
           <section>
             <h2 className="text-[11px] uppercase tracking-widest text-[var(--text-muted)] mb-2">
@@ -153,7 +154,7 @@ export function CalendarView() {
             <AgendaList events={comingUp} />
           </section>
         </>
-      )}
+      ) : null}
     </div>
   );
 }

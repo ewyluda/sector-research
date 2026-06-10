@@ -82,9 +82,11 @@ def _econ_events(rows: list[dict], citation: Citation) -> list[CalendarEvent]:
             continue
         raw = str(r.get("date") or "")
         ts: datetime | None = None
+        has_time = False
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
             try:
                 ts = datetime.strptime(raw, fmt).replace(tzinfo=timezone.utc)
+                has_time = fmt != "%Y-%m-%d"
                 break
             except ValueError:
                 continue
@@ -93,7 +95,7 @@ def _econ_events(rows: list[dict], citation: Citation) -> list[CalendarEvent]:
         out.append(CalendarEvent(
             kind="economic",
             date=ts.date(),
-            timestamp=ts,
+            timestamp=ts if has_time else None,
             ticker=None,
             title=r.get("event") or "Economic release",
             detail={

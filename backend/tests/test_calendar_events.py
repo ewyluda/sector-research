@@ -59,11 +59,12 @@ class EconEventsTests(unittest.TestCase):
         rows = [{"country": "US", "impact": "High", "event": "X", "date": "junk"}]
         self.assertEqual(ce._econ_events(rows, _cit()), [])
 
-    def test_date_only_string_parses_with_midnight_timestamp(self):
+    def test_date_only_string_parses_with_null_timestamp(self):
         rows = [{"country": "US", "impact": "High", "event": "X",
                  "date": "2026-06-10"}]
         events = ce._econ_events(rows, _cit())
         self.assertEqual(events[0].date, date(2026, 6, 10))
+        self.assertIsNone(events[0].timestamp)
 
     def test_non_string_date_value_is_handled(self):
         # Drivers may hand back datetime objects; str() renders them
