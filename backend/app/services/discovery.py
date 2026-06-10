@@ -55,7 +55,13 @@ class XSignalSnapshot:
 @dataclass
 class InsiderSnapshot:
     """Cached Form 4 signal as applied to this card. modifier is 0 when the
-    signal is stale or absent (i.e., what was actually applied)."""
+    signal is stale or absent (i.e., what was actually applied).
+
+    NOTE: is_stale means "signal present but no modifier was applied" — it is
+    True both for genuinely stale (>48h) signals AND for fresh signals whose
+    modifier is legitimately 0 (no notable insider activity). Don't read it
+    as a pure age check; the only current consumer is the modifier!=0 chip,
+    which never reads it. Rename before giving it a second consumer."""
     modifier: int = 0
     buy_count: int = 0
     sell_count: int = 0
