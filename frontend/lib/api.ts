@@ -1065,7 +1065,7 @@ export interface EarningsEventDetail {
 export interface CatalystEventDetail {
   run_id: string;
   catalyst_id: string;
-  type: string | null;
+  type: CatalystType | null;
   timeframe: string;
   linked_pillar: string | null;
   windowed: boolean;
