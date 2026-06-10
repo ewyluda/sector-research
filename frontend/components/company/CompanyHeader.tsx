@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { getCompanyHeader } from "@/lib/api";
 import type { CompanyHeader as CompanyHeaderData } from "@/lib/api";
 import { PricePill } from "./PricePill";
@@ -47,7 +48,16 @@ export function CompanyHeader({ ticker }: { ticker: string }) {
           />
         </div>
       </div>
-      <LensSelector />
+      <div className="flex items-center gap-2">
+        <Link
+          href={`/performance?log_trade=${ticker}`}
+          data-print-hide="true"
+          className="px-2 py-0.5 rounded-md border border-[var(--border)] text-[11px] font-semibold text-[var(--text-muted)] hover:text-[var(--text)]"
+        >
+          Log trade
+        </Link>
+        <LensSelector />
+      </div>
     </div>
   );
 }
