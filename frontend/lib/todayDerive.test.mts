@@ -18,6 +18,7 @@ function entry(over: Partial<StatusBoardEntry>): StatusBoardEntry {
     health_reasons: [],
     next_catalyst: null,
     kill_criteria_summary: { total: 0, triggered: 0 },
+    material_events: null,
     ...over,
   };
 }
