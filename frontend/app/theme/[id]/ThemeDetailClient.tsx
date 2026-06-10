@@ -462,7 +462,7 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
       {/* Page header */}
       <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
         <div className="min-w-0">
-          <Link href="/" className="text-xs text-[var(--text-faint)] hover:text-[var(--text-muted)]">
+          <Link href="/themes" className="text-xs text-[var(--text-faint)] hover:text-[var(--text-muted)]">
             ← Themes
           </Link>
           <h1 className="text-xl font-semibold text-[var(--text)] mt-1">{theme.name}</h1>
