@@ -8,13 +8,17 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models.catalyst import Catalyst
+from backend.app.services.calendar_events import (
+    CalendarResponse,
+    get_calendar_events,
+)
 
 router = APIRouter()
 
@@ -233,6 +237,26 @@ async def list_catalysts(
         buckets=CatalystBuckets(**buckets),
         total=sum(len(v) for v in buckets.values()),
     )
+
+
+@router.get("/catalysts/calendar", response_model=CalendarResponse)
+async def get_calendar(
+    request: Request,
+    start: date = Query(...),
+    end: date = Query(...),
+    db: AsyncSession = Depends(get_db),
+) -> CalendarResponse:
+    """Unified calendar: US high-impact econ + universe earnings + thesis
+    catalysts for [start, end].
+
+    Declared BEFORE /catalysts/{catalyst_id} — 'calendar' would otherwise
+    parse as a catalyst id (same footgun as peers /compare; pinned by test).
+    """
+    if start > end:
+        raise HTTPException(status_code=422, detail="start must be <= end")
+    if (end - start).days > 120:
+        raise HTTPException(status_code=422, detail="range too large (max 120 days)")
+    return await get_calendar_events(db, request.app.state.fmp, start, end)
 
 
 @router.get("/catalysts/{catalyst_id}", response_model=CatalystRow)

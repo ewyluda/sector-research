@@ -18,10 +18,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.models.citation import Citation
-# Private import is deliberate: the status board owns the "active thesis"
-# semantics (completed/watchlist, non-archived, theme-attached). Duplicating
-# that SQL here is the bigger hazard.
-from backend.app.services.status_board import _build_latest_runs_sql
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +147,13 @@ def _earnings_events(
 async def get_universe(db: AsyncSession) -> Universe:
     """Theme seeds ∪ active theses (latest completed/watchlist, non-archived
     run per (ticker, theme) — the status board's universe)."""
+    # Deferred to avoid a circular import:
+    # calendar_events -> status_board -> api.catalysts -> calendar_events.
+    # Private import is deliberate: the status board owns the "active thesis"
+    # semantics (completed/watchlist, non-archived, theme-attached). Duplicating
+    # that SQL here is the bigger hazard.
+    from backend.app.services.status_board import _build_latest_runs_sql  # noqa: PLC0415
+
     tickers: set[str] = set()
 
     seed_rows = (await db.execute(text("SELECT seed_tickers FROM themes"))).scalars().all()
