@@ -115,6 +115,18 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
               ⚡ Surprise Signal
             </span>
           )}
+          {card.insider && card.insider.modifier !== 0 && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                card.insider.modifier > 0
+                  ? "bg-emerald-900/40 text-emerald-300"
+                  : "bg-amber-900/40 text-amber-300"
+              }`}
+              title={`Combined score ${card.insider.modifier > 0 ? "+" : ""}${card.insider.modifier} from 90-day insider activity (${card.insider.buy_count} buys / ${card.insider.sell_count} sells)`}
+            >
+              {card.insider.modifier > 0 ? "Insider buying" : "Insider selling"}
+            </span>
+          )}
         </div>
       </div>
 
