@@ -79,8 +79,76 @@ def _round(v: float | None, places: int = 4) -> float | None:
     return round(v, places) if v is not None else None
 
 
-def _is_financial(profile: dict) -> bool:
+def _is_financial(profile: dict | None) -> bool:
     return (profile or {}).get("sector") == FINANCIAL_SECTOR
+
+
+# ── Piotroski F-score ────────────────────────────────────────────────────────
+
+def build_piotroski(income: list[dict], balance: list[dict], cashflow: list[dict]) -> dict:
+    b0 = balance[0] if balance else None
+    b4 = balance[4] if len(balance) > 4 else None
+
+    ni_ttm = _ttm(income, "netIncome")
+    ni_prior = _prior_ttm(income, "netIncome")
+    cfo_ttm = _ttm(cashflow, "operatingCashFlow")
+    rev_ttm = _ttm(income, "revenue")
+    rev_prior = _prior_ttm(income, "revenue")
+    ta0 = _f(b0, "totalAssets")
+    ta4 = _f(b4, "totalAssets")
+
+    roa_now = _div(ni_ttm, ta0)
+    roa_prior = _div(ni_prior, ta4)
+    lev_now = _div(_f(b0, "longTermDebt"), ta0)
+    lev_prior = _div(_f(b4, "longTermDebt"), ta4)
+    cr_now = _div(_f(b0, "totalCurrentAssets"), _f(b0, "totalCurrentLiabilities"))
+    cr_prior = _div(_f(b4, "totalCurrentAssets"), _f(b4, "totalCurrentLiabilities"))
+    shares_now = _avg_window(income, "weightedAverageShsOutDil", 0)
+    shares_prior = _avg_window(income, "weightedAverageShsOutDil", 4)
+    gm_now = _div(_ttm(income, "grossProfit"), rev_ttm)
+    gm_prior = _div(_prior_ttm(income, "grossProfit"), rev_prior)
+    ato_now = _div(rev_ttm, ta0)
+    ato_prior = _div(rev_prior, ta4)
+
+    def gt(a, b):
+        return None if a is None or b is None else a > b
+
+    def lte(a, b):
+        return None if a is None or b is None else a <= b
+
+    def detail(now, prior):
+        if now is None or prior is None:
+            return "insufficient data"
+        return f"{now:.4g} now vs {prior:.4g} prior"
+
+    components = [
+        {"key": "roa_positive", "label": "ROA positive (TTM)",
+         "passed": None if roa_now is None else roa_now > 0,
+         "detail": "insufficient data" if roa_now is None else f"ROA {roa_now:.4g}"},
+        {"key": "cfo_positive", "label": "Operating cash flow positive (TTM)",
+         "passed": None if cfo_ttm is None else cfo_ttm > 0,
+         "detail": "insufficient data" if cfo_ttm is None else f"CFO {cfo_ttm:.4g}"},
+        {"key": "roa_delta", "label": "ROA improved YoY",
+         "passed": gt(roa_now, roa_prior), "detail": detail(roa_now, roa_prior)},
+        {"key": "accruals_quality", "label": "CFO exceeds net income (TTM)",
+         "passed": None if cfo_ttm is None or ni_ttm is None else cfo_ttm > ni_ttm,
+         "detail": detail(cfo_ttm, ni_ttm)},
+        {"key": "leverage_delta", "label": "Long-term leverage flat or lower YoY",
+         "passed": lte(lev_now, lev_prior), "detail": detail(lev_now, lev_prior)},
+        {"key": "current_ratio_delta", "label": "Current ratio improved YoY",
+         "passed": gt(cr_now, cr_prior), "detail": detail(cr_now, cr_prior)},
+        {"key": "no_dilution", "label": "No net share issuance YoY",
+         "passed": lte(shares_now, shares_prior), "detail": detail(shares_now, shares_prior)},
+        {"key": "gross_margin_delta", "label": "Gross margin improved YoY",
+         "passed": gt(gm_now, gm_prior), "detail": detail(gm_now, gm_prior)},
+        {"key": "asset_turnover_delta", "label": "Asset turnover improved YoY",
+         "passed": gt(ato_now, ato_prior), "detail": detail(ato_now, ato_prior)},
+    ]
+    return {
+        "score": sum(1 for c in components if c["passed"] is True),
+        "components_evaluated": sum(1 for c in components if c["passed"] is not None),
+        "components": components,
+    }
 
 
 # ── Top-level ────────────────────────────────────────────────────────────────
@@ -117,7 +185,7 @@ def build_quant_fingerprint(
     profile = profile or {}
 
     return QuantFingerprint(
-        piotroski={"score": 0, "components_evaluated": 0, "components": []},
+        piotroski=build_piotroski(income, balance, cashflow),
         altman_z={"z": None, "zone": None, "not_applicable_reason": None},
         beneish_m={"m": None, "zone": None, "ratios": {},
                    "inputs_missing": [], "not_applicable_reason": None},

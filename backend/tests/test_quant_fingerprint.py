@@ -111,5 +111,43 @@ class MetaTests(unittest.TestCase):
         json.dumps(fingerprint())  # must not raise
 
 
+class PiotroskiTests(unittest.TestCase):
+    """Fixture passes 8 of 9 checks. no_dilution fails: avg diluted shares
+    rose 100 -> 102. Hand-checks: ROA .2 > .1579; CFO 120 > NI 80;
+    leverage .125 <= .1579; CR 2.0 > 1.8; GM .6 > .5556; ATO 1.0 > .9474."""
+
+    def test_score_and_evaluated(self):
+        p = fingerprint()["piotroski"]
+        self.assertEqual(p["score"], 8)
+        self.assertEqual(p["components_evaluated"], 9)
+
+    def test_component_keys_and_failure(self):
+        p = fingerprint()["piotroski"]
+        by_key = {c["key"]: c for c in p["components"]}
+        self.assertEqual(
+            list(by_key),
+            ["roa_positive", "cfo_positive", "roa_delta", "accruals_quality",
+             "leverage_delta", "current_ratio_delta", "no_dilution",
+             "gross_margin_delta", "asset_turnover_delta"],
+        )
+        self.assertFalse(by_key["no_dilution"]["passed"])
+        self.assertTrue(by_key["roa_positive"]["passed"])
+        self.assertTrue(by_key["leverage_delta"]["passed"])
+
+    def test_zero_debt_stays_zero_passes_leverage(self):
+        bal = [dict(b, longTermDebt=0) for b in BALANCE]
+        p = fingerprint(balance=bal)["piotroski"]
+        by_key = {c["key"]: c for c in p["components"]}
+        self.assertTrue(by_key["leverage_delta"]["passed"])
+
+    def test_four_quarters_degrades_to_three_evaluated(self):
+        p = fingerprint(INCOME[:4], BALANCE[:4], CASHFLOW[:4])["piotroski"]
+        self.assertEqual(p["components_evaluated"], 3)
+        self.assertEqual(p["score"], 3)  # roa_positive, cfo_positive, accruals_quality
+        by_key = {c["key"]: c for c in p["components"]}
+        self.assertIsNone(by_key["roa_delta"]["passed"])
+        self.assertIsNone(by_key["no_dilution"]["passed"])
+
+
 if __name__ == "__main__":
     unittest.main()
