@@ -22,7 +22,7 @@ from backend.app.db import get_db
 from backend.app.services.calendar_events import CalendarEvent, CalendarResponse
 
 
-def make_client() -> TestClient:
+def make_client() -> tuple[TestClient, AsyncMock]:
     app = FastAPI()
     app.include_router(router, prefix="/api")
     db = AsyncMock()
@@ -32,7 +32,7 @@ def make_client() -> TestClient:
 
     app.dependency_overrides[get_db] = _fake_db
     app.state.fmp = AsyncMock()
-    return TestClient(app)
+    return TestClient(app), app.state.fmp
 
 
 def _fake_response() -> CalendarResponse:
@@ -52,7 +52,7 @@ class CalendarRouteTests(unittest.TestCase):
         # hits /catalysts/{catalyst_id} with id='calendar'. With it, the
         # missing start/end query params produce a 422 from the calendar
         # route itself.
-        client = make_client()
+        client, _ = make_client()
         resp = client.get("/api/catalysts/calendar")
         self.assertEqual(resp.status_code, 422)
         detail = str(resp.json())
@@ -60,17 +60,26 @@ class CalendarRouteTests(unittest.TestCase):
         self.assertIn("end", detail)
 
     def test_start_after_end_rejected(self):
-        client = make_client()
+        client, _ = make_client()
         resp = client.get("/api/catalysts/calendar?start=2026-06-22&end=2026-06-08")
         self.assertEqual(resp.status_code, 422)
 
     def test_range_over_120_days_rejected(self):
-        client = make_client()
+        client, _ = make_client()
         resp = client.get("/api/catalysts/calendar?start=2026-01-01&end=2026-06-01")
         self.assertEqual(resp.status_code, 422)
 
+    def test_exactly_120_day_range_accepted(self):
+        client, _ = make_client()
+        with patch(
+            "backend.app.api.catalysts.get_calendar_events",
+            new=AsyncMock(return_value=_fake_response()),
+        ):
+            resp = client.get("/api/catalysts/calendar?start=2026-01-01&end=2026-05-01")
+        self.assertEqual(resp.status_code, 200)
+
     def test_happy_path_passes_through_service_response(self):
-        client = make_client()
+        client, fmp = make_client()
         with patch(
             "backend.app.api.catalysts.get_calendar_events",
             new=AsyncMock(return_value=_fake_response()),
@@ -85,6 +94,7 @@ class CalendarRouteTests(unittest.TestCase):
         args = svc.await_args.args
         self.assertEqual(args[2], date(2026, 6, 8))
         self.assertEqual(args[3], date(2026, 6, 22))
+        self.assertIs(args[1], fmp)
 
 
 if __name__ == "__main__":
