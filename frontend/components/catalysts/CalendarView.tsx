@@ -6,9 +6,9 @@
  * Filter chips gate kinds client-side; range changes refetch.
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getCalendarEvents } from "@/lib/api";
-import type { CalendarEventKind, CalendarResponse } from "@/lib/api";
+import type { CalendarEvent, CalendarEventKind, CalendarResponse } from "@/lib/api";
 import { WeekLanes } from "./WeekLanes";
 import { AgendaList } from "./AgendaList";
 import { KIND_COLOR } from "./EventCard";
@@ -30,6 +30,8 @@ export function CalendarView() {
   );
   const [data, setData] = useState<CalendarResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const hasDataRef = useRef(false);
+  const loading = data === null && !error;
 
   const monday = useMemo(() => mondayOf(new Date()), []);
   const sundayIso = useMemo(() => isoLocal(addDays(monday, 6)), [monday]);
@@ -39,12 +41,19 @@ export function CalendarView() {
     getCalendarEvents(isoLocal(monday), isoLocal(addDays(monday, 6 + rangeDays)))
       .then((d) => {
         if (!cancelled) {
+          hasDataRef.current = true;
           setData(d);
           setError(null);
         }
       })
       .catch(() => {
-        if (!cancelled) setError("Could not load calendar.");
+        if (!cancelled) {
+          setError(
+            hasDataRef.current
+              ? "Could not refresh calendar — showing previous data."
+              : "Could not load calendar."
+          );
+        }
       });
     return () => {
       cancelled = true;
@@ -55,8 +64,9 @@ export function CalendarView() {
     () => (data?.events ?? []).filter((e) => kinds.has(e.kind)),
     [data, kinds]
   );
-  const thisWeek = visible.filter((e) => e.date <= sundayIso);
-  const comingUp = visible.filter((e) => e.date > sundayIso);
+  const isWindowed = (e: CalendarEvent) => e.kind === "catalyst" && e.detail.windowed;
+  const thisWeek = visible.filter((e) => e.date <= sundayIso && !isWindowed(e));
+  const comingUp = visible.filter((e) => e.date > sundayIso || isWindowed(e));
 
   function toggleKind(kind: CalendarEventKind) {
     setKinds((prev) => {
@@ -105,39 +115,45 @@ export function CalendarView() {
         </div>
       ))}
 
-      <section>
-        <h2 className="text-[11px] uppercase tracking-widest text-[var(--text-muted)] mb-2">
-          This week
-        </h2>
-        <WeekLanes monday={monday} events={thisWeek} />
-      </section>
+      {loading ? (
+        <p className="text-xs text-[var(--text-muted)] py-6">Loading calendar…</p>
+      ) : (
+        <>
+          <section>
+            <h2 className="text-[11px] uppercase tracking-widest text-[var(--text-muted)] mb-2">
+              This week
+            </h2>
+            <WeekLanes monday={monday} events={thisWeek} />
+          </section>
 
-      <section>
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
-            Coming up
-          </h2>
-          <div
-            className="flex overflow-hidden rounded-md border border-[var(--text-muted)]/30 text-[10px]"
-            data-print-hide="true"
-          >
-            {RANGES.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRangeDays(r)}
-                className={`px-2.5 py-1 ${
-                  rangeDays === r
-                    ? "bg-blue-400/20 font-semibold text-[var(--text)]"
-                    : "text-[var(--text-muted)]"
-                }`}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
+                Coming up
+              </h2>
+              <div
+                className="flex overflow-hidden rounded-md border border-[var(--text-muted)]/30 text-[10px]"
+                data-print-hide="true"
               >
-                {r} days
-              </button>
-            ))}
-          </div>
-        </div>
-        <AgendaList events={comingUp} />
-      </section>
+                {RANGES.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRangeDays(r)}
+                    className={`px-2.5 py-1 ${
+                      rangeDays === r
+                        ? "bg-blue-400/20 font-semibold text-[var(--text)]"
+                        : "text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {r} days
+                  </button>
+                ))}
+              </div>
+            </div>
+            <AgendaList events={comingUp} />
+          </section>
+        </>
+      )}
     </div>
   );
 }
