@@ -238,7 +238,74 @@ class BeneishMTests(unittest.TestCase):
     def test_financial_sector_not_applicable(self):
         b = fingerprint(profile={"marketCap": 2000, "sector": "Financial Services"})["beneish_m"]
         self.assertIsNone(b["m"])
+        self.assertIsNone(b["zone"])
         self.assertIn("financial", b["not_applicable_reason"].lower())
+
+    def test_caution_and_flag_zones(self):
+        # TATA is the lever: M = -3.0567 + 4.679*(tata + 0.1).
+        # CFO 10/q -> TATA (80-40)/400 = 0.1 -> M ≈ -2.1209 -> caution
+        caution_cf = [_cq(10, 25, 5, 4, 20)] * 4 + [_cq(20, 18, 5, 3, 15)] * 4
+        b = fingerprint(cashflow=caution_cf)["beneish_m"]
+        self.assertEqual(b["zone"], "caution")
+        # CFO 0/q -> TATA 80/400 = 0.2 -> M ≈ -1.6530 -> flag
+        flag_cf = [_cq(0, 25, 5, 4, 20)] * 4 + [_cq(20, 18, 5, 3, 15)] * 4
+        b = fingerprint(cashflow=flag_cf)["beneish_m"]
+        self.assertEqual(b["zone"], "flag")
+
+    def test_negative_total_assets_nulls_balance_ratios(self):
+        bal = [dict(BALANCE[0], totalAssets=-400)] + [dict(b) for b in BALANCE[1:]]
+        b = fingerprint(balance=bal)["beneish_m"]
+        self.assertIsNone(b["m"])
+        self.assertIn("aqi", b["inputs_missing"])
+        self.assertIn("lvgi", b["inputs_missing"])
+
+
+class ScalarMetricTests(unittest.TestCase):
+    def test_accruals_ratio_avg_ta(self):
+        # (80-120)/((400+380)/2) = -40/390 = -0.1026
+        self.assertAlmostEqual(fingerprint()["accruals_ratio"], -0.1026, places=3)
+
+    def test_accruals_falls_back_to_ta0_with_four_quarters(self):
+        fp = fingerprint(INCOME[:4], BALANCE[:4], CASHFLOW[:4])
+        self.assertAlmostEqual(fp["accruals_ratio"], -0.1, places=4)  # -40/400
+
+    def test_fcf_conversion(self):
+        self.assertAlmostEqual(fingerprint()["fcf_conversion"], 1.25, places=4)  # 100/80
+
+    def test_fcf_conversion_null_on_negative_ni(self):
+        income = [_iq(100, 60, -20, 30, 10, 102)] * 4 + [_iq(90, 50, 15, 25, 10, 100)] * 4
+        self.assertIsNone(fingerprint(income=income)["fcf_conversion"])
+
+    def test_sbc_block(self):
+        sbc = fingerprint()["sbc"]
+        self.assertAlmostEqual(sbc["sbc_pct_revenue"], 4.0, places=2)        # 16/400
+        self.assertAlmostEqual(sbc["share_growth_yoy_pct"], 2.0, places=2)   # 102/100 - 1
+
+    def test_sbc_share_growth_null_with_four_quarters(self):
+        sbc = fingerprint(INCOME[:4], BALANCE[:4], CASHFLOW[:4])["sbc"]
+        self.assertAlmostEqual(sbc["sbc_pct_revenue"], 4.0, places=2)
+        self.assertIsNone(sbc["share_growth_yoy_pct"])
+
+
+class MarginSlopeTests(unittest.TestCase):
+    def test_rising_gross_margin_positive_slope(self):
+        # Chronological gross margins: 4x 55.56% then 4x 60% -> positive slope.
+        slopes = fingerprint()["margin_slopes"]
+        self.assertGreater(slopes["gross"]["slope_pp_per_quarter"], 0)
+        self.assertEqual(slopes["gross"]["quarters"], 8)
+        self.assertIn("operating", slopes)
+        self.assertIn("net", slopes)
+
+    def test_skips_zero_revenue_quarters(self):
+        income = list(INCOME)
+        income[7] = dict(income[7], revenue=0)
+        slopes = fingerprint(income=income)["margin_slopes"]
+        self.assertEqual(slopes["gross"]["quarters"], 7)
+
+    def test_under_four_points_null_slope(self):
+        slopes = fingerprint(INCOME[:3], BALANCE[:3], CASHFLOW[:3])["margin_slopes"]
+        self.assertIsNone(slopes["gross"]["slope_pp_per_quarter"])
+        self.assertEqual(slopes["gross"]["quarters"], 3)
 
 
 if __name__ == "__main__":

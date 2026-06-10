@@ -211,13 +211,13 @@ def build_beneish_m(income: list[dict], balance: list[dict],
         ca, ppe, lti = (_f(b, "totalCurrentAssets"),
                         _f(b, "propertyPlantEquipmentNet"),
                         _f(b, "longTermInvestments"))
-        if None in (ca, ppe, lti) or not ta:
+        if None in (ca, ppe, lti) or not ta or ta < 0:
             return None
         return 1 - (ca + ppe + lti) / ta
 
     def leverage(b: dict | None, ta: float | None) -> float | None:
         ltd, cl = _f(b, "longTermDebt"), _f(b, "totalCurrentLiabilities")
-        if None in (ltd, cl) or not ta:
+        if None in (ltd, cl) or not ta or ta < 0:
             return None
         return (ltd + cl) / ta
 
@@ -250,6 +250,39 @@ def build_beneish_m(income: list[dict], balance: list[dict],
     base["m"] = round(m, 4)
     base["zone"] = "flag" if m > -1.78 else ("caution" if m >= -2.22 else "unlikely")
     return base
+
+
+# ── SBC dilution + margin slopes ─────────────────────────────────────────────
+
+def build_sbc(income: list[dict], cashflow: list[dict]) -> dict:
+    pct = _div(_ttm(cashflow, "stockBasedCompensation"), _ttm(income, "revenue"))
+    growth = _div(_avg_window(income, "weightedAverageShsOutDil", 0),
+                  _avg_window(income, "weightedAverageShsOutDil", 4))
+    return {
+        "sbc_pct_revenue": _round(pct * 100, 2) if pct is not None else None,
+        "share_growth_yoy_pct": _round((growth - 1) * 100, 2) if growth is not None else None,
+    }
+
+
+def build_margin_slopes(income: list[dict]) -> dict:
+    def margin_series(numerator: str) -> list[float]:
+        pts = []
+        for stmt in reversed(income):  # chronological, oldest first
+            rev, num = _f(stmt, "revenue"), _f(stmt, numerator)
+            if rev and num is not None:
+                pts.append(num / rev * 100)
+        return pts
+
+    out = {}
+    for label, numerator in (("gross", "grossProfit"),
+                             ("operating", "operatingIncome"),
+                             ("net", "netIncome")):
+        pts = margin_series(numerator)
+        out[label] = {
+            "slope_pp_per_quarter": _round(_ols_slope(pts)),
+            "quarters": len(pts),
+        }
+    return out
 
 
 # ── Top-level ────────────────────────────────────────────────────────────────
@@ -285,14 +318,26 @@ def build_quant_fingerprint(
     cashflow = cashflow or []
     profile = profile or {}
 
+    ni_ttm = _ttm(income, "netIncome")
+    cfo_ttm = _ttm(cashflow, "operatingCashFlow")
+    ta0 = _f(balance[0] if balance else None, "totalAssets")
+    ta4 = _f(balance[4] if len(balance) > 4 else None, "totalAssets")
+    # Avg of window endpoints when the year-ago balance exists; TA[0] otherwise
+    # (meta.quarters_available makes the fallback interpretable downstream).
+    accrual_den = (ta0 + ta4) / 2 if ta0 is not None and ta4 is not None else ta0
+    accruals = _div(None if ni_ttm is None or cfo_ttm is None else ni_ttm - cfo_ttm,
+                    accrual_den)
+    fcf_conv = _div(_ttm(cashflow, "freeCashFlow"), ni_ttm) \
+        if ni_ttm is not None and ni_ttm > 0 else None
+
     return QuantFingerprint(
         piotroski=build_piotroski(income, balance, cashflow),
         altman_z=build_altman_z(income, balance, profile),
         beneish_m=build_beneish_m(income, balance, cashflow, profile),
-        accruals_ratio=None,
-        fcf_conversion=None,
-        sbc={"sbc_pct_revenue": None, "share_growth_yoy_pct": None},
-        margin_slopes={},
+        accruals_ratio=_round(accruals),
+        fcf_conversion=_round(fcf_conv),
+        sbc=build_sbc(income, cashflow),
+        margin_slopes=build_margin_slopes(income),
         meta={
             "quarters_available": min(len(income), len(balance), len(cashflow)),
             "basis": "ttm_vs_prior_ttm",
