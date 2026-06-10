@@ -72,18 +72,20 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with citations on every data point). No auth — local-only tool.
 
-Eight top-level workspaces (see `frontend/components/Nav.tsx`):
+Ten top-level workspaces (see `frontend/components/Nav.tsx`):
 
 - **Today** (`/`) — morning briefing: summary banner, 4-day calendar slice, needs-attention list (status-board health + open P1 questions). Pure frontend composition of the board/calendar/questions endpoints.
 - **Themes / Discovery** (`/themes`, `/theme/[id]`) — ranked companies per theme.
 - **Filings** (`/filings`, `/filings/graph`) — SEC EDGAR filing extraction, relationship graph (1- or 2-hop, optionally theme-gated), counterparty resolution.
 - **Catalysts** (`/catalysts`) — upcoming-event calendar feeding the same data the status board surfaces.
-- **Status** (`/status`) — fleet-management view: every active thesis bucketed by health (Healthy / Imminent / Stale / Triggered / Broken), kill-criteria toggles, read-through and earnings drawers.
-- **Workspace** (`/workspace`, `/workspace/[runId]`) — 5-step workspace-loop orchestrator that refreshes a thesis (update → research → challenge → differentiate → validate) and produces an updated verdict + model deltas.
+- **Status** (`/status`) — fleet-management view: every active thesis bucketed by health (Healthy / Imminent / Stale / Triggered / Broken), kill-criteria toggles, read-through, earnings, and material-events drawers.
+- **Prospectus** (`/prospectus`, `/prospectus/[reportId]`) — S-1 / S-1/A reports: 4-step pipeline (ingest → relationships → 7 IPO-tuned categories → thesis) reusing the EDGAR plumbing under a `synthetic_ticker`; verdicts participate / watch_post_lockup / pass.
+- **Workspace** (`/workspace`, `/workspace/[runId]`) — 5-step workspace-loop orchestrator that refreshes a thesis (update_refresh → research → validation → challenge → differentiation) and produces an updated verdict + model deltas.
 - **Questions** (`/questions`) — open-question log with retry/dismiss/resolve actions.
 - **Library** (`/library`) — saved runs / archive.
+- **Performance** (`/performance`) — verdict-outcome rollups (vs SPY / sector ETF / theme basket at 1d–6m horizons) plus the trade journal.
 
-Plus the run-creation flow (`/pipeline/new`, `/pipeline/[runId]`) and the per-ticker financial model (`/model/[ticker]`).
+Plus the run-creation flow (`/pipeline/new`, `/pipeline/[runId]`), the per-ticker financial model (`/model/[ticker]`), the company workspace (`/company/[ticker]` with overview / financials / model / peers / research / theses / transcripts / filings tabs, backed by the `/api/company` router), and ad-hoc peer comparison at `/compare?tickers=` (URL is the state; no nav link by design).
 
 Two deployables in a flat layout:
 
@@ -140,6 +142,7 @@ Single `.env` at project root. `backend/app/config.py` reads it via `env_file=".
 ```
 quick_screen (Haiku)
   → deep_dive (Sonnet, 9 categories in parallel)
+  → targeted_followup (Haiku — retries P1 auto-answerable questions)
   → thesis_construction (Sonnet)
   → risk_stress_test (Sonnet)
        ├─ loop_required & loop_count ≤ 2 → back to deep_dive
@@ -181,7 +184,7 @@ Every data-client method returns `tuple[data, Citation]`, not just data. `models
 Two kinds of async work run under the FastAPI process:
 
 - **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task holds the DB session passed from the request; if you change session lifecycle, verify the background task still has a live session.
-- **Daily signal refresh** — `AsyncIOScheduler` cron job registered in `app/main.py::lifespan`, calls `services.signal_scheduler.run_daily_refresh`.
+- **Four `AsyncIOScheduler` cron jobs** registered in `app/main.py::lifespan`: daily X signal refresh (02:00 local, `services.signal_scheduler.run_daily_refresh`), daily earnings-prints refresh (21:00, `services.earnings_scheduler`), verdict-outcome snapshot refresh (03:00 UTC, `services.outcome_tracker.refresh_snapshots`), and the 8-K + Form 4 material-events scan (06:30 UTC, `services.material_events_scheduler`).
 
 ### SEC EDGAR filing pipeline (read this before touching `backend/app/services/edgar*`, `supply_chain.py`, `fanout.py`, or `relationship_context.py`)
 
@@ -243,7 +246,7 @@ Database tables (all in `models/filing.py`):
 
 ### Workspace loop (read this before touching `backend/app/services/workspace*.py`, `backend/app/api/workspace.py`, or `frontend/components/workspace/`)
 
-Separate from the LangGraph pipeline. The **workspace loop** is a 5-step thesis-refresh orchestrator that pulls a completed research run forward in time: `update_refresh → research → challenge → differentiate → validate`. Lives at `/workspace` (fleet list) and `/workspace/[runId]` (per-run report).
+Separate from the LangGraph pipeline. The **workspace loop** is a 5-step thesis-refresh orchestrator that pulls a completed research run forward in time: `update_refresh → research → validation → challenge → differentiation` (execution order pinned by `STEP_NAMES` in `services/workspace_steps.py`). Lives at `/workspace` (fleet list) and `/workspace/[runId]` (per-run report).
 
 - `WorkspaceService` (in `services/workspace.py`) wired into `main.py::lifespan` as `app.state.workspace`. Mirrors `PipelineService` — in-memory `dict[run_id, asyncio.Queue]` SSE plumbing, `WorkspaceRunInFlight` guard against duplicate starts per ticker.
 - Step implementations in `services/workspace_steps.py`. Output schemas in `models/workspace_schemas.py` (`UpdateRefreshOutput`, `ResearchOutput`, `ChallengeOutput`, `DifferentiationOutput`, `ValidationOutput` — each with a `WorkspaceVerdict` enum: `healthy | imminent | triggered | broken`). Run rows in `workspace_runs` (`models/workspace_run.py`) with a JSONB `step_outputs` column.
@@ -271,6 +274,14 @@ Manual entry/exit trade log linked to `verdict_outcomes` (nullable FK, SET NULL)
 ### Material events + insider signal (read this before touching `backend/app/services/material_events_scheduler.py`, `event_classifier.py`, `insider_*.py`, or `api/events.py`)
 
 Daily 06:30 UTC cron (4th job in `main.py::lifespan`) scans the universe (theme seeds ∪ active theses — same derivation as the calendar, via the status board's latest-runs SQL). 8-K side: EDGAR submissions → item-code prefilter (skip non-empty subsets of {7.01, 9.01}; 2.02 kept — guidance lives there; empty items = missing metadata → classify) → Haiku classify (`event_classifier.py`, prefill + `parse_structured_output`, enum-normalized; classification errors are NOT tombstoned so they retry next run) → `Filing` (reuses `edgar_sections_ingest._upsert_filing`) + `material_events` (unique per filing, `dismissed_at` mirrors read-throughs). The 8-K side is fault-isolated: an EDGAR/Haiku failure rolls back and is recorded, but the insider ingest below still runs. Form 4 side: FMP `insider-trading/search` (`limit=100`; the SEC link field is `url`, live-verified 2026-06-10) → `insider_transactions` upsert idempotent on a sha256 `natural_key` over PARSED values (so `1000` vs `1000.0` serialization drift can't mint duplicates); `accession_number`/`sec_link` kept for future raw-EDGAR backfill. `insider_signal.py` is pure (90-day aggregate: open-market P/S only, null-price rows count but don't add value, cluster = ≥2 distinct buyers within 30d) → `signals` row `signal_type="insider"` per (ticker, theme) + `signal_history` dual-write. Discovery applies it as a bounded modifier (`apply_insider_modifier`: +5 cluster / +2 net buying / −3 pronounced selling, 48h staleness via `INSIDER_STALE_HOURS`, clamp [0,100]) — deliberately NOT a 4th weight; `InsiderSnapshot.is_stale` is overloaded (true for fresh-but-zero-modifier too — see its docstring before adding consumers). Status board joins a 14-day undismissed summary per ticker (one query, `_summarize_material_events`). `/api/events`: list (filterable), `{id}/dismiss`, `scan` (202 fire-and-forget; cron is primary). Frontend: `MaterialEventsDrawer` + badge on `/status` (deep link `/status?expand_events=<ticker>` — only resolves for tickers with a board entry; seed-only gap tracked in TODO), amber attention rows on Today (high materiality, 7d), insider chip on discovery cards.
+
+### Company workspace (read this before touching `backend/app/api/company.py` or `frontend/components/company/`)
+
+Fiscal.ai-inspired per-ticker shell at `/company/[ticker]` (PR #32) with tabs: overview / financials / model / peers / research / theses / transcripts / filings. Backed by the `/api/company` router (`header`, `overview`, `financials`, `transcripts` list/get/summary) over `services/company_snapshot.py` + `services/company_transcripts.py`. The model and filings tabs reuse the existing `/model/[ticker]` and filings surfaces; the Peers tab shares `components/peers/` with `/compare`. "Log trade" on the company header deep-links `/performance?log_trade=TICKER`.
+
+### Prospectus pipeline (read this before touching `backend/app/services/prospectus_*.py` or `frontend/components/prospectus/`)
+
+S-1 / S-1/A analysis pipeline (PR #31), parallel to research/workspace runs. `ProspectusService` (wired as `app.state.prospectus`) runs 4 steps — ingest → relationships → 7 IPO-tuned categories → thesis — with in-memory SSE queues and per-step session+commit, persisting into `prospectus_reports` (`step_outputs` JSONB; status ingesting | analyzing | completed | failed). Verdicts: `participate | watch_post_lockup | pass`. Key trick: issuers are written into `filings.ticker` / `relationships.ticker` under a **`synthetic_ticker`** (`proposed_ticker` if disclosed, else a slug of `issuer_name`, derived as a `@property` — don't re-normalize at the endpoint boundary), which lets the whole 5-phase EDGAR pipeline work unchanged on pre-IPO issuers. IPO category scores use their own rubric (0-30 disqualifying / 31-55 uncertain / 56-75 typical / 76-100 standout in `graph/prospectus_prompts.py`) — not the equity 40/55/70 tiers.
 
 ### Theme delete + cascade
 
@@ -326,7 +337,7 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 
 ### Frontend layout
 
-- `app/` — App Router pages: `/` (Today dashboard), `/themes` (themes grid), `/theme/[id]`, `/filings` (SEC filing extraction + curation queue), `/filings/graph` (multi-hop supply-chain graph view), `/catalysts`, `/status` (fleet board), `/workspace` + `/workspace/[runId]` (workspace-loop runs), `/questions`, `/library`, `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports), `/model/[ticker]` (editable financial model + reverse-DCF tabs). `/report/[runId]` redirects to `/pipeline/[runId]`.
+- `app/` — App Router pages: `/` (Today dashboard), `/themes` (themes grid), `/theme/[id]` + `/theme/new`, `/filings` (SEC filing extraction + curation queue), `/filings/graph` (multi-hop supply-chain graph view), `/catalysts`, `/status` (fleet board), `/prospectus` + `/prospectus/[reportId]` (S-1 reports), `/workspace` + `/workspace/[runId]` (workspace-loop runs), `/questions`, `/library`, `/performance` (outcomes + trade journal), `/pipeline/new`, `/pipeline/[runId]` (unified research page — handles both live streaming and completed reports), `/model/[ticker]` (editable financial model + reverse-DCF tabs), `/company/[ticker]` (company workspace — overview / financials / model / peers / research / theses / transcripts / filings tabs), `/compare` (ad-hoc peer comparison, URL-state). `/report/[runId]` redirects to `/pipeline/[runId]`.
 - `lib/api.ts` — **every** backend call goes through the typed client here. Types mirror backend Pydantic/dataclass shapes; if you change a backend response, update this file or TS will silently accept stale shapes at the fetch boundary.
 - `components/` — presentational pieces (`Nav`, `ScoreRing`, `SourceBadge`, `VelocityBadge`)
 - `components/filings/` — `ThemeFilingsPanel`, `TickerFilingsCard`, `SectionReader` (modal), `CurationPanel` (counterparty resolution queue), `MultiHopGraphView` + `RootHeader` + `HopGroup` + `EdgeRowBody` (the `/filings/graph` page)
@@ -334,6 +345,11 @@ Backend uses **absolute imports rooted at project root**: `from backend.app.conf
 - `components/status/` — `ReadThroughDrawer`, `EarningsDrawer` (drawers off the status board)
 - `components/questions/` — `OpenQuestionsPanel`, `QuestionRow`, `QuestionTickerRollupTable`
 - `components/peers/` — `PeerCompTable` (grouped comparison table shared by the company Peers tab and `/compare`), `PeerSetEditor` (chip editor)
+- `components/catalysts/` — `CatalystsView` (Calendar/List toggle), `CalendarView` + `WeekLanes` + `AgendaList`/`AgendaRow` + `EventCard` (the unified calendar UI)
+- `components/company/` — company-workspace shell: `CompanyHeader`, `TabStrip`, `StatementTable`, `StatisticsGrid`, `PriceChart`, `TranscriptReader`, `ResearchTab`, `ThesesTab`, `BullsBears`
+- `components/journal/` — `TradeJournalSection`, `TradeForm`, `TradeList`, `DecisionVsOutcomePanel`, `ExitReasonTable`
+- `components/performance/` — `HeroBand`, `PerformanceFilters`, `ByVerdictTable`, `ByThemeTable`, `BySignalBucketPanel`, `OutcomeList`, `ReturnCell`
+- `components/prospectus/` — `ProspectusList`, `NewProspectusButton`, `ProspectusReport` (REST + SSE), `VerdictPill`, `StepCards/` (⚠ `CategoryCard` uses IPO-specific score thresholds — do NOT swap in `scoreColors.ts`)
 - `components/themes/` — `DeleteThemeButton`
 - `components/today/` — `SummaryBanner`, `TodayLanes` (reuses catalysts `EventCard`), `AttentionList` (reuses `components/status/WorkspaceButton`, extracted from the status page); derivation logic in `lib/todayDerive.ts` (unit-tested via `node --test`)
 - `components/deep-dive/` — 30+ component module for the financial dashboard: `DeepDiveDashboard` orchestrator (receives `ticker` prop for supply-chain card), `SectionNav` (sticky horizontal scroll-spy nav, pills grouped into Summary / Financials / Context / Qualitative clusters with visual dividers), `CommandPalette` (⌘K / Ctrl-K fuzzy jump over the same `sections.ts` registry), `ReportHeader` (company identity + verdict + thesis/risk callouts — the scoreboards live in `OverviewBanner`, not here), `OverviewBanner` (synthesized verdict line + radar + HeadlineMetrics + ScoreBar, single source for these), `VelocitySparkline` (X signal badge), `sections/` (9 category sections + CrossCategoryCorrelation + `SupplyChainEcosystem`), `charts/` (Recharts bar/line/trend + lightweight-charts candlestick), `panels/` (AI companion + findings table), `skeleton/` (loading placeholders)
