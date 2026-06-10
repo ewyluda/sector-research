@@ -265,11 +265,13 @@ def build_sbc(income: list[dict], cashflow: list[dict]) -> dict:
 
 
 def build_margin_slopes(income: list[dict]) -> dict:
+    # Dropped quarters get no gap in x — the slope is pp-per-RETAINED-quarter,
+    # not pp-per-calendar-quarter. `quarters` in the output is the retained count.
     def margin_series(numerator: str) -> list[float]:
         pts = []
         for stmt in reversed(income):  # chronological, oldest first
             rev, num = _f(stmt, "revenue"), _f(stmt, numerator)
-            if rev and num is not None:
+            if rev and num is not None:  # skip None revenue and zero-revenue (avoid /0)
                 pts.append(num / rev * 100)
         return pts
 
@@ -325,6 +327,9 @@ def build_quant_fingerprint(
     # Avg of window endpoints when the year-ago balance exists; TA[0] otherwise
     # (meta.quarters_available makes the fallback interpretable downstream).
     accrual_den = (ta0 + ta4) / 2 if ta0 is not None and ta4 is not None else ta0
+    if accrual_den is not None and accrual_den <= 0:
+        # negative/zero TA would sign-invert the ratio — same guard as Beneish
+        accrual_den = None
     accruals = _div(None if ni_ttm is None or cfo_ttm is None else ni_ttm - cfo_ttm,
                     accrual_den)
     fcf_conv = _div(_ttm(cashflow, "freeCashFlow"), ni_ttm) \

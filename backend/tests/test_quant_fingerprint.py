@@ -286,6 +286,10 @@ class ScalarMetricTests(unittest.TestCase):
         self.assertAlmostEqual(sbc["sbc_pct_revenue"], 4.0, places=2)
         self.assertIsNone(sbc["share_growth_yoy_pct"])
 
+    def test_negative_total_assets_nulls_accruals(self):
+        bal = [dict(BALANCE[0], totalAssets=-400)] + [dict(b) for b in BALANCE[1:]]
+        self.assertIsNone(fingerprint(balance=bal)["accruals_ratio"])
+
 
 class MarginSlopeTests(unittest.TestCase):
     def test_rising_gross_margin_positive_slope(self):
