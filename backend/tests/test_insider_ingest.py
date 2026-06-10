@@ -86,6 +86,11 @@ class MappingTests(unittest.TestCase):
         self.assertEqual(a, b)
         self.assertNotEqual(a, c)
 
+    def test_natural_key_stable_across_numeric_formatting(self):
+        a = _natural_key("NVDA", ROW)
+        b = _natural_key("NVDA", {**ROW, "securitiesTransacted": 1000.0, "price": 120.50})
+        self.assertEqual(a, b)
+
 
 class UpsertTests(unittest.IsolatedAsyncioTestCase):
     async def test_skips_existing_keys_adds_new(self):
@@ -115,6 +120,20 @@ class UpsertTests(unittest.IsolatedAsyncioTestCase):
         summary = await upsert_insider_transactions(db, "NVDA", [])
         self.assertEqual(summary["added"], 0)
         db.execute.assert_not_awaited()
+
+    async def test_in_batch_duplicate_added_once(self):
+        added: list[object] = []
+        db = MagicMock()
+        db.add = MagicMock(side_effect=added.append)
+        result = MagicMock()
+        result.scalars.return_value.all.return_value = []
+        db.execute = AsyncMock(return_value=result)
+
+        summary = await upsert_insider_transactions(db, "NVDA", [ROW, dict(ROW)])
+
+        self.assertEqual(summary["added"], 1)
+        self.assertEqual(summary["skipped_existing"], 1)
+        self.assertEqual(len(added), 1)
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 Maps `FMPClient.get_insider_trading` rows into insider_transactions with a
 sha256 natural key for idempotent re-ingest. Wire keys live-verified
-2026-06-10 (see plan Task 1); adjust _KEY_FIELDS if FMP renames.
+2026-06-10 (see plan Task 1); adjust _natural_key if FMP renames.
 Service is commit-free — callers own the session (peer_sets convention).
 """
 from __future__ import annotations
@@ -22,14 +22,6 @@ logger = logging.getLogger(__name__)
 # Dashed accession number anywhere in the SEC link.
 _ACCESSION_RE = re.compile(r"(\d{10}-\d{2}-\d{6})")
 
-# Fields that identify a transaction line for dedupe purposes.
-# Wire keys live-verified 2026-06-10: the SEC link field is `url`.
-_KEY_FIELDS = (
-    "reportingName", "transactionDate", "transactionType",
-    "securitiesTransacted", "price", "url",
-)
-
-
 def _direction(transaction_type: str | None) -> str:
     """Open-market purchase/sale only; everything else is 'other'."""
     code = (transaction_type or "").strip().upper()
@@ -48,8 +40,23 @@ def _accession_from_link(link: str | None) -> str | None:
 
 
 def _natural_key(ticker: str, row: dict) -> str:
-    raw = "|".join([ticker.upper()] + [str(row.get(f)) for f in _KEY_FIELDS])
-    return hashlib.sha256(raw.encode()).hexdigest()
+    """sha256 over the identifying fields of one transaction line.
+
+    Numeric/date fields are hashed in PARSED form so serialization drift
+    (1000 vs 1000.0, date vs datetime string) can't mint duplicate rows.
+    securityName distinguishes same-day lines on different securities.
+    """
+    parts = [
+        ticker.upper(),
+        str(row.get("reportingName")),
+        str(_parse_date(row.get("transactionDate"))),
+        str(row.get("transactionType")),
+        str(_num(row.get("securitiesTransacted"))),
+        str(_num(row.get("price"))),
+        str(row.get("url") or row.get("link")),
+        str(row.get("securityName")),
+    ]
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()
 
 
 def _parse_date(s: object) -> date | None:
