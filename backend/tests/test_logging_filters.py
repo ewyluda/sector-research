@@ -48,6 +48,25 @@ class TestApiKeyRedactionFilter(unittest.TestCase):
         self.assertIn("apikey=REDACTED", rec.getMessage())
         self.assertIn("200", rec.getMessage())
 
+    def test_mapping_args_are_redacted(self):
+        rec = _record("url %(url)s", None)
+        rec.args = {"url": "https://a.b/c?apikey=SECRET123abc"}
+        self.filter.filter(rec)
+        self.assertNotIn("SECRET123abc", rec.getMessage())
+
+
+class TestFilterInstalled(unittest.TestCase):
+    def test_root_handlers_and_httpx_logger_carry_the_filter(self):
+        import backend.app.main  # noqa: F401 — installs the filters at import
+        self.assertTrue(any(
+            isinstance(f, ApiKeyRedactionFilter)
+            for f in logging.getLogger("httpx").filters
+        ))
+        self.assertTrue(all(
+            any(isinstance(f, ApiKeyRedactionFilter) for f in h.filters)
+            for h in logging.getLogger().handlers
+        ) and logging.getLogger().handlers)
+
 
 if __name__ == "__main__":
     unittest.main()

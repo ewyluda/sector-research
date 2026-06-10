@@ -19,4 +19,9 @@ class ApiKeyRedactionFilter(logging.Filter):
                 if "apikey=" in str(a) else a
                 for a in record.args
             )
+        elif isinstance(record.args, dict):
+            record.args = {
+                k: _APIKEY_RE.sub("apikey=REDACTED", str(v)) if "apikey=" in str(v) else v
+                for k, v in record.args.items()
+            }
         return True
