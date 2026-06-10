@@ -1,9 +1,9 @@
 """Per-category data routing for `node_deep_dive`.
 
-Five parallel routing tables previously lived as module-level dicts inside
+Six parallel routing tables previously lived as module-level dicts inside
 `graph/nodes.py`. They answer the same question — "which subset of source X
-does category Y see?" — for five different sources (transcripts, macro,
-EDGAR XBRL, filing excerpts, supply-chain relationships).
+does category Y see?" — for six different sources (transcripts, macro,
+EDGAR XBRL, filing excerpts, supply-chain relationships, quant fingerprint).
 
 Consolidated here so:
   - Adding a new deep-dive category is a single `routing_for()` lookup,
@@ -100,6 +100,16 @@ RELATIONSHIP_ROUTING: set[str] = {
     "Future Durability",
 }
 
+# Deterministic quant fingerprint metric groups (services/quant_fingerprint.py).
+# Keys are metric-group names inside CuratedFinancials.quant_fingerprint.
+QUANT_ROUTING: dict[str, list[str]] = {
+    "Financial Health": ["piotroski", "altman_z", "accruals", "fcf_conversion"],
+    "Risk Assessment": ["altman_z", "beneish_m", "accruals"],
+    "Growth & Earnings": ["margin_slopes", "sbc", "fcf_conversion"],
+    "Business Quality": ["margin_slopes", "piotroski"],
+    "Management & Governance": ["sbc", "beneish_m"],
+}
+
 
 # ── Unified accessor ────────────────────────────────────────────────────────
 
@@ -114,6 +124,7 @@ class CategoryRouting:
     edgar_concepts: list[str] = field(default_factory=list)
     filing_sections: list[str] = field(default_factory=list)
     relationships: bool = False
+    quant_metrics: list[str] = field(default_factory=list)
 
 
 def routing_for(category: str) -> CategoryRouting:
@@ -130,4 +141,5 @@ def routing_for(category: str) -> CategoryRouting:
         edgar_concepts=list(EDGAR_ROUTING.get(category, [])),
         filing_sections=list(FILING_EXCERPT_ROUTING.get(category, [])),
         relationships=category in RELATIONSHIP_ROUTING,
+        quant_metrics=list(QUANT_ROUTING.get(category, [])),
     )
