@@ -26,7 +26,7 @@ export function WeekLanes({
         return (
           <div
             key={iso}
-            className={`rounded-md bg-[var(--surface-2,rgba(127,127,127,0.07))] p-1.5 min-h-[140px] ${isToday ? "outline outline-1 outline-blue-400/40" : ""}`}
+            className={`rounded-md bg-[rgba(127,127,127,0.07)] p-1.5 min-h-[140px] ${isToday ? "outline outline-1 outline-blue-400/40" : ""}`}
           >
             <div className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mb-1.5">
               {dayLabel(d)}

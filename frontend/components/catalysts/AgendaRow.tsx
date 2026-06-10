@@ -20,7 +20,7 @@ export function AgendaRow({
   const href = eventHref(event);
   const body = (
     <div
-      className={`flex items-baseline gap-2.5 rounded-md px-2.5 py-1.5 mb-1 bg-[var(--surface-2,rgba(127,127,127,0.07))] text-xs ${dimmed ? "opacity-60" : ""}`}
+      className={`flex items-baseline gap-2.5 rounded-md px-2.5 py-1.5 mb-1 bg-[rgba(127,127,127,0.07)] text-xs ${dimmed ? "opacity-60" : ""}`}
     >
       <span className="w-20 flex-none text-[11px] font-semibold text-[var(--text-muted)]">
         {dateLabel}

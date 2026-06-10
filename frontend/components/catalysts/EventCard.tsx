@@ -11,7 +11,8 @@ function fmtNum(v: number | null): string | null {
   if (v === null || v === undefined) return null;
   if (Math.abs(v) >= 1e9) return `${(v / 1e9).toFixed(1)}B`;
   if (Math.abs(v) >= 1e6) return `${(v / 1e6).toFixed(0)}M`;
-  return String(v);
+  if (Math.abs(v) >= 1000) return v.toLocaleString("en-US");
+  return Number(v.toFixed(2)).toString();
 }
 
 export function eventHref(ev: CalendarEvent): string | null {
@@ -44,7 +45,7 @@ export function EventCard({ event }: { event: CalendarEvent }) {
   const href = eventHref(event);
   const body = (
     <div
-      className="rounded-md px-2 py-1.5 mb-1.5 bg-[var(--surface-2,rgba(127,127,127,0.12))] border-l-[3px]"
+      className="rounded-md px-2 py-1.5 mb-1.5 bg-[rgba(127,127,127,0.12)] border-l-[3px]"
       style={{ borderLeftColor: KIND_COLOR[event.kind] }}
     >
       <div className="text-[11px] font-medium text-[var(--text)] leading-tight">
