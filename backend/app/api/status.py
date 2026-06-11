@@ -62,6 +62,7 @@ class StatusBoardEntryOut(BaseModel):
     next_catalyst: NextCatalystOut | None
     kill_criteria_summary: KillCriteriaSummaryOut
     material_events: MaterialEventsSummaryOut | None
+    archived_at: str | None
 
 
 class StatusBoardResponseOut(BaseModel):
@@ -123,6 +124,7 @@ def _serialize_entry(e: ServiceEntry) -> StatusBoardEntryOut:
             if e.material_events
             else None
         ),
+        archived_at=e.archived_at.isoformat() if e.archived_at else None,
     )
 
 
