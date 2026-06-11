@@ -83,6 +83,10 @@ class ProspectusService:
         Atomically snapshots the replay buffer and registers the subscriber
         queue (no await between these steps) so no events can be lost between
         the replay snapshot and live delivery.
+
+        No post-terminal drain is required: _emit() never fires after the
+        terminal event (prospectus_complete / prospectus_failed are the last
+        calls in every _run_pipeline code path — confirmed by inspection).
         """
         # Snapshot replay buffer and register subscriber in one synchronous
         # block — no await between snapshot and append so no events are lost.

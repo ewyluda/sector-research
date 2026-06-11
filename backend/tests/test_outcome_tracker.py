@@ -231,6 +231,23 @@ class TestSignalSnapshotBuilders(unittest.TestCase):
         self.assertEqual(snap["deep_dive_scores"], {})
         self.assertTrue(any("deep_dive_results" in line for line in cm.output))
 
+    def test_research_run_snapshot_incomplete_when_deep_dive_corrupt(self):
+        """Truthy non-dict deep_dive_results (e.g. a list) → warn + incomplete=True."""
+        import logging
+        state = MagicMock()
+        state.ticker = "NVDA"
+        state.run_id = "run-corrupt"
+        state.deep_dive_results = ["not", "a", "dict"]  # corrupt state
+
+        with self.assertLogs("backend.app.services.outcome_tracker", level=logging.WARNING) as cm:
+            snap = build_research_run_signal_snapshot(
+                state=state, signals_row={}, kill_states=[]
+            )
+
+        self.assertTrue(snap.get("incomplete"))
+        self.assertEqual(snap["deep_dive_scores"], {})
+        self.assertTrue(any("deep_dive_results" in line for line in cm.output))
+
     def test_research_run_snapshot_no_incomplete_when_deep_dive_present(self):
         """Complete snapshot must NOT have the incomplete key."""
         state = MagicMock()

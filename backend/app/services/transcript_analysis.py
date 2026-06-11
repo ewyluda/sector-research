@@ -117,4 +117,5 @@ async def run_transcript_analysis(
         return TranscriptAnalysisResult(status="ok", value=results, error=None)
 
     except Exception as exc:  # noqa: BLE001
+        logger.warning("run_transcript_analysis: structural failure for %s", ticker, exc_info=True)
         return TranscriptAnalysisResult(status="error", value=None, error=str(exc))

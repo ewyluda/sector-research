@@ -69,7 +69,7 @@ from backend.app.services.question_lifecycle import (  # noqa: F401  re-exported
     _render_prior_questions_slot,
     _render_questions_resolved,
 )
-from backend.app.services.transcript_analysis import run_transcript_analysis, TranscriptAnalysisResult  # noqa: F401  re-exported for backwards compat
+from backend.app.services.transcript_analysis import run_transcript_analysis  # noqa: F401  re-exported for backwards compat
 
 logger = logging.getLogger(__name__)
 
@@ -378,7 +378,7 @@ async def node_deep_dive(
             elif ta_result.status == "error":
                 logger.warning("[%s] Transcript analysis failed: %s", state.ticker, ta_result.error)
                 state.transcript_analysis = None
-            else:
+            else:  # status == "no_data" — unreachable from this guarded call site; kept for exhaustiveness
                 state.transcript_analysis = None
         else:
             logger.info("[%s] No transcripts available, skipping analysis", state.ticker)

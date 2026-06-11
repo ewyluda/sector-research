@@ -15,6 +15,11 @@ import unittest
 from typing import Any
 
 # ── Legacy copy (verbatim from formatters.py pre-refactor) ────────────────────
+# FROZEN ARTIFACT — do not modify or "fix" this function.  It is intentionally
+# preserved as it existed before the M3.6 refactor.  Deviations from the
+# pre-refactor original are deliberate and limited to: stripped docstrings and
+# `_first_metric` inlined as a nested def.  Any other change defeats the
+# identity-comparison purpose of this test.
 
 def _fmt_fundamentals_legacy(
     ticker: str,

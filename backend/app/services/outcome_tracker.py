@@ -171,11 +171,11 @@ def build_research_run_signal_snapshot(
     incomplete = False
     deep_dive_scores: dict[str, float | None] = {}
     raw_results = getattr(state, "deep_dive_results", None)
-    if not raw_results:
+    results = raw_results if isinstance(raw_results, dict) else {}
+    if not results:
         logger.warning("build_research_run_signal_snapshot: deep_dive_results missing or empty (%s)", ctx)
         incomplete = True
     else:
-        results = raw_results if isinstance(raw_results, dict) else {}
         for category, payload in results.items():
             score = getattr(payload, "score", None)
             if score is None and isinstance(payload, dict):
