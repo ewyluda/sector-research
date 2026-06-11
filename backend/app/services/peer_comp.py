@@ -41,6 +41,16 @@ METRIC_FIELDS = (
 # 50-request burst on a full 13-ticker compare.
 FETCH_CONCURRENCY = 10
 
+# Growth values whose |value| exceeds this threshold are tiny-base artifacts
+# (e.g. ORCL FCF growth −59.1 → "−5911.7%"). The frontend renders them as
+# "n/m" (see PeerCompTable.tsx / formatStat.ts). Backend-side we also suppress
+# the delta so the "vs. median" row doesn't expose the absurd number even when
+# the focus ticker's own cell is hidden.
+NM_GROWTH_THRESHOLD = 10.0
+
+# Fields that carry YoY growth rates — subject to the NM_GROWTH_THRESHOLD guard.
+_GROWTH_FIELDS = frozenset({"revenue_yoy", "eps_yoy"})
+
 
 async def build_peer_comp_table(
     *, focus_ticker: str, peer_tickers: list[str], fmp,
@@ -219,6 +229,11 @@ def _compute_delta(focus: PeerCompRow, med: PeerCompRow) -> PeerCompRow:
         fv = getattr(focus, field)
         mv = getattr(med, field)
         if fv is None or mv is None or mv == 0:
+            out[field] = None
+        elif field in _GROWTH_FIELDS and abs(fv) > NM_GROWTH_THRESHOLD:
+            # Tiny-base artifact: focus value renders "n/m" in the table cell;
+            # suppress the delta too so the absurd number doesn't leak through.
+            # Cross-ref: NM_GROWTH_THRESHOLD in PeerCompTable.tsx / formatStat.ts.
             out[field] = None
         else:
             out[field] = round(((fv - mv) / abs(mv)) * 100.0, 2)

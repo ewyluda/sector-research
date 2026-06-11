@@ -220,6 +220,7 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
             StatItem(label="Yield", value=_f(ra, "dividendYieldTTM"), unit="pct"),
             StatItem(label="Payout", value=_f(ra, "dividendPayoutRatioTTM"), unit="pct"),
             StatItem(label="DPS", value=_f(ra, "dividendPerShareTTM"), unit="money"),
+            # cumulative like its revenue siblings; label says "Growth" not "CAGR", so left unannualized deliberately
             StatItem(label="DPS 5Y Growth", value=_f(fg, "fiveYDividendperShareGrowthPerShare"), unit="pct_growth"),
         ]),
     ]

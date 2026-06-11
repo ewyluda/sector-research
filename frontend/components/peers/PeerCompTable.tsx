@@ -2,6 +2,7 @@
 
 import type { PeerCompTable as PeerCompTableData, PeerCompRow } from "@/lib/api";
 import { fmtMarketCap } from "@/lib/api";
+import { isNotMeaningfulGrowth } from "@/components/company/formatStat";
 
 type MetricKey = Exclude<keyof PeerCompRow, "ticker">;
 type Kind = "multiple" | "pct" | "pct_growth" | "money";
@@ -61,7 +62,7 @@ function fmtValue(v: number | null, kind: Kind): string {
   // Tiny-base growth rates beyond ±1000% are arithmetic noise — render
   // "not meaningful". Growth-only: margins are guarded backend-side
   // (services/metric_guards.py).
-  if (kind === "pct_growth") return Math.abs(v) > 10 ? "n/m" : `${(v * 100).toFixed(1)}%`;
+  if (kind === "pct_growth") return isNotMeaningfulGrowth(v) ? "n/m" : `${(v * 100).toFixed(1)}%`;
   if (kind === "pct") return `${(v * 100).toFixed(1)}%`;
   if (kind === "money") return fmtMarketCap(v);
   return `${v.toFixed(1)}x`;
@@ -79,7 +80,7 @@ function bestValues(rows: PeerCompRow[]): Partial<Record<MetricKey, number>> {
       // "cheap" — exclude them from lower-is-better best-in-class.
       .filter((v) => m.better === "high" || v > 0)
       // Growth values that render "n/m" can't be best-in-class either.
-      .filter((v) => m.kind !== "pct_growth" || Math.abs(v) <= 10);
+      .filter((v) => m.kind !== "pct_growth" || !isNotMeaningfulGrowth(v));
     if (vals.length === 0) continue;
     best[m.key] = m.better === "low" ? Math.min(...vals) : Math.max(...vals);
   }

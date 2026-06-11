@@ -25,7 +25,12 @@ from backend.app.services.company_snapshot import (
     build_company_overview,
 )
 from backend.app.services.metric_guards import guard_margin
-from backend.app.services.peer_comp import _fetch_one
+from backend.app.services.peer_comp import (
+    NM_GROWTH_THRESHOLD,
+    _compute_delta,
+    _compute_median,
+    _fetch_one,
+)
 
 GUARD_LOGGER = "backend.app.services.metric_guards"
 
@@ -262,6 +267,61 @@ class FcfMarginDerivationTest(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(row.fcf_margin, -0.3516434573473084, places=6)
         self.assertAlmostEqual(row.p_s, 8.593381899106268)
         self.assertAlmostEqual(row.p_fcf, -24.437769904584986)
+
+
+class TinyBaseDeltaSuppressionTest(unittest.IsolatedAsyncioTestCase):
+    """_compute_delta must return None for growth fields whose focus value is a
+    tiny-base artifact (|value| > NM_GROWTH_THRESHOLD), even when the median
+    is well-defined and non-zero.
+
+    Real payload: ORCL eps_yoy = −59.117 (a tiny-base artifact from near-zero
+    prior-year EPS).  Without the guard the delta leaks the absurd number even
+    though the table cell renders "n/m".
+    """
+
+    async def test_tiny_base_focus_revenue_yoy_delta_is_none(self):
+        """Focus revenue_yoy = −59.117 → delta None (tiny-base artifact)."""
+        focus = await _fetch_one("ORCL", _StubFMP())
+        # Substitute a known tiny-base value directly.
+        focus = focus.model_copy(update={"revenue_yoy": -59.117})
+        med = _compute_median([focus])
+        # Use a peer row with a sane value so median is well-defined.
+        sane_peer = (await _fetch_one("MSFT", _StubFMP())).model_copy(
+            update={"revenue_yoy": 0.15}
+        )
+        med = _compute_median([sane_peer])
+        delta = _compute_delta(focus, med)
+        self.assertIsNone(delta.revenue_yoy)
+
+    async def test_tiny_base_focus_eps_yoy_delta_is_none(self):
+        """Focus eps_yoy = −59.117 → delta None."""
+        focus = (await _fetch_one("ORCL", _StubFMP())).model_copy(
+            update={"eps_yoy": -59.117}
+        )
+        sane_peer = (await _fetch_one("MSFT", _StubFMP())).model_copy(
+            update={"eps_yoy": 0.155}
+        )
+        med = _compute_median([sane_peer])
+        delta = _compute_delta(focus, med)
+        self.assertIsNone(delta.eps_yoy)
+
+    async def test_sane_eps_yoy_delta_is_computed(self):
+        """Sane focus eps_yoy (e.g. 0.155) → delta is a non-None number."""
+        focus = (await _fetch_one("MSFT", _StubFMP())).model_copy(
+            update={"eps_yoy": 0.155}
+        )
+        peer = (await _fetch_one("ORCL", _StubFMP())).model_copy(
+            update={"eps_yoy": 0.05}
+        )
+        med = _compute_median([peer])
+        delta = _compute_delta(focus, med)
+        self.assertIsNotNone(delta.eps_yoy)
+        # (0.155 - 0.05) / 0.05 * 100 = 210.0
+        self.assertAlmostEqual(delta.eps_yoy, 210.0, places=1)
+
+    def test_nm_growth_threshold_constant(self):
+        """NM_GROWTH_THRESHOLD must equal 10.0 (mirrored frontend value)."""
+        self.assertEqual(NM_GROWTH_THRESHOLD, 10.0)
 
 
 if __name__ == "__main__":
