@@ -212,7 +212,7 @@ Every data-client method returns `tuple[data, Citation]`, not just data. `models
 
 Two kinds of async work run under the FastAPI process:
 
-- **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task holds the DB session passed from the request; if you change session lifecycle, verify the background task still has a live session.
+- **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task opens its own `async_session()` internally (M1.2) — request-scoped sessions never cross into background tasks.
 - **Four `AsyncIOScheduler` cron jobs** registered in `app/main.py::lifespan`: daily X signal refresh (02:00 local, `services.signal_scheduler.run_daily_refresh`), daily earnings-prints refresh (21:00, `services.earnings_scheduler`), verdict-outcome snapshot refresh (03:00 UTC, `services.outcome_tracker.refresh_snapshots`), and the 8-K + Form 4 material-events scan (06:30 UTC, `services.material_events_scheduler`).
 
 ### SEC EDGAR filing pipeline (read this before touching `backend/app/services/edgar*`, `supply_chain.py`, `fanout.py`, or `relationship_context.py`)
