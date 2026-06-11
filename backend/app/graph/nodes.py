@@ -10,12 +10,17 @@ Phase assignments:
   risk_stress_test  → Sonnet
   position_monitor  → Haiku
 
-Formatting helpers, curated-financials builders, and transcript analysis
-were split out in M2.2:
+Formatting helpers, curated-financials builders, transcript analysis, and
+question-lifecycle helpers were split out in M2.2:
   - backend.app.graph.formatters  (data formatters)
   - backend.app.services.transcript_analysis
   - backend.app.services.question_lifecycle
 All moved symbols are re-exported here so existing importers keep working.
+New code should import from the destination modules directly; the re-exports
+are a transitional shim deletable once the remaining consumers migrate
+(backend/tests/test_output_parsing.py, test_quant_fingerprint.py,
+test_deep_dive_valuation_ratios.py, scripts/smoke_question_log.py,
+services/questions.py).
 """
 
 from __future__ import annotations
