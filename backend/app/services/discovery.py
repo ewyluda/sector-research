@@ -15,7 +15,6 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

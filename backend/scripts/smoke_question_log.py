@@ -118,15 +118,15 @@ async def main() -> None:
             assert p1.status == "resolved_auto", f"expected resolved_auto, got {p1.status}"
             assert p1.answer_text and "MOCK_ANSWER" in p1.answer_text, "answer_text not populated"
             assert p1.answer_source == "targeted_followup"
-            print(f"  ✓ P1 resolved_auto by node_targeted_followup")
+            print("  ✓ P1 resolved_auto by node_targeted_followup")
 
             p3 = (await db.execute(select(Question).where(Question.id == p3_id))).scalar_one()
             assert p3.status == "open", f"expected open, got {p3.status}"
-            print(f"  ✓ P3 still open (priority filter)")
+            print("  ✓ P3 still open (priority filter)")
 
         assert len(new_state.questions_resolved_this_run) == 1
         assert "MOCK_ANSWER" in new_state.questions_resolved_this_run[0]["answer_text"]
-        print(f"  ✓ state.questions_resolved_this_run staged for thesis prompt")
+        print("  ✓ state.questions_resolved_this_run staged for thesis prompt")
 
         # 3. Manual dismiss the P3 row (mimics endpoint)
         async with async_session() as db:
@@ -135,7 +135,7 @@ async def main() -> None:
             p3.dismissed_at = datetime.now(timezone.utc)
             p3.dismiss_note = "smoke dismissal"
             await db.commit()
-        print(f"  ✓ P3 dismissed")
+        print("  ✓ P3 dismissed")
 
         # 4. Synthesize a P2 open question, then test cross-run resurfacing query
         await _persist_extracted(run_id, [
@@ -146,12 +146,12 @@ async def main() -> None:
         assert len(prior) == 1, f"expected 1 prior open question, got {len(prior)}"
         assert prior[0]["question_text"] == "P2 fresh Q?"
         assert prior[0]["priority"] == 2
-        print(f"  ✓ cross-run resurfacing query returns P2 only (P1 resolved, P3 dismissed)")
+        print("  ✓ cross-run resurfacing query returns P2 only (P1 resolved, P3 dismissed)")
 
         rendered = nodes._render_prior_questions_slot(prior)
         assert "P2 fresh Q?" in rendered, "rendered slot missing question text"
         assert prior[0]["id"] in rendered, "rendered slot missing question id"
-        print(f"  ✓ prior-questions prompt slot renders correctly")
+        print("  ✓ prior-questions prompt slot renders correctly")
 
         print("\n✅ Tier 1.2 smoke 4/4 PASS")
     except (AssertionError, ValueError) as e:

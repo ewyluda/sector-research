@@ -535,7 +535,7 @@ class TestSupersedeRules(unittest.TestCase):
                 )
                 await db.commit()
 
-                in_b = await record_verdict(
+                await record_verdict(
                     source_type="workspace_run", source_id=str(uuid4()), ticker="NVDA",
                     theme_id=theme_b, theme_seed_tickers=None, sector=None,
                     verdict="healthy",

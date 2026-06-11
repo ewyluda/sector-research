@@ -5,14 +5,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
 from backend.app.services.read_through import (
-    PeerEvent,
     ReadThroughItem,
     RelationshipLink,
     compute_peer_events,

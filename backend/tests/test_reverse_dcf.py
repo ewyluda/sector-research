@@ -38,7 +38,7 @@ class TestReverseDcf(unittest.TestCase):
     def test_implied_terminal_multiple_round_trip(self):
         # Start with a state at exit_mult=12; intrinsic = 1496.77
         state = make_flat_fixture(fcf_per_year=100.0, share_count=100.0, discount=0.10, exit_mult=12.0, ebitda=150.0)
-        base = dcf(state).intrinsic_per_share         # = 14.9677
+        # Baseline intrinsic_per_share at exit_mult=12 is 14.9677.
         # Target a higher per-share price; solver should return a higher multiple
         target = 18.0
         implied = solve_implied_driver(state, dimension="terminal_multiple", target_per_share=target)

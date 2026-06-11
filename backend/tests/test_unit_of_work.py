@@ -7,7 +7,7 @@ async_session factory to return a recording mock.
 import os
 import unittest
 from contextlib import asynccontextmanager
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 os.environ.setdefault("FMP_API_KEY", "test")
 os.environ.setdefault("X_BEARER_TOKEN", "test")
@@ -53,7 +53,7 @@ class UnitOfWorkTests(unittest.IsolatedAsyncioTestCase):
         with patch("backend.app.db.async_session", _patched_session_factory(sess)):
             from backend.app.db import unit_of_work
             with self.assertRaises(RuntimeError):
-                async with unit_of_work() as db:
+                async with unit_of_work():
                     raise RuntimeError("boom")
         self.assertEqual(sess.events, ["rollback"])
 

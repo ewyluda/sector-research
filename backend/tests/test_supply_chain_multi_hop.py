@@ -372,7 +372,7 @@ class Depth2CycleAndDedupTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(hops, [1, 2])
         # The hop-2 edge points to root.
         hop2_edge = next(e for e in graph.edges if e.hop == 2)
-        self.assertEqual(hop2_edge.to_id, f"root:NVDA")
+        self.assertEqual(hop2_edge.to_id, "root:NVDA")
 
     async def test_edge_dedup_by_relationship_id_under_both(self):
         # direction=both. MSFT→NVDA reachable at hop-1 inbound AND at hop-2
@@ -407,7 +407,6 @@ class Depth2CycleAndDedupTests(unittest.IsolatedAsyncioTestCase):
 
         graph = await get_graph("NVDA", direction="both", depth=2, db=db)
         # Two unique Relationship.ids → two edges total, no duplicate.
-        ids = [e.source_ticker + "-" + e.relationship_type for e in graph.edges]
         # Each Relationship.id appears at most once.
         rel_ids = [
             (e.from_id, e.to_id, e.relationship_type, e.source_ticker)

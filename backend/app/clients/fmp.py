@@ -18,7 +18,6 @@ import time
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
 from typing import Any
 
 import httpx
@@ -113,7 +112,7 @@ class FMPClient:
         self, endpoint: str, metric: str, value: Any, params: dict | None = None
     ) -> Citation:
         """Build a Tier 1 citation pointing to the FMP endpoint."""
-        query = f"?apikey=***"
+        query = "?apikey=***"
         if params:
             for k, v in params.items():
                 if k != "apikey":

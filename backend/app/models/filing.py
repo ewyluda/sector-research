@@ -13,7 +13,7 @@ from uuid import uuid4
 
 from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.app.models.base import Base, TimestampMixin
 

@@ -3,7 +3,7 @@ fire-and-forget scan trigger."""
 
 import os
 import unittest
-from datetime import date, datetime, timezone
+from datetime import date
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 

@@ -1,0 +1,12 @@
+# ruff.toml — backend lint gate (frontend is eslint's job)
+target-version = "py312"
+extend-exclude = ["backend/venv", "frontend", "design"]
+
+[lint]
+# Default rule set (E4/E7/E9 + F). Widen deliberately, not by default.
+
+[lint.per-file-ignores]
+# Deliberate late imports: a helper is defined before the import block
+# (bootstrap ordering), and the test stages imports between test classes.
+"backend/app/services/pipeline.py" = ["E402"]
+"backend/tests/test_outcome_tracker.py" = ["E402"]

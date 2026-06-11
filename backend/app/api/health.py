@@ -17,7 +17,7 @@ async def health():
 @router.get("/health/db")
 async def health_db(db: AsyncSession = Depends(get_db)):
     """Verify database connectivity."""
-    result = await db.execute(text("SELECT 1"))
+    await db.execute(text("SELECT 1"))
     return {"status": "ok", "db": "connected"}
 
 

@@ -195,7 +195,7 @@ class XClient:
         # 30-day count by scaling 7d count with a smoothing factor.
         # When full archive access is available, replace this with two real queries.
         # For now: fetch a second sample at different time and extrapolate.
-        posts_30d_sample = await self._search_recent(
+        await self._search_recent(
             query, max_results=100, start_time=now - timedelta(days=7)
         )
         # Approximation: treat 7d sample as ~25% of 30d volume (conservative)

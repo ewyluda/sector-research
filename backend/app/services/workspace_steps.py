@@ -2,6 +2,7 @@
 from __future__ import annotations
 import copy
 import json
+import logging as _logging
 from datetime import datetime, timezone
 from typing import Callable
 
@@ -146,7 +147,6 @@ async def _fetch_live_price(fmp, ticker: str) -> float:
 
 def _baseline_value_for_dim(state, dim: str) -> float:
     """Return the average forecast value for dim, or 0.0 if unavailable."""
-    from backend.app.models.model_state import ModelState
     forecast = [p for p in state.periods if not p.is_historical]
     if dim == "terminal_multiple":
         cell = state.assumptions.terminal_multiple
@@ -348,8 +348,6 @@ def _parse_json_lenient(raw: str) -> dict:
         )
     return parsed
 
-
-import logging as _logging
 
 _log = _logging.getLogger(__name__)
 

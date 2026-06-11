@@ -1,5 +1,4 @@
 """Tests for prospectus_categories.run_categories."""
-import asyncio
 import json
 import unittest
 from unittest.mock import AsyncMock, patch

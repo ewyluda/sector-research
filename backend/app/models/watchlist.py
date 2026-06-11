@@ -1,6 +1,6 @@
 """Watchlist — tickers parked for future re-evaluation."""
 
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func

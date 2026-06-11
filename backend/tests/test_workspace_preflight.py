@@ -1,7 +1,7 @@
 """Tests for WorkspaceService.check_preflight() — non-raising preflight DTO."""
 import asyncio
 import unittest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 from backend.app.services.workspace import WorkspaceService, PreflightStatus
 

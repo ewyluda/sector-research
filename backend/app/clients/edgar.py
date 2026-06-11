@@ -38,11 +38,6 @@ class EdgarClientError(Exception):
 class EdgarClient:
     def __init__(self) -> None:
         settings = get_settings()
-        headers = {
-            "User-Agent": settings.sec_user_agent,
-            "Accept-Encoding": "gzip, deflate",
-            "Host": "data.sec.gov",
-        }
         self._http = httpx.AsyncClient(
             timeout=TIMEOUT_SEC,
             headers={"User-Agent": settings.sec_user_agent, "Accept-Encoding": "gzip, deflate"},
