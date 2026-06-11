@@ -8,6 +8,15 @@ export interface Theme {
   name: string;
   description: string | null;
   parent_theme_id: string | null;
+  /**
+   * Mirrors the `themes.seed_tickers` JSONB column, typed as the normalized
+   * shape. Every write path runs through `_normalize_tickers` (api/themes.py:
+   * uppercase, deduped list-of-strings, tolerating the legacy list-of-dicts
+   * shape with a `"ticker"` key), but the read path serves the row as-is
+   * (`ThemeResponse.seed_tickers: list | dict`) — so a legacy row that was
+   * never rewritten can still surface dict entries here. Treat entries
+   * defensively if you iterate; any PUT/ticker mutation re-normalizes the row.
+   */
   seed_tickers: string[];
   screener_criteria: Record<string, unknown>;
   x_search_terms: string[];

@@ -2,10 +2,10 @@
   "meta": {
     "project": "sector-research",
     "tagline": "Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider modifier) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.",
-    "generated_at": "2026-06-10T21:40:00Z",
-    "generator": "claude-opus-4-7 (original) · refreshed 2026-06-10 by claude-fable-5",
+    "generated_at": "2026-06-11T09:51:38-04:00",
+    "generator": "claude-opus-4-7 (original) · refreshed 2026-06-10 by claude-fable-5 · incremental refresh 2026-06-11 by claude-fable-5 (PRs #42-48: A2 sessions/routing/SSE, C1 perf, B3 UX phase 1, C2 module splits, C3 backend types)",
     "main_branch": "main",
-    "source_commit": "4cb1da1",
+    "source_commit": "b7ea0e7",
     "source_of_truth_files": [
       "CLAUDE.md",
       "CONTEXT.md",
@@ -36,7 +36,7 @@
         "recharts",
         "lightweight-charts (TradingView candlestick + RSI)"
       ],
-      "data_fetch": "Native fetch through frontend/lib/api.ts only",
+      "data_fetch": "Native fetch through the frontend/lib/api/ package only (12 domain modules, barrel at lib/api/index.ts; legacy lib/api.ts shim re-exports — zero call-site changes)",
       "next16_warning": "Next.js 16 has breaking changes vs prior releases. Read node_modules/next/dist/docs/ before editing Server Component / middleware / route-handler code. Do not assume training-data conventions apply."
     },
     "data": {
@@ -113,7 +113,8 @@
       "scheduled_jobs": [
         "Daily X signal refresh at 2 AM (services/signal_scheduler.py)"
       ],
-      "scoring": "40% X velocity + 40% fundamental quality + 20% discovery score when X is fresh; degrades to 80% fund + 20% disc when X is stale/missing"
+      "scoring": "40% X velocity + 40% fundamental quality + 20% discovery score when X is fresh; degrades to 80% fund + 20% disc when X is stale/missing",
+      "perf_notes": "surprise-alert lookup batched via one SurpriseAlert.ticker.in_(all_tickers) query (PR #43)"
     },
     {
       "id": "pipeline",
@@ -130,7 +131,9 @@
         "POST /api/runs/{id}/advance",
         "GET /api/runs/{id}/report"
       ],
-      "dual_source_of_truth_warning": "Phase routing exists in BOTH graph/pipeline.py edges AND services/pipeline.py::_next_phase — update both when adding a phase"
+      "routing_single_source": "PHASE_SEQUENCE / next_phase() in graph/pipeline.py — services/pipeline.py::_next_phase delegates; pinned by backend/tests/test_phase_routing.py (PR #42)",
+      "sse": "multi-subscriber fan-out (dict[run_id, list[asyncio.Queue]]), no replay buffer",
+      "formatters_module": "backend/app/graph/formatters.py — _fmt_fundamentals (12 per-section helpers, PR #46), _build_curated_financials, _build_technical_data; re-exported from nodes.py (C2 split, PR #45)"
     },
     {
       "id": "edgar",
@@ -154,10 +157,14 @@
         "POST /api/relationships/resolve/{ticker}",
         "GET /api/relationships/graph/{ticker}",
         "POST /api/themes/{id}/relationships/fanout",
-        "POST /api/relationships/reconcile"
+        "POST /api/relationships/reconcile",
+        "POST /api/relationships/dismiss",
+        "GET /api/relationships/dismissed",
+        "DELETE /api/relationships/dismiss/{alias_normalized}"
       ],
       "filing_excerpt_budget_chars": 5000,
-      "relationship_extraction_budget_chars": 15000
+      "relationship_extraction_budget_chars": 15000,
+      "curation_dismiss": "dismiss = curator_private tombstone in counterparty_aliases (null canonical fields, migration 77bcb5d1bfbd); resolver + unresolved queue skip tombstoned norms; DELETE undoes (PR #44). /relationships/dismissed must stay declared above /relationships/{param} routes."
     },
     {
       "id": "workspace",
@@ -181,7 +188,10 @@
         "triggered",
         "broken"
       ],
-      "model_state_touchpoint": "update_refresh promotes published forecast periods from ai_baseline → historical and warns when previously-edited override cells are evicted (removed_cells payload)"
+      "model_state_touchpoint": "update_refresh promotes published forecast periods from ai_baseline → historical and warns when previously-edited override cells are evicted (removed_cells payload)",
+      "preflight": "missing ticker_models → non-blocking no_ticker_model warning; step_update_refresh skips model work (model_skipped=true on UpdateRefreshOutput) but still surfaces new filings (PR #44). Unsaved model draft / in-flight run still block.",
+      "sse": "fan-out + per-run replay buffer — late subscribers get a full replay (PR #42)",
+      "context_module": "backend/app/services/workspace_context.py — WorkspaceContext with real types (PR #46)"
     },
     {
       "id": "status_board",
@@ -214,7 +224,8 @@
       ],
       "scheduled_jobs": [
         "Daily earnings refresh at 21:00 UTC (services/earnings_scheduler.py)"
-      ]
+      ],
+      "perf_notes": "archived_at carried on StatusBoardEntry rows; partial index eb21c3df2ad5 (latest-run composite, archived_at IS NULL); /status refetch is visibility-debounced (PR #43)"
     },
     {
       "id": "financial_model",
@@ -237,7 +248,8 @@
         "POST /api/models/{ticker}/save",
         "GET /api/models/{ticker}/reverse-dcf"
       ],
-      "cell_path_value_object": "typed CellPath union (DriverPath | StatementCellPath | AssumptionPath) — backend backend/app/models/cell_path.py, frontend frontend/lib/cellPath.ts. AssumptionPath restricted to ModelCell-shaped keys; categorical assumptions intentionally not editable through PUT /draft."
+      "cell_path_value_object": "typed CellPath union (DriverPath | StatementCellPath | AssumptionPath) — backend backend/app/models/cell_path.py, frontend frontend/lib/cellPath.ts. AssumptionPath restricted to ModelCell-shaped keys; categorical assumptions intentionally not editable through PUT /draft.",
+      "live_quote_cache": "GET /reverse-dcf live FMP quote goes through a 30s in-process TTL cache (_LIVE_PRICE_TTL_SECONDS in models_api.py; 0.0 never cached) (PR #43)"
     },
     {
       "id": "outcomes",
@@ -250,7 +262,9 @@
         "GET /api/outcomes/summary",
         "POST /api/outcomes/backfill",
         "GET /api/outcomes/by-source/{source_type}/{source_id}"
-      ]
+      ],
+      "incomplete_markers": "snapshot serializers add \"incomplete\": true when expected fields / step_outputs are absent — existing persisted snapshots unchanged (PR #46)",
+      "summary_populated_offsets": "GET /api/outcomes/summary returns populated_offsets; /performance defaults data-first — picks the most-populated offset (6m→1d priority) when no URL param (PR #44)"
     },
     {
       "id": "transcript_delta",
@@ -303,7 +317,8 @@
       ],
       "synthetic_ticker": "Identifier written into filings.ticker / relationships.ticker for pre-IPO issuers. proposed_ticker if disclosed, else uppercase-alphanumeric slug of issuer_name truncated to 16 chars. Lets the existing 5-phase EDGAR pipeline work unchanged.",
       "section_routing": "S-1 section_keys: s1_business, s1_risk_factors, s1_mda, s1_use_of_proceeds, s1_capitalization, s1_dilution, s1_principal_stockholders, s1_underwriting. Defined in edgar_html.py::_SECTION_DEFS_S1 (PR #31).",
-      "merged_pr": "#31 (May 20, 2026)"
+      "merged_pr": "#31 (May 20, 2026)",
+      "sse": "fan-out + per-run replay buffer, same pattern as WorkspaceService (PR #46)"
     },
     {
       "id": "company_workspace",
@@ -664,6 +679,27 @@
             "handler": "get_competition",
             "line": 580,
             "summary": "Structured Competition view from latest 10-K"
+          },
+          {
+            "method": "GET",
+            "path": "/api/relationships/dismissed",
+            "handler": "list_dismissed_route",
+            "line": 476,
+            "summary": "List curator_private tombstones (dismissed counterparties)"
+          },
+          {
+            "method": "POST",
+            "path": "/api/relationships/dismiss",
+            "handler": "dismiss_counterparty_route",
+            "line": 493,
+            "summary": "Tombstone a counterparty as curator_private (never resolve)"
+          },
+          {
+            "method": "DELETE",
+            "path": "/api/relationships/dismiss/{alias_normalized}",
+            "handler": "undismiss_counterparty_route",
+            "line": 517,
+            "summary": "Undo a curator_private tombstone"
           }
         ]
       },
@@ -1382,6 +1418,11 @@
         "purpose": "Daily 06:30 UTC universe scan: 8-K classify + Form 4 ingest; 8-K failures fault-isolated from the insider side"
       },
       {
+        "name": "metric_guards",
+        "file": "backend/app/services/metric_guards.py",
+        "purpose": "Two-tier FMP margin sanity guard (impossible gross > 1.0 nulled; suspicious [-5,1.5] log-only) shared by company_snapshot + peer_comp (PR #44)"
+      },
+      {
         "name": "model_balancing",
         "file": "backend/app/services/model_balancing.py",
         "purpose": "Pure recompute pipeline: drivers → IS → CF → BS; plug imbalance into retained_earnings; raises ModelBalanceError on tolerance overflow"
@@ -1447,6 +1488,11 @@
         "purpose": "Pure deterministic quant layer: Piotroski F, Altman Z, Beneish M, accruals, FCF conversion, SBC dilution, margin OLS slopes (TTM vs prior-TTM over the 8 quarters node_deep_dive already fetches); Altman/Beneish n/a-gated for Financial Services"
       },
       {
+        "name": "question_lifecycle",
+        "file": "backend/app/services/question_lifecycle.py",
+        "purpose": "Open-question log helpers across pipeline runs: persist extracted questions, fetch/render prior open questions, apply resurfaced resolutions. Extracted from nodes.py (C2, PR #45)"
+      },
+      {
         "name": "questions",
         "file": "backend/app/services/questions.py",
         "purpose": "Question log query helpers + retry-auto orchestration"
@@ -1490,6 +1536,11 @@
         "name": "supply_chain",
         "file": "backend/app/services/supply_chain.py",
         "purpose": "Phase D — supply-chain graph (depth=1|2 BFS) + bilateral reconciliation. Each node carries hop + in_selected_theme; each edge carries hop + source_ticker."
+      },
+      {
+        "name": "transcript_analysis",
+        "file": "backend/app/services/transcript_analysis.py",
+        "purpose": "Runs the 6 deep-dive transcript passes; returns typed TranscriptAnalysisResult (status ok | no_data | error). Extracted from nodes.py (C2, PR #45; typed PR #46)"
       },
       {
         "name": "transcript_delta",
@@ -2281,8 +2332,8 @@
       }
     },
     "migrations": {
-      "head": "a2c6676dd30d",
-      "count": 25,
+      "head": "eb21c3df2ad5",
+      "count": 27,
       "chain": [
         {
           "rev": "8eebd8f4659a",
@@ -2497,6 +2548,20 @@
           "adds": [
             "journal_trades"
           ]
+        },
+        {
+          "rev": "77bcb5d1bfbd",
+          "down": "a2c6676dd30d",
+          "name": "alias_tombstones_nullable_canonical",
+          "adds": [],
+          "alters": "counterparty_aliases.canonical_cik / canonical_name NULLABLE (curator_private tombstones, PR #44)"
+        },
+        {
+          "rev": "eb21c3df2ad5",
+          "down": "77bcb5d1bfbd",
+          "name": "add_status_board_latest_run_composite",
+          "adds": [],
+          "alters": "partial composite index on research_runs for the status-board latest-run query (archived_at IS NULL) (PR #43)"
         }
       ]
     },
@@ -3359,7 +3424,24 @@
       ]
     },
     "api_client": {
-      "file": "frontend/lib/api.ts",
+      "package": "frontend/lib/api/ (PR #48 — split from the former 2,451-line lib/api.ts)",
+      "modules": [
+        "core",
+        "themes",
+        "filings",
+        "pipeline",
+        "catalysts",
+        "status",
+        "workspace",
+        "performance",
+        "transcripts",
+        "model",
+        "prospectus",
+        "company"
+      ],
+      "barrel": "lib/api/index.ts re-exports everything; legacy lib/api.ts shim re-exports the barrel — existing \"@/lib/api\" imports work unchanged (zero call-site changes is the convention)",
+      "private_to_package": "BASE and apiFetch live in core.ts, imported by api/* modules directly, NOT re-exported",
+      "conventions": "New endpoints/types go in the matching domain module. Types mirror backend Pydantic/dataclass shapes — update on any backend response change or TS silently accepts stale shapes.",
       "namespaces": [
         {
           "ns": "themes",
@@ -3586,6 +3668,14 @@
       {
         "file": "frontend/lib/questions-ui.ts",
         "purpose": "Questions filter helpers, URL path building"
+      },
+      {
+        "file": "frontend/lib/categoryWrappers.ts",
+        "purpose": "React.memo wrappers for deep-dive category sections (C1 perf, PR #43; node --test suite)"
+      },
+      {
+        "file": "frontend/lib/todayDerive.ts",
+        "purpose": "Today-briefing derivation logic (node --test suite)"
       }
     ],
     "globals": "frontend/app/globals.css — @media print hides any element with data-print-hide='true'. Tag new sticky UI accordingly so it drops out of PDF."
@@ -3810,9 +3900,9 @@
       "example": "models_api.get_reverse_dcf uses request.app.state.fmp for the live price default"
     },
     {
-      "id": "pipeline_routing_dual_truth",
-      "rule": "Pipeline phase routing exists in BOTH graph/pipeline.py edges AND services/pipeline.py::_next_phase",
-      "why": "Parallel sources of truth — both must be updated when adding/reordering phases.",
+      "id": "pipeline_routing_single_source",
+      "rule": "Pipeline phase routing has ONE source of truth: PHASE_SEQUENCE / next_phase() in graph/pipeline.py. services/pipeline.py::_next_phase delegates there.",
+      "why": "PR #42 collapsed the former dual-truth. backend/tests/test_phase_routing.py pins the contract; add phases by editing PHASE_SEQUENCE (and graph edges derive from it).",
       "applies_to": [
         "backend/app/graph/pipeline.py",
         "backend/app/services/pipeline.py"
@@ -3821,10 +3911,10 @@
     {
       "id": "sse_event_sync",
       "rule": "Python pipeline._emit calls and the TypeScript SSEEvent discriminated union MUST stay in sync",
-      "why": "SSEEvent in frontend/lib/api.ts is a discriminated union. New event types added on the Python side won't be typed on the frontend.",
+      "why": "SSEEvent in frontend/lib/api/pipeline.ts is a discriminated union. New event types added on the Python side won’t be typed on the frontend.",
       "applies_to": [
         "backend/app/services/pipeline.py::_emit",
-        "frontend/lib/api.ts::SSEEvent"
+        "frontend/lib/api/pipeline.ts::SSEEvent"
       ]
     },
     {
@@ -3962,6 +4052,45 @@
       "rule": "Workspace loop execution order is update_refresh → research → validation → challenge → differentiation — pinned by STEP_NAMES in services/workspace_steps.py",
       "why": "validation re-runs the reverse-DCF against the post-Step-1 model version, and challenge consumes Step 1's model deltas. Docs that list challenge before validation are wrong.",
       "verify": "STEP_NAMES in backend/app/services/workspace_steps.py (line ~696)."
+    },
+    {
+      "id": "sse_replay_semantics",
+      "rule": "All three SSE services fan out to multiple subscriber queues per run. PipelineService has NO replay; WorkspaceService and ProspectusService keep a per-run replay buffer — late subscribers get a full replay on event_stream() entry.",
+      "why": "PR #42 (pipeline + workspace fan-out, workspace replay) and PR #46 (prospectus replay). Don’t assume pipeline late-joiners see early events.",
+      "applies_to": [
+        "backend/app/services/pipeline.py",
+        "backend/app/services/workspace.py",
+        "backend/app/services/prospectus_service.py"
+      ]
+    },
+    {
+      "id": "task_owned_db_sessions",
+      "rule": "Background tasks (asyncio.create_task phase/step execution) open their own async_session() — request-scoped sessions never cross into background work.",
+      "why": "PR #42 (A2). A request session dies with the response; a task holding it would operate on a closed session.",
+      "applies_to": [
+        "backend/app/services/pipeline.py",
+        "backend/app/services/workspace.py"
+      ]
+    },
+    {
+      "id": "no_ticker_model_preflight_warning",
+      "rule": "Workspace preflight: a missing ticker_models row is a non-blocking warning (PreflightStatus.warnings=[\"no_ticker_model\"]), not a blocker. step_update_refresh then skips all model work (model_skipped=true, version_before=0) and still surfaces new EDGAR filings. An unsaved model draft or in-flight run still blocks.",
+      "why": "PR #44 (B3 phase 1 earnings-day unblock). A workspace exists with just a completed research_run.",
+      "applies_to": [
+        "backend/app/services/workspace.py",
+        "backend/app/services/workspace_steps.py",
+        "backend/app/models/workspace_schemas.py"
+      ]
+    },
+    {
+      "id": "margin_guards_and_scaling",
+      "rule": "Margin metrics pass through services/metric_guards.py::guard_margin (shared by company_snapshot + peer_comp): impossible grossProfitMarginTTM > 1.0 is nulled, other margins outside [-5, 1.5] log-only. Backend emits fraction-form margins (0.69 = 69%); frontend multiplies by 100 exactly once.",
+      "why": "PR #44. Pinned by backend/tests/test_metric_scaling.py. Tiny-base growth beyond ±1000% renders \"n/m\" (NM_GROWTH_THRESHOLD, mirrored in frontend/components/company/formatStat.ts).",
+      "applies_to": [
+        "backend/app/services/metric_guards.py",
+        "backend/app/services/company_snapshot.py",
+        "backend/app/services/peer_comp.py"
+      ]
     }
   ],
   "external_dependencies": {
@@ -3994,14 +4123,14 @@
     "Start by reading CLAUDE.md (lives at project root) — it has prose context this JSON references but doesn't restate.",
     "TODO.md tracks live in-progress work and a 'Done (recent)' log — check before starting anything substantive.",
     "Active specs live in docs/superpowers/specs/ (gitignored, local-only). Old plans recoverable from git history (git log --all --diff-filter=D -- docs/).",
-    "When adding a new HTTP endpoint: (1) add to backend/app/api/<router>.py, (2) ensure main.py mounts the router with the right prefix, (3) add a matching function/namespace in frontend/lib/api.ts (type the response too).",
+    "When adding a new HTTP endpoint: (1) add to backend/app/api/<router>.py, (2) ensure main.py mounts the router with the right prefix, (3) add a matching function/namespace in the right frontend/lib/api/<domain>.ts module (type the response too; the barrel re-exports it).",
     "When adding a new ORM column: write an alembic migration via `cd backend && alembic revision --autogenerate -m '...'`, review the generated file (autogen misses CHECK constraints, partial indexes, and CASCADE changes), then run `alembic upgrade head`.",
-    "When adding a new pipeline phase: edit BOTH graph/pipeline.py (edges) AND services/pipeline.py::_next_phase (routing). Add the new node function to graph/nodes.py. Update SSEEvent in frontend/lib/api.ts to include any new event types.",
+    "When adding a new pipeline phase: edit PHASE_SEQUENCE / next_phase() in graph/pipeline.py (single source of routing truth — services/pipeline.py::_next_phase delegates; test_phase_routing.py pins it). Add the node function to graph/nodes.py. Update SSEEvent in frontend/lib/api/pipeline.ts for any new event types.",
     "When adding a new deep-dive category: update categories.ts (single source of truth) and the section registry in sections.ts. Use scoreColors.ts and normalizeScoreKeys; do not introduce local palettes.",
     "When adding a new workspace step: define the output schema in models/workspace_schemas.py, implement in services/workspace_steps.py, wire it into WorkspaceService.advance_step, and add a StepCard under components/workspace/StepCards/.",
     "When touching the model: every cell_path edit goes through put_draft → cell_path.py validator → recompute() → ticker_model_drafts. Don't bypass recompute — formula cells depend on it.",
     "When adding a new data source: keep the (data, Citation) tuple convention. Persist as CitationRecord; round-trip through state as StateCitation.",
-    "Pre-existing utility hooks you should reuse before writing your own: usePersistedCollapse (localStorage-backed collapse), normalizeScoreKeys (display→snake_case score keys), fmtMarketCap/fmtPct/fmtScore (api.ts formatters), CellPath value object (typed cell paths).",
+    "Pre-existing utility hooks you should reuse before writing your own: usePersistedCollapse (localStorage-backed collapse), normalizeScoreKeys (display→snake_case score keys), fmtMarketCap/fmtPct/fmtScore (lib/api/pipeline.ts formatters), CellPath value object (typed cell paths).",
     "Prospectus pipeline (PR #31): a parallel 4-step orchestrator for S-1 / S-1/A filings. Reuses the entire filings/relationships/fan-out plumbing under a synthetic_ticker so the new code surface is small. Adding a new prospectus step: define the schema in models/prospectus_schemas.py, implement in services/prospectus_*.py, wire into ProspectusService._run_pipeline, then add a StepCard under components/prospectus/StepCards/. Prompts + section routing live in graph/prospectus_prompts.py (PROSPECTUS_CATEGORIES, CATEGORY_SECTION_ROUTING). S-1 section regexes live in edgar_html.py::_SECTION_DEFS_S1."
   ]
 }
