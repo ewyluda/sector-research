@@ -12,6 +12,7 @@ import type { Theme } from "@/lib/api";
 import ThemeFilingsPanel from "@/components/filings/ThemeFilingsPanel";
 import CurationPanel from "@/components/filings/CurationPanel";
 import { NewProspectusButton } from "@/components/prospectus/NewProspectusButton";
+import { ProspectusList } from "@/components/prospectus/ProspectusList";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,15 @@ export default async function FilingsPage() {
         </div>
         <NewProspectusButton />
       </div>
+
+      <details className="rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+        <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-[var(--text)]">
+          Prospectus reports
+        </summary>
+        <div className="px-4 pb-4">
+          <ProspectusList />
+        </div>
+      </details>
 
       {error && (
         <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] px-4 py-3 text-sm text-[var(--error-text)]">

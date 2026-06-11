@@ -8,6 +8,7 @@
 import Link from "next/link";
 import { workspaceApi, type WorkspaceRun } from "@/lib/api";
 import { VerdictBadge } from "@/components/workspace/VerdictBadge";
+import { RetryRunButton } from "@/components/workspace/RetryRunButton";
 
 export const dynamic = "force-dynamic";
 
@@ -116,7 +117,10 @@ export default async function WorkspaceIndex() {
                         <VersionBadge before={run.ticker_model_version_before} after={run.ticker_model_version_after} />
                       </td>
                       <td className={`px-6 py-4 font-medium capitalize ${statusClass}`}>
-                        {run.status}
+                        <span className="inline-flex items-center gap-2">
+                          {run.status}
+                          {run.status === "failed" && <RetryRunButton ticker={run.ticker} />}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-[var(--text-muted)] text-xs">{timeStr}</td>
                     </tr>
