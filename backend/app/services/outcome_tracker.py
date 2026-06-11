@@ -161,21 +161,35 @@ def build_research_run_signal_snapshot(
     """Assemble signal_snapshot JSONB for a research-run verdict.
 
     Tolerant of missing fields on state — backfill against older state shapes must not raise.
+    Adds "incomplete": True when expected fields are absent; existing persisted snapshots
+    without this key are treated as complete (absent key = complete).
     """
+    ticker = getattr(state, "ticker", "<unknown>")
+    run_id = getattr(state, "run_id", None)
+    ctx = f"ticker={ticker}" + (f" run_id={run_id}" if run_id else "")
+
+    incomplete = False
     deep_dive_scores: dict[str, float | None] = {}
-    results = getattr(state, "deep_dive_results", None) or {}
-    if isinstance(results, dict):
+    raw_results = getattr(state, "deep_dive_results", None)
+    if not raw_results:
+        logger.warning("build_research_run_signal_snapshot: deep_dive_results missing or empty (%s)", ctx)
+        incomplete = True
+    else:
+        results = raw_results if isinstance(raw_results, dict) else {}
         for category, payload in results.items():
             score = getattr(payload, "score", None)
             if score is None and isinstance(payload, dict):
                 score = payload.get("score")
             deep_dive_scores[category] = score
 
-    return {
+    snapshot: dict = {
         "signals_row": signals_row or {},
         "deep_dive_scores": deep_dive_scores,
         "kill_criterion_state": kill_states or [],
     }
+    if incomplete:
+        snapshot["incomplete"] = True
+    return snapshot
 
 
 def build_workspace_run_signal_snapshot(
@@ -188,22 +202,36 @@ def build_workspace_run_signal_snapshot(
     """Assemble signal_snapshot JSONB for a workspace-run verdict.
 
     Tolerant of missing keys on run.step_outputs.
+    Adds "incomplete": True when step_outputs are absent; existing persisted snapshots
+    without this key are treated as complete (absent key = complete).
     """
-    step_outputs = getattr(run, "step_outputs", None) or {}
-    verdicts: dict[str, str | None] = {}
-    if isinstance(step_outputs, dict):
-        for step_name, payload in step_outputs.items():
-            if not isinstance(payload, dict):
-                continue
-            verdict = payload.get("proposed_verdict") or payload.get("verdict")
-            verdicts[step_name] = verdict
+    ticker = getattr(run, "ticker", "<unknown>")
+    run_id = getattr(run, "id", None)
+    ctx = f"ticker={ticker}" + (f" run_id={run_id}" if run_id else "")
 
-    return {
+    incomplete = False
+    raw_step_outputs = getattr(run, "step_outputs", None)
+    step_outputs = raw_step_outputs if isinstance(raw_step_outputs, dict) else {}
+    if not step_outputs:
+        logger.warning("build_workspace_run_signal_snapshot: step_outputs missing or empty (%s)", ctx)
+        incomplete = True
+
+    verdicts: dict[str, str | None] = {}
+    for step_name, payload in step_outputs.items():
+        if not isinstance(payload, dict):
+            continue
+        verdict = payload.get("proposed_verdict") or payload.get("verdict")
+        verdicts[step_name] = verdict
+
+    snapshot: dict = {
         "signals_row": signals_row or {},
         "workspace_step_verdicts": verdicts,
         "kill_criterion_state": kill_states or [],
         "model_assumptions": model_assumptions or {},
     }
+    if incomplete:
+        snapshot["incomplete"] = True
+    return snapshot
 
 
 async def _resolve_sector_etf(*, sector: str | None, db: AsyncSession) -> str | None:
