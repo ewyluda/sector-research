@@ -101,6 +101,15 @@ export const themes = {
     ),
 };
 
+// ── Tickers ───────────────────────────────────────────────────────────────────
+
+export interface TickerEntry {
+  ticker: string;
+}
+
+/** Distinct known tickers (theme seeds ∪ researched) — feeds the ⌘K palette. */
+export const getTickers = () => apiFetch<TickerEntry[]>("/api/tickers");
+
 // ── Discovery endpoints ───────────────────────────────────────────────────────
 
 export const discovery = {
