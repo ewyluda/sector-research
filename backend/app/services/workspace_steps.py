@@ -159,28 +159,8 @@ def _baseline_value_for_dim(state, dim: str) -> float:
     return sum(nums) / len(nums) if nums else 0.0
 
 
-async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
-    from backend.app.models.model_state import ModelState
-    from backend.app.services.model_balancing import recompute
-    from backend.app.services.model_diff import diff_states
-    from backend.app.models.ticker_model import TickerModel
-
-    prior_state = ModelState.model_validate(ctx.prior_ticker_model.state)
-
-    # ── 1. Pull latest quarterly data from FMP ───────────────────────────────
-    income_rows, fmp_cit_income = await ctx.fmp.get_income_statement(
-        ctx.ticker, period="quarter", limit=2
-    )
-    balance_rows, fmp_cit_balance = await ctx.fmp.get_balance_sheet(
-        ctx.ticker, period="quarter", limit=2
-    )
-    cf_rows, fmp_cit_cf = await ctx.fmp.get_cash_flow(
-        ctx.ticker, period="quarter", limit=2
-    )
-    # analyst estimates fetched but deferred to future step (consensus_delta=None in v1)
-    await ctx.fmp.get_analyst_estimates(ctx.ticker, limit=8)
-
-    # ── 2. Fetch latest 10-Q / 10-K index from EDGAR (best-effort) ──────────
+async def _fetch_new_filings(ctx: WorkspaceContext) -> list[FilingRef]:
+    """Latest 10-Q/10-K ref from EDGAR submissions (best-effort)."""
     # EdgarClient has no get_latest_filing() helper; call get_ticker_to_cik +
     # get_submissions and replicate the _latest_per_form logic from edgar_sections_ingest.
     new_filings: list[FilingRef] = []
@@ -204,6 +184,52 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
                     break  # only the most recent 10-Q or 10-K
         except Exception:  # noqa: BLE001 — EDGAR is best-effort
             pass
+    return new_filings
+
+
+async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
+    from backend.app.models.model_state import ModelState
+    from backend.app.services.model_balancing import recompute
+    from backend.app.services.model_diff import diff_states
+    from backend.app.models.ticker_model import TickerModel
+
+    if ctx.prior_ticker_model is None:
+        # No saved financial model — skip the ModelState refresh entirely
+        # but still surface any new filing (spec §6 earnings-day unblock).
+        # version_before=0 matches kick_off's ticker_model_version_before sentinel.
+        new_filings = await _fetch_new_filings(ctx)
+        filing_note = (
+            f"loaded latest {new_filings[0].form} (filed {new_filings[0].fetched_at}); "
+            if new_filings else "no new EDGAR filing detected; "
+        )
+        return UpdateRefreshOutput(
+            version_before=0,
+            version_after=None,
+            changed_cells=[],
+            removed_cells=[],
+            new_filings=new_filings,
+            consensus_delta=None,
+            model_skipped=True,
+            summary=filing_note + "no saved financial model — model refresh skipped",
+        )
+
+    prior_state = ModelState.model_validate(ctx.prior_ticker_model.state)
+
+    # ── 1. Pull latest quarterly data from FMP ───────────────────────────────
+    income_rows, fmp_cit_income = await ctx.fmp.get_income_statement(
+        ctx.ticker, period="quarter", limit=2
+    )
+    balance_rows, fmp_cit_balance = await ctx.fmp.get_balance_sheet(
+        ctx.ticker, period="quarter", limit=2
+    )
+    cf_rows, fmp_cit_cf = await ctx.fmp.get_cash_flow(
+        ctx.ticker, period="quarter", limit=2
+    )
+    # analyst estimates fetched but deferred to future step (consensus_delta=None in v1)
+    await ctx.fmp.get_analyst_estimates(ctx.ticker, limit=8)
+
+    # ── 2. Fetch latest 10-Q / 10-K index from EDGAR (best-effort) ──────────
+    new_filings = await _fetch_new_filings(ctx)
 
     # ── 3. Patch new_state with fresh actuals (forecast/override cells preserved) ──
     new_state = copy.deepcopy(prior_state)

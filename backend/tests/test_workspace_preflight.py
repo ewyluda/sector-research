@@ -212,7 +212,7 @@ class TestKickOffModellessRun(unittest.TestCase):
             with patch.object(ws_mod, "unit_of_work", fake_uow):
                 # Patch asyncio.create_task so the background _run_workspace
                 # never fires (it would fail without a real DB).
-                with patch("asyncio.create_task"):
+                with patch("asyncio.create_task", side_effect=lambda coro: coro.close()):
                     return await svc.kick_off("NVDA")
 
         asyncio.run(run())

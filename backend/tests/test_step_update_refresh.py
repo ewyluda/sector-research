@@ -222,5 +222,31 @@ class TestStepUpdateRefresh(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(out.consensus_delta)
 
 
+    async def test_update_refresh_skips_model_when_none(self):
+        """When ctx.prior_ticker_model is None, FMP is not touched but EDGAR is still queried."""
+        ctx = WorkspaceContext(
+            run_id="r3", ticker="NVDA", db=_mock_db(),
+            fmp=_mock_fmp_no_change(),
+            edgar=_mock_edgar_with_new_filing(),
+            anthropic=MagicMock(),
+            prior_research_run=MagicMock(),
+            prior_ticker_model=None,
+            emit=MagicMock(),
+        )
+        out = await step_update_refresh(ctx)
+
+        self.assertIsInstance(out, UpdateRefreshOutput)
+        self.assertTrue(out.model_skipped)
+        self.assertEqual(out.version_before, 0)
+        self.assertIsNone(out.version_after)
+        self.assertEqual(out.changed_cells, [])
+        self.assertIn("model refresh skipped", out.summary)
+        # EDGAR new filing should still be surfaced
+        self.assertEqual(len(out.new_filings), 1)
+        self.assertEqual(out.new_filings[0].form, "10-Q")
+        # FMP must NOT be called when there is no model to refresh
+        ctx.fmp.get_income_statement.assert_not_called()
+
+
 if __name__ == "__main__":
     unittest.main()
