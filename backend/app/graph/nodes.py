@@ -69,7 +69,7 @@ from backend.app.services.question_lifecycle import (  # noqa: F401  re-exported
     _render_prior_questions_slot,
     _render_questions_resolved,
 )
-from backend.app.services.transcript_analysis import run_transcript_analysis  # noqa: F401  re-exported for backwards compat
+from backend.app.services.transcript_analysis import run_transcript_analysis, TranscriptAnalysisResult  # noqa: F401  re-exported for backwards compat
 
 logger = logging.getLogger(__name__)
 
@@ -370,9 +370,16 @@ async def node_deep_dive(
         # Run transcript analysis (6 passes)
         if transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
             logger.info("[%s] Running transcript analysis (%d transcripts)", state.ticker, len(transcripts))
-            state.transcript_analysis = await run_transcript_analysis(state.ticker, transcripts, fmp)
-            if transcript_cit is not None:
-                state.add_citation(StateCitation.from_citation(transcript_cit))
+            ta_result = await run_transcript_analysis(state.ticker, transcripts, fmp)
+            if ta_result.status == "ok":
+                state.transcript_analysis = ta_result.value
+                if transcript_cit is not None:
+                    state.add_citation(StateCitation.from_citation(transcript_cit))
+            elif ta_result.status == "error":
+                logger.warning("[%s] Transcript analysis failed: %s", state.ticker, ta_result.error)
+                state.transcript_analysis = None
+            else:
+                state.transcript_analysis = None
         else:
             logger.info("[%s] No transcripts available, skipping analysis", state.ticker)
             state.transcript_analysis = None
