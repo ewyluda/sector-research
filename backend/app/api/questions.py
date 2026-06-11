@@ -6,8 +6,8 @@ FastAPI 0.115 + Python 3.12 evaluates `-> None` returns as the string
 present. Same constraint applied to api/status.py and api/read_through.py.
 """
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -47,6 +47,7 @@ class QuestionResponse(BaseModel):
     resolved_at: Optional[str]
     dismissed_at: Optional[str]
     dismiss_note: Optional[str]
+    snoozed_until: Optional[str]
 
 
 def _serialize(q: Question) -> QuestionResponse:
@@ -67,6 +68,7 @@ def _serialize(q: Question) -> QuestionResponse:
         resolved_at=q.resolved_at.isoformat() if q.resolved_at else None,
         dismissed_at=q.dismissed_at.isoformat() if q.dismissed_at else None,
         dismiss_note=q.dismiss_note,
+        snoozed_until=q.snoozed_until.isoformat() if q.snoozed_until else None,
     )
 
 
@@ -92,6 +94,23 @@ class DismissBody(BaseModel):
 
 class ResolveBody(BaseModel):
     answer_text: str = Field(min_length=1, max_length=10000)
+
+
+class BulkFilter(BaseModel):
+    ticker: Optional[str] = None
+    theme_id: Optional[str] = None
+    priority: Optional[int] = None
+    category: Optional[str] = None
+    status: str = "open"
+
+
+class BulkBody(BaseModel):
+    ids: Optional[list[str]] = None
+    filter: Optional[BulkFilter] = None
+    action: Literal["dismiss", "resolve", "snooze"]
+    note: Optional[str] = Field(default=None, max_length=2000)
+    answer_text: Optional[str] = Field(default=None, max_length=10000)
+    snooze_days: int = Field(default=7, ge=1, le=90)
 
 
 def _normalize_status_filter(status: Optional[str]) -> Optional[str]:
@@ -132,6 +151,56 @@ async def by_ticker_endpoint(
 ) -> TickerRollupResponse:
     rows = await by_ticker_rollup(db, theme_id=theme_id)
     return TickerRollupResponse(tickers=[TickerRollupRow(**r) for r in rows])
+
+
+@router.post("/bulk")
+async def bulk_endpoint(
+    body: BulkBody,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Apply dismiss/resolve/snooze to a set of questions (spec §7).
+
+    Exactly one of `ids` / `filter` must be provided. `resolve` requires
+    answer_text. State transitions mirror the per-row endpoints; in ids
+    mode only open questions are mutated (the bulk analogue of the
+    per-row 409 on non-open rows).
+    """
+    if (body.ids is None) == (body.filter is None):
+        raise HTTPException(status_code=422, detail="provide exactly one of ids|filter")
+    if body.action == "resolve" and not body.answer_text:
+        raise HTTPException(status_code=422, detail="resolve requires answer_text")
+
+    q = select(Question)
+    if body.ids is not None:
+        q = q.where(Question.id.in_(body.ids)).where(Question.status == "open")
+    else:
+        f = body.filter
+        q = q.where(Question.status == f.status)
+        if f.ticker:
+            q = q.where(Question.ticker == f.ticker.upper())
+        if f.theme_id:
+            q = q.where(Question.theme_id == f.theme_id)
+        if f.priority is not None:
+            q = q.where(Question.priority == f.priority)
+        if f.category:
+            q = q.where(Question.category == f.category)
+
+    rows = list((await db.execute(q)).scalars())
+    now = datetime.now(timezone.utc)
+    for row in rows:
+        if body.action == "dismiss":
+            row.status = "dismissed"
+            row.dismissed_at = now
+            row.dismiss_note = body.note
+        elif body.action == "resolve":
+            row.status = "resolved_manual"
+            row.answer_text = body.answer_text
+            row.answer_source = "manual"
+            row.resolved_at = now
+        else:  # snooze
+            row.snoozed_until = now + timedelta(days=body.snooze_days)
+    await db.commit()
+    return {"affected": len(rows)}
 
 
 @router.post("/{question_id}/dismiss", response_model=QuestionResponse)

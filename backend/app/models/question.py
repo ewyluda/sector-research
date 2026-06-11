@@ -48,6 +48,9 @@ class Question(Base, TimestampMixin):
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     dismissed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     dismiss_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    snoozed_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         Index("idx_questions_ticker_status", "ticker", "status"),
