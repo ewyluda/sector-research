@@ -1,3 +1,5 @@
+"use client";
+
 import { useMemo } from "react";
 import type { CuratedFinancials, CategoryOutput, DeepDiveCategoryStructured, TranscriptAnalysis, XSignalVelocity, EdgarFacts } from "@/lib/api";
 import { OverviewBanner } from "./OverviewBanner";
@@ -83,7 +85,7 @@ export function DeepDiveDashboard({ ticker, themeId, financials, categories: raw
   const fdStructured = getStructured(fdCat);
   const fdScore = getScore(fdCat, scores, "future_durability");
 
-  const transcriptAnalysisStable = transcriptAnalysis ?? null;
+  const transcriptAnalysisOrNull = transcriptAnalysis ?? null;
 
   return (
   <>
@@ -106,7 +108,7 @@ export function DeepDiveDashboard({ ticker, themeId, financials, categories: raw
           score={geScore}
           fallback={geCat}
           isLive={isLive}
-          transcriptAnalysis={transcriptAnalysisStable}
+          transcriptAnalysis={transcriptAnalysisOrNull}
           edgarFacts={edgarFacts}
         />
         <TechnicalMarket
@@ -130,7 +132,7 @@ export function DeepDiveDashboard({ ticker, themeId, financials, categories: raw
           score={bqScore}
           fallback={bqCat}
           isLive={isLive}
-          transcriptAnalysis={transcriptAnalysisStable}
+          transcriptAnalysis={transcriptAnalysisOrNull}
         />
 
         {/* Competition — Item 1 segment / area / competitor table */}
@@ -161,7 +163,7 @@ export function DeepDiveDashboard({ ticker, themeId, financials, categories: raw
             score={mgScore}
             fallback={mgCat}
             isLive={isLive}
-            transcriptAnalysis={transcriptAnalysisStable}
+            transcriptAnalysis={transcriptAnalysisOrNull}
           />
           <SentimentNarrative
             structured={snStructured}

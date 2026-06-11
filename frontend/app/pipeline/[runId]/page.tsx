@@ -32,7 +32,7 @@ import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
 import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
 import { PHASE_ETA_SECONDS, PHASE_LABELS, PHASE_ORDER } from "@/lib/pipeline-progress";
 import { buildCategoryWrappers } from "@/lib/categoryWrappers";
-import type { WrapperCache } from "@/lib/categoryWrappers";
+import type { CategoryState, WrapperCache } from "@/lib/categoryWrappers";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -46,15 +46,6 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-type CatStatus = "pending" | "running" | "pass" | "fail";
-
-interface CategoryState {
-  status: CatStatus;
-  score: number | null;
-  key_findings: string[];
-  structured: DeepDiveCategoryStructured | null;
 }
 
 // ── Thesis fallback (when Pydantic validation fails) ──────────────────────────
