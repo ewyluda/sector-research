@@ -69,7 +69,7 @@ function ModelStatusBadge({ ticker }: { ticker: string }) {
   }
   const ago = relativeTime(info.saved_at);
   return (
-    <a href={`/model/${ticker}#forecast`} className="text-xs text-slate-300 hover:text-white">
+    <a href={`/model/${ticker}#forecast`} className="text-xs text-[var(--text-muted)] hover:text-white">
       Model v{info.version} · saved {ago}
     </a>
   );
@@ -133,7 +133,7 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
                     type="button"
                     onClick={handleWorkspaceRefresh}
                     disabled={loading || !canKickOff}
-                    className="text-xs px-2 py-1 rounded border border-slate-700 hover:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-slate-100 transition-colors"
+                    className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:border-[var(--text-faint)] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
                     title={workspaceTooltip}
                   >
                     {loading ? "Launching..." : inFlightRunId ? "View running →" : "Refresh workspace →"}
@@ -141,7 +141,7 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
                 )}
                 <a
                   href={`/company/${ticker}`}
-                  className="text-xs text-slate-300 hover:text-slate-100 hover:underline"
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] hover:underline"
                 >
                   Company →
                 </a>
