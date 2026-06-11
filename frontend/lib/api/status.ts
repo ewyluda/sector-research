@@ -140,6 +140,11 @@ export interface MaterialEvent {
   filing_date: string;
   document_url: string | null;
   dismissed_at: string | null;
+  // Near-duplicate grouping: same (ticker, event_type) within 4 days collapse
+  // into one list item; the primary's fields stay top-level.
+  group_count: number;
+  group_member_ids: string[];
+  group_headlines: string[];
 }
 
 export interface EventListResponse {

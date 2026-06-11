@@ -36,6 +36,7 @@ export interface EventAttentionRow {
   eventType: string;
   filingDate: string;
   eventId: string;
+  groupCount: number;
 }
 
 export type AttentionRow = HealthAttentionRow | QuestionsAttentionRow | EventAttentionRow;
@@ -105,6 +106,7 @@ export function deriveAttention(
         eventType: ev.event_type,
         filingDate: ev.filing_date,
         eventId: ev.id,
+        groupCount: ev.group_count,
       }),
     );
 

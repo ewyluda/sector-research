@@ -142,6 +142,9 @@ function matEvent(over: Partial<MaterialEvent>): MaterialEvent {
     filing_date: "2026-06-08",
     document_url: null,
     dismissed_at: null,
+    group_count: 1,
+    group_member_ids: ["ev-1"],
+    group_headlines: ["Guidance cut"],
     ...over,
   };
 }
