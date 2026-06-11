@@ -2,8 +2,9 @@
 
 This module holds ``run_transcript_analysis``, the 6-pass async function that
 processes earnings call transcripts for the deep-dive node.  It was lifted from
-``backend.app.graph.nodes`` as part of the M2.2 campaign; the function body is
-byte-identical to its origin.
+``backend.app.graph.nodes`` as part of the M2.2 campaign unchanged except for
+import paths (``complete`` is imported function-locally — patch ``llm.complete``
+in tests, not this module).
 """
 
 from __future__ import annotations
