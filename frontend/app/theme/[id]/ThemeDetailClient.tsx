@@ -36,7 +36,7 @@ function CompanyRow({
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter") onClick(); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
       className={clsx(
         "w-full text-left px-4 py-3 border-b border-[var(--border)] transition-colors cursor-pointer",
         selected
@@ -448,13 +448,14 @@ function StaleSignalsBanner({ themeId }: { themeId: string }) {
       // Per-ticker X failures come back as HTTP 200 with an errors count.
       if (summary.errors > 0) {
         setError(
-          `${summary.errors} ticker(s) failed` +
-            (summary.processed === 0 ? " — X API may be unavailable or out of quota" : ""),
+          summary.processed === 0
+            ? `Refresh failed: ${summary.errors} ticker(s) failed — X API may be unavailable or out of quota`
+            : `Partial refresh: ${summary.errors} ticker(s) failed`,
         );
       }
       if (summary.processed > 0) router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Refresh failed");
+      setError(`Refresh failed: ${e instanceof Error ? e.message : "unknown error"}`);
     } finally {
       setRefreshing(false);
     }
@@ -477,7 +478,7 @@ function StaleSignalsBanner({ themeId }: { themeId: string }) {
         </button>
       </div>
       {error && (
-        <span className="text-red-400 normal-case">Refresh failed: {error}</span>
+        <span className="text-red-400 normal-case">{error}</span>
       )}
     </div>
   );

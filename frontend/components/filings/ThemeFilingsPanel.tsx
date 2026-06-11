@@ -132,6 +132,8 @@ export default function ThemeFilingsPanel({
           </div>
         </button>
         <div className="shrink-0 flex items-center gap-2 pr-4">
+          {/* bg-white/10: deliberate token-sweep survivor — translucent white
+              overlay on the theme-colored header; no token equivalent. */}
           <button
             type="button"
             onClick={onFanoutTheme}
