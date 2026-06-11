@@ -1,45 +1,12 @@
 /**
  * Page — /catalysts
  *
- * Unified calendar (default) + proximity-bucket list behind a toggle.
- * Server component fetches the bucketed catalyst list for the List view;
- * the Calendar view fetches its own merged events client-side.
+ * The catalysts calendar moved to the Today page's Calendar tab (UX overhaul
+ * phase 2). Server-side redirect keeps old links/bookmarks working.
  */
 
-import { CatalystsView } from "@/components/catalysts/CatalystsView";
-import { getCatalysts } from "@/lib/api";
-import type { CatalystListResponse } from "@/lib/api";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function CatalystsPage() {
-  let data: CatalystListResponse | null = null;
-  let error: string | null = null;
-
-  try {
-    data = await getCatalysts();
-  } catch {
-    error = "Could not connect to backend. Is the FastAPI server running?";
-  }
-
-  return (
-    <main className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-6">
-      <header>
-        <h1 className="text-xl font-semibold text-[var(--text)] tracking-wide">
-          Catalysts
-        </h1>
-        <p className="text-xs text-[var(--text-muted)] mt-1">
-          Economic releases, universe earnings, and thesis catalysts in one view.
-        </p>
-      </header>
-
-      {error && (
-        <div className="rounded-md border border-[var(--error)]/30 bg-[var(--error)]/5 p-3 text-xs text-[var(--error)]">
-          {error}
-        </div>
-      )}
-
-      {data && <CatalystsView buckets={data.buckets} />}
-    </main>
-  );
+export default function CatalystsRedirect() {
+  redirect("/?tab=calendar");
 }

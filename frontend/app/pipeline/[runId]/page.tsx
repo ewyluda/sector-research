@@ -26,7 +26,6 @@ import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
-import { CommandPalette } from "@/components/deep-dive/CommandPalette";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
 import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
 import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
@@ -601,7 +600,6 @@ export default function PipelineRunnerPage() {
 
   return (
     <main className="min-h-screen bg-[var(--color-bg)] p-6">
-      <CommandPalette />
       <div className="max-w-7xl mx-auto space-y-6">
           {run && (
             <div className="flex items-center justify-between gap-3">

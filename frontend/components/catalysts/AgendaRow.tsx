@@ -12,10 +12,12 @@ export function AgendaRow({
   event,
   dateLabel,
   dimmed = false,
+  archived = false,
 }: {
   event: CalendarEvent;
   dateLabel: string; // empty string when a previous row already showed the day
   dimmed?: boolean;
+  archived?: boolean; // ticker has no active board entry — tag "archived thesis"
 }) {
   const href = eventHref(event);
   const body = (
@@ -35,6 +37,11 @@ export function AgendaRow({
         <span className="font-semibold">
           {event.kind === "economic" ? event.title : event.ticker}
         </span>
+        {archived && (
+          <span className="ml-1.5 rounded border border-[var(--text-muted)]/40 px-1 py-px text-[9px] text-[var(--text-muted)] align-middle">
+            archived thesis
+          </span>
+        )}
         {event.kind !== "economic" && (
           <span className="text-[var(--text-muted)]"> — {event.kind === "catalyst" ? event.title : eventSubtitle(event)}</span>
         )}

@@ -170,6 +170,42 @@ test("events default arg keeps old call sites working", () => {
   assert.deepEqual(rows, []);
 });
 
+test("severity tiers: high-materiality events, then medium, then question rollups", () => {
+  const rows = deriveAttention(
+    [],
+    [rollup({ ticker: "QQQ", p1_count: 1, open_count: 1 })],
+    [
+      matEvent({ id: "m", ticker: "MED", materiality: "medium", filing_date: "2026-06-09" }),
+      matEvent({ id: "h", ticker: "HIGH", materiality: "high", filing_date: "2026-06-05" }),
+    ],
+  );
+  assert.deepEqual(
+    rows.map((r) => r.ticker),
+    ["HIGH", "MED", "QQQ"],
+  );
+});
+
+test("tiering spans item types; within a tier current order is preserved", () => {
+  const rows = deriveAttention(
+    [
+      entry({ ticker: "BROKE", health: "broken" }),
+      entry({ ticker: "STALE", health: "stale", days_since_update: 95 }),
+    ],
+    [],
+    [
+      matEvent({ id: "h1", ticker: "H-OLD", materiality: "high", filing_date: "2026-06-01" }),
+      matEvent({ id: "h2", ticker: "H-NEW", materiality: "high", filing_date: "2026-06-09" }),
+      matEvent({ id: "m1", ticker: "M1", materiality: "medium", filing_date: "2026-06-08" }),
+    ],
+  );
+  // Tier 0: broken/triggered health + high events (health first, events newest
+  // first). Tier 1: stale health + medium/low events. Tier 2: questions.
+  assert.deepEqual(
+    rows.map((r) => r.ticker),
+    ["BROKE", "H-NEW", "H-OLD", "STALE", "M1"],
+  );
+});
+
 test("event rows sort newest first", () => {
   const rows = deriveAttention(
     [],

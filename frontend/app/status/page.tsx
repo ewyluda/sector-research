@@ -20,6 +20,7 @@ import {
 import { ReadThroughDrawer } from "@/components/status/ReadThroughDrawer";
 import { EarningsDrawer } from "@/components/status/EarningsDrawer";
 import { MaterialEventsDrawer } from "@/components/status/MaterialEventsDrawer";
+import { KillCriteriaDrawer } from "@/components/status/KillCriteriaDrawer";
 import { WorkspaceButton } from "@/components/status/WorkspaceButton";
 
 const VIS_REFRESH_FLOOR_MS = 30_000;
@@ -99,11 +100,13 @@ function HealthPill({ health }: { health: Health }) {
 }
 
 function OverflowMenu({
+  ticker,
   archived,
   onArchive,
   onUnarchive,
   onOpen,
 }: {
+  ticker: string;
   archived: boolean;
   onArchive: () => void;
   onUnarchive: () => void;
@@ -135,6 +138,27 @@ function OverflowMenu({
           >
             Open report
           </button>
+          <Link
+            href={`/company/${ticker}`}
+            className="block w-full text-left px-3 py-2 hover:bg-[var(--surface-alt)]"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+          >
+            Company workspace
+          </Link>
+          <Link
+            href={`/model/${ticker}#forecast`}
+            className="block w-full text-left px-3 py-2 hover:bg-[var(--surface-alt)]"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+          >
+            Model
+          </Link>
+          <Link
+            href={`/questions?ticker=${ticker}`}
+            className="block w-full text-left px-3 py-2 hover:bg-[var(--surface-alt)]"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); }}
+          >
+            View questions
+          </Link>
           {archived ? (
             <button
               className="w-full text-left px-3 py-2 hover:bg-[var(--surface-alt)]"
@@ -209,6 +233,7 @@ function Row({
       </div>
       <div onClick={(e) => e.stopPropagation()}>
         <OverflowMenu
+          ticker={entry.ticker}
           archived={archived}
           onArchive={onArchive}
           onUnarchive={onUnarchive}
@@ -248,6 +273,7 @@ export default function StatusPage() {
   const [earningsExpanded, setEarningsExpanded] = useState<Record<string, boolean>>({});
   const [eventsByTicker, setEventsByTicker] = useState<Record<string, MaterialEvent[]>>({});
   const [eventsExpanded, setEventsExpanded] = useState<Record<string, boolean>>({});
+  const [kcExpanded, setKcExpanded] = useState<Record<string, boolean>>({});
 
   // Visibility-debounce refs: stamp Date.now() after each fetch so the
   // onVis handler skips re-fetches within VIS_REFRESH_FLOOR_MS.
@@ -644,6 +670,24 @@ export default function StatusPage() {
                         }
                         return null;
                       })()}
+                      {e.kill_criteria_summary.total > 0 && (
+                        <button
+                          type="button"
+                          data-print-hide="true"
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setKcExpanded((m) => ({ ...m, [e.run_id]: !m[e.run_id] }));
+                          }}
+                          title="Kill criteria"
+                          className={`rounded px-1.5 py-0.5 text-[11px] ring-1 ${
+                            e.kill_criteria_summary.triggered > 0
+                              ? "bg-amber-900/40 text-amber-200 ring-amber-700 hover:bg-amber-900/60"
+                              : "bg-slate-800 text-slate-300 ring-slate-700 hover:bg-slate-700"
+                          }`}
+                        >
+                          KC {e.kill_criteria_summary.triggered}/{e.kill_criteria_summary.total}
+                        </button>
+                      )}
                       <Link
                         href={`/performance?log_trade=${e.ticker}`}
                         data-print-hide="true"
@@ -662,6 +706,11 @@ export default function StatusPage() {
                       items={items}
                       onDismissed={(ek) => handleReadThroughDismissed(e.run_id, ek)}
                     />
+                  </div>
+                )}
+                {kcExpanded[e.run_id] && (
+                  <div className="rounded-lg border border-[var(--border)] bg-[var(--surface-alt)]">
+                    <KillCriteriaDrawer runId={e.run_id} onToggled={fetchBoard} />
                   </div>
                 )}
                 {eventsExpanded[e.run_id] && (

@@ -30,6 +30,7 @@ export interface QuestionsAttentionRow {
 export interface EventAttentionRow {
   kind: "event";
   severity: "amber";
+  materiality: MaterialEvent["materiality"];
   ticker: string;
   headline: string;
   eventType: string;
@@ -98,6 +99,7 @@ export function deriveAttention(
       (ev): EventAttentionRow => ({
         kind: "event",
         severity: "amber",
+        materiality: ev.materiality,
         ticker: ev.ticker,
         headline: ev.headline,
         eventType: ev.event_type,
@@ -106,7 +108,24 @@ export function deriveAttention(
       }),
     );
 
-  return [...healthRows, ...eventRows, ...questionRows];
+  // Severity tiers span item types: broken/triggered theses rank with
+  // high-materiality events; stale theses with medium/low events; question
+  // rollups last. The sort is stable, so within a tier the per-type ordering
+  // above (health → events → questions, each internally sorted) is preserved.
+  return [...healthRows, ...eventRows, ...questionRows].sort(
+    (a, b) => attentionTier(a) - attentionTier(b),
+  );
+}
+
+function attentionTier(row: AttentionRow): number {
+  switch (row.kind) {
+    case "health":
+      return row.severity === "red" ? 0 : 1;
+    case "event":
+      return row.materiality === "high" ? 0 : 1;
+    case "questions":
+      return 2;
+  }
 }
 
 export function deriveSummary(
