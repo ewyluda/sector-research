@@ -32,7 +32,7 @@ function shouldRefetchOnVisibility(lastFetchAtRef: React.MutableRefObject<number
 const HEALTH_PILL: Record<Health, string> = {
   healthy:   "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
   imminent:  "bg-blue-500/10 text-blue-400 border-blue-500/30",
-  stale:     "bg-slate-500/10 text-slate-400 border-slate-500/30",
+  stale:     "bg-slate-500/10 text-[var(--text-muted)] border-slate-500/30",
   triggered: "bg-amber-500/10 text-amber-400 border-amber-500/30",
   broken:    "bg-red-500/10 text-red-400 border-red-500/30",
 };
@@ -52,14 +52,14 @@ const HEALTH_ORDER: (Health | "all")[] = [
 const VERDICT_BADGE: Record<"confirms" | "threatens" | "neutral" | "insufficient", string> = {
   confirms:     "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
   threatens:    "border-red-500/30 bg-red-500/10 text-red-400",
-  neutral:      "border-slate-500/30 bg-slate-500/10 text-slate-400",
+  neutral:      "border-slate-500/30 bg-slate-500/10 text-[var(--text-muted)]",
   insufficient: "border-amber-500/30 bg-amber-500/10 text-amber-400",
 };
 
 const EVENT_BADGE: Record<string, string> = {
   high: "bg-rose-900/40 text-rose-200 ring-rose-700 hover:bg-rose-900/60",
   medium: "bg-amber-900/40 text-amber-200 ring-amber-700 hover:bg-amber-900/60",
-  low: "bg-slate-800 text-slate-300 ring-slate-700 hover:bg-slate-700",
+  low: "bg-[var(--surface)] text-[var(--text-muted)] ring-[var(--border)] hover:bg-[var(--border)]",
 };
 
 function daysUntil(isoDate: string): number {
@@ -232,7 +232,7 @@ function Row({
       <div className="text-[11px] text-[var(--text-muted)] truncate">
         {entry.theme_name}
       </div>
-      <div className={`text-[11px] tabular-nums ${entry.days_since_update > 90 ? "text-slate-400" : "text-[var(--text-muted)]"}`}>
+      <div className="text-[11px] tabular-nums text-[var(--text-muted)]">
         {fmtDays(entry.days_since_update)}
       </div>
       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
@@ -689,7 +689,7 @@ export default function StatusPage() {
                           className={`rounded px-1.5 py-0.5 text-[11px] ring-1 ${
                             e.kill_criteria_summary.triggered > 0
                               ? "bg-amber-900/40 text-amber-200 ring-amber-700 hover:bg-amber-900/60"
-                              : "bg-slate-800 text-slate-300 ring-slate-700 hover:bg-slate-700"
+                              : "bg-[var(--surface)] text-[var(--text-muted)] ring-[var(--border)] hover:bg-[var(--border)]"
                           }`}
                         >
                           KC {e.kill_criteria_summary.triggered}/{e.kill_criteria_summary.total}

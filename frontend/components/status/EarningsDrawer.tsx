@@ -18,7 +18,7 @@ interface Props {
 const VERDICT_PILL: Record<Verdict, string> = {
   confirms:     "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
   threatens:    "bg-red-500/10 text-red-400 border-red-500/30",
-  neutral:      "bg-slate-500/10 text-slate-400 border-slate-500/30",
+  neutral:      "bg-slate-500/10 text-[var(--text-muted)] border-slate-500/30",
   insufficient: "bg-amber-500/10 text-amber-400 border-amber-500/30",
 };
 
@@ -47,7 +47,7 @@ function fmtUSD(v: number | null): string {
  * adopts a markdown library (e.g. react-markdown), swap this for that.
  */
 function SafeMarkdownBlock({ source }: { source: string }) {
-  return <MarkdownProse text={source} className="space-y-2 text-sm text-slate-200" />;
+  return <MarkdownProse text={source} className="space-y-2 text-sm text-[var(--text)]" />;
 }
 
 // ── Drawer dispatcher ───────────────────────────────────────────────────────
@@ -82,16 +82,16 @@ function PreEarningsBlock({ entry }: { entry: EarningsBoardEntry }) {
 
   const p = entry.print!;
   return (
-    <div data-print-hide="true" className="px-4 py-3 bg-slate-900/40 border-t border-slate-800">
-      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-300">
-        <span><span className="text-slate-500">Date:</span> {p.earnings_date} ({p.fiscal_year}Q{p.fiscal_quarter})</span>
-        <span><span className="text-slate-500">EPS est:</span> {p.eps_estimated?.toFixed(2) ?? "—"}</span>
-        <span><span className="text-slate-500">Rev est:</span> {fmtUSD(p.revenue_estimated)}</span>
+    <div data-print-hide="true" className="px-4 py-3 bg-[var(--bg)]/40 border-t border-[var(--surface)]">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--text-muted)]">
+        <span><span className="text-[var(--text-faint)]">Date:</span> {p.earnings_date} ({p.fiscal_year}Q{p.fiscal_quarter})</span>
+        <span><span className="text-[var(--text-faint)]">EPS est:</span> {p.eps_estimated?.toFixed(2) ?? "—"}</span>
+        <span><span className="text-[var(--text-faint)]">Rev est:</span> {fmtUSD(p.revenue_estimated)}</span>
       </div>
       {entry.matched_catalyst && entry.matched_catalyst.signposts.length > 0 && (
         <div className="mt-2">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Signposts</div>
-          <ul className="list-disc list-inside text-xs text-slate-300 space-y-0.5">
+          <div className="text-[10px] uppercase tracking-wider text-[var(--text-faint)] mb-1">Signposts</div>
+          <ul className="list-disc list-inside text-xs text-[var(--text-muted)] space-y-0.5">
             {entry.matched_catalyst.signposts.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
         </div>
@@ -100,7 +100,7 @@ function PreEarningsBlock({ entry }: { entry: EarningsBoardEntry }) {
         <button
           onClick={generate}
           disabled={loading}
-          className="px-2.5 py-1 text-xs rounded border border-slate-700 hover:border-slate-500 disabled:opacity-50"
+          className="px-2.5 py-1 text-xs rounded border border-[var(--border)] hover:border-[var(--text-faint)] disabled:opacity-50"
         >
           {loading ? "Generating…" : brief ? "Regenerate brief" : "Generate pre-earnings brief"}
         </button>
@@ -143,12 +143,12 @@ function PostEarningsBlock({
 
   const p = entry.print!;
   return (
-    <div data-print-hide="true" className="px-4 py-3 bg-slate-900/40 border-t border-slate-800">
-      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-slate-300">
-        <span><span className="text-slate-500">Reported:</span> {p.earnings_date} ({p.fiscal_year}Q{p.fiscal_quarter})</span>
-        <span><span className="text-slate-500">EPS surprise:</span> <strong>{fmtPct(p.eps_surprise_pct)}</strong></span>
-        <span><span className="text-slate-500">Rev surprise:</span> <strong>{fmtPct(p.revenue_surprise_pct)}</strong></span>
-        <span><span className="text-slate-500">Guidance:</span> {p.guidance_direction ?? "—"}</span>
+    <div data-print-hide="true" className="px-4 py-3 bg-[var(--bg)]/40 border-t border-[var(--surface)]">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--text-muted)]">
+        <span><span className="text-[var(--text-faint)]">Reported:</span> {p.earnings_date} ({p.fiscal_year}Q{p.fiscal_quarter})</span>
+        <span><span className="text-[var(--text-faint)]">EPS surprise:</span> <strong>{fmtPct(p.eps_surprise_pct)}</strong></span>
+        <span><span className="text-[var(--text-faint)]">Rev surprise:</span> <strong>{fmtPct(p.revenue_surprise_pct)}</strong></span>
+        <span><span className="text-[var(--text-faint)]">Guidance:</span> {p.guidance_direction ?? "—"}</span>
       </div>
       <div className="mt-3 flex items-center gap-2">
         <button
@@ -170,12 +170,12 @@ function VerdictBlock({ entry }: { entry: EarningsBoardEntry }) {
   const v = entry.verdict!;
   const p = entry.print!;
   return (
-    <div data-print-hide="true" className="px-4 py-3 bg-slate-900/40 border-t border-slate-800">
+    <div data-print-hide="true" className="px-4 py-3 bg-[var(--bg)]/40 border-t border-[var(--surface)]">
       <div className="flex items-center gap-3 mb-2">
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full border text-[11px] font-semibold ${VERDICT_PILL[v.verdict]}`}>
           {v.verdict}
         </span>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-[var(--text-faint)]">
           {p.earnings_date} · {p.fiscal_year}Q{p.fiscal_quarter} ·
           EPS {fmtPct(p.eps_surprise_pct)} · Rev {fmtPct(p.revenue_surprise_pct)} ·
           Guidance {p.guidance_direction ?? "—"}
@@ -185,7 +185,7 @@ function VerdictBlock({ entry }: { entry: EarningsBoardEntry }) {
       {v.pillars_addressed.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
           {v.pillars_addressed.map((pillar) => (
-            <span key={pillar} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">
+            <span key={pillar} className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--surface)] border border-[var(--border)] text-[var(--text-muted)]">
               {pillar}
             </span>
           ))}
