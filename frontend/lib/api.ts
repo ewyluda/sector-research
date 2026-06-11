@@ -228,6 +228,13 @@ export interface ManualAliasRequest {
   created_by?: string | null;
 }
 
+export interface DismissedAlias {
+  alias_name: string;
+  alias_normalized: string;
+  created_at: string | null;
+  created_by: string | null;
+}
+
 export interface ResolveSummary {
   ticker: string;
   rows_considered: number;
@@ -398,6 +405,18 @@ export const relationships = {
       `/api/relationships/reconcile`,
       { method: "POST" }
     ),
+  dismiss: (counterparty_name: string) =>
+    apiFetch<{ alias_normalized: string; dismissed: boolean }>(
+      `/api/relationships/dismiss`,
+      { method: "POST", body: JSON.stringify({ counterparty_name, created_by: "ui-curator" }) }
+    ),
+  undismiss: (aliasNormalized: string) =>
+    apiFetch<{ alias_normalized: string; restored: boolean }>(
+      `/api/relationships/dismiss/${encodeURIComponent(aliasNormalized)}`,
+      { method: "DELETE" }
+    ),
+  listDismissed: () =>
+    apiFetch<DismissedAlias[]>(`/api/relationships/dismissed`),
 };
 
 export const competition = {
