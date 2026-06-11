@@ -463,6 +463,17 @@ class DiscoveryEngine:
         seed_upper = {s.upper() for s in seed_tickers}
         weights = theme.signal_weights or {"x_velocity": 0.40, "fundamental_quality": 0.40, "discovery": 0.20}
 
+        # Batch SurpriseAlert lookup: one IN() query for all tickers instead of N+1.
+        all_tickers = [item.get("ticker", "").upper() for item in fmp_results if item.get("ticker")]
+        surprise_result = await db.execute(
+            select(SurpriseAlert.ticker).where(
+                SurpriseAlert.theme_id == theme.id,
+                SurpriseAlert.ticker.in_(all_tickers),
+                SurpriseAlert.acknowledged_at.is_(None),
+            )
+        )
+        surprise_tickers: set[str] = {row for row in surprise_result.scalars().all()}
+
         cards: list[CompanySignalCard] = []
 
         for item in fmp_results:
@@ -535,15 +546,7 @@ class DiscoveryEngine:
 
             badge = "FMP + X Signal" if (has_x_signal and not is_stale) else "FMP Only (X signal pending)"
 
-            # Check for active surprise alert
-            surprise_result = await db.execute(
-                select(SurpriseAlert).where(
-                    SurpriseAlert.ticker == ticker,
-                    SurpriseAlert.theme_id == theme.id,
-                    SurpriseAlert.acknowledged_at.is_(None),
-                )
-            )
-            is_surprise = surprise_result.scalar_one_or_none() is not None
+            is_surprise = ticker in surprise_tickers
 
             card = CompanySignalCard(
                 ticker=ticker,
