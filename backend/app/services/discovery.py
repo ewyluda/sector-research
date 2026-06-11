@@ -472,7 +472,7 @@ class DiscoveryEngine:
                 SurpriseAlert.acknowledged_at.is_(None),
             )
         )
-        surprise_tickers: set[str] = {row for row in surprise_result.scalars().all()}
+        surprise_tickers: set[str] = set(surprise_result.scalars().all())
 
         cards: list[CompanySignalCard] = []
 

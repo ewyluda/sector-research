@@ -16,6 +16,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # IF NOT EXISTS / IF EXISTS: raw SQL (not op.create_index) because the index
+    # was applied to the live DB during EXPLAIN verification before this file
+    # was finalized; idempotence keeps re-runs safe.
     # The status-board DISTINCT ON query orders by:
     #   (ticker, theme_id, COALESCE((state->>'completed_at')::timestamptz, created_at) DESC, created_at DESC)
     # The COALESCE expression involves a ::timestamptz cast which is STABLE (not
