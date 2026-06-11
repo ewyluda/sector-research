@@ -1,6 +1,8 @@
 # backend/app/api/models_api.py
 from __future__ import annotations
 
+import time
+
 from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -247,13 +249,34 @@ from backend.app.services.reverse_dcf import (  # noqa: E402
 )
 
 
+# Single-process TTL cache for live FMP quotes (acceptable for a local tool).
+# Keyed by ticker; value is (price, fetched_at) where fetched_at is time.monotonic().
+_LIVE_PRICE_TTL_SECONDS: float = 30.0
+_LIVE_PRICE_CACHE: dict[str, tuple[float, float]] = {}
+
+
 async def _fetch_live_price(fmp, ticker: str) -> float:
-    """Pulls current price from FMP. Returns 0.0 on any error so caller can fall back to user override."""
+    """Pulls current price from FMP with a 30-second in-process TTL cache.
+
+    Returns 0.0 on any error so the caller can fall back to a user-supplied price.
+    A price of 0.0 is never written to the cache so the next call always retries FMP.
+    """
+    now = time.monotonic()
+    cached = _LIVE_PRICE_CACHE.get(ticker)
+    if cached is not None:
+        price, fetched_at = cached
+        if now - fetched_at < _LIVE_PRICE_TTL_SECONDS:
+            return price
+
     try:
         quote, _citation = await fmp.get_quote(ticker)
-        return float((quote.get("price") if quote else 0.0) or 0.0)
+        price = float((quote.get("price") if quote else 0.0) or 0.0)
     except Exception:
         return 0.0
+
+    if price != 0.0:
+        _LIVE_PRICE_CACHE[ticker] = (price, now)
+    return price
 
 
 def _safe_solve(state: ModelState, dim: str, target: float):
