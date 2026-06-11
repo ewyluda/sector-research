@@ -26,7 +26,8 @@ export function ThesesTab({ ticker }: { ticker: string }) {
     pipeline
       .list({ ticker, limit: 50 })
       .then((all) => {
-        if (alive) setRuns(all);
+        // Abandoned (stuck, manually written-off) runs stay out of the history.
+        if (alive) setRuns(all.filter((r) => r.status !== "abandoned"));
       })
       .catch(() => {
         if (alive) setRuns([]);

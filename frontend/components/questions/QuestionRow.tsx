@@ -30,9 +30,12 @@ const STATUS_LABEL: Record<string, string> = {
 interface Props {
   question: Question;
   onChange?: (q: Question) => void;
+  /** When provided, renders a selection checkbox (bulk actions). */
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
-export function QuestionRow({ question, onChange }: Props) {
+export function QuestionRow({ question, onChange, selected, onToggleSelect }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -78,6 +81,16 @@ export function QuestionRow({ question, onChange }: Props) {
   return (
     <div className="border border-slate-800 rounded-md bg-slate-950/40 p-3 text-sm">
       <div className="flex items-start gap-2">
+        {onToggleSelect && (
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={() => onToggleSelect(question.id)}
+            aria-label={`Select question ${question.id}`}
+            className="mt-1 accent-emerald-500"
+            data-print-hide="true"
+          />
+        )}
         <span className={`px-1.5 py-0.5 rounded text-xs font-medium border ${PRIORITY_CHIP[question.priority as 1 | 2 | 3] ?? PRIORITY_CHIP[3]}`}>
           P{question.priority}
         </span>

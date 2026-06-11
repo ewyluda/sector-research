@@ -4,7 +4,16 @@ import type { Question } from "./status";
 
 // ── Pipeline types ────────────────────────────────────────────────────────────
 
-export type PhaseStatus = "pending" | "in_progress" | "awaiting_approval" | "completed" | "watchlist" | "error";
+export type PhaseStatus =
+  | "pending"
+  | "in_progress"
+  | "paused"
+  | "awaiting_approval"
+  | "completed"
+  | "watchlist"
+  | "pass"
+  | "abandoned"
+  | "error";
 export type ThesisStatus = "STRONG_BUY" | "BUY" | "WATCHLIST" | "PASS" | "BROKEN" | "PENDING";
 export type AdvanceAction = "approve" | "flag" | "stop";
 
@@ -494,6 +503,11 @@ export const pipeline = {
     apiFetch<RunDetail>(`/api/runs/${runId}/advance`, {
       method: "POST",
       body: JSON.stringify({ action, feedback }),
+    }),
+
+  abandon: (runId: string) =>
+    apiFetch<{ run_id: string; status: "abandoned" }>(`/api/runs/${runId}/abandon`, {
+      method: "POST",
     }),
 
   report: (runId: string) => apiFetch<ReportResponse>(`/api/runs/${runId}/report`),

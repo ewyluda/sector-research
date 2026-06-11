@@ -2,16 +2,15 @@
  * Page — /filings
  *
  * SEC EDGAR filing sections grouped by theme → ticker.
- * Server component fetches the theme list; the per-theme panels are rendered
- * client-side so users can trigger on-demand ingest and drill into sections
- * without a full-page reload.
+ * Server component fetches the theme list; FilingsWorkbench (client) owns the
+ * header chore-count chip and the per-theme panels so users can trigger
+ * on-demand ingest and drill into sections without a full-page reload.
  */
 
 import { themes as themesApi } from "@/lib/api";
 import type { Theme } from "@/lib/api";
-import ThemeFilingsPanel from "@/components/filings/ThemeFilingsPanel";
+import FilingsWorkbench from "@/components/filings/FilingsWorkbench";
 import CurationPanel from "@/components/filings/CurationPanel";
-import { NewProspectusButton } from "@/components/prospectus/NewProspectusButton";
 import { ProspectusList } from "@/components/prospectus/ProspectusList";
 
 export const dynamic = "force-dynamic";
@@ -31,18 +30,7 @@ export default async function FilingsPage() {
   );
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-[var(--text)]">SEC Filings</h1>
-          <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            Narrative sections from the latest 10-K, 10-Q, and DEF 14A filings —
-            grouped by thesis.
-          </p>
-        </div>
-        <NewProspectusButton />
-      </div>
-
+    <FilingsWorkbench themes={themesWithTickers}>
       <details className="rounded-lg border border-[var(--border)] bg-[var(--surface)]">
         <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium text-[var(--text)]">
           Prospectus reports
@@ -70,12 +58,6 @@ export default async function FilingsPage() {
       )}
 
       <CurationPanel />
-
-      <div className="space-y-10">
-        {themesWithTickers.map((t) => (
-          <ThemeFilingsPanel key={t.id} theme={t} />
-        ))}
-      </div>
-    </div>
+    </FilingsWorkbench>
   );
 }

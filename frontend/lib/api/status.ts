@@ -140,6 +140,11 @@ export interface MaterialEvent {
   filing_date: string;
   document_url: string | null;
   dismissed_at: string | null;
+  // Near-duplicate grouping: same (ticker, event_type) within 4 days collapse
+  // into one list item; the primary's fields stay top-level.
+  group_count: number;
+  group_member_ids: string[];
+  group_headlines: string[];
 }
 
 export interface EventListResponse {
@@ -283,6 +288,24 @@ export interface Question {
   resolved_at: string | null;
   dismissed_at: string | null;
   dismiss_note: string | null;
+  snoozed_until: string | null;
+}
+
+export interface QuestionBulkFilter {
+  ticker?: string;
+  theme_id?: string;
+  priority?: 1 | 2 | 3;
+  category?: string;
+  status?: QuestionStatus;
+}
+
+export interface QuestionBulkBody {
+  ids?: string[];
+  filter?: QuestionBulkFilter;
+  action: "dismiss" | "resolve" | "snooze";
+  note?: string;
+  answer_text?: string;
+  snooze_days?: number;
 }
 
 export interface QuestionTickerRollup {
@@ -327,5 +350,11 @@ export const questions = {
   retryAuto: async (id: string): Promise<Question> =>
     apiFetch<Question>(`/api/questions/${encodeURIComponent(id)}/retry-auto`, {
       method: "POST",
+    }),
+
+  bulk: async (body: QuestionBulkBody): Promise<{ affected: number }> =>
+    apiFetch<{ affected: number }>(`/api/questions/bulk`, {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 };

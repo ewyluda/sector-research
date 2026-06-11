@@ -18,6 +18,7 @@ from backend.app.api.catalysts import CatalystRow, nearest_catalyst
 from backend.app.models import Catalyst, KillCriterionState, Theme
 from backend.app.models.material_event import MaterialEvent
 from backend.app.models.workspace_run import WorkspaceRun
+from backend.app.services.material_events_grouping import group_events
 from backend.app.services.run_timestamps import completed_at_sql
 
 logger = logging.getLogger(__name__)
@@ -126,20 +127,25 @@ def _build_next_catalyst(rows: list[CatalystRow], today: date) -> NextCatalyst |
 
 
 def _summarize_material_events(events: list) -> dict[str, MaterialEventsSummary]:
-    """Group undismissed events (ordered filing_date DESC) per ticker."""
+    """Summarize undismissed events per ticker. Near-duplicate filings —
+    same (ticker, event_type) within GROUP_WINDOW_DAYS — count as one group;
+    max materiality still escalates over every raw event."""
     out: dict[str, MaterialEventsSummary] = {}
-    for ev in events:
-        s = out.get(ev.ticker)
+    for g in group_events(events):  # sorted newest-first
+        primary = g["primary"]
+        s = out.get(primary.ticker)
         if s is None:
-            out[ev.ticker] = MaterialEventsSummary(
+            out[primary.ticker] = MaterialEventsSummary(
                 count_14d=1,
-                max_materiality=ev.materiality,
-                latest_headline=ev.headline,
+                max_materiality=primary.materiality,
+                latest_headline=primary.headline,
             )
         else:
             s.count_14d += 1
-            if _MATERIALITY_RANK.get(ev.materiality, 0) > _MATERIALITY_RANK.get(s.max_materiality, 0):
-                s.max_materiality = ev.materiality
+    for ev in events:
+        s = out.get(ev.ticker)
+        if s and _MATERIALITY_RANK.get(ev.materiality, 0) > _MATERIALITY_RANK.get(s.max_materiality, 0):
+            s.max_materiality = ev.materiality
     return out
 
 

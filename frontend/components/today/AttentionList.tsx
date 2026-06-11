@@ -87,7 +87,13 @@ export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: st
                   {EVENT_TYPE_LABEL[row.eventType] ?? "8-K"} · {row.filingDate}
                 </span>
                 <span className="text-xs text-[var(--text-muted)] truncate flex-1">
-                  <span className="font-semibold text-[var(--text)]">8-K</span> — {row.headline}
+                  <span className="font-semibold text-[var(--text)]">8-K</span>
+                  {row.groupCount > 1 && (
+                    <span className="ml-1 rounded bg-[var(--surface-alt)] px-1 text-[10px] text-[var(--text-muted)]">
+                      ×{row.groupCount}
+                    </span>
+                  )}{" "}
+                  — {row.headline}
                 </span>
                 <span className="text-[11px] text-[var(--primary)] shrink-0">View →</span>
               </Link>

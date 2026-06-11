@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { pipeline as api, themes as themesApi } from "@/lib/api";
 import type { RunSummary, ThesisStatus, Theme } from "@/lib/api";
 
@@ -16,21 +17,28 @@ const THESIS_BADGE: Record<ThesisStatus | string, string> = {
   PENDING:    "bg-[var(--color-surface)] text-[var(--color-text-muted)] border-[var(--color-border)]",
 };
 
+// Current status vocabulary only — gate-era statuses (awaiting_approval) are gone.
 const STATUS_LABEL: Record<string, string> = {
-  in_progress:       "Running",
-  awaiting_approval: "Awaiting Approval",
-  completed:         "Complete",
-  watchlist:         "Watchlist",
-  error:             "Error",
+  in_progress: "Running",
+  paused:      "Paused",
+  completed:   "Complete",
+  watchlist:   "Watchlist",
+  pass:        "Pass",
+  abandoned:   "Abandoned",
+  error:       "Error",
 };
 
 const STATUS_DOT: Record<string, string> = {
-  in_progress:       "bg-[var(--color-accent)] animate-pulse",
-  awaiting_approval: "bg-amber-400 animate-pulse",
-  completed:         "bg-emerald-400",
-  watchlist:         "bg-amber-400",
-  error:             "bg-red-400",
+  in_progress: "bg-[var(--color-accent)] animate-pulse",
+  paused:      "bg-amber-400",
+  completed:   "bg-emerald-400",
+  watchlist:   "bg-amber-400",
+  pass:        "bg-[var(--text-muted)]",
+  abandoned:   "bg-[var(--text-faint)]",
+  error:       "bg-red-400",
 };
+
+const ABANDON_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -38,165 +46,220 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-// ── Filter bar ─────────────────────────────────────────────────────────────────
+function activityTs(run: RunSummary): number {
+  const iso = run.updated_at ?? run.created_at;
+  return iso ? new Date(iso).getTime() : 0;
+}
 
-type FilterStatus = "all" | "completed" | "in_progress" | "awaiting_approval" | "watchlist" | "data_gaps";
+function hasThesis(run: RunSummary): boolean {
+  return run.thesis_status != null && run.thesis_status !== "PENDING";
+}
 
-type StatusCounts = Partial<Record<FilterStatus, number>>;
+/** A stuck pipeline run: still in_progress/paused but started over ~7 days ago. */
+function isZombie(run: RunSummary): boolean {
+  if (run.status !== "in_progress" && run.status !== "paused") return false;
+  if (!run.created_at) return false;
+  return Date.now() - new Date(run.created_at).getTime() > ABANDON_AGE_MS;
+}
 
-function FilterBar({
-  active,
-  onChange,
-  total,
-  counts,
-}: {
-  active: FilterStatus;
-  onChange: (f: FilterStatus) => void;
-  total: number;
-  counts: StatusCounts;
-}) {
-  const filters: { key: FilterStatus; label: string }[] = [
-    { key: "all",               label: "All" },
-    { key: "completed",         label: "Complete" },
-    { key: "awaiting_approval", label: "Awaiting" },
-    { key: "in_progress",       label: "Running" },
-    { key: "watchlist",         label: "Watchlist" },
-    { key: "data_gaps",         label: "Data Gaps" },
-  ];
-
+function StatusChip({ status }: { status: string }) {
   return (
-    <div className="flex items-center flex-wrap gap-2">
-      {filters.map(({ key, label }) => {
-        const count = counts[key];
-        const isActive = active === key;
-        return (
+    <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status] ?? "bg-slate-400"}`} />
+      {STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
+function VerdictBadge({ thesis_status }: { thesis_status: ThesisStatus | null }) {
+  if (!thesis_status || thesis_status === "PENDING") return null;
+  return (
+    <span
+      className={`px-2 py-0.5 rounded-full border text-xs font-semibold ${
+        THESIS_BADGE[thesis_status] ?? THESIS_BADGE.PENDING
+      }`}
+    >
+      {thesis_status}
+    </span>
+  );
+}
+
+// ── Filters ────────────────────────────────────────────────────────────────────
+
+type StatusFilter = "all_active" | "completed" | "watchlist" | "abandoned";
+type View = StatusFilter | "data_gaps";
+
+const STATUS_FILTERS: { key: StatusFilter; label: string }[] = [
+  { key: "all_active", label: "All Active" },
+  { key: "completed",  label: "Complete" },
+  { key: "watchlist",  label: "Watchlist" },
+  { key: "abandoned",  label: "Abandoned" },
+];
+
+function matchesStatus(run: RunSummary, filter: StatusFilter): boolean {
+  if (filter === "all_active") return run.status !== "abandoned";
+  return run.status === filter;
+}
+
+// ── Ticker group ───────────────────────────────────────────────────────────────
+
+interface TickerGroup {
+  ticker: string;
+  runs: RunSummary[]; // newest-first
+}
+
+function groupByTicker(runs: RunSummary[]): TickerGroup[] {
+  const byTicker = new Map<string, RunSummary[]>();
+  for (const run of runs) {
+    const key = run.ticker.toUpperCase();
+    const bucket = byTicker.get(key);
+    if (bucket) bucket.push(run);
+    else byTicker.set(key, [run]);
+  }
+  const groups: TickerGroup[] = [];
+  for (const [ticker, group] of byTicker) {
+    group.sort((a, b) => activityTs(b) - activityTs(a));
+    groups.push({ ticker, runs: group });
+  }
+  groups.sort((a, b) => activityTs(b.runs[0]) - activityTs(a.runs[0]));
+  return groups;
+}
+
+// ── Run row (inside an expanded group) ────────────────────────────────────────
+
+function RunRow({ run, onAbandon }: { run: RunSummary; onAbandon: (run: RunSummary) => void }) {
+  const abandoned = run.status === "abandoned";
+  return (
+    <div
+      className={`flex items-center flex-wrap gap-x-3 gap-y-1 px-4 py-2.5 border-t border-[var(--color-border)] ${
+        abandoned ? "opacity-60" : ""
+      }`}
+    >
+      <span className="text-xs text-[var(--color-text-muted)] tabular-nums w-24 flex-shrink-0">
+        {fmtDate(run.updated_at ?? run.created_at)}
+      </span>
+      <span className="w-24 flex-shrink-0">
+        <StatusChip status={run.status} />
+      </span>
+      <VerdictBadge thesis_status={run.thesis_status} />
+      {run.conviction_score !== null && run.status !== "in_progress" && (
+        <span className="text-xs font-mono text-[var(--color-text-secondary)] tabular-nums">
+          {run.conviction_score} conviction
+        </span>
+      )}
+      {run.loop_count > 0 && (
+        <span
+          title={`Risk stress-test triggered ${run.loop_count} deep-dive retry loop${run.loop_count !== 1 ? "s" : ""}`}
+          className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium cursor-help"
+        >
+          ↻ L{run.loop_count}
+        </span>
+      )}
+      {run.gap_count > 0 && (
+        <span
+          title={`${run.gap_count} data gap${run.gap_count !== 1 ? "s" : ""} (missing or low-confidence findings) across the 9 deep-dive categories`}
+          className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium cursor-help"
+        >
+          {run.gap_count} gap{run.gap_count !== 1 ? "s" : ""}
+        </span>
+      )}
+      {run.theme_name && (
+        <span className="text-xs text-[var(--color-text-muted)] truncate">{run.theme_name}</span>
+      )}
+      <span className="ml-auto flex items-center gap-3 flex-shrink-0">
+        {isZombie(run) && (
           <button
-            key={key}
-            onClick={() => onChange(key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
-              isActive
-                ? "bg-[var(--color-accent)] text-white"
-                : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
-            }`}
+            onClick={() => onAbandon(run)}
+            className="px-2 py-1 rounded border border-red-500/25 text-red-400 text-xs font-medium
+                       hover:bg-red-500/10 transition-colors"
           >
-            <span>{label}</span>
-            {count != null && (
-              <span className={`text-[10px] tabular-nums font-mono ${
-                isActive ? "text-white/80" : "text-[var(--color-text-muted)]"
-              }`}>
-                {count}
-              </span>
-            )}
+            Abandon
           </button>
-        );
-      })}
-      <span className="ml-auto text-xs text-[var(--color-text-muted)]">
-        {total} run{total !== 1 ? "s" : ""}
+        )}
+        <Link
+          href={`/pipeline/${run.id}`}
+          className="text-xs text-[var(--color-accent)] hover:underline"
+        >
+          open →
+        </Link>
       </span>
     </div>
   );
 }
 
-// ── Run card ──────────────────────────────────────────────────────────────────
+// ── Ticker group card ─────────────────────────────────────────────────────────
 
-function RunCard({ run, onClick }: { run: RunSummary; onClick: () => void }) {
-  const isLive = run.status === "in_progress" || run.status === "awaiting_approval";
+function TickerGroupCard({
+  group,
+  onAbandon,
+}: {
+  group: TickerGroup;
+  onAbandon: (run: RunSummary) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const latest = group.runs[0];
+  const allAbandoned = group.runs.every((r) => r.status === "abandoned");
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
-      className="group rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]
-                 hover:border-[var(--color-accent)]/40 hover:bg-[var(--color-accent)]/3
-                 cursor-pointer transition-all p-5"
+      className={`rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] ${
+        allAbandoned ? "opacity-60" : ""
+      }`}
     >
-      <div className="flex items-start justify-between gap-4">
-        {/* Left: ticker + meta */}
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5 mb-1">
-            <span className="text-xl font-mono font-bold text-[var(--color-text-primary)] tracking-wide">
-              {run.ticker}
-            </span>
-            {run.thesis_status && run.thesis_status !== "PENDING" && (
-              <span
-                className={`px-2 py-0.5 rounded-full border text-xs font-semibold ${
-                  THESIS_BADGE[run.thesis_status] ?? THESIS_BADGE.PENDING
-                }`}
-              >
-                {run.thesis_status}
-              </span>
-            )}
-            {run.loop_count > 0 && (
-              <span
-                title={`Risk stress-test triggered ${run.loop_count} deep-dive retry loop${run.loop_count !== 1 ? "s" : ""}`}
-                className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium cursor-help"
-              >
-                ↻ L{run.loop_count}
-              </span>
-            )}
-            {run.gap_count > 0 && (
-              <span
-                title={`${run.gap_count} data gap${run.gap_count !== 1 ? "s" : ""} (missing or low-confidence findings) across the 9 deep-dive categories`}
-                className="px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 text-xs font-medium cursor-help"
-              >
-                {run.gap_count} gap{run.gap_count !== 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
-          {run.theme_name && (
-            <p className="text-xs text-[var(--color-text-muted)] mt-0.5">{run.theme_name}</p>
-          )}
-
-          <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
-            <span className="flex items-center gap-1.5">
-              <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[run.status] ?? "bg-slate-400"}`} />
-              {STATUS_LABEL[run.status] ?? run.status}
-            </span>
-            <span>·</span>
-            <span>Phase: {run.phase.replace(/_/g, " ")}</span>
-            <span>·</span>
-            <span>{fmtDate(run.updated_at ?? run.created_at)}</span>
-          </div>
-        </div>
-
-        {/* Right: conviction score — only show "pending" while in_progress
-            (conviction is null/zero before thesis_construction). awaiting_approval
-            runs already have the thesis-computed score. */}
-        <div className="flex-shrink-0 text-right">
-          {run.status === "in_progress" ? (
-            <>
-              <p className="text-2xl font-mono font-semibold text-[var(--color-text-faint)] tabular-nums">—</p>
-              <p className="text-xs text-[var(--color-text-muted)]">pending</p>
-            </>
-          ) : run.conviction_score !== null ? (
-            <>
-              <p className="text-2xl font-mono font-semibold text-[var(--color-accent)] tabular-nums">
-                {run.conviction_score}
-              </p>
-              <p className="text-xs text-[var(--color-text-muted)]">conviction</p>
-            </>
-          ) : (
-            <p className="text-xs text-[var(--color-text-muted)] mt-2">—</p>
-          )}
-        </div>
+      {/* div+role, not <button>: the ticker <Link> inside would be invalid
+          interactive-inside-interactive HTML. Keyboard parity via Enter/Space. */}
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setExpanded((e) => !e)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((x) => !x);
+          }
+        }}
+        aria-expanded={expanded}
+        className="w-full flex items-center gap-3 px-4 py-3.5 text-left cursor-pointer
+                   hover:bg-[var(--color-accent)]/3 transition-colors"
+      >
+        <svg
+          className={`w-3.5 h-3.5 flex-shrink-0 text-[var(--color-text-muted)] transition-transform ${
+            expanded ? "rotate-180" : ""
+          }`}
+          aria-hidden="true"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2.5}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+        <Link
+          href={`/company/${group.ticker}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-lg font-mono font-bold text-[var(--color-text-primary)] tracking-wide
+                     hover:text-[var(--color-accent)] transition-colors"
+        >
+          {group.ticker}
+        </Link>
+        <span className="px-1.5 py-0.5 rounded bg-[var(--color-bg)] border border-[var(--color-border)] text-xs font-mono text-[var(--color-text-muted)] tabular-nums">
+          {group.runs.length} run{group.runs.length !== 1 ? "s" : ""}
+        </span>
+        <VerdictBadge thesis_status={latest.thesis_status} />
+        <span className="ml-auto flex items-center gap-3 flex-shrink-0">
+          <StatusChip status={latest.status} />
+          <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
+            {fmtDate(latest.updated_at ?? latest.created_at)}
+          </span>
+        </span>
       </div>
 
-      {/* Live badge */}
-      {isLive && (
-        <div className="mt-3 pt-3 border-t border-[var(--color-border)] flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] animate-pulse" />
-          <span className="text-xs text-[var(--color-accent)] font-medium">
-            {run.status === "awaiting_approval" ? "Waiting for your approval" : "Running…"}
-          </span>
-        </div>
-      )}
+      {expanded && group.runs.map((run) => <RunRow key={run.id} run={run} onAbandon={onAbandon} />)}
     </div>
   );
 }
 
-// ── Data Gaps view ───────────────────────────────────────────────────────────
+// ── Data Gaps view (unchanged from the pre-rebuild page) ─────────────────────
 
 function DataGapsView({
   data,
@@ -297,59 +360,31 @@ function DataGapsView({
 export default function LibraryPage() {
   const router = useRouter();
   const [runs, setRuns] = useState<RunSummary[]>([]);
-  const [filter, setFilter] = useState<FilterStatus>("all");
+  const [view, setView] = useState<View>("all_active");
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [themeId, setThemeId] = useState<string>("");
+  const [thesisOnly, setThesisOnly] = useState(false);
   const [themeList, setThemeList] = useState<Theme[]>([]);
   const [dataGaps, setDataGaps] = useState<import("@/lib/api").DataGapsResponse | null>(null);
   const [gapsLoading, setGapsLoading] = useState(false);
-  const [counts, setCounts] = useState<StatusCounts>({});
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     themesApi.list().then(setThemeList).catch(() => {});
   }, []);
 
+  // One fetch; status / theme / thesis / search filters are all client-side.
+  // `loading` only guards the initial load — refetches (post-abandon) keep the
+  // current list mounted so group expansion state survives.
   useEffect(() => {
-    if (filter === "data_gaps") return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    const opts: Record<string, string | number> = {};
-    if (filter !== "all") opts.status = filter;
-    if (themeId) opts.theme_id = themeId;
-    if (debouncedSearch.trim()) opts.search = debouncedSearch.trim();
-    api.list(opts as Parameters<typeof api.list>[0])
+    api.list({ limit: 500 })
       .then(setRuns)
       .finally(() => setLoading(false));
-  }, [filter, themeId, debouncedSearch]);
-
-  // Separate, uncfiltered fetch keyed only on theme so each filter chip can
-  // show its own count without re-fetching on every filter / search change.
-  useEffect(() => {
-    const opts: Record<string, string | number> = { limit: 500 };
-    if (themeId) opts.theme_id = themeId;
-    api.list(opts as Parameters<typeof api.list>[0])
-      .then((all) => {
-        const next: StatusCounts = { all: all.length };
-        for (const r of all) {
-          if (r.status === "completed") next.completed = (next.completed ?? 0) + 1;
-          else if (r.status === "awaiting_approval") next.awaiting_approval = (next.awaiting_approval ?? 0) + 1;
-          else if (r.status === "in_progress") next.in_progress = (next.in_progress ?? 0) + 1;
-          else if (r.status === "watchlist") next.watchlist = (next.watchlist ?? 0) + 1;
-        }
-        setCounts(next);
-      })
-      .catch(() => setCounts({}));
-  }, [themeId]);
+  }, [refreshKey]);
 
   useEffect(() => {
-    if (filter !== "data_gaps") return;
+    if (view !== "data_gaps") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setGapsLoading(true);
     const opts: Record<string, string> = {};
@@ -357,11 +392,46 @@ export default function LibraryPage() {
     api.dataGaps(opts as Parameters<typeof api.dataGaps>[0])
       .then(setDataGaps)
       .finally(() => setGapsLoading(false));
-  }, [filter, themeId]);
+  }, [view, themeId, refreshKey]);
 
-  function navigate(run: RunSummary) {
-    // /report/[runId] just redirects to /pipeline/[runId] — skip the hop.
-    router.push(`/pipeline/${run.id}`);
+  // Theme / thesis / search filters apply before status, so the status chips
+  // count within the currently visible slice.
+  const baseFiltered = useMemo(() => {
+    const q = search.trim().toUpperCase();
+    return runs.filter((r) => {
+      if (themeId && r.theme_id !== themeId) return false;
+      if (thesisOnly && !hasThesis(r)) return false;
+      if (q && !r.ticker.toUpperCase().includes(q)) return false;
+      return true;
+    });
+  }, [runs, themeId, thesisOnly, search]);
+
+  const counts = useMemo(() => {
+    const next: Partial<Record<StatusFilter, number>> = {};
+    for (const f of STATUS_FILTERS) {
+      next[f.key] = baseFiltered.filter((r) => matchesStatus(r, f.key)).length;
+    }
+    return next;
+  }, [baseFiltered]);
+
+  const groups = useMemo(() => {
+    if (view === "data_gaps") return [];
+    return groupByTicker(baseFiltered.filter((r) => matchesStatus(r, view)));
+  }, [baseFiltered, view]);
+
+  const visibleRunCount = groups.reduce((n, g) => n + g.runs.length, 0);
+
+  async function handleAbandon(run: RunSummary) {
+    const started = fmtDate(run.created_at);
+    if (!confirm(`Abandon the ${run.ticker} run started ${started}? It stays in the Library, greyed out.`)) {
+      return;
+    }
+    try {
+      await api.abandon(run.id);
+    } catch (e) {
+      alert(`Failed to abandon run: ${e instanceof Error ? e.message : e}`);
+    }
+    setRefreshKey((k) => k + 1);
   }
 
   return (
@@ -375,7 +445,7 @@ export default function LibraryPage() {
               Research Library
             </h1>
             <p className="mt-0.5 text-sm text-[var(--color-text-muted)]">
-              All due diligence runs, signals, and completed theses
+              All due diligence runs, grouped by ticker
             </p>
           </div>
           <button
@@ -387,8 +457,8 @@ export default function LibraryPage() {
           </button>
         </div>
 
-        {/* Search & theme filter */}
-        <div className="flex items-center gap-3 mb-4">
+        {/* Search, theme, has-thesis filters */}
+        <div className="flex items-center flex-wrap gap-3 mb-4">
           <div className="relative flex-1 max-w-xs">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -415,40 +485,72 @@ export default function LibraryPage() {
               <option key={t.id} value={t.id}>{t.name}</option>
             ))}
           </select>
+          <label className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)] cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={thesisOnly}
+              onChange={(e) => setThesisOnly(e.target.checked)}
+              className="accent-[var(--color-accent)]"
+            />
+            Has thesis
+          </label>
         </div>
 
-        {/* Filter bar */}
-        <div className="mb-5">
-          <FilterBar
-            active={filter}
-            onChange={setFilter}
-            total={filter === "data_gaps" ? (dataGaps?.gaps.length ?? 0) : runs.length}
-            counts={counts}
-          />
+        {/* Status filter chips */}
+        <div className="mb-5 flex items-center flex-wrap gap-2">
+          {[...STATUS_FILTERS, { key: "data_gaps" as View, label: "Data Gaps" }].map(({ key, label }) => {
+            const isActive = view === key;
+            const count = key === "data_gaps" ? undefined : counts[key as StatusFilter];
+            return (
+              <button
+                key={key}
+                onClick={() => setView(key as View)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  isActive
+                    ? "bg-[var(--color-accent)] text-white"
+                    : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border border-[var(--color-border)] hover:text-[var(--color-text-primary)]"
+                }`}
+              >
+                <span>{label}</span>
+                {count != null && (
+                  <span className={`text-[10px] tabular-nums font-mono ${
+                    isActive ? "text-white/80" : "text-[var(--color-text-muted)]"
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          <span className="ml-auto text-xs text-[var(--color-text-muted)]">
+            {view === "data_gaps"
+              ? `${dataGaps?.gaps.length ?? 0} gap type${(dataGaps?.gaps.length ?? 0) !== 1 ? "s" : ""}`
+              : `${groups.length} ticker${groups.length !== 1 ? "s" : ""} · ${visibleRunCount} run${visibleRunCount !== 1 ? "s" : ""}`}
+          </span>
         </div>
 
         {/* Content */}
-        {filter === "data_gaps" ? (
+        {view === "data_gaps" ? (
           <DataGapsView
             data={dataGaps}
             loading={gapsLoading}
             onTickerClick={(t) => {
               setSearch(t);
-              setFilter("all");
+              setView("all_active");
             }}
           />
         ) : loading ? (
           <div className="flex items-center justify-center py-24">
             <div className="w-6 h-6 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" />
           </div>
-        ) : runs.length === 0 ? (
+        ) : groups.length === 0 ? (
           <div className="text-center py-24 space-y-3">
             <p className="text-[var(--color-text-muted)] text-sm">
-              {filter === "all"
+              {view === "all_active" && !search && !themeId && !thesisOnly
                 ? "No research runs yet. Start your first one."
-                : `No ${STATUS_LABEL[filter]?.toLowerCase() ?? filter} runs.`}
+                : "No runs match the current filters."}
             </p>
-            {filter === "all" && (
+            {view === "all_active" && !search && !themeId && !thesisOnly && (
               <button
                 onClick={() => router.push("/pipeline/new")}
                 className="mt-2 px-5 py-2.5 rounded-lg bg-[var(--color-accent)] text-white text-sm font-semibold
@@ -460,8 +562,8 @@ export default function LibraryPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {runs.map((run) => (
-              <RunCard key={run.id} run={run} onClick={() => navigate(run)} />
+            {groups.map((group) => (
+              <TickerGroupCard key={group.ticker} group={group} onAbandon={handleAbandon} />
             ))}
           </div>
         )}

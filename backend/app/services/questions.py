@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, select, update
+from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.graph.llm import SONNET, complete
@@ -23,6 +23,11 @@ logger = logging.getLogger(__name__)
 
 
 # ── Query helpers ────────────────────────────────────────────────────────────
+
+
+def _not_snoozed():
+    """Predicate: not snoozed, or the snooze has expired."""
+    return or_(Question.snoozed_until.is_(None), Question.snoozed_until <= func.now())
 
 
 async def list_questions(
@@ -42,6 +47,9 @@ async def list_questions(
         stmt = stmt.where(Question.theme_id == theme_id)
     if status:
         stmt = stmt.where(Question.status == status)
+    if status == "open":
+        # Snoozed questions drop out of the default open view until expiry.
+        stmt = stmt.where(_not_snoozed())
     if priority is not None:
         stmt = stmt.where(Question.priority == priority)
     if category:
@@ -64,6 +72,7 @@ async def by_ticker_rollup(
     stmt = (
         select(Question.ticker, p1, p2, p3, total)
         .where(Question.status == "open")
+        .where(_not_snoozed())
         .group_by(Question.ticker)
         .order_by(p1.desc(), total.desc())
     )

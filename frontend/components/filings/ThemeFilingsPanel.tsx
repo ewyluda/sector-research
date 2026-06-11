@@ -5,7 +5,13 @@ import { fanouts } from "@/lib/api";
 import type { FanoutStatus, Theme } from "@/lib/api";
 import TickerFilingsCard, { type TickerFilingsCardHandle } from "./TickerFilingsCard";
 
-export default function ThemeFilingsPanel({ theme }: { theme: Theme }) {
+export default function ThemeFilingsPanel({
+  theme,
+  onSectionsState,
+}: {
+  theme: Theme;
+  onSectionsState?: (ticker: string, hasSections: boolean) => void;
+}) {
   const tickers = Array.isArray(theme.seed_tickers) ? theme.seed_tickers : [];
   const [expanded, setExpanded] = useState(true);
   const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
@@ -145,6 +151,10 @@ export default function ThemeFilingsPanel({ theme }: { theme: Theme }) {
         </div>
       </div>
 
+      <div className="text-[10px] text-[var(--text-faint)] px-5 py-1.5 border-t border-[var(--border)]">
+        Fan out = ingest + extract + resolve for every ticker below.
+      </div>
+
       {fanoutStatus?.status === "running" && fanoutStatus.current_ticker && (
         <div className="text-[11px] text-[var(--text-muted)] px-4 py-1 border-t border-[var(--border)]">
           Fan-out: {fanoutStatus.current_stage} · {fanoutStatus.current_ticker}
@@ -157,6 +167,7 @@ export default function ThemeFilingsPanel({ theme }: { theme: Theme }) {
             <TickerFilingsCard
               key={t}
               ticker={t}
+              onSectionsState={onSectionsState}
               ref={(handle) => registerCard(t, handle)}
             />
           ))}

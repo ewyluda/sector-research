@@ -58,6 +58,14 @@ class TestStatusBoardSql(unittest.TestCase):
         )
         assert "archived_at is null" not in sql_with_archived.lower()
 
+    def test_status_filter_excludes_abandoned_runs(self) -> None:
+        """The board keys on completed/watchlist only, so abandoned (and any
+        other non-terminal) runs can never surface as a board entry."""
+        sql, _ = _build_latest_runs_sql(theme_id=None, include_archived=False)
+        lower_sql = sql.lower()
+        assert "r.status in ('completed', 'watchlist')" in lower_sql
+        assert "abandoned" not in lower_sql
+
     def test_theme_id_parameterization(self) -> None:
         # With theme_id: bind placeholder in SQL and value in params dict.
         sql_with_theme, params_with_theme = _build_latest_runs_sql(

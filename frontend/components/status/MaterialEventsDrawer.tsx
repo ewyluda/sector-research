@@ -50,6 +50,7 @@ function EventRow({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showGroup, setShowGroup] = useState(false);
 
   async function handleDismiss() {
     setBusy(true);
@@ -79,6 +80,15 @@ function EventRow({
           </span>
           <span className="text-slate-500 shrink-0">·</span>
           <span className="text-slate-500 text-xs shrink-0">{item.filing_date}</span>
+          {item.group_count > 1 && (
+            <button
+              onClick={() => setShowGroup((v) => !v)}
+              title={`${item.group_count} near-duplicate filings — click to ${showGroup ? "collapse" : "expand"}`}
+              className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-300 ring-1 ring-slate-700 hover:bg-slate-700 shrink-0"
+            >
+              ×{item.group_count}
+            </button>
+          )}
         </div>
         <div className="flex gap-2 shrink-0">
           {item.document_url && (
@@ -94,6 +104,11 @@ function EventRow({
           <button
             onClick={handleDismiss}
             disabled={busy}
+            title={
+              item.group_count > 1
+                ? `Dismisses all ${item.group_count} grouped filings`
+                : undefined
+            }
             className="rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-400 hover:bg-slate-800 disabled:opacity-50"
           >
             {busy ? "…" : "Dismiss"}
@@ -102,6 +117,13 @@ function EventRow({
       </div>
       <div className="mt-1.5 font-medium text-slate-200">{item.headline}</div>
       <div className="mt-0.5 text-xs text-slate-400">{item.summary}</div>
+      {showGroup && item.group_headlines.length > 0 && (
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-xs text-slate-400">
+          {item.group_headlines.map((h, i) => (
+            <li key={i}>{h}</li>
+          ))}
+        </ul>
+      )}
       {error && <div className="mt-2 text-xs text-rose-400">{error}</div>}
     </div>
   );
