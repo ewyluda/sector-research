@@ -27,7 +27,7 @@ class ResearchRun(Base, TimestampMixin):
     )
     status: Mapped[str] = mapped_column(
         String(32), nullable=False, default="in_progress"
-    )  # in_progress | paused | completed | watchlist | pass
+    )  # in_progress | paused | completed | watchlist | pass | abandoned
 
     # Full LangGraph state, serialised
     state: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)

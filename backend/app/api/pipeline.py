@@ -240,6 +240,23 @@ async def advance_run(
     return _run_to_detail(run)
 
 
+@router.post("/runs/{run_id}/abandon")
+async def abandon_run(run_id: str, db: AsyncSession = Depends(get_db)) -> dict:
+    """Mark a stuck run abandoned. Only in_progress/paused runs qualify;
+    no row deletion — the Library renders abandoned runs greyed."""
+    result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+    run = result.scalar_one_or_none()
+    if run is None:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.status not in ("in_progress", "paused"):
+        raise HTTPException(
+            status_code=409, detail=f"Cannot abandon a '{run.status}' run"
+        )
+    run.status = "abandoned"
+    await db.commit()
+    return {"run_id": run_id, "status": "abandoned"}
+
+
 @router.get("/runs/{run_id}/stream")
 async def stream_run(run_id: str, request: Request, db: AsyncSession = Depends(get_db)):
     """
