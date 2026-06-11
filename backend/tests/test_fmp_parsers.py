@@ -272,8 +272,9 @@ class TestGetQuote(unittest.IsolatedAsyncioTestCase):
 
     async def test_error_shaped_response_returned_as_is(self):
         # NOTE: error dict is NOT filtered — same as profile behavior.
-        # The citation price will be "N/A" because result.get("price") on an error
-        # dict returns None → citation.value = "N/A".
+        # The citation value is "N/A" because the "price" KEY is absent from the
+        # error dict, so .get's default fires (contrast: an explicit None value
+        # bypasses the default — see test_null_price_field above).
         client = FMPClient()
         client._request = AsyncMock(return_value={"Error Message": "Invalid API KEY."})
         result, citation = await client.get_quote("AAPL")
