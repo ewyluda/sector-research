@@ -45,7 +45,7 @@ export function ValidationCard({
   if (noModel) {
     return (
       <div className="mt-2 text-xs text-[var(--text-muted)]">
-        No financial model — validation skipped.
+        Validation skipped — no model or live price available.
       </div>
     );
   }
