@@ -7,7 +7,7 @@ The shared language for this codebase. If a term you need isn't here, propose it
 ### Workspace
 The persistent per-ticker analytical surface: the latest completed `research_run` for the ticker, the latest `ticker_models` row, and the history of `workspace_runs` against it. A workspace is **not** a row in the database — it's the projection you get by joining those three things on `ticker`. The `/workspace` page lists recent activity across workspaces; `/workspace/{runId}` shows a single run inside one workspace.
 
-A workspace exists for a ticker iff there is at least one completed `research_run` AND at least one `ticker_models` row for that ticker. Both prerequisites are checked in `WorkspaceService._preflight`.
+A workspace exists for a ticker iff there is at least one completed `research_run`. A saved `ticker_models` row is **not** required: `WorkspaceService` preflight reports a missing model as the non-blocking `no_ticker_model` warning, and Step 1 skips the model refresh (`model_skipped=true`, `version_before=0`) while still surfacing new EDGAR filings.
 
 Workspace runs require a clean saved model state. If a ticker has an unsaved model draft, the run is rejected until the user either saves or discards the draft. This prevents a later draft save from overwriting freshly promoted actuals from the workspace refresh.
 
@@ -62,7 +62,7 @@ Persisted in `transcript_deltas`, keyed by `(ticker, transcripts_fingerprint)` w
 ### The 5 steps
 The fixed sequence inside one workspace run, run continuously without human gates:
 
-1. **Update / Refresh** — pull latest FMP quarterly actuals + EDGAR filing index, patch into the prior `ticker_models.state`, recompute, diff. If anything actually changed, write a new `ticker_models` row (version + 1). Diff `added` and `changed` populate `changed_cells`. Diff `removed` is surfaced separately as `removed_cells` (a source field disappearing should never look like a user edit) — silent data loss is treated as a first-class warning.
+1. **Update / Refresh** — pull latest FMP quarterly actuals + EDGAR filing index, patch into the prior `ticker_models.state`, recompute, diff. If anything actually changed, write a new `ticker_models` row (version + 1). Diff `added` and `changed` populate `changed_cells`. Diff `removed` is surfaced separately as `removed_cells` (a source field disappearing should never look like a user edit) — silent data loss is treated as a first-class warning. When the ticker has no saved model, all model work is skipped (`model_skipped=true`) and only new filings are reported.
 2. **Research** — Haiku triage of new sources against prior thesis; surfaces highlights and new open questions.
 3. **Validation** — re-run the reverse-DCF (implied drivers, IRR, sensitivity grids, thesis-vs-priced-in) against the *post-Step-1* ticker_models version, using a live FMP price.
 4. **Challenge** — Sonnet pass that stress-tests the prior thesis against Step 1's deltas. Emits `kill_criterion_writes` (applied to `kill_criterion_state`), `catalyst_updates` (deferred — surfaced for UI only until `Catalyst.status` exists), and a `proposed_verdict`.
