@@ -43,44 +43,45 @@ export function DeepDiveDashboard({ ticker, themeId, financials, categories: raw
   const scores = useMemo(() => normalizeScoreKeys(rawScores), [rawScores]);
   const categories = useMemo(() => normalizeScoreKeys(rawCategories), [rawCategories]);
 
-  // Hoist structured/score/fallback derivations so memoized section components
-  // receive referentially-stable props and can skip re-renders on SSE events
-  // that don't change their category.
+  // Per-category locals — plain consts are sufficient:
+  //   getStructured() is a property lookup (returns an existing reference, no allocation);
+  //   getScore() returns a primitive (compared by value in shallow prop compare).
+  // The two normalizeScoreKeys useMemos above already guard the only allocating paths.
   const fhCat = categories["financial_health"] ?? null;
-  const fhStructured = useMemo(() => getStructured(fhCat), [fhCat]);
-  const fhScore = useMemo(() => getScore(fhCat, scores, "financial_health"), [fhCat, scores]);
+  const fhStructured = getStructured(fhCat);
+  const fhScore = getScore(fhCat, scores, "financial_health");
 
   const geCat = categories["growth_earnings"] ?? null;
-  const geStructured = useMemo(() => getStructured(geCat), [geCat]);
-  const geScore = useMemo(() => getScore(geCat, scores, "growth_earnings"), [geCat, scores]);
+  const geStructured = getStructured(geCat);
+  const geScore = getScore(geCat, scores, "growth_earnings");
 
   const tmCat = categories["technical_market_structure"] ?? null;
-  const tmStructured = useMemo(() => getStructured(tmCat), [tmCat]);
-  const tmScore = useMemo(() => getScore(tmCat, scores, "technical_market_structure"), [tmCat, scores]);
+  const tmStructured = getStructured(tmCat);
+  const tmScore = getScore(tmCat, scores, "technical_market_structure");
 
   const bqCat = categories["business_quality"] ?? null;
-  const bqStructured = useMemo(() => getStructured(bqCat), [bqCat]);
-  const bqScore = useMemo(() => getScore(bqCat, scores, "business_quality"), [bqCat, scores]);
+  const bqStructured = getStructured(bqCat);
+  const bqScore = getScore(bqCat, scores, "business_quality");
 
   const mrCat = categories["macro_regime"] ?? null;
-  const mrStructured = useMemo(() => getStructured(mrCat), [mrCat]);
-  const mrScore = useMemo(() => getScore(mrCat, scores, "macro_regime"), [mrCat, scores]);
+  const mrStructured = getStructured(mrCat);
+  const mrScore = getScore(mrCat, scores, "macro_regime");
 
   const raCat = categories["risk_assessment"] ?? null;
-  const raStructured = useMemo(() => getStructured(raCat), [raCat]);
-  const raScore = useMemo(() => getScore(raCat, scores, "risk_assessment"), [raCat, scores]);
+  const raStructured = getStructured(raCat);
+  const raScore = getScore(raCat, scores, "risk_assessment");
 
   const mgCat = categories["management_governance"] ?? null;
-  const mgStructured = useMemo(() => getStructured(mgCat), [mgCat]);
-  const mgScore = useMemo(() => getScore(mgCat, scores, "management_governance"), [mgCat, scores]);
+  const mgStructured = getStructured(mgCat);
+  const mgScore = getScore(mgCat, scores, "management_governance");
 
   const snCat = categories["sentiment_narrative"] ?? null;
-  const snStructured = useMemo(() => getStructured(snCat), [snCat]);
-  const snScore = useMemo(() => getScore(snCat, scores, "sentiment_narrative"), [snCat, scores]);
+  const snStructured = getStructured(snCat);
+  const snScore = getScore(snCat, scores, "sentiment_narrative");
 
   const fdCat = categories["future_durability"] ?? null;
-  const fdStructured = useMemo(() => getStructured(fdCat), [fdCat]);
-  const fdScore = useMemo(() => getScore(fdCat, scores, "future_durability"), [fdCat, scores]);
+  const fdStructured = getStructured(fdCat);
+  const fdScore = getScore(fdCat, scores, "future_durability");
 
   const transcriptAnalysisStable = transcriptAnalysis ?? null;
 
