@@ -30,13 +30,9 @@ export function DifferentiationCard({ output }: { output: DifferentiationOutput 
             {read_throughs.map((rt, i) => (
               <li key={i} className="text-sm text-[var(--text)]">
                 <span className="text-xs px-1 rounded mr-2 bg-[var(--surface-alt)] text-[var(--text-muted)]">
-                  {rt.event_key ?? rt.summary ?? "read-through"}
+                  {rt.event_key}
                 </span>
-                {rt.summary && <span className="text-[var(--text-muted)]">{rt.summary}</span>}
-                {!rt.summary && rt.event_key && <span className="text-[var(--text-muted)]">{rt.event_key}</span>}
-                {!rt.summary && !rt.event_key && (
-                  <code className="text-xs text-[var(--text-faint)] block mt-1">{JSON.stringify(rt)}</code>
-                )}
+                <span className="text-[var(--text-muted)]">{rt.peer_ticker} · {rt.event_type}</span>
               </li>
             ))}
           </ul>
