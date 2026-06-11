@@ -133,6 +133,25 @@ Frontend talks to the backend via `NEXT_PUBLIC_API_URL` (default `http://localho
 
 Single `.env` at project root. `backend/app/config.py` reads it via `env_file="../../.env"` (relative to `backend/app/`), so the backend is hard-coded to that path — don't move the file. Required: `FMP_API_KEY`, `X_BEARER_TOKEN`, `ANTHROPIC_API_KEY`, `DATABASE_URL` (asyncpg URL), `DATABASE_URL_SYNC` (used by Alembic).
 
+### Test database (`sector_research_test`)
+
+A local snapshot copy of the real `sector_research` Postgres DB (created 2026-06-10) for UX evaluation / destructive testing. Env vars beat `.env` (pydantic-settings precedence, verified), so point the backend at it without file changes:
+
+```bash
+DATABASE_URL="postgresql+asyncpg://ericwyluda@localhost:5432/sector_research_test" \
+  uvicorn backend.app.main:app --reload
+```
+
+Refresh the snapshot from current real data:
+
+```bash
+psql -h localhost -d postgres -c "DROP DATABASE sector_research_test;"
+psql -h localhost -d postgres -c "CREATE DATABASE sector_research_test;"
+pg_dump -h localhost -Fc sector_research | pg_restore -h localhost -d sector_research_test --no-owner
+```
+
+Gotchas: use `pg_dump | pg_restore`, not `CREATE DATABASE … TEMPLATE` — idle sessions on the source DB block template copies. The 4 APScheduler cron jobs write into whichever DB the running backend points at, so a long-lived test-DB server diverges from the real DB (that's the point — just refresh before relying on it).
+
 ## Architecture essentials
 
 ### The pipeline (read this before touching `backend/app/graph/`)
