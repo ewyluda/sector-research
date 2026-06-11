@@ -27,10 +27,12 @@ const STEP_LABELS: Record<WorkspaceStep, string> = {
   differentiation: "5. Differentiation",
 };
 
+type StepResult = WorkspaceStepOutput | { error: string };
+
 export function WorkspaceReport({ runId }: { runId: string }) {
   const [run, setRun] = useState<WorkspaceRun | null>(null);
   const [activeStep, setActiveStep] = useState<WorkspaceStep | null>(null);
-  const [stepOutputs, setStepOutputs] = useState<Record<string, WorkspaceStepOutput | { error: string }>>({});
+  const [stepOutputs, setStepOutputs] = useState<Partial<Record<WorkspaceStep, StepResult>>>({});
   const [stepFailures, setStepFailures] = useState<Record<string, string>>({});
   const [verdict, setVerdict] = useState<WorkspaceRun["verdict"]>(null);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export function WorkspaceReport({ runId }: { runId: string }) {
   useEffect(() => {
     workspaceApi.get(runId).then((r) => {
       setRun(r);
-      setStepOutputs(r.step_outputs as Record<string, WorkspaceStepOutput | { error: string }>);
+      setStepOutputs(r.step_outputs);
       setVerdict(r.verdict);
     });
   }, [runId]);
@@ -143,7 +145,7 @@ function StepShell({
 }: {
   label: string;
   isActive: boolean;
-  output: WorkspaceStepOutput | { error: string } | undefined;
+  output: StepResult | undefined;
   failure?: string;
   step: WorkspaceStep;
   ticker: string;
@@ -164,7 +166,7 @@ function StepShell({
   );
 }
 
-function StepBody({ step, output, ticker }: { step: WorkspaceStep; output: WorkspaceStepOutput | { error: string }; ticker: string }) {
+function StepBody({ step, output, ticker }: { step: WorkspaceStep; output: StepResult; ticker: string }) {
   if ("error" in output) {
     return (
       <pre className="mt-2 text-xs text-[var(--error)] overflow-x-auto">
