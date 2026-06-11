@@ -391,8 +391,8 @@
     <p class="tagline">Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider modifier) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.</p>
   </div>
   <div class="meta">
-    <div>generated 2026-06-10</div>
-    <div>source 4cb1da1 · main</div>
+    <div>generated 2026-06-11</div>
+    <div>source b7ea0e7 · main</div>
     <div>local-only · no auth</div>
   </div>
 </div>
@@ -431,7 +431,7 @@
         <li>Next.js 16 · App Router · React 19</li>
         <li>Tailwind v4 (@tailwindcss/postcss)</li>
         <li>Recharts + lightweight-charts</li>
-        <li>Native <code>fetch</code> via <code>lib/api.ts</code></li>
+        <li>Native <code>fetch</code> via the <code>lib/api/</code> package (12 domain modules, barrel re-export)</li>
         <li>Path alias <code>@/*</code> → frontend root</li>
       </ul>
       <div class="label" style="margin-top:12px">launch</div>
@@ -1231,7 +1231,7 @@
   </details>
 
   <details>
-    <summary><span>lib/api.ts <span class="muted" style="color:var(--dim);font-weight:400">— 20 namespaces + standalone functions, ~110 functions</span></span></summary>
+    <summary><span>lib/api/ <span class="muted" style="color:var(--dim);font-weight:400">— 12 domain modules + barrel (legacy lib/api.ts shim), 20 namespaces + standalone functions, ~110 functions</span></span></summary>
     <div class="details-body">
       <div class="grid grid-4">
         <div class="comp-folder"><h4>themes</h4><ul><li>list, get, create, update, delete</li><li>addTicker, removeTicker</li></ul></div>
@@ -1382,15 +1382,15 @@
   </div>
 
   <div class="invariant">
-    <div class="iname">pipeline_routing_dual_truth</div>
-    <div class="irule">Pipeline phase routing exists in BOTH <code>graph/pipeline.py</code> edges AND <code>services/pipeline.py::_next_phase</code></div>
-    <div class="iwhy"><strong>Why:</strong> parallel sources of truth — both must be updated when adding/reordering phases.</div>
+    <div class="iname">pipeline_routing_single_source</div>
+    <div class="irule">Pipeline phase routing has ONE source of truth: <code>PHASE_SEQUENCE</code> / <code>next_phase()</code> in <code>graph/pipeline.py</code>; <code>services/pipeline.py::_next_phase</code> delegates</div>
+    <div class="iwhy"><strong>Why:</strong> PR #42 collapsed the former dual-truth; <code>backend/tests/test_phase_routing.py</code> pins the contract.</div>
   </div>
 
   <div class="invariant">
     <div class="iname">sse_event_sync</div>
     <div class="irule">Python <code>pipeline._emit</code> calls and the TypeScript <code>SSEEvent</code> discriminated union MUST stay in sync</div>
-    <div class="iwhy"><strong>Why:</strong> <code>SSEEvent</code> in <code>frontend/lib/api.ts</code> is a discriminated union. New event types added on the Python side won't be typed on the frontend.</div>
+    <div class="iwhy"><strong>Why:</strong> <code>SSEEvent</code> in <code>frontend/lib/api/pipeline.ts</code> is a discriminated union. New event types added on the Python side won't be typed on the frontend.</div>
   </div>
 
   <div class="invariant">
@@ -1532,7 +1532,7 @@
 </section>
 
 <footer>
-  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal) · companion JSON at <code>design/architecture.json</code> may lag this file
+  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), spot-refreshed 2026-06-11 (through PR #48) · companion JSON at <code>design/architecture.json</code> is the fresher index
 </footer>
 
 </body>
