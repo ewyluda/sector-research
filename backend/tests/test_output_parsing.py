@@ -43,6 +43,14 @@ class TestExtractScore(unittest.TestCase):
     def test_silent_50_on_empty(self):
         self.assertEqual(_extract_score(""), 50)
 
+    def test_space_before_slash_defeats_both_patterns(self):
+        # CHARACTERIZATION: "85 /100" matches neither pattern -> silent 50.
+        self.assertEqual(_extract_score("SCORE: 85 /100"), 50)
+
+    def test_negative_score_falls_through_to_bare_pattern(self):
+        # CHARACTERIZATION: labeled pattern rejects the minus; bare fallback grabs "5/100".
+        self.assertEqual(_extract_score("SCORE: -5/100"), 5)
+
 
 class TestExtractKeyFindings(unittest.TestCase):
     def test_collects_bullets_after_heading(self):
@@ -79,6 +87,14 @@ class TestExtractKeyFindings(unittest.TestCase):
 
     def test_no_heading_returns_empty(self):
         self.assertEqual(_extract_key_findings("- bullet without a heading above it"), [])
+
+    def test_digit_leading_bullets_are_mangled(self):
+        # CHARACTERIZATION: lstrip("•-*123456789. ") eats leading digits of the
+        # finding itself ("2024..." -> "024...") — known quirk, documented not endorsed.
+        self.assertEqual(
+            _extract_key_findings("Key findings:\n- 2024 revenue grew strongly"),
+            ["024 revenue grew strongly"],
+        )
 
 
 class TestParseStructuredOutputEdges(unittest.TestCase):
