@@ -391,8 +391,8 @@
     <p class="tagline">Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider modifier) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.</p>
   </div>
   <div class="meta">
-    <div>generated 2026-06-11</div>
-    <div>source b7ea0e7 · main</div>
+    <div>generated 2026-06-11 (PM refresh)</div>
+    <div>source 3cc8666 · main</div>
     <div>local-only · no auth</div>
   </div>
 </div>
@@ -400,11 +400,11 @@
 <!-- STATS -->
 <div class="stats">
   <div class="stat"><div class="v">13</div><div class="l">subsystems</div></div>
-  <div class="stat"><div class="v">106</div><div class="l">endpoints</div></div>
-  <div class="stat"><div class="v">52</div><div class="l">services</div></div>
+  <div class="stat"><div class="v">112</div><div class="l">endpoints</div></div>
+  <div class="stat"><div class="v">56</div><div class="l">services</div></div>
   <div class="stat"><div class="v">33</div><div class="l">db tables</div></div>
   <div class="stat"><div class="v">28</div><div class="l">pages</div></div>
-  <div class="stat"><div class="v">25</div><div class="l">migrations</div></div>
+  <div class="stat"><div class="v">28</div><div class="l">migrations</div></div>
 </div>
 
 <!-- TECH STACK -->
@@ -477,14 +477,14 @@
 
                                                                   ┌─► <span class="v">research_runs</span>     ──┐
                                                                   ├─► <span class="v">citations</span>         │
-                                                                  ├─► <span class="v">catalysts</span>         ├─► <span class="b">status_board</span>          ──► <span class="g">/api/status/* + /api/catalysts/*</span> ──► <span class="b">/status</span> · <span class="b">/catalysts</span> · <span class="b">/questions</span>
+                                                                  ├─► <span class="v">catalysts</span>         ├─► <span class="b">status_board</span>          ──► <span class="g">/api/status/* + /api/catalysts/*</span> ──► <span class="b">/status</span> · <span class="b">/?tab=calendar</span> · <span class="b">/questions</span>
                                                                   ├─► <span class="v">questions</span>         │   <span class="b">earnings_brief/verdict</span>  ──► <span class="g">/api/earnings/*</span>
                                                                   ├─► <span class="v">kill_criterion_states</span>│   <span class="b">read_through</span>
                                                                   └─► <span class="v">earnings_prints</span>   ─┘
 
                                                                                               ┌─► <span class="b">/api/workspace/*</span> ──► <span class="b">/workspace/[runId]</span>
                                                                   ┌─► <span class="v">workspace_runs</span> ──► <span class="b">WorkspaceService</span> (5 steps)
-                                                                  │                            update_refresh → research → challenge → differentiate → validate
+                                                                  │                            update_refresh → research → validation → challenge → differentiation
                                                                   │
                                                                   ├─► <span class="v">ticker_models</span>    ──► <span class="b">model_baseline + model_balancing + dcf + reverse_dcf</span> ──► <span class="b">/api/models/*</span> ──► <span class="b">/model/[ticker]</span>
                                                                   ├─► <span class="v">ticker_model_drafts</span> (one per ticker — PK ticker)
@@ -502,7 +502,7 @@
 
    <span class="c">FMP</span> ─► <span class="b">company_snapshot · company_transcripts</span> ──► <span class="g">/api/company/*</span> ──► <span class="b">/company/[ticker]</span> (overview · financials · model · peers · research · theses · transcripts · filings)
 
-   <span class="d">board + calendar + questions endpoints composed client-side</span> ──► <span class="b">/</span> (Today morning briefing) · <span class="b">/catalysts</span> (unified calendar via <span class="b">calendar_events</span>, stateless)
+   <span class="d">board + calendar + questions endpoints composed client-side</span> ──► <span class="b">/</span> (Today morning briefing + Calendar tab via <span class="b">calendar_events</span>, stateless — <span class="b">/catalysts</span> now server-redirects to <span class="b">/?tab=calendar</span>)
 
    <span class="c">SEC EDGAR (S-1)</span> ─► <span class="b">prospectus_ingest</span>           ──► <span class="v">prospectus_reports</span> ──► <span class="b">ProspectusService</span> (4 steps)             ──► <span class="g">/api/prospectus/*</span> ──► <span class="b">/prospectus</span> · <span class="b">/prospectus/[reportId]</span>
                        <span class="b">prospectus_financials</span>                                  ingest → relationships → categories → thesis
@@ -552,10 +552,10 @@
     </div>
     <div class="subsys-card" data-color="amber">
       <h4>Status board cluster</h4>
-      <p class="purpose">Fleet-management surface: status board, unified calendar (econ + earnings + catalysts, stateless), questions log, read-throughs, earnings briefs &amp; verdicts, Today morning briefing (pure frontend composition).</p>
+      <p class="purpose">Fleet-management surface: status board (row ⋯ menu + KC drawer), unified calendar (econ + earnings + catalysts, stateless — lives on Today's Calendar tab), questions log (filters + bulk dismiss/snooze), read-throughs, earnings briefs &amp; verdicts, Today morning briefing (pure frontend composition).</p>
       <div class="meta-row">
         <div><strong>services</strong> status_board, catalyst_*, calendar_events, read_through, earnings_*, questions</div>
-        <div><strong>routes</strong> / (Today) · /status · /catalysts · /questions</div>
+        <div><strong>routes</strong> / (Today + ?tab=calendar) · /status · /questions</div>
       </div>
     </div>
     <div class="subsys-card" data-color="pink">
@@ -601,7 +601,7 @@
     </div>
     <div class="subsys-card" data-color="amber">
       <h4>Material events + insider signal</h4>
-      <p class="purpose">Daily 06:30 UTC universe scan: 8-Ks Haiku-classified into material_events; Form 4 → insider_transactions → 90-day aggregate → bounded discovery modifier. Last merge: PR #38.</p>
+      <p class="purpose">Daily 06:30 UTC universe scan: 8-Ks Haiku-classified into material_events; Form 4 → insider_transactions → 90-day aggregate → bounded discovery modifier. Near-duplicate 8-Ks grouped at the API layer (×N badges; group-dismiss default). PRs #38, #51.</p>
       <div class="meta-row">
         <div><strong>services</strong> material_events_scheduler · event_classifier · insider_ingest · insider_signal</div>
         <div><strong>endpoints</strong> /api/events · drawer on /status · Today rows</div>
@@ -676,7 +676,7 @@
 
 <!-- BACKEND ENDPOINTS -->
 <section>
-  <h2>Backend endpoints · 20 routers · 106 endpoints</h2>
+  <h2>Backend endpoints · 21 routers · 112 endpoints</h2>
 
   <details open>
     <summary><span>health <span class="prefix-pill">(none)</span></span><span class="count">3 endpoints</span></summary>
@@ -716,7 +716,7 @@
   </details>
 
   <details>
-    <summary><span>pipeline <span class="prefix-pill">/api</span></span><span class="count">7 endpoints</span></summary>
+    <summary><span>pipeline <span class="prefix-pill">/api</span></span><span class="count">8 endpoints</span></summary>
     <div class="details-body">
       <table class="endpoints">
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs</td><td class="handler">start_run</td><td class="summary-cell">Start new research run</td></tr>
@@ -724,6 +724,7 @@
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/data-gaps</td><td class="handler">get_data_gaps</td><td class="summary-cell">Aggregate data gaps ranked by frequency</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span></td><td class="handler">get_run</td><td class="summary-cell">Full state + phase outputs</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/advance</td><td class="handler">advance_run</td><td class="summary-cell">approve|flag|stop · triggers position_monitor</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/abandon</td><td class="handler">abandon_run</td><td class="summary-cell">Mark stuck run abandoned (in_progress/paused only, 409 otherwise; Library greys it) · PR #52</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/stream<span class="stream-badge">SSE</span></td><td class="handler">stream_run</td><td class="summary-cell">Phase output streaming</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/report</td><td class="handler">get_report</td><td class="summary-cell">Structured report (also used by Obsidian export)</td></tr>
       </table>
@@ -731,7 +732,7 @@
   </details>
 
   <details>
-    <summary><span>filings <span class="prefix-pill">/api</span></span><span class="count">16 endpoints</span></summary>
+    <summary><span>filings <span class="prefix-pill">/api</span></span><span class="count">19 endpoints</span></summary>
     <div class="details-body">
       <table class="endpoints">
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/filings/ingest/<span class="param">{ticker}</span></td><td class="handler">ingest_ticker</td><td class="summary-cell">Section ingest (10-K, 10-Q, DEF 14A)</td></tr>
@@ -750,6 +751,9 @@
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/graph/<span class="param">{ticker}</span></td><td class="handler">get_ticker_graph</td><td class="summary-cell">Phase D — supply-chain graph (depth=1|2)</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/reconcile</td><td class="handler">reconcile_all_bilaterals</td><td class="summary-cell">Flip confirmed_bilateral on reciprocal pairs</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/competition/<span class="param">{ticker}</span></td><td class="handler">get_competition</td><td class="summary-cell">Structured Competition view from latest 10-K</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/dismissed</td><td class="handler">list_dismissed_route</td><td class="summary-cell">List curator_private tombstones · ⚠ must stay declared above /relationships/{param}</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/dismiss</td><td class="handler">dismiss_counterparty_route</td><td class="summary-cell">Tombstone counterparty as curator_private (never resolve)</td></tr>
+        <tr><td><span class="method DELETE">DELETE</span></td><td class="path">/api/relationships/dismiss/<span class="param">{alias_normalized}</span></td><td class="handler">undismiss_counterparty_route</td><td class="summary-cell">Undo a tombstone</td></tr>
       </table>
     </div>
   </details>
@@ -814,14 +818,15 @@
   </details>
 
   <details>
-    <summary><span>questions <span class="prefix-pill">/questions</span></span><span class="count">5 endpoints — note: no /api prefix</span></summary>
+    <summary><span>questions <span class="prefix-pill">/api/questions</span></span><span class="count">6 endpoints</span></summary>
     <div class="details-body">
       <table class="endpoints">
-        <tr><td><span class="method GET">GET</span></td><td class="path">/questions</td><td class="handler">list_questions_endpoint</td><td class="summary-cell">Filter by ticker/theme/status/priority/category</td></tr>
-        <tr><td><span class="method GET">GET</span></td><td class="path">/questions/by-ticker</td><td class="handler">by_ticker_endpoint</td><td class="summary-cell">Ticker rollup</td></tr>
-        <tr><td><span class="method POST">POST</span></td><td class="path">/questions/<span class="param">{question_id}</span>/dismiss</td><td class="handler">dismiss_endpoint</td><td class="summary-cell">Dismiss with optional note</td></tr>
-        <tr><td><span class="method POST">POST</span></td><td class="path">/questions/<span class="param">{question_id}</span>/resolve</td><td class="handler">resolve_endpoint</td><td class="summary-cell">Manual resolve</td></tr>
-        <tr><td><span class="method POST">POST</span></td><td class="path">/questions/<span class="param">{question_id}</span>/retry-auto</td><td class="handler">retry_auto_endpoint</td><td class="summary-cell">Re-run targeted-followup Haiku</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/questions</td><td class="handler">list_questions_endpoint</td><td class="summary-cell">Filter by ticker/theme/status/priority/category · snoozed rows excluded from open lists</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/questions/by-ticker</td><td class="handler">by_ticker_endpoint</td><td class="summary-cell">Ticker rollup (snoozed excluded)</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/bulk</td><td class="handler">bulk_endpoint</td><td class="summary-cell">Bulk dismiss/resolve/snooze · exactly one of ids|filter · PR #51</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/<span class="param">{question_id}</span>/dismiss</td><td class="handler">dismiss_endpoint</td><td class="summary-cell">Dismiss with optional note</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/<span class="param">{question_id}</span>/resolve</td><td class="handler">resolve_endpoint</td><td class="summary-cell">Manual resolve</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/<span class="param">{question_id}</span>/retry-auto</td><td class="handler">retry_auto_endpoint</td><td class="summary-cell">Re-run targeted-followup Haiku</td></tr>
       </table>
     </div>
   </details>
@@ -907,12 +912,21 @@
   </details>
 
   <details>
-    <summary><span>events <span class="prefix-pill">/api</span></span><span class="count">3 endpoints · PR #38</span></summary>
+    <summary><span>events <span class="prefix-pill">/api</span></span><span class="count">3 endpoints · PRs #38, #51</span></summary>
     <div class="details-body">
       <table class="endpoints">
-        <tr><td><span class="method GET">GET</span></td><td class="path">/api/events</td><td class="handler">list_events</td><td class="summary-cell">Material 8-K events (filterable; dismissed excluded by default)</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/events</td><td class="handler">list_events</td><td class="summary-cell">Material 8-K events (filterable; dismissed excluded by default); near-duplicates grouped — group_count/group_member_ids/group_headlines</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/events/scan</td><td class="handler">trigger_scan</td><td class="summary-cell">Manual universe scan (202 fire-and-forget; 06:30 UTC cron is primary)</td></tr>
-        <tr><td><span class="method POST">POST</span></td><td class="path">/api/events/<span class="param">{event_id}</span>/dismiss</td><td class="handler">dismiss_event</td><td class="summary-cell">204 · mirrors read-through dismissals</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/events/<span class="param">{event_id}</span>/dismiss</td><td class="handler">dismiss_event</td><td class="summary-cell">204 · group=true (default) also dismisses members within ±4d of THIS event's filing_date</td></tr>
+      </table>
+    </div>
+  </details>
+
+  <details>
+    <summary><span>tickers <span class="prefix-pill">/api</span></span><span class="count">1 endpoint · PR #50</span></summary>
+    <div class="details-body">
+      <table class="endpoints">
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/tickers</td><td class="handler">list_tickers</td><td class="summary-cell">Distinct known tickers for the global ⌘K palette — theme seeds ∪ research_runs ∪ ticker_models; DB-only (no FMP) so the palette opens instantly</td></tr>
       </table>
     </div>
   </details>
@@ -960,10 +974,10 @@
 
   <h3>Research pipeline <span class="muted">— pipeline + citations + Q&amp;A + catalysts</span></h3>
   <div class="grid grid-3">
-    <div class="table-card"><div class="tname">research_runs</div><div class="tpurpose">Single ticker's journey through 6-phase pipeline</div><div class="cols">ticker · theme_id (nullable) · phase · status · state (JSONB) · loop_count · archived_at</div><div class="fk">theme_id → themes.id (SET NULL)</div></div>
+    <div class="table-card"><div class="tname">research_runs</div><div class="tpurpose">Single ticker's journey through 6-phase pipeline · status incl. abandoned (PR #52)</div><div class="cols">ticker · theme_id (nullable) · phase · status · state (JSONB) · loop_count · archived_at</div><div class="fk">theme_id → themes.id (SET NULL)</div></div>
     <div class="table-card"><div class="tname">citations</div><div class="tpurpose">Data provenance per metric (ORM persisted form)</div><div class="cols">metric · value · source_name · source_url · tier · retrieved_at · cell_path</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
     <div class="table-card"><div class="tname">catalysts</div><div class="tpurpose">First-class catalyst events promoted from thesis runs</div><div class="cols">ordinal · timeframe · description · type · signposts · linked_pillar · expected_date</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
-    <div class="table-card"><div class="tname">questions</div><div class="tpurpose">Q&amp;A lifecycle (open/resolved/dismissed) with auto-answer retry</div><div class="cols">ticker · theme_id · category · question_text · priority · auto_answerable · status · answer_text · answer_source</div><div class="fk">created_run_id (CASCADE) · resolved_run_id (SET NULL) · theme_id (SET NULL)</div></div>
+    <div class="table-card"><div class="tname">questions</div><div class="tpurpose">Q&amp;A lifecycle (open/resolved/dismissed, plus snooze) with auto-answer retry; snoozed_until rows out of open lists until expiry</div><div class="cols">ticker · theme_id · category · question_text · priority · auto_answerable · status · answer_text · answer_source · snoozed_until</div><div class="fk">created_run_id (CASCADE) · resolved_run_id (SET NULL) · theme_id (SET NULL)</div></div>
     <div class="table-card"><div class="tname">kill_criterion_states</div><div class="tpurpose">Manual kill-criterion flags per run</div><div class="cols">ordinal · status (armed|triggered) · flipped_at · note</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
     <div class="table-card"><div class="tname">read_through_dismissals</div><div class="tpurpose">User dismissals of read-through peer events</div><div class="cols">event_key · dismissed_at · note</div><div class="fk">run_id → research_runs.id (CASCADE)</div></div>
   </div>
@@ -1017,7 +1031,7 @@
 
 <!-- MIGRATION TIMELINE -->
 <section>
-  <h2>Migration timeline · 25 revisions</h2>
+  <h2>Migration timeline · 28 revisions</h2>
   <div class="timeline">
     <div class="mig"><span class="rev">8eebd8f4659a</span><span class="mname">initial_schema</span><span class="notable">themes · research_runs · signals · surprise_alerts · citations · watchlist</span></div>
     <div class="mig"><span class="rev">d14ab77781f8</span><span class="mname">add_filings_and_xbrl_facts</span></div>
@@ -1043,7 +1057,10 @@
     <div class="mig"><span class="rev">91f56be7821d</span><span class="mname">add_prospectus_reports</span><span class="notable">PR #31 · theme_id SET NULL · indexed on accession_number, issuer_cik, theme_id</span></div>
     <div class="mig"><span class="rev">d9659a472017</span><span class="mname">peer_sets</span><span class="notable">PR #34 · ticker PK + JSONB peers</span></div>
     <div class="mig"><span class="rev">b7e2c9f4a1d3</span><span class="mname">material_events_insider_transactions</span><span class="notable">PR #38 · 8-K events + Form 4 rows (sha256 natural_key unique)</span></div>
-    <div class="mig head"><span class="rev">a2c6676dd30d</span><span class="mname">journal_trades</span><span class="notable">PR #40 · nullable FK → verdict_outcomes (SET NULL)</span><span class="badge">HEAD</span></div>
+    <div class="mig"><span class="rev">a2c6676dd30d</span><span class="mname">journal_trades</span><span class="notable">PR #40 · nullable FK → verdict_outcomes (SET NULL)</span></div>
+    <div class="mig"><span class="rev">77bcb5d1bfbd</span><span class="mname">alias_tombstones_nullable_canonical</span><span class="notable">PR #44 · counterparty_aliases.canonical_cik/name NULLABLE (curator_private tombstones)</span></div>
+    <div class="mig"><span class="rev">eb21c3df2ad5</span><span class="mname">add_status_board_latest_run_composite</span><span class="notable">PR #43 · partial composite index for the status-board latest-run query</span></div>
+    <div class="mig head"><span class="rev">a1ea628ef06d</span><span class="mname">question_snoozed_until</span><span class="notable">PR #51 · questions.snoozed_until (bulk snooze)</span><span class="badge">HEAD</span></div>
   </div>
 </section>
 
@@ -1051,21 +1068,21 @@
 <section>
   <h2>Frontend pages · 28 routes</h2>
   <div class="grid grid-2">
-    <div class="card"><h4>/</h4><div class="label">Today morning briefing · PR #37</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Severity banner → today+3d calendar lanes → needs-attention list. Pure composition of board/calendar/questions endpoints; 60s visibility-gated polling</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/page.tsx · components/today/ · lib/todayDerive.ts</code></div>
+    <div class="card"><h4>/</h4><div class="label">Today morning briefing + Calendar tab · PRs #37, #50</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Briefing/Calendar tab strip (?tab=calendar absorbed /catalysts): severity banner → today+3d calendar lanes → needs-attention list. Pure composition of board/calendar/questions endpoints; 60s visibility-gated polling</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/page.tsx · components/today/ · components/catalysts/ · lib/todayDerive.ts</code></div>
     <div class="card"><h4>/themes</h4><div class="label">Theme dashboard (moved from /)</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Grid of theme cards with seed tickers + creation CTA</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/themes/page.tsx</code></div>
     <div class="card"><h4>/company/[ticker] <span style="color:var(--dim);font-weight:400;font-size:11px">+ 7 tab routes</span></h4><div class="label">Company workspace · PR #32</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Overview / financials / model / peers / research / theses / transcripts / filings tabs · log-trade deep link on header</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/company/[ticker]/</code></div>
     <div class="card"><h4>/compare</h4><div class="label">Ad-hoc peer comparison · PR #34</div><p style="color:var(--muted);font-size:12px;margin:6px 0">URL is the state (?tickers=) · shareable · no nav link by design</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/compare/page.tsx</code></div>
     <div class="card"><h4>/theme/[id]</h4><div class="label">Two-panel theme explorer</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Company list (left) + signal detail (right) with ticker editor</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/theme/[id]/</code></div>
-    <div class="card"><h4>/catalysts</h4><div class="label">Unified calendar · PR #36</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Week lanes + agenda (econ + earnings + catalysts) by default; original proximity-bucket list behind List toggle; earnings rows deep-link /status?expand_earnings=</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/catalysts/page.tsx · components/catalysts/</code></div>
-    <div class="card"><h4>/filings</h4><div class="label">SEC EDGAR sections</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Grouped by theme → ticker · inline curation panel</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/page.tsx</code></div>
+    <div class="card"><h4>/catalysts</h4><div class="label">Server redirect · PR #50</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Redirects to /?tab=calendar — Today absorbed the unified calendar (week lanes + agenda, List toggle, /status?expand_earnings= deep links); old links/bookmarks keep working</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/catalysts/page.tsx</code></div>
+    <div class="card"><h4>/filings</h4><div class="label">SEC EDGAR sections · PR #52</div><p style="color:var(--muted);font-size:12px;margin:6px 0">FilingsWorkbench client shell · grouped by theme → ticker · inline curation panel · ingest-chore chip · collapsed Prospectus-reports disclosure</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/page.tsx · components/filings/FilingsWorkbench.tsx</code></div>
     <div class="card"><h4>/filings/graph</h4><div class="label">Multi-hop supply-chain graph</div><p style="color:var(--muted);font-size:12px;margin:6px 0">1-2 hop, optional theme gate · render-layer edge dedup</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/graph/page.tsx</code></div>
-    <div class="card"><h4>/library</h4><div class="label">Research Library</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Filtered run list + data-gaps view + pagination</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/library/page.tsx</code></div>
-    <div class="card"><h4>/status</h4><div class="label">Status board</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Fleet thesis view · health/conviction · 60s polling · read-through / earnings / material-events drawers (?expand_earnings= · ?expand_events= one-shot deep links)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/status/page.tsx</code></div>
+    <div class="card"><h4>/library</h4><div class="label">Research Library · PR #52</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Grouped-by-ticker archive · status/theme/has-thesis filters · greyed abandoned runs · confirm-guarded Abandon on &gt;7-day zombies · data-gaps view</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/library/page.tsx</code></div>
+    <div class="card"><h4>/status</h4><div class="label">Status board · PR #51</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Fleet thesis view · health/conviction · 60s polling · read-through / earnings / material-events / kill-criteria drawers (?expand_earnings= · ?expand_events= one-shot deep links) · row ⋯ menu → Company / Model / Questions</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/status/page.tsx</code></div>
     <div class="card"><h4>/performance</h4><div class="label">Outcome dashboard</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Verdict / theme / signal-bucket rollups + outcome list + trade-journal section (?log_trade=TICKER one-shot deep link)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/performance/page.tsx</code></div>
-    <div class="card"><h4>/questions</h4><div class="label">Question log</div><p style="color:var(--muted);font-size:12px;margin:6px 0">By-ticker rollup + by-question list with filters</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/questions/page.tsx</code></div>
+    <div class="card"><h4>/questions</h4><div class="label">Question log · PR #51</div><p style="color:var(--muted);font-size:12px;margin:6px 0">By-ticker rollup + by-question list · URL-state priority/category chips · row checkboxes + bulk dismiss/snooze bar</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/questions/page.tsx</code></div>
     <div class="card"><h4>/pipeline/new</h4><div class="label">New run form</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Ticker + theme picker · recent tickers quick-fill</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/pipeline/new/page.tsx</code></div>
     <div class="card"><h4>/pipeline/[runId]</h4><div class="label">Unified research page (live + report)</div><p style="color:var(--muted);font-size:12px;margin:6px 0">SSE streaming · deep-dive dashboard · thesis/risk/position · catalyst calendar</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/pipeline/[runId]/page.tsx</code></div>
-    <div class="card"><h4>/workspace · /workspace/[runId]</h4><div class="label">Workspace loop</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Index + per-run report (dual hydration REST + SSE, 5 step cards)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/workspace/</code></div>
+    <div class="card"><h4>/workspace · /workspace/[runId]</h4><div class="label">Workspace loop</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Index + per-run report (dual hydration REST + SSE, 5 step cards); failed rows get a preflight-gated Retry (PR #51)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/workspace/</code></div>
     <div class="card"><h4>/model/[ticker]</h4><div class="label">Financial model · 3 tabs</div><p style="color:var(--muted);font-size:12px;margin:6px 0">#forecast (editable grid) · #reverse-dcf (sensitivity grids) · #history (version diff)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/model/[ticker]/page.tsx</code></div>
     <div class="card"><h4>/report/[runId]</h4><div class="label">Redirect</div><p style="color:var(--muted);font-size:12px;margin:6px 0">→ /pipeline/[runId]</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/report/[runId]/page.tsx</code></div>
     <div class="card"><h4>/theme/new</h4><div class="label">Create theme form</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Name, seed_tickers, x_search_terms, screener JSON</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/theme/new/page.tsx</code></div>
@@ -1088,8 +1105,7 @@
             <li><code style="color:var(--accent-2)">DeepDiveDashboard</code> — master container; receives ticker prop for supply-chain card</li>
             <li><code style="color:var(--accent-2)">ReportHeader</code> — identity + verdict + thesis/risk + ModelStatusBadge</li>
             <li><code style="color:var(--accent-2)">OverviewBanner</code> — synthesized verdict + radar + HeadlineMetrics + ScoreBar</li>
-            <li><code style="color:var(--accent-2)">CommandPalette</code> — ⌘K jump-to-section</li>
-            <li><code style="color:var(--accent-2)">SectionNav</code> — sticky horizontal scroll-spy nav</li>
+            <li><code style="color:var(--accent-2)">SectionNav</code> — sticky horizontal scroll-spy nav (report-local CommandPalette retired in PR #50 — ⌘K is global)</li>
             <li><code style="color:var(--accent-2)">VelocitySparkline</code> — 30-day signal sparkline</li>
             <li><code style="color:var(--accent-2)">categories.ts</code> — single source of truth for 9 category names</li>
             <li><code style="color:var(--accent-2)">scoreColors.ts</code> — 4-tier palette at 40/55/70 thresholds</li>
@@ -1138,8 +1154,9 @@
             <li><span class="cname">ThemeFilingsPanel</span></li>
             <li><span class="cname">TickerFilingsCard</span></li>
             <li><span class="cname">SectionReader</span> (modal)</li>
-            <li><span class="cname">MultiHopGraphView</span> · render-layer edge dedup with disclosure-count badge</li>
+            <li><span class="cname">MultiHopGraphView</span> · render-layer edge dedup with disclosure-count badge · 2-hop default (PR #52)</li>
             <li><span class="cname">CurationPanel</span></li>
+            <li><span class="cname">FilingsWorkbench</span> · client shell for /filings + ingest-chore chip (PR #52)</li>
           </ul>
         </div>
         <div class="comp-folder">
@@ -1147,6 +1164,7 @@
           <ul>
             <li><span class="cname">WorkspaceReport</span> · dual hydration REST + SSE</li>
             <li><span class="cname">VerdictBadge</span> · healthy/imminent/triggered/broken</li>
+            <li><span class="cname">RetryRunButton</span> · preflight-gated retry for failed runs (PR #51)</li>
             <li><span class="cname">StepCards/</span> · UpdateRefreshCard, ResearchCard, ValidationCard, ChallengeCard, DifferentiationCard</li>
           </ul>
         </div>
@@ -1155,7 +1173,8 @@
           <ul>
             <li><span class="cname">ReadThroughDrawer</span></li>
             <li><span class="cname">EarningsDrawer</span></li>
-            <li><span class="cname">MaterialEventsDrawer</span> · 8-K badge + drawer (PR #38)</li>
+            <li><span class="cname">MaterialEventsDrawer</span> · 8-K badge + drawer, ×N group badges (PRs #38, #51)</li>
+            <li><span class="cname">KillCriteriaDrawer</span> · KC n/m toggles (PR #51)</li>
             <li><span class="cname">WorkspaceButton</span> · preflight-gated kick-off (shared with Today)</li>
           </ul>
         </div>
@@ -1214,7 +1233,8 @@
           <h4>themes/ + root</h4>
           <ul>
             <li><span class="cname">DeleteThemeButton</span></li>
-            <li>Nav (10 links) · ScoreRing · VelocityBadge · SourceBadge · ThesisCard · RiskCard · PositionCard · CatalystList · CatalystRow · CatalystCalendar · CitationList · BullBearColumns</li>
+            <li><span class="cname">GlobalCommandPalette</span> · global ⌘K in root layout — tickers / 13 surfaces / recent runs / contextual actions / report sections (PR #50)</li>
+            <li>Nav (6 entries: Today, Status, Themes, Filings, Performance, Library + ⌘K hint) · ScoreRing · VelocityBadge · SourceBadge · ThesisCard · RiskCard · PositionCard · CatalystList · CatalystRow · CatalystCalendar · CitationList · BullBearColumns</li>
           </ul>
         </div>
         <div class="comp-folder">
@@ -1241,12 +1261,12 @@
         <div class="comp-folder"><h4>transcripts</h4><ul><li>extract</li></ul></div>
         <div class="comp-folder"><h4>fanouts</h4><ul><li>startTheme, startTicker, get</li></ul></div>
         <div class="comp-folder"><h4>discovery</h4><ul><li>run</li></ul></div>
-        <div class="comp-folder"><h4>pipeline</h4><ul><li>start, get, list, dataGaps</li><li>advance, report, streamUrl</li></ul></div>
+        <div class="comp-folder"><h4>pipeline</h4><ul><li>start, get, list, dataGaps</li><li>advance, abandon, report, streamUrl</li></ul></div>
         <div class="comp-folder"><h4>status</h4><ul><li>board, archive, unarchive</li></ul></div>
         <div class="comp-folder"><h4>killCriteria</h4><ul><li>list, set</li></ul></div>
         <div class="comp-folder"><h4>readThroughs</h4><ul><li>list, dismiss, summarize</li></ul></div>
         <div class="comp-folder"><h4>earnings</h4><ul><li>board, brief, verdict</li><li>printsByTicker, refresh</li></ul></div>
-        <div class="comp-folder"><h4>questions</h4><ul><li>list, byTicker</li><li>dismiss, resolve, retryAuto</li></ul></div>
+        <div class="comp-folder"><h4>questions</h4><ul><li>list, byTicker</li><li>dismiss, resolve, retryAuto, bulk</li></ul></div>
         <div class="comp-folder"><h4>workspaceApi</h4><ul><li>kickOff, get, history</li><li>recent, streamUrl</li></ul></div>
         <div class="comp-folder"><h4>outcomesApi</h4><ul><li>getSummary, list</li><li>getBySource, triggerBackfill</li></ul></div>
         <div class="comp-folder"><h4>transcriptDeltaApi</h4><ul><li>getLatest, getHistory</li><li>compute</li></ul></div>
@@ -1254,7 +1274,7 @@
         <div class="comp-folder"><h4>events <span style="color:var(--dim);font-weight:400;font-size:10px">PR #38</span></h4><ul><li>list, dismiss, scan</li></ul></div>
         <div class="comp-folder"><h4>peersApi <span style="color:var(--dim);font-weight:400;font-size:10px">PR #34</span></h4><ul><li>getSet, putSet</li><li>getComp, compare</li></ul></div>
         <div class="comp-folder"><h4>journalApi <span style="color:var(--dim);font-weight:400;font-size:10px">PR #40</span></h4><ul><li>listTrades, createTrade, patchTrade, deleteTrade</li><li>summary, pricePreview, linkCandidates</li></ul></div>
-        <div class="comp-folder"><h4>standalone</h4><ul><li>getCatalysts, getCatalyst, getCatalystsForRun</li><li>getCalendarEvents</li><li>getSignalHistory</li><li>getModel, initializeModel</li><li>putModelDraft, saveModelVersion</li><li>discardModelDraft, getReverseDcf</li><li>getModelVersions, getModelDiff</li><li>getCompanyHeader, getCompanyOverview, getCompanyFinancials</li><li>getTranscripts, getTranscript, summarizeTranscript</li></ul></div>
+        <div class="comp-folder"><h4>standalone</h4><ul><li>getTickers (⌘K palette)</li><li>getCatalysts, getCatalyst, getCatalystsForRun</li><li>getCalendarEvents</li><li>getSignalHistory</li><li>getModel, initializeModel</li><li>putModelDraft, saveModelVersion</li><li>discardModelDraft, getReverseDcf</li><li>getModelVersions, getModelDiff</li><li>getCompanyHeader, getCompanyOverview, getCompanyFinancials</li><li>getTranscripts, getTranscript, summarizeTranscript</li></ul></div>
       </div>
     </div>
   </details>
@@ -1262,7 +1282,7 @@
 
 <!-- SERVICES -->
 <section>
-  <h2>Backend services · 52 files</h2>
+  <h2>Backend services · 56 files</h2>
   <details>
     <summary><span>Full service list</span><span class="count">backend/app/services/*.py</span></summary>
     <div class="details-body">
@@ -1291,7 +1311,9 @@
       <div class="item-row"><div><div class="name">insider_signal</div><div class="file">services/insider_signal.py</div></div><div class="purpose">Pure 90-day insider aggregate → signals row (signal_type=insider) + bounded discovery modifier; is_stale is overloaded — read docstring</div></div>
       <div class="item-row"><div><div class="name">journal</div><div class="file">services/journal.py</div></div><div class="purpose">Trade-journal CRUD + FMP price auto-fill — commit-free, callers own the session</div></div>
       <div class="item-row"><div><div class="name">journal_comparison</div><div class="file">services/journal_comparison.py</div></div><div class="purpose">Pure math: direction-aware returns, SPY excess, decision-vs-paper at nearest snapshot offset</div></div>
+      <div class="item-row"><div><div class="name">material_events_grouping</div><div class="file">services/material_events_grouping.py</div></div><div class="purpose">Pure group_events() — near-duplicate 8-Ks (ticker + event_type within 4d) collapsed, newest member primary (PR #51)</div></div>
       <div class="item-row"><div><div class="name">material_events_scheduler</div><div class="file">services/material_events_scheduler.py</div></div><div class="purpose">Daily 06:30 UTC universe scan (8-K classify + Form 4 ingest; 8-K failures fault-isolated from insider side)</div></div>
+      <div class="item-row"><div><div class="name">metric_guards</div><div class="file">services/metric_guards.py</div></div><div class="purpose">Two-tier FMP margin sanity guard shared by company_snapshot + peer_comp (PR #44)</div></div>
       <div class="item-row"><div><div class="name">model_balancing</div><div class="file">services/model_balancing.py</div></div><div class="purpose">Pure recompute: drivers → IS → CF → BS; plug into retained_earnings</div></div>
       <div class="item-row"><div><div class="name">model_baseline</div><div class="file">services/model_baseline.py</div></div><div class="purpose">Orchestrate AI baseline seeding into ModelState</div></div>
       <div class="item-row"><div><div class="name">model_diff</div><div class="file">services/model_diff.py</div></div><div class="purpose">Cell-path-keyed JSON diff between two ModelStates</div></div>
@@ -1300,15 +1322,17 @@
       <div class="item-row"><div><div class="name">peer_sets</div><div class="file">services/peer_sets.py</div></div><div class="purpose">Curated peer sets — auto-seed (cap 8) / manual (cap 12); commit-free, callers own the session</div></div>
       <div class="item-row"><div><div class="name">pipeline</div><div class="file">services/pipeline.py</div></div><div class="purpose">PipelineService — run lifecycle, state persistence, SSE plumbing</div></div>
       <div class="item-row"><div><div class="name">quant_fingerprint</div><div class="file">services/quant_fingerprint.py</div></div><div class="purpose">Pure deterministic quant layer: Piotroski F, Altman Z, Beneish M, accruals, FCF conversion, SBC dilution, margin OLS slopes (TTM vs prior-TTM)</div></div>
-      <div class="item-row"><div><div class="name">questions</div><div class="file">services/questions.py</div></div><div class="purpose">Question log query helpers + retry-auto orchestration</div></div>
+      <div class="item-row"><div><div class="name">question_lifecycle</div><div class="file">services/question_lifecycle.py</div></div><div class="purpose">Open-question helpers across pipeline runs — persist, fetch/render, apply resurfaced resolutions (C2, PR #45)</div></div>
+      <div class="item-row"><div><div class="name">questions</div><div class="file">services/questions.py</div></div><div class="purpose">Question log query helpers + retry-auto orchestration + shared snooze-exclusion predicate (PR #51)</div></div>
       <div class="item-row"><div><div class="name">read_through</div><div class="file">services/read_through.py</div></div><div class="purpose">Read-through engine (peer events against thesis tickers)</div></div>
       <div class="item-row"><div><div class="name">relationship_context</div><div class="file">services/relationship_context.py</div></div><div class="purpose">CounterpartyContext (outbound + inbound, capped 20/bucket)</div></div>
       <div class="item-row"><div><div class="name">reverse_dcf</div><div class="file">services/reverse_dcf.py</div></div><div class="purpose">Bisection solvers + 21×21 sensitivity grids + thesis vs priced-in</div></div>
       <div class="item-row"><div><div class="name">run_timestamps</div><div class="file">services/run_timestamps.py</div></div><div class="purpose">Stable timestamp helpers for research runs</div></div>
       <div class="item-row"><div><div class="name">signal_history</div><div class="file">services/signal_history.py</div></div><div class="purpose">Time-series read access to signal_history table</div></div>
       <div class="item-row"><div><div class="name">signal_scheduler</div><div class="file">services/signal_scheduler.py</div></div><div class="purpose">Daily X signal refresh at 2 AM via AsyncIOScheduler</div></div>
-      <div class="item-row"><div><div class="name">status_board</div><div class="file">services/status_board.py</div></div><div class="purpose">Status board aggregator with health bucketing</div></div>
+      <div class="item-row"><div><div class="name">status_board</div><div class="file">services/status_board.py</div></div><div class="purpose">Status board aggregator with health bucketing + 14-day material-events summary per ticker (counts groups)</div></div>
       <div class="item-row"><div><div class="name">supply_chain</div><div class="file">services/supply_chain.py</div></div><div class="purpose">Phase D — supply-chain graph (depth=1|2 BFS) + bilateral reconciliation</div></div>
+      <div class="item-row"><div><div class="name">transcript_analysis</div><div class="file">services/transcript_analysis.py</div></div><div class="purpose">Runs the 6 deep-dive transcript passes; typed TranscriptAnalysisResult (C2, PRs #45/#46)</div></div>
       <div class="item-row"><div><div class="name">transcript_delta</div><div class="file">services/transcript_delta.py</div></div><div class="purpose">Haiku QoQ language deltas across multiple axes</div></div>
       <div class="item-row"><div><div class="name">workspace</div><div class="file">services/workspace.py</div></div><div class="purpose">WorkspaceService orchestrating 5-step workspace loop</div></div>
       <div class="item-row"><div><div class="name">workspace_context</div><div class="file">services/workspace_context.py</div></div><div class="purpose">WorkspaceContext dataclass — pure data carrier through steps</div></div>
@@ -1326,20 +1350,21 @@
 <section>
   <h2>Cross-references · frontend → backend</h2>
   <div class="xref">
-    <div class="xref-row"><span class="route">/</span><span class="arr">→</span><span class="ep">/api/status/board</span> · <span class="ep">/api/catalysts/calendar</span> · <span class="ep">/questions</span> · <span class="ep">/api/events</span> (Today composition)</div>
+    <div class="xref-row"><span class="route">/</span><span class="arr">→</span><span class="ep">/api/status/board</span> · <span class="ep">/api/catalysts/calendar</span> · <span class="ep">/api/questions</span> · <span class="ep">/api/events</span> · <span class="ep">/api/catalysts</span> (Today composition + Calendar tab)</div>
+    <div class="xref-row"><span class="route">(root layout ⌘K palette)</span><span class="arr">→</span><span class="ep">GET /api/tickers</span> · <span class="ep">GET /api/runs?limit=15</span> (fetched on first open, session-cached)</div>
     <div class="xref-row"><span class="route">/themes</span><span class="arr">→</span><span class="ep">GET /api/themes</span> · <span class="ep">DELETE /api/themes/{id}</span></div>
     <div class="xref-row"><span class="route">/theme/[id]</span><span class="arr">→</span><span class="ep">GET /api/themes/{id}</span> · <span class="ep">/discover</span> · <span class="ep">/signals/refresh</span> · <span class="ep">/signals/{ticker}/history</span></div>
-    <div class="xref-row"><span class="route">/catalysts</span><span class="arr">→</span><span class="ep">GET /api/catalysts/calendar</span> · <span class="ep">/api/catalysts</span> · <span class="ep">/catalysts/{id}</span></div>
+    <div class="xref-row"><span class="route">/catalysts</span><span class="arr">→</span>server redirect to <span class="ep">/?tab=calendar</span> (PR #50)</div>
     <div class="xref-row"><span class="route">/filings</span><span class="arr">→</span><span class="ep">GET /api/themes</span> · <span class="ep">/api/filings/*</span> · <span class="ep">/api/relationships/*</span> · <span class="ep">/api/themes/{id}/relationships/fanout</span> · <span class="ep">/api/fanouts/{id}</span></div>
     <div class="xref-row"><span class="route">/filings/graph</span><span class="arr">→</span><span class="ep">GET /api/relationships/graph/{ticker}?depth=2&amp;theme_id=</span></div>
     <div class="xref-row"><span class="route">/status</span><span class="arr">→</span><span class="ep">/api/status/board</span> · <span class="ep">/api/runs/{id}/kill-criteria</span> · <span class="ep">/api/status/read-throughs</span> · <span class="ep">/api/earnings/board</span> · <span class="ep">/api/runs/{id}/earnings/{print}/{brief|verdict}</span> · <span class="ep">/api/events</span> · <span class="ep">/api/workspace/{ticker}/preflight</span></div>
-    <div class="xref-row"><span class="route">/questions</span><span class="arr">→</span><span class="ep">/questions</span> · <span class="ep">/questions/by-ticker</span> · <span class="ep">/questions/{id}/{dismiss|resolve|retry-auto}</span> <span style="color:var(--warn)">⚠ no /api prefix</span></div>
-    <div class="xref-row"><span class="route">/library</span><span class="arr">→</span><span class="ep">GET /api/runs</span> · <span class="ep">/api/runs/data-gaps</span></div>
+    <div class="xref-row"><span class="route">/questions</span><span class="arr">→</span><span class="ep">/api/questions</span> · <span class="ep">/api/questions/by-ticker</span> · <span class="ep">/api/questions/{id}/{dismiss|resolve|retry-auto}</span> · <span class="ep">/api/questions/bulk</span></div>
+    <div class="xref-row"><span class="route">/library</span><span class="arr">→</span><span class="ep">GET /api/runs</span> · <span class="ep">/api/runs/data-gaps</span> · <span class="ep">POST /api/runs/{id}/abandon</span> · <span class="ep">GET /api/themes</span></div>
     <div class="xref-row"><span class="route">/performance</span><span class="arr">→</span><span class="ep">/api/outcomes/summary</span> · <span class="ep">/api/outcomes</span> · <span class="ep">/api/outcomes/backfill</span> · <span class="ep">/api/journal/*</span> (trades CRUD, summary, price-preview, link-candidates)</div>
     <div class="xref-row"><span class="route">/company/[ticker]</span><span class="arr">→</span><span class="ep">/api/company/{ticker}/*</span> · <span class="ep">/api/peers/{ticker}</span> · <span class="ep">/api/peers/{ticker}/comp</span> · <span class="ep">/api/models/{ticker}</span> · <span class="ep">/api/filings/{ticker}</span></div>
     <div class="xref-row"><span class="route">/compare</span><span class="arr">→</span><span class="ep">GET /api/peers/compare?tickers=</span></div>
     <div class="xref-row"><span class="route">/pipeline/new</span><span class="arr">→</span><span class="ep">POST /api/runs</span> · <span class="ep">GET /api/themes</span></div>
-    <div class="xref-row"><span class="route">/pipeline/[runId]</span><span class="arr">→</span><span class="ep">/api/runs/{id}</span> · <span class="ep">/stream (SSE)</span> · <span class="ep">/report</span> · <span class="ep">/advance</span> · <span class="ep">/api/catalysts?run_id=</span> · <span class="ep">/questions?ticker=</span> · <span class="ep">/api/relationships/graph/{ticker}?depth=1</span> · <span class="ep">/api/transcripts/delta/{ticker}/latest</span></div>
+    <div class="xref-row"><span class="route">/pipeline/[runId]</span><span class="arr">→</span><span class="ep">/api/runs/{id}</span> · <span class="ep">/stream (SSE)</span> · <span class="ep">/report</span> · <span class="ep">/advance</span> · <span class="ep">/api/catalysts?run_id=</span> · <span class="ep">/api/questions?ticker=</span> · <span class="ep">/api/relationships/graph/{ticker}?depth=1</span> · <span class="ep">/api/transcripts/delta/{ticker}/latest</span></div>
     <div class="xref-row"><span class="route">/workspace · /workspace/[runId]</span><span class="arr">→</span><span class="ep">/api/workspace/recent</span> · <span class="ep">/api/workspace/runs/{id}</span> · <span class="ep">/stream (SSE)</span></div>
     <div class="xref-row"><span class="route">/model/[ticker]</span><span class="arr">→</span><span class="ep">/api/models/{ticker}</span> · <span class="ep">/initialize</span> · <span class="ep">/draft (PUT/DELETE)</span> · <span class="ep">/save</span> · <span class="ep">/reverse-dcf</span> · <span class="ep">/versions/{v}/diff</span></div>
     <div class="xref-row"><span class="route">/prospectus</span><span class="arr">→</span><span class="ep">GET /api/prospectus</span> · <span class="ep">POST /api/prospectus</span> · <span class="ep">DELETE /api/prospectus/{id}</span></div>
@@ -1499,6 +1524,18 @@
     <div class="irule">Workspace loop execution order is <code>update_refresh → research → validation → challenge → differentiation</code> — pinned by <code>STEP_NAMES</code> in <code>services/workspace_steps.py</code></div>
     <div class="iwhy"><strong>Why:</strong> validation re-runs the reverse-DCF against the post-Step-1 model version, and challenge consumes Step 1's model deltas. Docs that list challenge before validation are wrong.</div>
   </div>
+
+  <div class="invariant">
+    <div class="iname">theme_token_classes</div>
+    <div class="irule">Frontend colors use CSS-variable token classes only (<code>bg-[var(--surface)]</code>, <code>text-[var(--text-muted)]</code>, …) — no <code>slate-*</code>/<code>gray-*</code>/<code>zinc-*</code> palette classes</div>
+    <div class="iwhy"><strong>Why:</strong> B3 phase 4 (PR #53) migrated all surfaces to a global token palette (tokens in <code>app/globals.css</code>); raw palette classes drift from the theme. Guard documented in <code>frontend/AGENTS.md</code>.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">questions_snooze_predicate</div>
+    <div class="irule">Any query for "open" questions must reuse the shared snooze-exclusion predicate in <code>services/questions.py</code></div>
+    <div class="iwhy"><strong>Why:</strong> PR #51 added bulk snooze (<code>snoozed_until</code>). A consumer filtering <code>status == 'open'</code> directly would resurface snoozed questions before expiry.</div>
+  </div>
 </section>
 
 <!-- ENTRY POINTS -->
@@ -1532,7 +1569,7 @@
 </section>
 
 <footer>
-  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), spot-refreshed 2026-06-11 (through PR #48) · companion JSON at <code>design/architecture.json</code> is the fresher index
+  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), refreshed 2026-06-11 (through PR #53 — B3 UX phases 2-4: global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens) · companion JSON at <code>design/architecture.json</code>
 </footer>
 
 </body>
