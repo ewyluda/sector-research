@@ -36,10 +36,14 @@ from backend.app.api import prospectus as prospectus_api
 from backend.app.api import peers as peers_api
 from backend.app.api import journal as journal_api
 from backend.app.db import unit_of_work
+from backend.app.logging_filters import ApiKeyRedactionFilter
 
 settings = get_settings()
 
 logging.basicConfig(level=settings.log_level)
+logging.getLogger("httpx").addFilter(ApiKeyRedactionFilter())
+for _handler in logging.getLogger().handlers:
+    _handler.addFilter(ApiKeyRedactionFilter())
 logger = logging.getLogger(__name__)
 
 

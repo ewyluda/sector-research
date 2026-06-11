@@ -1,11 +1,8 @@
 """Tests for prospectus_ingest.ingest_prospectus."""
 import unittest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import date
 
 from backend.app.services.prospectus_ingest import (
     parse_source_input,
-    SourceInput,
 )
 
 

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy import and_, or_, select, text
@@ -388,7 +388,7 @@ async def resolve_read_throughs(
         if (run_id, item.event_key) in dismissed:
             continue
         # Sort links within an item by signal-strength rank.
-        item.links.sort(key=lambda l: _rank(l.relationship_type))
+        item.links.sort(key=lambda link: _rank(link.relationship_type))
         out.setdefault(run_id, []).append(item)
 
     # Sort each run's items: best edge rank first, then date desc.

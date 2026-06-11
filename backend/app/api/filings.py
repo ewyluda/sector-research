@@ -15,7 +15,6 @@ from backend.app.clients.edgar import EdgarClient
 from backend.app.db import get_db
 from backend.app.models.filing import (
     CompetitorLandscape,
-    CounterpartyAlias,
     Filing,
     FilingSection,
     FilingSegment,

@@ -27,7 +27,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from rapidfuzz import fuzz, process
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient

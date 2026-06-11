@@ -469,7 +469,7 @@ class PipelineService:
 
         # Emit per-category results
         for cat, result in state.get_deep_dive_results().items():
-            from backend.app.graph.state import CategoryResult, CategoryError
+            from backend.app.graph.state import CategoryResult
             if isinstance(result, CategoryResult):
                 self._emit(run_id, {
                     "type": "category_complete",

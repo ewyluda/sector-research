@@ -9,7 +9,6 @@ POST /api/themes/{theme_id}/signals/refresh
   Normally this runs on the daily scheduler.
 """
 
-import dataclasses
 import logging
 from typing import Any
 

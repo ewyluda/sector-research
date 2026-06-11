@@ -8,8 +8,8 @@ import logging
 import statistics
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Any, Iterable, Literal
-from uuid import UUID, uuid4
+from typing import Any, Literal
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -115,9 +115,11 @@ def solve_implied_irr(
         if abs(f_mid) < tolerance:
             return mid
         if f_lo * f_mid < 0:
-            hi = mid; f_hi = f_mid
+            hi = mid
+            f_hi = f_mid
         else:
-            lo = mid; f_lo = f_mid
+            lo = mid
+            f_lo = f_mid
     return 0.5 * (lo + hi)
 
 

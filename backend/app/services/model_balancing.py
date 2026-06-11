@@ -61,7 +61,7 @@ def compute_income_statement(state: ModelState) -> ModelState:
 
         gm = _drv(s, p.label, "gross_margin_pct") or 0.0
         gp = _set_pnl(s, "gross_profit", p.label, rev * gm, formula="= revenue * gross_margin_pct")
-        cogs = _set_pnl(s, "cost_of_revenue", p.label, rev - gp, formula="= revenue - gross_profit")
+        _set_pnl(s, "cost_of_revenue", p.label, rev - gp, formula="= revenue - gross_profit")
 
         sga_pct = _drv(s, p.label, "sga_pct_revenue") or 0.0
         rd_pct = _drv(s, p.label, "rd_pct_revenue") or 0.0
@@ -200,12 +200,12 @@ def roll_balance_sheet(state: ModelState) -> ModelState:
 
         capex = -(s.cash_flow["capex"][p.label].value or 0.0)  # positive for PPE addition
         da = s.income_statement["depreciation_amortization"][p.label].value or 0.0
-        ppe = _set_bs(s, "ppe_net", p.label, _bs_prior(s, "ppe_net", idx) + capex - da)
+        _set_bs(s, "ppe_net", p.label, _bs_prior(s, "ppe_net", idx) + capex - da)
 
         # Debt
         prior_lt = _bs_prior(s, "long_term_debt", idx)
         debt_repay = (_drv(s, p.label, "debt_repayment_dollars") or 0.0)
-        new_lt = _set_bs(s, "long_term_debt", p.label, max(0.0, prior_lt - debt_repay))
+        _set_bs(s, "long_term_debt", p.label, max(0.0, prior_lt - debt_repay))
 
         # Equity
         prior_re = _bs_prior(s, "retained_earnings", idx)

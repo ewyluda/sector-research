@@ -8,7 +8,7 @@ import time
 import hashlib
 import json
 import logging
-from datetime import date, timedelta, datetime, timezone
+from datetime import date, timedelta
 from typing import Any
 
 import httpx

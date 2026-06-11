@@ -67,7 +67,7 @@ Convention:
 
 - [ ] `backend/app/clients/fmp.py::_request` passes `apikey` as part of the `params` dict, and httpx logs the full URL at INFO level:
   ```
-  INFO:httpx:HTTP Request: GET https://financialmodelingprep.com/stable/profile?symbol=NVDA&apikey=786d66fb80720a361ac3037af5ebdf22 "HTTP/1.1 200 OK"
+  INFO:httpx:HTTP Request: GET https://financialmodelingprep.com/stable/profile?symbol=NVDA&apikey=REDACTED "HTTP/1.1 200 OK"
   ```
 - **Why it matters:** the key ends up in terminal output, log files, and potentially crash reports. Anyone with log access gets the key. Already happened in this session's transcript multiple times.
 - **Next action:** wire httpx with an `event_hooks={"request": [redact_apikey_in_logs]}` handler, OR pass `apikey` via an `X-API-KEY` header if FMP supports it, OR lower the httpx logger to WARN globally. Cleanest: install a `logging.Filter` on the `httpx` logger that regex-redacts `apikey=[^&\s]+`.

@@ -69,8 +69,6 @@ def make_graph(fmp: FMPClient) -> StateGraph:
 
     def after_quick_screen(state: dict) -> Literal["deep_dive", "__end__"]:
         """Route based on recommendation: GO → deep_dive, else END."""
-        output = state.get("phase_outputs", {}).get("quick_screen", {})
-        recommendation = output.get("recommendation", "GO") if isinstance(output, dict) else "GO"
         status = state.get("status", "in_progress")
         # If human stopped the run, end
         if status in ("watchlist", "pass", "completed"):

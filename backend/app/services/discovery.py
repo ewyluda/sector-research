@@ -15,7 +15,6 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -241,11 +240,14 @@ def _extract_roic(balance: list[dict], cashflow: list[dict]) -> float | None:
             return None
         return round(nopat / invested_capital, 4)
     except Exception:
+        logger.exception("_extract_roic failed on malformed FMP data")
         return None
 
 
 def _extract_gross_margin(income: list[dict]) -> float | None:
     try:
+        if not income:
+            return None
         i = income[0]
         revenue = i.get("revenue", 0)
         gross_profit = i.get("grossProfit", 0)
@@ -253,6 +255,7 @@ def _extract_gross_margin(income: list[dict]) -> float | None:
             return None
         return round(gross_profit / revenue, 4)
     except Exception:
+        logger.exception("_extract_gross_margin failed on malformed FMP data")
         return None
 
 
@@ -267,6 +270,7 @@ def _extract_revenue_growth(income: list[dict]) -> float | None:
             return None
         return round((curr - prev) / prev, 4)
     except Exception:
+        logger.exception("_extract_revenue_growth failed on malformed FMP data")
         return None
 
 

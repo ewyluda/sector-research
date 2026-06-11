@@ -18,7 +18,7 @@ import json
 import logging
 import re
 import traceback
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
@@ -46,6 +46,9 @@ from backend.app.graph.state import (
     ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
 
+if TYPE_CHECKING:
+    from backend.app.graph.state import CuratedFinancials
+
 logger = logging.getLogger(__name__)
 
 CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
@@ -61,7 +64,7 @@ from backend.app.graph.deep_dive_context import (  # noqa: E402
 from backend.app.graph.deep_dive_helpers import (  # noqa: E402
     unwrap_gather_result as _unwrap,
 )
-from backend.app.services.quant_fingerprint import build_quant_fingerprint
+from backend.app.services.quant_fingerprint import build_quant_fingerprint  # noqa: E402
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -1493,7 +1496,6 @@ async def run_transcript_analysis(
     latest = transcripts[0] if transcripts else {}
     transcript_text = latest.get("content", latest.get("transcript", "No transcript content"))[:28000]
 
-    prior_transcripts = transcripts[1:4] if len(transcripts) > 1 else []
     all_transcripts_text = "\n\n---QUARTER BREAK---\n\n".join(
         t.get("content", t.get("transcript", ""))[:11200] for t in transcripts[:4]
     )

@@ -1,6 +1,4 @@
 """Integration-style test for ProspectusService — mocks every external call."""
-import asyncio
-import json
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 

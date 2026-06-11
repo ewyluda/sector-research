@@ -1,5 +1,4 @@
 """Smoke test for model_state Pydantic schemas."""
-import json
 import sys
 from backend.app.models.model_state import (
     ModelState, ModelCell, Period, ModelAssumptions,
