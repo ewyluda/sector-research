@@ -212,6 +212,83 @@ class TestSignalSnapshotBuilders(unittest.TestCase):
         self.assertEqual(snap["model_assumptions"], model_assumptions)
         self.assertNotIn("deep_dive_scores", snap)
 
+    # ── M3.4: warn-log + incomplete marker on missing fields ─────────────────
+
+    def test_research_run_snapshot_incomplete_when_deep_dive_missing(self):
+        """Missing deep_dive_results → incomplete=True + warning logged."""
+        import logging
+        state = MagicMock()
+        state.ticker = "NVDA"
+        state.run_id = "run-123"
+        state.deep_dive_results = None  # missing
+
+        with self.assertLogs("backend.app.services.outcome_tracker", level=logging.WARNING) as cm:
+            snap = build_research_run_signal_snapshot(
+                state=state, signals_row={}, kill_states=[]
+            )
+
+        self.assertTrue(snap.get("incomplete"))
+        self.assertEqual(snap["deep_dive_scores"], {})
+        self.assertTrue(any("deep_dive_results" in line for line in cm.output))
+
+    def test_research_run_snapshot_incomplete_when_deep_dive_corrupt(self):
+        """Truthy non-dict deep_dive_results (e.g. a list) → warn + incomplete=True."""
+        import logging
+        state = MagicMock()
+        state.ticker = "NVDA"
+        state.run_id = "run-corrupt"
+        state.deep_dive_results = ["not", "a", "dict"]  # corrupt state
+
+        with self.assertLogs("backend.app.services.outcome_tracker", level=logging.WARNING) as cm:
+            snap = build_research_run_signal_snapshot(
+                state=state, signals_row={}, kill_states=[]
+            )
+
+        self.assertTrue(snap.get("incomplete"))
+        self.assertEqual(snap["deep_dive_scores"], {})
+        self.assertTrue(any("deep_dive_results" in line for line in cm.output))
+
+    def test_research_run_snapshot_no_incomplete_when_deep_dive_present(self):
+        """Complete snapshot must NOT have the incomplete key."""
+        state = MagicMock()
+        state.ticker = "AAPL"
+        state.run_id = "run-456"
+        state.deep_dive_results = {"Business Quality": MagicMock(score=70)}
+
+        snap = build_research_run_signal_snapshot(
+            state=state, signals_row={}, kill_states=[]
+        )
+        self.assertNotIn("incomplete", snap)
+
+    def test_workspace_run_snapshot_incomplete_when_step_outputs_missing(self):
+        """Missing step_outputs → incomplete=True + warning logged."""
+        import logging
+        run = MagicMock()
+        run.ticker = "TSLA"
+        run.id = "wrun-789"
+        run.step_outputs = None  # missing
+
+        with self.assertLogs("backend.app.services.outcome_tracker", level=logging.WARNING) as cm:
+            snap = build_workspace_run_signal_snapshot(
+                run=run, signals_row={}, kill_states=[], model_assumptions={}
+            )
+
+        self.assertTrue(snap.get("incomplete"))
+        self.assertEqual(snap["workspace_step_verdicts"], {})
+        self.assertTrue(any("step_outputs" in line for line in cm.output))
+
+    def test_workspace_run_snapshot_no_incomplete_when_step_outputs_present(self):
+        """Complete workspace snapshot must NOT have the incomplete key."""
+        run = MagicMock()
+        run.ticker = "MSFT"
+        run.id = "wrun-101"
+        run.step_outputs = {"differentiation": {"proposed_verdict": "healthy"}}
+
+        snap = build_workspace_run_signal_snapshot(
+            run=run, signals_row={}, kill_states=[], model_assumptions={}
+        )
+        self.assertNotIn("incomplete", snap)
+
 
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession as SAAsyncSession

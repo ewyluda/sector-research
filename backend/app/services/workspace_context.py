@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from anthropic import AsyncAnthropic
+    from backend.app.clients.fmp import FMPClient
+    from backend.app.clients.edgar import EdgarClient
+    from backend.app.models.research_run import ResearchRun
+    from backend.app.models.ticker_model import TickerModel
 
 
 @dataclass
@@ -17,9 +24,9 @@ class WorkspaceContext:
     run_id: str
     ticker: str
     db: AsyncSession
-    fmp: Any  # FMPClient
-    edgar: Any  # EdgarClient
-    anthropic: Any  # AsyncAnthropic
-    prior_research_run: Any  # ResearchRun ORM row
-    prior_ticker_model: Any  # TickerModel ORM row
+    fmp: FMPClient
+    edgar: EdgarClient
+    anthropic: AsyncAnthropic
+    prior_research_run: ResearchRun
+    prior_ticker_model: TickerModel
     emit: Callable[[dict], None]

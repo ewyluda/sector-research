@@ -45,9 +45,9 @@ function parseEmbeddedSource(text: string): { body: string; source?: string } {
 }
 
 /**
- * Provenance pill citation — matches the "01 Provenance pills" theme in
- * design/citation-styles.html. Evidence text reads as clean prose; source
- * attribution renders as a small rounded pill with a provider-colored dot.
+ * Provenance pill citation — "01 Provenance pills" style.
+ * Evidence text reads as clean prose; source attribution renders as a small
+ * rounded pill with a provider-colored dot.
  */
 export function CitationBlock({ children, source: explicitSource }: CitationBlockProps) {
   let body: React.ReactNode = children;

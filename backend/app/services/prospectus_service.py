@@ -50,32 +50,72 @@ class ProspectusService:
     def __init__(self, *, edgar: EdgarClient, fred: Any = None) -> None:
         self._edgar = edgar
         self._fred = fred
-        self._queues: dict[str, asyncio.Queue] = {}
+        # Per-run SSE state: replay buffer (all events emitted so far) plus
+        # a list of live subscriber queues.  The replay buffer ensures that a
+        # frontend opening the SSE connection after kick_off() has already
+        # emitted early step events still receives those events.  run_id keys
+        # are never pruned from _replay — acceptable for process-lifetime run
+        # counts in a single-user tool (each run emits a small, bounded number
+        # of step events).
+        self._replay: dict[str, list[dict]] = {}
+        self._queues: dict[str, list[asyncio.Queue]] = {}
 
     # ── SSE plumbing ──────────────────────────────────────────────────────────
 
-    def _q(self, rid: str) -> asyncio.Queue:
-        q = self._queues.get(rid)
-        if q is None:
-            q = asyncio.Queue()
-            self._queues[rid] = q
-        return q
-
     def _emit(self, rid: str, evt: dict) -> None:
-        try:
-            self._q(rid).put_nowait(evt)
-        except asyncio.QueueFull:
-            logger.warning("prospectus SSE queue full for %s; dropping", rid)
+        """Append event to the replay buffer and fan-out to live subscribers.
+
+        A full subscriber queue does not block other subscribers.
+        """
+        self._replay.setdefault(rid, []).append(evt)
+        for q in self._queues.get(rid, []):
+            try:
+                q.put_nowait(evt)
+            except asyncio.QueueFull:
+                logger.warning(
+                    "prospectus SSE queue full for %s (subscriber %s); dropping event",
+                    rid, id(q),
+                )
 
     async def event_stream(self, rid: str) -> AsyncIterator[dict]:
-        q = self._q(rid)
-        while True:
-            evt = await q.get()
-            yield evt
-            if evt.get("type") in TERMINAL_EVENTS:
-                while not q.empty():
-                    yield q.get_nowait()
-                return
+        """Async generator yielding raw event dicts until a terminal event.
+
+        Atomically snapshots the replay buffer and registers the subscriber
+        queue (no await between these steps) so no events can be lost between
+        the replay snapshot and live delivery.
+
+        No post-terminal drain is required: _emit() never fires after the
+        terminal event (prospectus_complete / prospectus_failed are the last
+        calls in every _run_pipeline code path — confirmed by inspection).
+        """
+        # Snapshot replay buffer and register subscriber in one synchronous
+        # block — no await between snapshot and append so no events are lost.
+        replay_snapshot = list(self._replay.get(rid, []))
+        q: asyncio.Queue = asyncio.Queue(maxsize=500)
+        self._queues.setdefault(rid, []).append(q)
+
+        try:
+            # Replay buffered events first.
+            for evt in replay_snapshot:
+                yield evt
+                if evt.get("type") in TERMINAL_EVENTS:
+                    return
+
+            # Consume live events.
+            while True:
+                evt = await q.get()
+                yield evt
+                if evt.get("type") in TERMINAL_EVENTS:
+                    return
+        finally:
+            queues = self._queues.get(rid)
+            if queues is not None:
+                try:
+                    queues.remove(q)
+                except ValueError:
+                    pass
+                if not queues:
+                    self._queues.pop(rid, None)
 
     # ── Kick-off ──────────────────────────────────────────────────────────────
 

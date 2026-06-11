@@ -18,7 +18,7 @@
 }
 
 :root {
-  /* Slate Default palette — dark navy + blue accent (from design/style-explorer.html) */
+  /* Slate Default palette — dark navy + blue accent */
   --bg:           #0f172a;   /* slate-900 */
   --surface:      #1e293b;   /* slate-800 */
   --surface-alt:  #172033;   /* between 800/900 */
@@ -35,7 +35,7 @@
   --error:        #f87171;   /* red-400 */
   --code-bg:      #0b1220;
 
-  /* Score tier colors — match style-explorer slate score scale */
+  /* Score tier colors — slate score scale */
   --score-strong:  #34d399;   /* >= 70 — emerald */
   --score-neutral: #a3e635;   /* >= 45 — lime */
   --score-caution: #fbbf24;   /* >= 25 — amber */

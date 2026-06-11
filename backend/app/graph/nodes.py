@@ -370,9 +370,16 @@ async def node_deep_dive(
         # Run transcript analysis (6 passes)
         if transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
             logger.info("[%s] Running transcript analysis (%d transcripts)", state.ticker, len(transcripts))
-            state.transcript_analysis = await run_transcript_analysis(state.ticker, transcripts, fmp)
-            if transcript_cit is not None:
-                state.add_citation(StateCitation.from_citation(transcript_cit))
+            ta_result = await run_transcript_analysis(state.ticker, transcripts, fmp)
+            if ta_result.status == "ok":
+                state.transcript_analysis = ta_result.value
+                if transcript_cit is not None:
+                    state.add_citation(StateCitation.from_citation(transcript_cit))
+            elif ta_result.status == "error":
+                logger.warning("[%s] Transcript analysis failed: %s", state.ticker, ta_result.error)
+                state.transcript_analysis = None
+            else:  # status == "no_data" — unreachable from this guarded call site; kept for exhaustiveness
+                state.transcript_analysis = None
         else:
             logger.info("[%s] No transcripts available, skipping analysis", state.ticker)
             state.transcript_analysis = None
