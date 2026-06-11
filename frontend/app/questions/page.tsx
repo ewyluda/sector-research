@@ -18,7 +18,7 @@ import {
 
 const CHIP_BASE = "px-2 py-1 rounded-full text-xs border transition";
 const CHIP_ON = "border-emerald-500 bg-emerald-900/40 text-emerald-200";
-const CHIP_OFF = "border-slate-700 text-slate-400 hover:text-slate-200";
+const CHIP_OFF = "border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]";
 
 function QuestionsPageInner() {
   const searchParams = useSearchParams();
@@ -141,8 +141,8 @@ function QuestionsPageInner() {
   return (
     <main className="max-w-5xl mx-auto p-6">
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-100">Questions</h1>
-        <p className="text-slate-400 text-sm mt-1">
+        <h1 className="text-2xl font-semibold text-[var(--text)]">Questions</h1>
+        <p className="text-[var(--text-muted)] text-sm mt-1">
           Open analysis gaps across the fleet, surfaced from deep-dive runs.
           {tickerFilter && (
             <>
@@ -153,14 +153,14 @@ function QuestionsPageInner() {
         </p>
       </header>
 
-      <div className="flex gap-2 mb-4 border-b border-slate-800">
+      <div className="flex gap-2 mb-4 border-b border-[var(--surface)]">
         <button
           type="button"
           onClick={() => setTab("by_ticker")}
           className={`px-3 py-2 text-sm border-b-2 transition ${
             tab === "by_ticker"
               ? "border-emerald-500 text-emerald-200"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"
           }`}
         >
           By ticker
@@ -171,7 +171,7 @@ function QuestionsPageInner() {
           className={`px-3 py-2 text-sm border-b-2 transition ${
             tab === "by_question"
               ? "border-emerald-500 text-emerald-200"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              : "border-transparent text-[var(--text-muted)] hover:text-[var(--text)]"
           }`}
         >
           By question
@@ -183,7 +183,7 @@ function QuestionsPageInner() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as QuestionStatus | "all")}
-            className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-200"
+            className="bg-[var(--bg)] border border-[var(--border)] rounded px-2 py-1 text-[var(--text)]"
           >
             <option value="open">Open</option>
             <option value="resolved_auto">Auto-resolved</option>
@@ -218,7 +218,7 @@ function QuestionsPageInner() {
       )}
 
       {tab === "by_question" && !loading && visible.length > 0 && (
-        <div className="flex items-center gap-3 mb-3 text-xs text-slate-400">
+        <div className="flex items-center gap-3 mb-3 text-xs text-[var(--text-muted)]">
           <label className="flex items-center gap-1.5 cursor-pointer">
             <input
               type="checkbox"
@@ -233,15 +233,15 @@ function QuestionsPageInner() {
 
       {tab === "by_question" && selectedVisible.length > 0 && (
         <div
-          className="sticky top-2 z-10 flex items-center gap-2 mb-3 px-3 py-2 rounded-md border border-slate-700 bg-slate-900/95 text-xs"
+          className="sticky top-2 z-10 flex items-center gap-2 mb-3 px-3 py-2 rounded-md border border-[var(--border)] bg-[var(--bg)]/95 text-xs"
           data-print-hide="true"
         >
-          <span className="text-slate-200 font-medium">{selectedVisible.length} selected</span>
+          <span className="text-[var(--text)] font-medium">{selectedVisible.length} selected</span>
           <button
             type="button"
             onClick={() => runBulk("dismiss")}
             disabled={bulkBusy}
-            className="px-2 py-1 rounded border border-slate-600 text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+            className="px-2 py-1 rounded border border-[var(--border)] text-[var(--text)] hover:bg-[var(--surface)] disabled:opacity-50"
           >
             Dismiss
           </button>
@@ -264,12 +264,12 @@ function QuestionsPageInner() {
         </div>
       )}
 
-      {loading && <p className="text-slate-500 text-sm">Loading…</p>}
+      {loading && <p className="text-[var(--text-faint)] text-sm">Loading…</p>}
       {!loading && tab === "by_ticker" && <QuestionTickerRollupTable rollup={rollup} />}
       {!loading && tab === "by_question" && (
         <div className="space-y-2">
           {visible.length === 0 ? (
-            <p className="text-slate-500 text-sm">No questions match the current filter.</p>
+            <p className="text-[var(--text-faint)] text-sm">No questions match the current filter.</p>
           ) : (
             visible.map((q) => (
               <QuestionRow
@@ -289,7 +289,7 @@ function QuestionsPageInner() {
 
 export default function QuestionsPage() {
   return (
-    <Suspense fallback={<main className="max-w-5xl mx-auto p-6"><p className="text-slate-500 text-sm">Loading…</p></main>}>
+    <Suspense fallback={<main className="max-w-5xl mx-auto p-6"><p className="text-[var(--text-faint)] text-sm">Loading…</p></main>}>
       <QuestionsPageInner />
     </Suspense>
   );

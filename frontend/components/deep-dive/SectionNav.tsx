@@ -77,7 +77,7 @@ export function SectionNav({ ticker }: { ticker?: string } = {}) {
           {ticker && (
             <a
               href={`/model/${ticker}#forecast`}
-              className="ml-auto px-3 py-1 rounded text-sm text-blue-400 hover:bg-slate-800 shrink-0"
+              className="ml-auto px-3 py-1 rounded text-sm text-blue-400 hover:bg-[var(--surface)] shrink-0"
             >
               Model →
             </a>

@@ -69,7 +69,7 @@ function ModelStatusBadge({ ticker }: { ticker: string }) {
   }
   const ago = relativeTime(info.saved_at);
   return (
-    <a href={`/model/${ticker}#forecast`} className="text-xs text-slate-300 hover:text-white">
+    <a href={`/model/${ticker}#forecast`} className="text-xs text-[var(--text-muted)] hover:text-white">
       Model v{info.version} · saved {ago}
     </a>
   );
@@ -120,7 +120,11 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
         <div className="flex items-center gap-3 min-w-0">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">{ticker}</h1>
+              <h1 className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+                <a href={`/company/${ticker}`} className="hover:underline" title="Open company workspace">
+                  {ticker}
+                </a>
+              </h1>
               {quickScreen && <VerdictBadge recommendation={quickScreen.recommendation} />}
               <span data-print-hide="true" className="flex items-center gap-2">
                 <ModelStatusBadge ticker={ticker} />
@@ -129,12 +133,18 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
                     type="button"
                     onClick={handleWorkspaceRefresh}
                     disabled={loading || !canKickOff}
-                    className="text-xs px-2 py-1 rounded border border-slate-700 hover:border-slate-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-300 hover:text-slate-100 transition-colors"
+                    className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:border-[var(--text-faint)] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
                     title={workspaceTooltip}
                   >
                     {loading ? "Launching..." : inFlightRunId ? "View running →" : "Refresh workspace →"}
                   </button>
                 )}
+                <a
+                  href={`/company/${ticker}`}
+                  className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] hover:underline"
+                >
+                  Company →
+                </a>
               </span>
             </div>
             {financials && (

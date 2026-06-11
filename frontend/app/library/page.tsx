@@ -12,7 +12,7 @@ const THESIS_BADGE: Record<ThesisStatus | string, string> = {
   STRONG_BUY: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
   BUY:        "bg-teal-500/15 text-teal-400 border-teal-500/25",
   WATCHLIST:  "bg-amber-500/15 text-amber-400 border-amber-500/25",
-  PASS:       "bg-slate-500/15 text-slate-400 border-slate-500/25",
+  PASS:       "bg-slate-500/15 text-[var(--text-muted)] border-slate-500/25",
   BROKEN:     "bg-red-500/15 text-red-400 border-red-500/25",
   PENDING:    "bg-[var(--color-surface)] text-[var(--color-text-muted)] border-[var(--color-border)]",
 };
@@ -65,7 +65,7 @@ function isZombie(run: RunSummary): boolean {
 function StatusChip({ status }: { status: string }) {
   return (
     <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
-      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status] ?? "bg-slate-400"}`} />
+      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[status] ?? "bg-[var(--text-muted)]"}`} />
       {STATUS_LABEL[status] ?? status}
     </span>
   );

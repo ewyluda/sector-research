@@ -167,10 +167,10 @@ function KillCriteriaSection({
                     className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
                       cur === "triggered"
                         ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                        : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                        : "bg-slate-500/10 text-[var(--text-muted)] border-slate-500/30"
                     }`}
                   >
-                    <span className={`w-1.5 h-1.5 rounded-full ${cur === "triggered" ? "bg-amber-400" : "bg-slate-400"}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full ${cur === "triggered" ? "bg-[var(--warning)]" : "bg-[var(--text-muted)]"}`} />
                     {cur === "triggered" ? "Triggered" : "Armed"}
                   </button>
                 </div>

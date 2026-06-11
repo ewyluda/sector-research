@@ -76,7 +76,7 @@ function NewPipelineForm() {
             New Research Run
           </h1>
           <p className="mt-1 text-sm text-[var(--text-faint)]">
-            Runs 4 due-diligence phases automatically, then waits for approval before sizing.
+            Runs all 5 due-diligence phases automatically — quick screen through risk stress test — and produces a fully cited report. No approval gates.
           </p>
         </div>
 

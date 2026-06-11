@@ -86,14 +86,14 @@ export function KillCriteriaDrawer({ runId, onToggled }: Props) {
   }
   if (criteria === null) {
     return (
-      <div className="px-4 py-3 text-sm text-slate-500" data-print-hide="true">
+      <div className="px-4 py-3 text-sm text-[var(--text-faint)]" data-print-hide="true">
         Loading kill criteria…
       </div>
     );
   }
   if (criteria.length === 0) {
     return (
-      <div className="px-4 py-3 text-sm text-slate-500" data-print-hide="true">
+      <div className="px-4 py-3 text-sm text-[var(--text-faint)]" data-print-hide="true">
         No kill criteria on this thesis.
       </div>
     );
@@ -120,12 +120,12 @@ export function KillCriteriaDrawer({ runId, onToggled }: Props) {
                 className={`shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold disabled:opacity-50 ${
                   cur === "triggered"
                     ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                    : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+                    : "bg-slate-500/10 text-[var(--text-muted)] border-slate-500/30"
                 }`}
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    cur === "triggered" ? "bg-amber-400" : "bg-slate-400"
+                    cur === "triggered" ? "bg-[var(--warning)]" : "bg-[var(--text-muted)]"
                   }`}
                 />
                 {cur === "triggered" ? "Triggered" : "Armed"}

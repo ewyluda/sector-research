@@ -100,7 +100,7 @@ export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: st
             ) : (
               <Link
                 key={`questions-${row.ticker}`}
-                href="/questions"
+                href={`/questions?ticker=${row.ticker}`}
                 className={`flex items-center gap-3 rounded-lg border border-[var(--border)] border-l-[3px] ${ROW_BORDER[row.severity]} bg-[var(--surface)] px-3 py-2 hover:bg-[var(--surface-alt)] transition-colors`}
               >
                 <span className="font-mono font-bold text-sm text-[var(--text)] tracking-wide shrink-0">

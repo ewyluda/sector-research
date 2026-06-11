@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { getReverseDcf, type ReverseDcfResponse } from "@/lib/api";
-import { ThesisVsPricedTable } from "./ThesisVsPricedTable";
+import { ThesisVsPricedTable, NO_SOLUTION_NOTE } from "./ThesisVsPricedTable";
 import { SensitivityHeatmap } from "./SensitivityHeatmap";
 import { WhatIfScratchPanel } from "./WhatIfScratchPanel";
 
@@ -54,7 +54,10 @@ export function ReverseDcfPanel({ ticker, hasDraft }: { ticker: string; hasDraft
       <section className="grid grid-cols-2 gap-6">
         <div>
           <div className="text-xs uppercase tracking-wide text-[var(--text-muted)]">Implied IRR</div>
-          <div className="text-4xl font-semibold text-[var(--text)]">
+          <div
+            className="text-4xl font-semibold text-[var(--text)]"
+            title={data.implied_irr === null ? NO_SOLUTION_NOTE : undefined}
+          >
             {data.implied_irr === null ? "—" : `${(data.implied_irr * 100).toFixed(2)}%`}
           </div>
           <div className="text-xs text-[var(--text-muted)] mt-1">
@@ -63,8 +66,12 @@ export function ReverseDcfPanel({ ticker, hasDraft }: { ticker: string; hasDraft
         </div>
         <div>
           <div className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-1">Thesis vs priced in</div>
-          <ThesisVsPricedTable rows={data.thesis_vs_priced_in} />
+          <ThesisVsPricedTable rows={data.thesis_vs_priced_in} showFootnote={false} />
         </div>
+        {(data.implied_irr === null ||
+          data.thesis_vs_priced_in.some((r) => r.priced_in == null || r.delta == null)) && (
+          <p className="col-span-2 text-xs text-[var(--text-muted)]">— = {NO_SOLUTION_NOTE}</p>
+        )}
       </section>
 
       <section>

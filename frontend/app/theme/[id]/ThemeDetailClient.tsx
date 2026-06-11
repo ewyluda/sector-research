@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import clsx from "clsx";
 import type { Theme, DiscoverResponse, CompanySignalCard } from "@/lib/api";
-import { fmtMarketCap, fmtPct, fmtScore, themes as themesApi } from "@/lib/api";
+import { fmtMarketCap, fmtPct, fmtScore, themes as themesApi, pipeline } from "@/lib/api";
 import VelocityBadge from "@/components/VelocityBadge";
 import SourceBadge from "@/components/SourceBadge";
 import ScoreRing from "@/components/ScoreRing";
@@ -24,14 +24,19 @@ function CompanyRow({
   card,
   selected,
   onClick,
+  researchedRunId,
 }: {
   card: CompanySignalCard;
   selected: boolean;
   onClick: () => void;
+  researchedRunId: string | null;
 }) {
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); } }}
       className={clsx(
         "w-full text-left px-4 py-3 border-b border-[var(--border)] transition-colors cursor-pointer",
         selected
@@ -41,7 +46,7 @@ function CompanyRow({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-mono font-semibold text-sm text-[var(--primary-dk)]">
               ${card.ticker}
             </span>
@@ -55,6 +60,16 @@ function CompanyRow({
                 seed
               </span>
             )}
+            {researchedRunId && (
+              <Link
+                href={`/pipeline/${researchedRunId}`}
+                onClick={(e) => e.stopPropagation()}
+                className="text-[10px] text-[var(--primary)] bg-[var(--accent-bg)] border border-[var(--primary)]/30 rounded-full px-1.5 py-0.5 hover:underline"
+                title="View latest completed research run"
+              >
+                Researched
+              </Link>
+            )}
           </div>
           <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">{card.company_name}</p>
         </div>
@@ -65,7 +80,7 @@ function CompanyRow({
         <VelocityBadge signal={card.x_signal} compact />
         <span className="text-[10px] text-[var(--text-faint)]">{fmtMarketCap(card.market_cap)}</span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -103,7 +118,13 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold text-[var(--text)]">{card.company_name}</h2>
-            <p className="text-sm text-[var(--text-muted)] font-mono">${card.ticker}</p>
+            <Link
+              href={`/company/${card.ticker}`}
+              className="text-sm text-[var(--text-muted)] font-mono hover:text-[var(--primary)] hover:underline"
+              title="Open company workspace"
+            >
+              ${card.ticker}
+            </Link>
           </div>
           <ScoreRing score={card.combined_score} size={52} label="signal" />
         </div>
@@ -149,7 +170,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-xs font-semibold text-[var(--text-faint)] uppercase tracking-wide">
-            X Signal
+            X Signal{" "}
             <span className="ml-1.5 text-[9px] font-normal text-[var(--warning)] border border-[var(--warning)]/30 rounded px-1">
               T2
             </span>
@@ -410,6 +431,59 @@ function TickerEditor({
   );
 }
 
+// ── Stale-signal banner with manual refresh ───────────────────────────────────
+// POST /api/themes/{id}/signals/refresh is synchronous on the backend (2s
+// sleep between X API calls per ticker), so this can take a while or fail
+// without X quota — errors render inline, never block the page.
+function StaleSignalsBanner({ themeId }: { themeId: string }) {
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    setError(null);
+    try {
+      const summary = await themesApi.refreshSignals(themeId);
+      // Per-ticker X failures come back as HTTP 200 with an errors count.
+      if (summary.errors > 0) {
+        setError(
+          summary.processed === 0
+            ? `Refresh failed: ${summary.errors} ticker(s) failed — X API may be unavailable or out of quota`
+            : `Partial refresh: ${summary.errors} ticker(s) failed`,
+        );
+      }
+      if (summary.processed > 0) router.refresh();
+    } catch (e) {
+      setError(`Refresh failed: ${e instanceof Error ? e.message : "unknown error"}`);
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
+  return (
+    <div className="inline-flex flex-col gap-1 text-xs text-[var(--warning)] bg-amber-500/15 border border-amber-500/30 rounded-lg px-3 py-2">
+      <div className="inline-flex items-center gap-2 whitespace-nowrap">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+        Signal data stale — last updated &gt;36h ago
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="inline-flex items-center gap-1.5 font-medium border border-amber-500/40 rounded-md px-2 py-0.5 hover:bg-amber-500/20 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer"
+        >
+          {refreshing && (
+            <span className="w-3 h-3 rounded-full border-2 border-amber-400/40 border-t-amber-400 animate-spin" />
+          )}
+          {refreshing ? "Refreshing…" : "Refresh signals"}
+        </button>
+      </div>
+      {error && (
+        <span className="text-red-400 normal-case">{error}</span>
+      )}
+    </div>
+  );
+}
+
 // ── Main client component ─────────────────────────────────────────────────────
 export default function ThemeDetailClient({ theme, initialData }: Props) {
   const [selectedTicker, setSelectedTicker] = useState<string | null>(
@@ -418,6 +492,28 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
   const [sortBy, setSortBy] = useState<SortKey>("combined_score");
   const [filter, setFilter] = useState<FilterKey>("all");
   const [editingTickers, setEditingTickers] = useState(false);
+
+  // Latest completed research run per ticker — fetched once per page so
+  // company rows can show a "Researched" chip deep-linking to the report.
+  const [runIdByTicker, setRunIdByTicker] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const runs = await pipeline.list({ status: "completed", limit: 500 });
+        if (cancelled) return;
+        const map: Record<string, string> = {};
+        for (const run of runs) {
+          // runs are ordered newest-first; keep the first (latest) per ticker
+          if (!(run.ticker in map)) map[run.ticker] = run.id;
+        }
+        setRunIdByTicker(map);
+      } catch {
+        // non-essential decoration — leave chips off on failure
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const seedTickers = useMemo(
     () =>
@@ -435,7 +531,8 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
     let list = [...companies];
 
     if (filter === "surprise") list = list.filter((c) => c.is_surprise);
-    if (filter === "researched") list = list.filter((c) => c.last_run_id !== null);
+    if (filter === "researched")
+      list = list.filter((c) => c.last_run_id !== null || runIdByTicker[c.ticker] != null);
     if (filter === "accelerating") list = list.filter((c) => c.x_signal.direction === "accelerating");
 
     list.sort((a, b) => {
@@ -447,7 +544,7 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
     });
 
     return list;
-  }, [companies, sortBy, filter]);
+  }, [companies, sortBy, filter, runIdByTicker]);
 
   const selected = filtered.find((c) => c.ticker === selectedTicker) ?? filtered[0] ?? null;
 
@@ -493,12 +590,7 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
             </button>
           )}
           {/* Signal status — stacks below header on small screens, floats right on md+ */}
-          {isStale && (
-            <div className="inline-flex items-center gap-2 text-xs text-[var(--warning)] bg-amber-500/15 border border-amber-500/30 rounded-lg px-3 py-2 whitespace-nowrap">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-              Signal data stale — last updated &gt;36h ago
-            </div>
-          )}
+          {isStale && <StaleSignalsBanner themeId={theme.id} />}
         </div>
       </div>
 
@@ -558,6 +650,7 @@ export default function ThemeDetailClient({ theme, initialData }: Props) {
                   card={card}
                   selected={selected?.ticker === card.ticker}
                   onClick={() => setSelectedTicker(card.ticker)}
+                  researchedRunId={card.last_run_id ?? runIdByTicker[card.ticker] ?? null}
                 />
               ))
             )}

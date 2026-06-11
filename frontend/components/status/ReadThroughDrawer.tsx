@@ -16,11 +16,11 @@ const TYPE_BADGE: Record<string, string> = {
   partner: "bg-emerald-900/40 text-emerald-200 ring-emerald-700",
   joint_venture: "bg-emerald-900/40 text-emerald-200 ring-emerald-700",
   competitor: "bg-amber-900/40 text-amber-200 ring-amber-700",
-  licensor: "bg-slate-800 text-slate-300 ring-slate-700",
-  licensee: "bg-slate-800 text-slate-300 ring-slate-700",
-  distributor: "bg-slate-800 text-slate-300 ring-slate-700",
-  reseller: "bg-slate-800 text-slate-300 ring-slate-700",
-  other: "bg-slate-800/60 text-slate-400 ring-slate-700",
+  licensor: "bg-[var(--surface)] text-[var(--text-muted)] ring-[var(--border)]",
+  licensee: "bg-[var(--surface)] text-[var(--text-muted)] ring-[var(--border)]",
+  distributor: "bg-[var(--surface)] text-[var(--text-muted)] ring-[var(--border)]",
+  reseller: "bg-[var(--surface)] text-[var(--text-muted)] ring-[var(--border)]",
+  other: "bg-[var(--surface)]/60 text-[var(--text-muted)] ring-[var(--border)]",
 };
 
 const EVENT_LABEL: Record<string, string> = {
@@ -31,7 +31,7 @@ const EVENT_LABEL: Record<string, string> = {
 export function ReadThroughDrawer({ runId, items, onDismissed }: Props) {
   if (items.length === 0) {
     return (
-      <div className="px-4 py-3 text-sm text-slate-500" data-print-hide="true">
+      <div className="px-4 py-3 text-sm text-[var(--text-faint)]" data-print-hide="true">
         No active read-throughs.
       </div>
     );
@@ -88,28 +88,28 @@ function ReadThroughRow({ runId, item, onDismissed }: RowProps) {
   }
 
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-900/40 p-3 text-sm">
+    <div className="rounded-md border border-[var(--surface)] bg-[var(--bg)]/40 p-3 text-sm">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <span className="rounded bg-slate-800 px-2 py-0.5 font-mono text-xs text-slate-200">
+          <span className="rounded bg-[var(--surface)] px-2 py-0.5 font-mono text-xs text-[var(--text)]">
             ${item.peer_ticker}
           </span>
-          <span className="text-slate-300">{EVENT_LABEL[item.event_type] ?? item.event_type}</span>
-          <span className="text-slate-500">·</span>
-          <span className="text-slate-500">{item.event_date}</span>
+          <span className="text-[var(--text-muted)]">{EVENT_LABEL[item.event_type] ?? item.event_type}</span>
+          <span className="text-[var(--text-faint)]">·</span>
+          <span className="text-[var(--text-faint)]">{item.event_date}</span>
         </div>
         <div className="flex gap-2">
           <button
             onClick={handleSummarize}
             disabled={busy !== "none"}
-            className="rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-50"
+            className="rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] disabled:opacity-50"
           >
             {busy === "summary" ? "Generating…" : summary ? "Regenerate" : "Generate impact summary"}
           </button>
           <button
             onClick={handleDismiss}
             disabled={busy !== "none"}
-            className="rounded border border-slate-700 px-2 py-0.5 text-xs text-slate-400 hover:bg-slate-800 disabled:opacity-50"
+            className="rounded border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-muted)] hover:bg-[var(--surface)] disabled:opacity-50"
           >
             {busy === "dismiss" ? "…" : "Dismiss"}
           </button>
@@ -130,7 +130,7 @@ function ReadThroughRow({ runId, item, onDismissed }: RowProps) {
       </div>
 
       {summary && (
-        <div className="mt-2 rounded bg-slate-950/60 p-2 text-xs text-slate-300">
+        <div className="mt-2 rounded bg-slate-950/60 p-2 text-xs text-[var(--text-muted)]">
           {summary}
         </div>
       )}
