@@ -1,7 +1,7 @@
 """add status board latest run composite index
 
 Revision ID: eb21c3df2ad5
-Revises: a2c6676dd30d
+Revises: 77bcb5d1bfbd
 Create Date: 2026-06-11 01:57:25.426130
 """
 from typing import Sequence, Union
