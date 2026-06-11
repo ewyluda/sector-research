@@ -21,5 +21,5 @@ class WorkspaceContext:
     edgar: Any  # EdgarClient
     anthropic: Any  # AsyncAnthropic
     prior_research_run: Any  # ResearchRun ORM row
-    prior_ticker_model: Any  # TickerModel ORM row
+    prior_ticker_model: Any  # TickerModel ORM row, or None when no saved model exists
     emit: Callable[[dict], None]
