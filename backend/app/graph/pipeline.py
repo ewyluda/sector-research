@@ -43,7 +43,7 @@ PHASE_SEQUENCE: dict[str, str] = {
 }
 
 
-def next_phase(phase: str, *, loop_context: object, loop_count: int) -> str:
+def next_phase(phase: str, *, loop_context: dict | None, loop_count: int) -> str:
     """Return the successor phase for the pipeline service.
 
     For risk_stress_test: loops back to deep_dive when loop_context is truthy
@@ -62,7 +62,10 @@ def next_phase(phase: str, *, loop_context: object, loop_count: int) -> str:
 # ── Module-level conditional edges (pure functions of state dict) ─────────────
 # These are used by make_graph() and also tested directly in test_phase_routing.py.
 # Their "continue" targets are derived from PHASE_SEQUENCE / next_phase so that
-# adding a new phase only requires updating this file.
+# adding a new phase only requires updating this file. Caveat: the Literal[...]
+# return annotations still hardcode target names — LangGraph reads them
+# statically to wire conditional edges, so they can't be derived from the
+# table and must be kept in sync with it by hand.
 
 def after_quick_screen(state: dict) -> Literal["deep_dive", "__end__"]:
     """Route based on recommendation: GO → deep_dive, else END."""

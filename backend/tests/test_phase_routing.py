@@ -193,7 +193,7 @@ class TestAfterEdgeFunctions(unittest.TestCase):
 
 
 class TestPipelineServiceNextPhase(unittest.TestCase):
-    """PipelineService._next_phase must be byte-identical to next_phase()."""
+    """PipelineService._next_phase must agree with next_phase() on every input."""
 
     def _call(self, phase: str, loop_context=None, loop_count: int = 0) -> str:
         state = _state_obj(phase, loop_context=loop_context, loop_count=loop_count)
