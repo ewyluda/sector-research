@@ -98,6 +98,10 @@ class UpdateRefreshOutput(BaseModel):
     consensus_delta: list[EstimateDelta] | None = Field(
         default=None, description="Estimate consensus changes, if fetched."
     )
+    model_skipped: bool = Field(
+        default=False,
+        description="True when no saved ticker model existed; model refresh was skipped (spec §6).",
+    )
     summary: str = Field(
         description="Human-readable summary of the refresh (e.g., 'loaded latest 10-Q')."
     )

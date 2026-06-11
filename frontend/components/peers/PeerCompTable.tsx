@@ -2,9 +2,10 @@
 
 import type { PeerCompTable as PeerCompTableData, PeerCompRow } from "@/lib/api";
 import { fmtMarketCap } from "@/lib/api";
+import { isNotMeaningfulGrowth } from "@/components/company/formatStat";
 
 type MetricKey = Exclude<keyof PeerCompRow, "ticker">;
-type Kind = "multiple" | "pct" | "money";
+type Kind = "multiple" | "pct" | "pct_growth" | "money";
 type Better = "low" | "high" | null;
 
 interface MetricDef { key: MetricKey; label: string; kind: Kind; better: Better }
@@ -24,8 +25,8 @@ const GROUPS: { label: string; metrics: MetricDef[] }[] = [
   {
     label: "Growth",
     metrics: [
-      { key: "revenue_yoy", label: "Rev YoY", kind: "pct", better: "high" },
-      { key: "eps_yoy", label: "EPS YoY", kind: "pct", better: "high" },
+      { key: "revenue_yoy", label: "Rev YoY", kind: "pct_growth", better: "high" },
+      { key: "eps_yoy", label: "EPS YoY", kind: "pct_growth", better: "high" },
     ],
   },
   {
@@ -58,6 +59,10 @@ const ALL_METRICS: MetricDef[] = GROUPS.flatMap((g) => g.metrics);
 
 function fmtValue(v: number | null, kind: Kind): string {
   if (v == null || Number.isNaN(v)) return "—";
+  // Tiny-base growth rates beyond ±1000% are arithmetic noise — render
+  // "not meaningful". Growth-only: margins are guarded backend-side
+  // (services/metric_guards.py).
+  if (kind === "pct_growth") return isNotMeaningfulGrowth(v) ? "n/m" : `${(v * 100).toFixed(1)}%`;
   if (kind === "pct") return `${(v * 100).toFixed(1)}%`;
   if (kind === "money") return fmtMarketCap(v);
   return `${v.toFixed(1)}x`;
@@ -73,7 +78,9 @@ function bestValues(rows: PeerCompRow[]): Partial<Record<MetricKey, number>> {
       .filter((v): v is number => v != null)
       // Negative valuation multiples (loss-making P/E, negative PEG) aren't
       // "cheap" — exclude them from lower-is-better best-in-class.
-      .filter((v) => m.better === "high" || v > 0);
+      .filter((v) => m.better === "high" || v > 0)
+      // Growth values that render "n/m" can't be best-in-class either.
+      .filter((v) => m.kind !== "pct_growth" || !isNotMeaningfulGrowth(v));
     if (vals.length === 0) continue;
     best[m.key] = m.better === "low" ? Math.min(...vals) : Math.max(...vals);
   }

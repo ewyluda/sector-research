@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
@@ -23,10 +24,13 @@ from backend.app.models.filing import (
 from backend.app.models.theme import Theme
 from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.services.counterparty_resolver import (
+    dismiss_counterparty,
+    list_dismissed,
     list_unresolved_counterparties,
     resolve_batch,
     resolve_competition_for_ticker,
     resolve_ticker_relationships,
+    undismiss_counterparty,
     upsert_manual_alias,
 )
 from backend.app.services.edgar_competition import extract_ticker_competition
@@ -458,6 +462,67 @@ async def create_manual_alias(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    await db.commit()
+    return result
+
+
+class DismissCounterpartyRequest(BaseModel):
+    counterparty_name: str
+    created_by: str | None = None
+
+
+# NOTE: /relationships/dismissed must stay above any /relationships/{param}
+# route to avoid "dismissed" being consumed as a path param.
+@router.get("/relationships/dismissed")
+async def list_dismissed_route(
+    limit: int = 100, db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    """List curator_private tombstones (dismissed counterparties). Spec §9."""
+    rows = await list_dismissed(db, limit=limit)
+    return [
+        {
+            "alias_name": r.alias_name,
+            "alias_normalized": r.alias_normalized,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "created_by": r.created_by,
+        }
+        for r in rows
+    ]
+
+
+@router.post("/relationships/dismiss")
+async def dismiss_counterparty_route(
+    body: DismissCounterpartyRequest, db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Tombstone a counterparty (private company / not resolvable). Spec §9."""
+    from backend.app.services.counterparty_resolver import normalize_name
+    norm = normalize_name(body.counterparty_name)
+    try:
+        result = await dismiss_counterparty(
+            db,
+            alias_name=body.counterparty_name,
+            created_by=body.created_by,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Two in-flight dismisses hit the unique constraint — treat as idempotent.
+        await db.rollback()
+        result = {"alias_normalized": norm, "dismissed": True}
+    return result
+
+
+@router.delete("/relationships/dismiss/{alias_normalized}")
+async def undismiss_counterparty_route(
+    alias_normalized: str, db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Undo a curator_private tombstone. Spec §9."""
+    try:
+        result = await undismiss_counterparty(db, alias_normalized=alias_normalized)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     await db.commit()
     return result
 

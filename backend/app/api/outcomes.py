@@ -270,6 +270,9 @@ def _quartile_buckets(values: list[tuple[float | None, float]]) -> list[SignalBu
     return buckets
 
 
+_ALL_OFFSETS: list[str] = ["1d", "1w", "1m", "3m", "6m"]
+
+
 async def _compute_summary(
     *,
     theme_id: str | None,
@@ -279,13 +282,33 @@ async def _compute_summary(
     source_type: str,
     db,
 ) -> dict:
+    from sqlalchemy import distinct
     from backend.app.models.outcome import VerdictReturnSnapshot
     from backend.app.models.theme import Theme
 
     cutoff = _window_cutoff(window)
     excess_attr = _excess_attr(benchmark)
 
-    q = (
+    # Build the base outcome scope filter (reused for both queries).
+    def _scope_filters(q):
+        if cutoff is not None:
+            q = q.where(VerdictOutcome.verdict_emitted_at >= cutoff)
+        if theme_id is not None:
+            q = q.where(VerdictOutcome.theme_id == theme_id)
+        if source_type != "all":
+            q = q.where(VerdictOutcome.source_type == source_type)
+        return q
+
+    # --- populated_offsets: offsets with ≥1 non-null ticker_return_pct in scope ---
+    pop_q = _scope_filters(
+        select(distinct(VerdictReturnSnapshot.snapshot_offset))
+        .join(VerdictOutcome, VerdictReturnSnapshot.outcome_id == VerdictOutcome.id)
+        .where(VerdictReturnSnapshot.ticker_return_pct.is_not(None))
+    )
+    populated_set: set[str] = set((await db.execute(pop_q)).scalars().all())
+    populated_offsets = [o for o in _ALL_OFFSETS if o in populated_set]
+
+    q = _scope_filters(
         select(VerdictOutcome, VerdictReturnSnapshot)
         .join(
             VerdictReturnSnapshot,
@@ -294,12 +317,6 @@ async def _compute_summary(
             isouter=True,
         )
     )
-    if cutoff is not None:
-        q = q.where(VerdictOutcome.verdict_emitted_at >= cutoff)
-    if theme_id is not None:
-        q = q.where(VerdictOutcome.theme_id == theme_id)
-    if source_type != "all":
-        q = q.where(VerdictOutcome.source_type == source_type)
 
     rows = (await db.execute(q)).all()
 
@@ -362,6 +379,7 @@ async def _compute_summary(
         "by_verdict": verdict_stats.model_dump(),
         "by_theme": [ts.model_dump() for ts in by_theme_list],
         "by_signal_bucket": {k: [b.model_dump() for b in v] for k, v in by_signal_bucket.items()},
+        "populated_offsets": populated_offsets,
     }
 
 

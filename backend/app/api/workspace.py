@@ -66,6 +66,7 @@ async def preflight(
     return {
         "ok": status.ok,
         "missing": status.missing,
+        "warnings": status.warnings,
         "in_flight_run_id": status.in_flight_run_id,
     }
 

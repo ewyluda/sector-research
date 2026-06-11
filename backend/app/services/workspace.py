@@ -97,14 +97,17 @@ class PreflightStatus:
       - "no_completed_research_run"
       - "research_run_not_completed"
       - "research_run_ticker_mismatch"
-      - "no_ticker_model"
       - "unsaved_model_draft"
       - "workspace_run_in_flight"
+    `warnings` is a list of non-blocking advisory codes; the run proceeds but
+    affected steps may degrade gracefully:
+      - "no_ticker_model" — refresh runs but skips model-update work
     `in_flight_run_id` is populated when "workspace_run_in_flight" is in missing
     so the frontend can deep-link to the running report instead of starting a new one.
     """
     ok: bool
     missing: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     in_flight_run_id: str | None = None
 
 
@@ -242,7 +245,12 @@ class WorkspaceService:
                         id=run_id,
                         ticker=ticker,
                         parent_research_run_id=str(ctx_data["research_run"].id),
-                        ticker_model_version_before=ctx_data["ticker_model"].version,
+                        # 0 = "no saved model at kick-off"; workspace_steps uses the
+                        # same sentinel so version_before/after compare correctly.
+                        ticker_model_version_before=(
+                            ctx_data["ticker_model"].version
+                            if ctx_data["ticker_model"] is not None else 0
+                        ),
                         status="running",
                         step_outputs={},
                         citations=[],
@@ -345,6 +353,7 @@ class WorkspaceService:
         """Non-raising preflight check for UI use."""
         facts = await self._gather_preflight_facts(db, ticker, research_run_id=research_run_id)
         missing: list[str] = []
+        warnings: list[str] = []
         if not facts["research_run_found"]:
             missing.append("no_completed_research_run")
         elif not facts["research_run_completed"]:
@@ -352,7 +361,7 @@ class WorkspaceService:
         elif not facts["research_run_ticker_matches"]:
             missing.append("research_run_ticker_mismatch")
         if not facts["ticker_model_found"]:
-            missing.append("no_ticker_model")
+            warnings.append("no_ticker_model")
         if facts["draft_present"]:
             missing.append("unsaved_model_draft")
         if facts["in_flight_run_id"] is not None:
@@ -360,6 +369,7 @@ class WorkspaceService:
         return PreflightStatus(
             ok=len(missing) == 0,
             missing=missing,
+            warnings=warnings,
             in_flight_run_id=facts["in_flight_run_id"],
         )
 
@@ -384,8 +394,6 @@ class WorkspaceService:
             raise ValueError(
                 f"research_run {research_run_id} status is {facts['research_run'].status}; must be completed"
             )
-        if not facts["ticker_model_found"]:
-            raise ValueError(f"no ticker_model exists for ticker {ticker}; initialize one first")
         if facts["draft_present"]:
             raise ValueError(
                 f"unsaved model draft exists for ticker {ticker}; save or discard it before workspace refresh"

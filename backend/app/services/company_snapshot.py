@@ -2,12 +2,18 @@
 
 Slice 1 surfaces only the header (live quote + identity from FMP). Later slices
 add /overview, /financials, /transcripts to this module.
+
+Scaling convention: the backend emits fraction-form ratios (0.69 = 69%); the
+frontend (formatStat.ts) multiplies by 100 exactly once. Pinned by
+backend/tests/test_metric_scaling.py — do not re-litigate.
 """
 import asyncio
 from datetime import date, timedelta
 from typing import Optional
 
 from pydantic import BaseModel
+
+from backend.app.services.metric_guards import guard_margin
 
 
 class CompanyHeader(BaseModel):
@@ -68,7 +74,7 @@ async def build_company_header(fmp, ticker: str) -> CompanyHeader:
 class StatItem(BaseModel):
     label: str
     value: Optional[float] = None
-    unit: str  # "pct" | "x" | "money" | "num" | "int"
+    unit: str  # "pct" | "pct_growth" | "x" | "money" | "num" | "int"
 
 
 class StatGroup(BaseModel):
@@ -95,6 +101,20 @@ def _f(d: dict, key: str) -> Optional[float]:
     if isinstance(v, (int, float)):
         return float(v)
     return None
+
+
+def _annualize_cumulative(x: Optional[float], years: int) -> Optional[float]:
+    """Convert FMP's cumulative multi-year growth to a CAGR for display.
+
+    FMP's fiveY/tenYRevenueGrowthPerShare are CUMULATIVE per-share growth over
+    the window, not annual rates (live-verified 2026-06-10: MSFT
+    fiveYRevenueGrowthPerShare=1.0168, i.e. revenue/share roughly doubled over
+    5y ≈ 15%/yr — 101.7%/yr would be absurd). cagr = (1 + x)^(1/n) - 1;
+    x <= -1 (wipeout or garbage) -> None.
+    """
+    if x is None or x <= -1:
+        return None
+    return (1 + x) ** (1 / years) - 1
 
 
 async def _safe_fetch(coro, default):
@@ -148,11 +168,13 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
             StatItem(label="Employees", value=_f(pr, "fullTimeEmployees"), unit="int"),
         ]),
         StatGroup(title="Margins", items=[
-            StatItem(label="Gross", value=_f(ra, "grossProfitMarginTTM"), unit="pct"),
-            StatItem(label="EBITDA", value=_f(ra, "ebitdaMarginTTM"), unit="pct"),
-            StatItem(label="Operating", value=_f(ra, "operatingProfitMarginTTM"), unit="pct"),
-            StatItem(label="Pre-Tax", value=_f(ra, "pretaxProfitMarginTTM"), unit="pct"),
-            StatItem(label="Net", value=_f(ra, "netProfitMarginTTM"), unit="pct"),
+            # guard_margin: gross > 1.0 is impossible → nulled; others warn-only
+            # outside [-5.0, 1.5] (see services/metric_guards.py).
+            StatItem(label="Gross", value=guard_margin(_f(ra, "grossProfitMarginTTM"), metric="grossProfitMarginTTM", ticker=ticker), unit="pct"),
+            StatItem(label="EBITDA", value=guard_margin(_f(ra, "ebitdaMarginTTM"), metric="ebitdaMarginTTM", ticker=ticker), unit="pct"),
+            StatItem(label="Operating", value=guard_margin(_f(ra, "operatingProfitMarginTTM"), metric="operatingProfitMarginTTM", ticker=ticker), unit="pct"),
+            StatItem(label="Pre-Tax", value=guard_margin(_f(ra, "pretaxProfitMarginTTM"), metric="pretaxProfitMarginTTM", ticker=ticker), unit="pct"),
+            StatItem(label="Net", value=guard_margin(_f(ra, "netProfitMarginTTM"), metric="netProfitMarginTTM", ticker=ticker), unit="pct"),
         ]),
         StatGroup(title="Returns (TTM)", items=[
             StatItem(label="ROE", value=_f(km, "returnOnEquityTTM"), unit="pct"),
@@ -183,18 +205,23 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
             StatItem(label="Working Capital", value=_f(km, "workingCapitalTTM"), unit="money"),
         ]),
         StatGroup(title="Growth", items=[
-            StatItem(label="Revenue", value=_f(fg, "revenueGrowth"), unit="pct"),
-            StatItem(label="EPS", value=_f(fg, "epsgrowth"), unit="pct"),
-            StatItem(label="FCF", value=_f(fg, "freeCashFlowGrowth"), unit="pct"),
-            StatItem(label="EBITDA", value=_f(fg, "ebitdaGrowth"), unit="pct"),
-            StatItem(label="Rev 5Y CAGR", value=_f(fg, "fiveYRevenueGrowthPerShare"), unit="pct"),
-            StatItem(label="Rev 10Y CAGR", value=_f(fg, "tenYRevenueGrowthPerShare"), unit="pct"),
+            # "pct_growth" tells the frontend these are growth rates: tiny-base
+            # artifacts (|value| > 10, i.e. beyond ±1000%) render as "n/m".
+            StatItem(label="Revenue", value=_f(fg, "revenueGrowth"), unit="pct_growth"),
+            StatItem(label="EPS", value=_f(fg, "epsgrowth"), unit="pct_growth"),
+            StatItem(label="FCF", value=_f(fg, "freeCashFlowGrowth"), unit="pct_growth"),
+            StatItem(label="EBITDA", value=_f(fg, "ebitdaGrowth"), unit="pct_growth"),
+            # FMP's five/tenYRevenueGrowthPerShare are CUMULATIVE per-share
+            # growth over the window — annualize so the "CAGR" labels are true.
+            StatItem(label="Rev 5Y CAGR", value=_annualize_cumulative(_f(fg, "fiveYRevenueGrowthPerShare"), 5), unit="pct_growth"),
+            StatItem(label="Rev 10Y CAGR", value=_annualize_cumulative(_f(fg, "tenYRevenueGrowthPerShare"), 10), unit="pct_growth"),
         ]),
         StatGroup(title="Dividends", items=[
             StatItem(label="Yield", value=_f(ra, "dividendYieldTTM"), unit="pct"),
             StatItem(label="Payout", value=_f(ra, "dividendPayoutRatioTTM"), unit="pct"),
             StatItem(label="DPS", value=_f(ra, "dividendPerShareTTM"), unit="money"),
-            StatItem(label="DPS 5Y Growth", value=_f(fg, "fiveYDividendperShareGrowthPerShare"), unit="pct"),
+            # cumulative like its revenue siblings; label says "Growth" not "CAGR", so left unannualized deliberately
+            StatItem(label="DPS 5Y Growth", value=_f(fg, "fiveYDividendperShareGrowthPerShare"), unit="pct_growth"),
         ]),
     ]
 

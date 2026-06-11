@@ -159,11 +159,59 @@ def _baseline_value_for_dim(state, dim: str) -> float:
     return sum(nums) / len(nums) if nums else 0.0
 
 
+async def _fetch_new_filings(ctx: WorkspaceContext) -> list[FilingRef]:
+    """Latest 10-Q/10-K ref from EDGAR submissions (best-effort)."""
+    # EdgarClient has no get_latest_filing() helper; call get_ticker_to_cik +
+    # get_submissions and replicate the _latest_per_form logic from edgar_sections_ingest.
+    new_filings: list[FilingRef] = []
+    try:
+        cik, _ = await ctx.edgar.get_ticker_to_cik(ctx.ticker)
+        if cik:
+            submissions, _ = await ctx.edgar.get_submissions(cik)
+            recent = submissions.get("filings", {}).get("recent", {}) or {}
+            forms = recent.get("form", [])
+            accessions = recent.get("accessionNumber", [])
+            filing_dates = recent.get("filingDate", [])
+            for i, form in enumerate(forms):
+                if form in ("10-Q", "10-K"):
+                    accession = accessions[i] if i < len(accessions) else ""
+                    filed_date = filing_dates[i] if i < len(filing_dates) else ""
+                    new_filings.append(FilingRef(
+                        form=form,
+                        accession=accession,
+                        fetched_at=filed_date,
+                    ))
+                    break  # only the most recent 10-Q or 10-K
+    except Exception:  # noqa: BLE001 — EDGAR is best-effort
+        pass
+    return new_filings
+
+
 async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
     from backend.app.models.model_state import ModelState
     from backend.app.services.model_balancing import recompute
     from backend.app.services.model_diff import diff_states
     from backend.app.models.ticker_model import TickerModel
+
+    if ctx.prior_ticker_model is None:
+        # No saved financial model — skip the ModelState refresh entirely
+        # but still surface any new filing (spec §6 earnings-day unblock).
+        # version_before=0 matches kick_off's ticker_model_version_before sentinel.
+        new_filings = await _fetch_new_filings(ctx)
+        filing_note = (
+            f"loaded latest {new_filings[0].form} (filed {new_filings[0].fetched_at}); "
+            if new_filings else "no new EDGAR filing detected; "
+        )
+        return UpdateRefreshOutput(
+            version_before=0,
+            version_after=None,
+            changed_cells=[],
+            removed_cells=[],
+            new_filings=new_filings,
+            consensus_delta=None,
+            model_skipped=True,
+            summary=filing_note + "no saved financial model — model refresh skipped",
+        )
 
     prior_state = ModelState.model_validate(ctx.prior_ticker_model.state)
 
@@ -181,29 +229,7 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
     await ctx.fmp.get_analyst_estimates(ctx.ticker, limit=8)
 
     # ── 2. Fetch latest 10-Q / 10-K index from EDGAR (best-effort) ──────────
-    # EdgarClient has no get_latest_filing() helper; call get_ticker_to_cik +
-    # get_submissions and replicate the _latest_per_form logic from edgar_sections_ingest.
-    new_filings: list[FilingRef] = []
-    cik, _ = await ctx.edgar.get_ticker_to_cik(ctx.ticker)
-    if cik:
-        try:
-            submissions, _ = await ctx.edgar.get_submissions(cik)
-            recent = submissions.get("filings", {}).get("recent", {}) or {}
-            forms = recent.get("form", [])
-            accessions = recent.get("accessionNumber", [])
-            filing_dates = recent.get("filingDate", [])
-            for i, form in enumerate(forms):
-                if form in ("10-Q", "10-K"):
-                    accession = accessions[i] if i < len(accessions) else ""
-                    filed_date = filing_dates[i] if i < len(filing_dates) else ""
-                    new_filings.append(FilingRef(
-                        form=form,
-                        accession=accession,
-                        fetched_at=filed_date,
-                    ))
-                    break  # only the most recent 10-Q or 10-K
-        except Exception:  # noqa: BLE001 — EDGAR is best-effort
-            pass
+    new_filings = await _fetch_new_filings(ctx)
 
     # ── 3. Patch new_state with fresh actuals (forecast/override cells preserved) ──
     new_state = copy.deepcopy(prior_state)

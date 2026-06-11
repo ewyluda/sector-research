@@ -90,10 +90,16 @@ export function WorkspaceReport({ runId }: { runId: string }) {
             {run.ticker} · workspace refresh
           </h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            v{run.ticker_model_version_before}
-            {run.ticker_model_version_after
-              ? ` → v${run.ticker_model_version_after}`
-              : ""}{" "}
+            {run.ticker_model_version_before === 0 ? (
+              <span className="text-[var(--text-faint)]">no model</span>
+            ) : (
+              <>
+                v{run.ticker_model_version_before}
+                {run.ticker_model_version_after
+                  ? ` → v${run.ticker_model_version_after}`
+                  : ""}
+              </>
+            )}{" "}
             · {new Date(run.created_at).toLocaleString()}
           </p>
         </div>
@@ -164,7 +170,7 @@ function StepBody({ step, output, ticker }: { step: WorkspaceStep; output: any; 
       </pre>
     );
   }
-  if (step === "update_refresh") return <UpdateRefreshCard output={output} />;
+  if (step === "update_refresh") return <UpdateRefreshCard output={output} ticker={ticker} />;
   if (step === "research") return <ResearchCard output={output} />;
   if (step === "validation") return <ValidationCard output={output} ticker={ticker} />;
   if (step === "challenge") return <ChallengeCard output={output} />;

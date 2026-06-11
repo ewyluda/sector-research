@@ -291,15 +291,18 @@ class CounterpartyAlias(Base):
     # maps to at most one canonical company.
     alias_normalized: Mapped[str] = mapped_column(String(256), nullable=False, unique=True, index=True)
 
-    canonical_cik: Mapped[str] = mapped_column(String(16), nullable=False, index=True)
+    # Null for curator_private tombstones (private company — do not resolve).
+    canonical_cik: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
     # Denormalized for quick UI reads. Null if the CIK doesn't have a
     # public ticker in EDGAR (e.g. private subsidiaries that still file).
     canonical_ticker: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
-    canonical_name: Mapped[str] = mapped_column(String(256), nullable=False)
+    # Null for curator_private tombstones.
+    canonical_name: Mapped[str | None] = mapped_column(String(256), nullable=True)
 
     # "exact_match" — normalized alias == normalized canonical name
     # "fuzzy_auto" — RapidFuzz score ≥ 95
     # "curator_manual" — user manually resolved via the curation queue
+    # "curator_private" — tombstone: private company, never resolve
     source: Mapped[str] = mapped_column(String(24), nullable=False)
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 

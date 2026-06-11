@@ -93,6 +93,136 @@ class TestCheckPreflight(unittest.TestCase):
         self.assertEqual(result.in_flight_run_id, "abc-123")
 
 
+class TestPreflightModelRelaxation(unittest.TestCase):
+    """no_ticker_model must be a warning, not a blocker."""
+
+    def _make_service(self):
+        return WorkspaceService(fmp=MagicMock(), edgar=MagicMock(), anthropic=MagicMock())
+
+    def _facts(self, **overrides):
+        base = {
+            "research_run_found": True,
+            "research_run_completed": True,
+            "research_run_ticker_matches": True,
+            "ticker_model_found": False,
+            "draft_present": False,
+            "in_flight_run_id": None,
+            "research_run": object(),
+            "ticker_model": None,
+        }
+        base.update(overrides)
+        return base
+
+    def test_no_ticker_model_is_warning_not_blocker(self):
+        """ticker_model_found=False with all else fine → ok=True, warnings=['no_ticker_model']."""
+        svc = self._make_service()
+        facts = self._facts()  # ticker_model_found=False by default
+
+        async def fake_gather(db, ticker, research_run_id=None):
+            return facts
+
+        svc._gather_preflight_facts = fake_gather  # type: ignore[assignment]
+        result = asyncio.run(svc.check_preflight(db=MagicMock(), ticker="NVDA"))
+        self.assertTrue(result.ok)
+        self.assertEqual(result.missing, [])
+        self.assertEqual(result.warnings, ["no_ticker_model"])
+
+    def test_preflight_does_not_raise_on_missing_model(self):
+        """_preflight with ticker_model_found=False must return dict with ticker_model=None."""
+        svc = self._make_service()
+        facts = self._facts()
+
+        async def fake_gather(db, ticker, research_run_id=None):
+            return facts
+
+        svc._gather_preflight_facts = fake_gather  # type: ignore[assignment]
+
+        async def run():
+            return await svc._preflight(db=MagicMock(), ticker="NVDA")
+
+        result = asyncio.run(run())
+        self.assertIsNone(result["ticker_model"])
+
+    def test_unsaved_draft_still_blocks(self):
+        """draft_present=True must still produce ok=False with 'unsaved_model_draft' in missing."""
+        svc = self._make_service()
+        facts = self._facts(draft_present=True)
+
+        async def fake_gather(db, ticker, research_run_id=None):
+            return facts
+
+        svc._gather_preflight_facts = fake_gather  # type: ignore[assignment]
+        result = asyncio.run(svc.check_preflight(db=MagicMock(), ticker="NVDA"))
+        self.assertFalse(result.ok)
+        self.assertIn("unsaved_model_draft", result.missing)
+
+    def test_no_warnings_when_model_present(self):
+        """ticker_model_found=True → warnings == []."""
+        svc = self._make_service()
+        facts = self._facts(ticker_model_found=True, ticker_model=object())
+
+        async def fake_gather(db, ticker, research_run_id=None):
+            return facts
+
+        svc._gather_preflight_facts = fake_gather  # type: ignore[assignment]
+        result = asyncio.run(svc.check_preflight(db=MagicMock(), ticker="NVDA"))
+        self.assertEqual(result.warnings, [])
+
+
+class TestKickOffModellessRun(unittest.TestCase):
+    """kick_off must not crash and must write version_before=0 when no model exists."""
+
+    def _make_service(self):
+        return WorkspaceService(fmp=MagicMock(), edgar=MagicMock(), anthropic=MagicMock())
+
+    def test_kick_off_sets_version_before_zero_when_no_model(self):
+        """_preflight returning ticker_model=None must produce version_before=0 on the run row."""
+        import backend.app.services.workspace as ws_mod
+        from unittest.mock import AsyncMock, patch
+
+        svc = self._make_service()
+
+        # Fake research_run with just enough attrs for kick_off to proceed.
+        fake_rr = MagicMock()
+        fake_rr.id = "rr-001"
+
+        # _preflight returns None for ticker_model — the scenario under test.
+        async def fake_preflight(db, ticker, research_run_id=None):
+            return {"research_run": fake_rr, "ticker_model": None}
+
+        svc._preflight = fake_preflight  # type: ignore[assignment]
+
+        captured_rows: list = []
+
+        # Minimal async DB session: execute returns a result with no in-flight row,
+        # add() captures the WorkspaceRun so we can inspect it.
+        mock_db = MagicMock()
+        mock_db.add = lambda row: captured_rows.append(row)
+        no_row_result = MagicMock()
+        no_row_result.scalar_one_or_none.return_value = None
+        mock_db.execute = AsyncMock(return_value=no_row_result)
+
+        from contextlib import asynccontextmanager
+
+        @asynccontextmanager
+        async def fake_uow():
+            yield mock_db
+
+        async def run():
+            with patch.object(ws_mod, "unit_of_work", fake_uow):
+                # Patch asyncio.create_task so the background _run_workspace
+                # never fires (it would fail without a real DB).
+                with patch("asyncio.create_task", side_effect=lambda coro: coro.close()):
+                    return await svc.kick_off("NVDA")
+
+        asyncio.run(run())
+
+        self.assertEqual(len(captured_rows), 1)
+        row = captured_rows[0]
+        self.assertEqual(row.ticker_model_version_before, 0,
+                         "version_before must be 0 when no model exists at kick-off")
+
+
 class TestKickOffRaceGuard(unittest.TestCase):
     def test_concurrent_kick_offs_serialize_on_ticker_lock(self):
         """Two parallel kick_off() calls for the same ticker must not both pass preflight.

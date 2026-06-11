@@ -40,6 +40,15 @@ export function ValidationCard({
   ticker: string;
 }) {
   const irr = output.implied_irr;
+  const noModel = output.current_price === 0;
+
+  if (noModel) {
+    return (
+      <div className="mt-2 text-xs text-[var(--text-muted)]">
+        Validation skipped — no model or live price available.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 mt-2">

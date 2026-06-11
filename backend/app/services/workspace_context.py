@@ -28,5 +28,6 @@ class WorkspaceContext:
     edgar: EdgarClient
     anthropic: AsyncAnthropic
     prior_research_run: ResearchRun
-    prior_ticker_model: TickerModel
+    # None when no saved model exists (model-less runs skip update_refresh's model work)
+    prior_ticker_model: TickerModel | None
     emit: Callable[[dict], None]

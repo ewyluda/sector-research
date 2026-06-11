@@ -228,6 +228,13 @@ export interface ManualAliasRequest {
   created_by?: string | null;
 }
 
+export interface DismissedAlias {
+  alias_name: string;
+  alias_normalized: string;
+  created_at: string | null;
+  created_by: string | null;
+}
+
 export interface ResolveSummary {
   ticker: string;
   rows_considered: number;
@@ -398,6 +405,18 @@ export const relationships = {
       `/api/relationships/reconcile`,
       { method: "POST" }
     ),
+  dismiss: (counterparty_name: string) =>
+    apiFetch<{ alias_normalized: string; dismissed: boolean }>(
+      `/api/relationships/dismiss`,
+      { method: "POST", body: JSON.stringify({ counterparty_name, created_by: "ui-curator" }) }
+    ),
+  undismiss: (aliasNormalized: string) =>
+    apiFetch<{ alias_normalized: string; restored: boolean }>(
+      `/api/relationships/dismiss/${encodeURIComponent(aliasNormalized)}`,
+      { method: "DELETE" }
+    ),
+  listDismissed: () =>
+    apiFetch<DismissedAlias[]>(`/api/relationships/dismissed`),
 };
 
 export const competition = {
@@ -1627,6 +1646,7 @@ export interface UpdateRefreshOutput {
   new_filings: { form: string; accession: string; fetched_at: string }[];
   consensus_delta: null | { metric: string; period: string; prior_consensus: number | null; new_consensus: number | null; delta_pct: number | null }[];
   summary: string;
+  model_skipped?: boolean;
 }
 
 export interface Highlight {
@@ -1768,10 +1788,10 @@ export interface WorkspacePreflight {
     | "no_completed_research_run"
     | "research_run_not_completed"
     | "research_run_ticker_mismatch"
-    | "no_ticker_model"
     | "unsaved_model_draft"
     | "workspace_run_in_flight"
   )[];
+  warnings: ("no_ticker_model")[];
   in_flight_run_id: string | null;
 }
 
@@ -1898,6 +1918,7 @@ export interface OutcomeSummary {
   by_verdict: Record<string, StatGroup | null>;
   by_theme: ThemeStat[];
   by_signal_bucket: Record<string, SignalBucket[]>;
+  populated_offsets: SnapshotOffset[];
 }
 
 export interface BackfillSummary {
@@ -2344,7 +2365,8 @@ export async function getCompanyHeader(ticker: string): Promise<CompanyHeader> {
 export interface StatItem {
   label: string;
   value: number | null;
-  unit: "pct" | "x" | "money" | "num" | "int";
+  // "pct_growth" = growth/CAGR rates: tiny-base artifacts render as "n/m".
+  unit: "pct" | "pct_growth" | "x" | "money" | "num" | "int";
 }
 
 export interface OverviewStatGroup {
