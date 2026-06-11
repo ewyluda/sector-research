@@ -78,6 +78,313 @@ def _first_metric(*candidates: tuple[dict | None, str]) -> float | None:
     return None
 
 
+def _fv(val: Any, divisor: float = 1e9, suffix: str = "B") -> str:
+    """Format a financial value as a dollar amount."""
+    if val is None or val == 0:
+        return "N/A"
+    return f"${val / divisor:.2f}{suffix}"
+
+
+def _fmt_profile_section(ticker: str, profile: dict) -> list[str]:
+    """Company profile: name, sector, market cap, beta, description."""
+    if not (profile and isinstance(profile, dict)):
+        return []
+    return [
+        f"Company: {profile.get('companyName', ticker)}",
+        f"Sector: {profile.get('sector')} | Industry: {profile.get('industry')}",
+        f"Market Cap: ${profile.get('marketCap', 0)/1e9:.1f}B",
+        f"Beta: {profile.get('beta', 'N/A')}",
+        f"Description: {str(profile.get('description', ''))[:300]}",
+    ]
+
+
+def _fmt_valuation_section(key_metrics: dict | None, ratios: dict | None) -> list[str]:
+    """Valuation ratios and return metrics (TTM).
+
+    ratios-ttm first, legacy key-metrics-ttm fallback
+    (the /stable/ API serves multiples on ratios-ttm; live-verified 2026-06-09).
+    """
+    rt = ratios if isinstance(ratios, dict) else {}
+    km = key_metrics if isinstance(key_metrics, dict) else {}
+    if not (rt or km):
+        return []
+    parts: list[str] = ["\nValuation Ratios (TTM):"]
+    for label, candidates in [
+        ("P/E", ((rt, "priceToEarningsRatioTTM"), (km, "peRatioTTM"))),
+        ("EV/EBITDA", ((rt, "enterpriseValueMultipleTTM"), (km, "enterpriseValueOverEBITDATTM"))),
+        ("P/B", ((rt, "priceToBookRatioTTM"), (km, "priceToBookRatioTTM"))),
+        ("P/FCF", ((rt, "priceToFreeCashFlowRatioTTM"), (km, "priceToFreeCashFlowsRatioTTM"))),
+        ("P/S", ((rt, "priceToSalesRatioTTM"), (km, "priceToSalesRatioTTM"))),
+        ("PEG", ((rt, "priceToEarningsGrowthRatioTTM"), (km, "pegRatioTTM"))),
+        ("Dividend Yield", ((rt, "dividendYieldTTM"), (km, "dividendYieldTTM"))),
+    ]:
+        v = _first_metric(*candidates)
+        if v is not None:
+            if "Yield" in label:
+                parts.append(f"  {label}: {v*100:.2f}%")
+            else:
+                parts.append(f"  {label}: {v:.2f}")
+
+    parts.append("\nReturn Metrics (TTM):")
+    for label, candidates in [
+        ("ROE", ((km, "returnOnEquityTTM"), (km, "roeTTM"))),
+        ("ROIC", ((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM"))),
+        ("ROA", ((km, "returnOnAssetsTTM"), (km, "returnOnTangibleAssetsTTM"))),
+    ]:
+        v = _first_metric(*candidates)
+        if v is not None:
+            parts.append(f"  {label}: {v*100:.1f}%")
+
+    ic = _first_metric((rt, "interestCoverageRatioTTM"), (km, "interestCoverageTTM"))
+    if ic is not None:
+        parts.append(f"  Interest Coverage: {ic:.1f}x")
+    return parts
+
+
+def _fmt_income_trends_section(income: list) -> list[str]:
+    """Quarterly income statement (up to 8Q) with YoY growth."""
+    if not income:
+        return []
+    parts: list[str] = [f"\nQuarterly Income Statement ({len(income)} quarters, newest first):"]
+    for i, stmt in enumerate(income[:8]):
+        rev = stmt.get("revenue", 0) or 0
+        gp = stmt.get("grossProfit", 0) or 0
+        oi = stmt.get("operatingIncome", 0) or 0
+        ni = stmt.get("netIncome", 0) or 0
+        eps = stmt.get("eps", "N/A")
+        gm = f"{gp/rev*100:.1f}%" if rev else "N/A"
+        om = f"{oi/rev*100:.1f}%" if rev else "N/A"
+        nm = f"{ni/rev*100:.1f}%" if rev else "N/A"
+        # YoY growth (compare to same quarter one year ago = i+4)
+        yoy = ""
+        if i + 4 < len(income):
+            prev_rev = income[i + 4].get("revenue", 0) or 0
+            if prev_rev:
+                yoy = f" (YoY: {(rev - prev_rev)/abs(prev_rev)*100:+.1f}%)"
+        period = stmt.get("period", "") or stmt.get("date", "")[:7]
+        parts.append(f"  {period}: Rev {_fv(rev)} {yoy} | GM {gm} | OM {om} | NM {nm} | EPS {eps}")
+    return parts
+
+
+def _fmt_balance_sheet_section(balance: list, income: list) -> list[str]:
+    """Balance sheet (last 4Q) with debt structure and interest expense."""
+    if not balance:
+        return []
+    parts: list[str] = [f"\nBalance Sheet ({len(balance)} quarters, newest first):"]
+    for stmt in balance[:4]:
+        period = stmt.get("period", "") or stmt.get("date", "")[:7]
+        cash = stmt.get("cashAndCashEquivalents", 0) or 0
+        st_debt = stmt.get("shortTermDebt", 0) or 0
+        lt_debt = stmt.get("longTermDebt", 0) or 0
+        total_debt = stmt.get("totalDebt", 0) or 0
+        equity = stmt.get("totalEquity", 0) or stmt.get("totalStockholdersEquity", 0) or 0
+        ca = stmt.get("totalCurrentAssets", 0) or 0
+        cl = stmt.get("totalCurrentLiabilities", 0) or 0
+        cr = f"{ca/cl:.2f}" if cl else "N/A"
+        de = f"{total_debt/equity:.2f}" if equity else "N/A"
+        parts.append(f"  {period}: Cash {_fv(cash)} | ST Debt {_fv(st_debt)} | LT Debt {_fv(lt_debt)} | D/E {de} | Current Ratio {cr}")
+
+    # Interest expense from latest income statement
+    if income:
+        ie = income[0].get("interestExpense", 0) or 0
+        if ie:
+            parts.append(f"  Latest Interest Expense: {_fv(abs(ie))}")
+    return parts
+
+
+def _fmt_cashflow_section(cashflow: list) -> list[str]:
+    """Cash flow statement (last 4Q): OCF, FCF, CapEx, SBC."""
+    if not cashflow:
+        return []
+    parts: list[str] = [f"\nCash Flow ({len(cashflow)} quarters, newest first):"]
+    for stmt in cashflow[:4]:
+        period = stmt.get("period", "") or stmt.get("date", "")[:7]
+        ocf = stmt.get("operatingCashFlow", 0) or 0
+        fcf = stmt.get("freeCashFlow", 0) or 0
+        capex = stmt.get("capitalExpenditure", 0) or 0
+        sbc = stmt.get("stockBasedCompensation", 0) or 0
+        parts.append(f"  {period}: OCF {_fv(ocf)} | FCF {_fv(fcf)} | CapEx {_fv(capex)} | SBC {_fv(sbc)}")
+    return parts
+
+
+def _fmt_dcf_section(dcf: dict | None) -> list[str]:
+    """DCF intrinsic value with gap-to-current-price."""
+    if not (dcf and isinstance(dcf, dict)):
+        return []
+    dcf_val = dcf.get("dcf")
+    if not dcf_val:
+        return []
+    stock_price = dcf.get("Stock Price") or dcf.get("stockPrice")
+    gap = ""
+    if stock_price and float(stock_price) > 0:
+        gap_pct = (float(dcf_val) - float(stock_price)) / float(stock_price) * 100
+        gap = f" ({gap_pct:+.1f}% vs current)"
+    return [f"\nDCF Intrinsic Value: ${dcf_val}{gap}"]
+
+
+def _fmt_estimates_section(estimates: list | None) -> list[str]:
+    """Forward analyst estimates with earnings surprise (up to 4Q)."""
+    if not estimates:
+        return []
+    parts: list[str] = [f"\nAnalyst Estimates ({len(estimates)} quarters):"]
+    for est in estimates[:4]:
+        period = est.get("date", "")[:7]
+        rev_est = est.get("estimatedRevenueAvg") or est.get("revenueAvg")
+        eps_est = est.get("estimatedEpsAvg") or est.get("epsAvg")
+        rev_act = est.get("actualRevenue")
+        eps_act = est.get("actualEps")
+        line = f"  {period}:"
+        if rev_est is not None:
+            line += f" Rev Est {_fv(rev_est)}"
+            if rev_act is not None:
+                surprise = (float(rev_act) - float(rev_est)) / abs(float(rev_est)) * 100 if float(rev_est) else 0
+                line += f" → Actual {_fv(rev_act)} ({surprise:+.1f}% surprise)"
+        if eps_est is not None:
+            line += f" | EPS Est ${float(eps_est):.2f}"
+            if eps_act is not None:
+                line += f" → Actual ${float(eps_act):.2f} ({float(eps_act) - float(eps_est):+.2f})"
+        parts.append(line)
+    return parts
+
+
+def _fmt_growth_section(fin_growth: list | None) -> list[str]:
+    """Historical revenue / EPS / FCF growth rates (up to 4Q)."""
+    if not fin_growth:
+        return []
+    parts: list[str] = [f"\nGrowth Rates ({len(fin_growth)} quarters):"]
+    for g in fin_growth[:4]:
+        period = g.get("date", "")[:7]
+        rg = g.get("revenueGrowth")
+        eg = g.get("epsgrowth") or g.get("epsGrowth")
+        fcfg = g.get("freeCashFlowGrowth")
+        line = f"  {period}:"
+        if rg is not None:
+            line += f" Rev Growth {float(rg)*100:+.1f}%"
+        if eg is not None:
+            line += f" | EPS Growth {float(eg)*100:+.1f}%"
+        if fcfg is not None:
+            line += f" | FCF Growth {float(fcfg)*100:+.1f}%"
+        parts.append(line)
+    return parts
+
+
+def _fmt_analyst_consensus_section(
+    profile: dict,
+    grade_consensus: dict | None,
+    price_target: dict | None,
+    ratings_snap: dict | None,
+) -> list[str]:
+    """Analyst consensus, price target, and FMP composite rating."""
+    if not (grade_consensus or price_target or ratings_snap):
+        return []
+    parts: list[str] = ["\nAnalyst Consensus & Ratings:"]
+    if isinstance(grade_consensus, dict) and grade_consensus:
+        sb = grade_consensus.get("strongBuy") or 0
+        b = grade_consensus.get("buy") or 0
+        h = grade_consensus.get("hold") or 0
+        s = grade_consensus.get("sell") or 0
+        ss = grade_consensus.get("strongSell") or 0
+        total = sb + b + h + s + ss
+        label = grade_consensus.get("consensus") or "N/A"
+        parts.append(
+            f"  Consensus: {label} (StrongBuy {sb} / Buy {b} / Hold {h} / Sell {s} / StrongSell {ss}; {total} analysts)"
+        )
+    if isinstance(price_target, dict) and price_target:
+        tc = price_target.get("targetConsensus")
+        th = price_target.get("targetHigh")
+        tl = price_target.get("targetLow")
+        tm = price_target.get("targetMedian")
+        current = profile.get("price") if isinstance(profile, dict) else None
+        line = "  Price Target:"
+        if tc is not None:
+            line += f" avg ${float(tc):.2f}"
+        if tm is not None:
+            line += f" | median ${float(tm):.2f}"
+        if th is not None and tl is not None:
+            line += f" | range ${float(tl):.2f}–${float(th):.2f}"
+        if current and tc:
+            upside = (float(tc) - float(current)) / float(current) * 100
+            line += f" | implied {upside:+.1f}% vs current ${float(current):.2f}"
+        parts.append(line)
+    if isinstance(ratings_snap, dict) and ratings_snap:
+        rating = ratings_snap.get("rating")
+        score = ratings_snap.get("overallScore")
+        if rating or score is not None:
+            parts.append(f"  FMP Rating: {rating or 'N/A'} (overall score {score}/5)")
+    return parts
+
+
+def _fmt_grades_recent_section(grades_recent: list | None) -> list[str]:
+    """Recent analyst rating changes (upgrade / downgrade events)."""
+    if not (isinstance(grades_recent, list) and grades_recent):
+        return []
+    parts: list[str] = [f"\nRecent Analyst Actions ({len(grades_recent[:8])} most recent):"]
+    for g in grades_recent[:8]:
+        date_ = g.get("date", "")[:10]
+        firm = g.get("gradingCompany") or "Unknown"
+        prev = g.get("previousGrade") or "—"
+        new = g.get("newGrade") or "—"
+        action = g.get("action") or ""
+        parts.append(f"  {date_} {firm}: {prev} → {new} ({action})")
+    return parts
+
+
+def _fmt_grades_hist_section(grades_hist: list | None) -> list[str]:
+    """Analyst consensus count trend (monthly, last 4 months)."""
+    if not (isinstance(grades_hist, list) and grades_hist):
+        return []
+    parts: list[str] = ["\nAnalyst Consensus Trend (monthly):"]
+    for row in grades_hist[:4]:
+        date_ = row.get("date", "")[:7]
+        sb = row.get("analystRatingsStrongBuy") or 0
+        b = row.get("analystRatingsBuy") or 0
+        h = row.get("analystRatingsHold") or 0
+        s = row.get("analystRatingsSell") or 0
+        ss = row.get("analystRatingsStrongSell") or 0
+        parts.append(f"  {date_}: SB {sb} / B {b} / H {h} / S {s} / SS {ss}")
+    return parts
+
+
+def _fmt_insider_tx_section(insider_tx: list | None) -> list[str]:
+    """Insider transactions (Form 4s — market-priced only, last 6 shown)."""
+    if not (isinstance(insider_tx, list) and insider_tx):
+        return []
+    # Filter to market-priced transactions — zero-price rows are usually
+    # option grants or gifts and don't indicate conviction.
+    meaningful = [
+        t for t in insider_tx
+        if float(t.get("securitiesTransacted") or 0) > 0
+        and float(t.get("price") or 0) > 0
+    ]
+    if not meaningful:
+        return []
+    # Aggregate buys vs sells (A = acquisition, D = disposition) for a quick summary
+    buys = sum(
+        float(t.get("securitiesTransacted") or 0) * float(t.get("price") or 0)
+        for t in meaningful if (t.get("acquisitionOrDisposition") or "").upper() == "A"
+    )
+    sells = sum(
+        float(t.get("securitiesTransacted") or 0) * float(t.get("price") or 0)
+        for t in meaningful if (t.get("acquisitionOrDisposition") or "").upper() == "D"
+    )
+    parts: list[str] = [f"\nInsider Transactions (last {len(meaningful)} Form 4 filings):"]
+    parts.append(
+        f"  Aggregate: ${buys/1e6:.2f}M buys vs ${sells/1e6:.2f}M sells (net ${(buys-sells)/1e6:+.2f}M)"
+    )
+    for t in meaningful[:6]:
+        fdate = (t.get("filingDate") or "")[:10]
+        name = t.get("reportingName") or "Unknown"
+        role = t.get("typeOfOwner") or ""
+        shares = float(t.get("securitiesTransacted") or 0)
+        price = float(t.get("price") or 0)
+        direction = "BUY" if (t.get("acquisitionOrDisposition") or "").upper() == "A" else "SELL"
+        value = shares * price
+        parts.append(
+            f"  {fdate} {name} ({role}): {direction} {shares:,.0f} sh @ ${price:.2f} = ${value/1e6:.2f}M"
+        )
+    return parts
+
+
 def _fmt_fundamentals(
     ticker: str,
     income: list,
@@ -101,262 +408,23 @@ def _fmt_fundamentals(
 
     Includes multi-quarter trends, valuation ratios, return metrics,
     debt structure, forward estimates, and earnings surprises.
+
+    Thin composer: delegates each section to a private per-section helper
+    so each helper is independently testable.
     """
-    def _fv(val: Any, divisor: float = 1e9, suffix: str = "B") -> str:
-        """Format a financial value."""
-        if val is None or val == 0:
-            return "N/A"
-        return f"${val / divisor:.2f}{suffix}"
-
-    def _pct(a: float | None, b: float | None) -> str:
-        if a is None or b is None or b == 0:
-            return "N/A"
-        return f"{(a - b) / abs(b) * 100:+.1f}%"
-
     parts: list[str] = []
-
-    # ── Company profile ──────────────────────────────────────────────────
-    if profile and isinstance(profile, dict):
-        parts.append(f"Company: {profile.get('companyName', ticker)}")
-        parts.append(f"Sector: {profile.get('sector')} | Industry: {profile.get('industry')}")
-        parts.append(f"Market Cap: ${profile.get('marketCap', 0)/1e9:.1f}B")
-        parts.append(f"Beta: {profile.get('beta', 'N/A')}")
-        parts.append(f"Description: {str(profile.get('description', ''))[:300]}")
-
-    # ── Valuation ratios — ratios-ttm first, legacy key-metrics-ttm fallback
-    # (the /stable/ API serves multiples on ratios-ttm; live-verified 2026-06-09) ──
-    rt = ratios if isinstance(ratios, dict) else {}
-    km = key_metrics if isinstance(key_metrics, dict) else {}
-    if rt or km:
-        parts.append("\nValuation Ratios (TTM):")
-        for label, candidates in [
-            ("P/E", ((rt, "priceToEarningsRatioTTM"), (km, "peRatioTTM"))),
-            ("EV/EBITDA", ((rt, "enterpriseValueMultipleTTM"), (km, "enterpriseValueOverEBITDATTM"))),
-            ("P/B", ((rt, "priceToBookRatioTTM"), (km, "priceToBookRatioTTM"))),
-            ("P/FCF", ((rt, "priceToFreeCashFlowRatioTTM"), (km, "priceToFreeCashFlowsRatioTTM"))),
-            ("P/S", ((rt, "priceToSalesRatioTTM"), (km, "priceToSalesRatioTTM"))),
-            ("PEG", ((rt, "priceToEarningsGrowthRatioTTM"), (km, "pegRatioTTM"))),
-            ("Dividend Yield", ((rt, "dividendYieldTTM"), (km, "dividendYieldTTM"))),
-        ]:
-            v = _first_metric(*candidates)
-            if v is not None:
-                if "Yield" in label:
-                    parts.append(f"  {label}: {v*100:.2f}%")
-                else:
-                    parts.append(f"  {label}: {v:.2f}")
-
-        parts.append("\nReturn Metrics (TTM):")
-        for label, candidates in [
-            ("ROE", ((km, "returnOnEquityTTM"), (km, "roeTTM"))),
-            ("ROIC", ((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM"))),
-            ("ROA", ((km, "returnOnAssetsTTM"), (km, "returnOnTangibleAssetsTTM"))),
-        ]:
-            v = _first_metric(*candidates)
-            if v is not None:
-                parts.append(f"  {label}: {v*100:.1f}%")
-
-        ic = _first_metric((rt, "interestCoverageRatioTTM"), (km, "interestCoverageTTM"))
-        if ic is not None:
-            parts.append(f"  Interest Coverage: {ic:.1f}x")
-
-    # ── Quarterly income trend (up to 8Q) ────────────────────────────────
-    if income:
-        parts.append(f"\nQuarterly Income Statement ({len(income)} quarters, newest first):")
-        for i, stmt in enumerate(income[:8]):
-            rev = stmt.get("revenue", 0) or 0
-            gp = stmt.get("grossProfit", 0) or 0
-            oi = stmt.get("operatingIncome", 0) or 0
-            ni = stmt.get("netIncome", 0) or 0
-            eps = stmt.get("eps", "N/A")
-            gm = f"{gp/rev*100:.1f}%" if rev else "N/A"
-            om = f"{oi/rev*100:.1f}%" if rev else "N/A"
-            nm = f"{ni/rev*100:.1f}%" if rev else "N/A"
-            # YoY growth (compare to same quarter one year ago = i+4)
-            yoy = ""
-            if i + 4 < len(income):
-                prev_rev = income[i + 4].get("revenue", 0) or 0
-                if prev_rev:
-                    yoy = f" (YoY: {(rev - prev_rev)/abs(prev_rev)*100:+.1f}%)"
-            period = stmt.get("period", "") or stmt.get("date", "")[:7]
-            parts.append(f"  {period}: Rev {_fv(rev)} {yoy} | GM {gm} | OM {om} | NM {nm} | EPS {eps}")
-
-    # ── Balance sheet with debt structure ────────────────────────────────
-    if balance:
-        parts.append(f"\nBalance Sheet ({len(balance)} quarters, newest first):")
-        for stmt in balance[:4]:
-            period = stmt.get("period", "") or stmt.get("date", "")[:7]
-            cash = stmt.get("cashAndCashEquivalents", 0) or 0
-            st_debt = stmt.get("shortTermDebt", 0) or 0
-            lt_debt = stmt.get("longTermDebt", 0) or 0
-            total_debt = stmt.get("totalDebt", 0) or 0
-            equity = stmt.get("totalEquity", 0) or stmt.get("totalStockholdersEquity", 0) or 0
-            ca = stmt.get("totalCurrentAssets", 0) or 0
-            cl = stmt.get("totalCurrentLiabilities", 0) or 0
-            cr = f"{ca/cl:.2f}" if cl else "N/A"
-            de = f"{total_debt/equity:.2f}" if equity else "N/A"
-            parts.append(f"  {period}: Cash {_fv(cash)} | ST Debt {_fv(st_debt)} | LT Debt {_fv(lt_debt)} | D/E {de} | Current Ratio {cr}")
-
-        # Interest expense from latest income statement
-        if income:
-            ie = income[0].get("interestExpense", 0) or 0
-            if ie:
-                parts.append(f"  Latest Interest Expense: {_fv(abs(ie))}")
-
-    # ── Cash flow trend ──────────────────────────────────────────────────
-    if cashflow:
-        parts.append(f"\nCash Flow ({len(cashflow)} quarters, newest first):")
-        for stmt in cashflow[:4]:
-            period = stmt.get("period", "") or stmt.get("date", "")[:7]
-            ocf = stmt.get("operatingCashFlow", 0) or 0
-            fcf = stmt.get("freeCashFlow", 0) or 0
-            capex = stmt.get("capitalExpenditure", 0) or 0
-            sbc = stmt.get("stockBasedCompensation", 0) or 0
-            parts.append(f"  {period}: OCF {_fv(ocf)} | FCF {_fv(fcf)} | CapEx {_fv(capex)} | SBC {_fv(sbc)}")
-
-    # ── DCF valuation ────────────────────────────────────────────────────
-    if dcf and isinstance(dcf, dict):
-        dcf_val = dcf.get("dcf")
-        stock_price = dcf.get("Stock Price") or dcf.get("stockPrice")
-        if dcf_val:
-            gap = ""
-            if stock_price and float(stock_price) > 0:
-                gap_pct = (float(dcf_val) - float(stock_price)) / float(stock_price) * 100
-                gap = f" ({gap_pct:+.1f}% vs current)"
-            parts.append(f"\nDCF Intrinsic Value: ${dcf_val}{gap}")
-
-    # ── Forward estimates + earnings surprise ────────────────────────────
-    if estimates:
-        parts.append(f"\nAnalyst Estimates ({len(estimates)} quarters):")
-        for est in estimates[:4]:
-            period = est.get("date", "")[:7]
-            rev_est = est.get("estimatedRevenueAvg") or est.get("revenueAvg")
-            eps_est = est.get("estimatedEpsAvg") or est.get("epsAvg")
-            rev_act = est.get("actualRevenue")
-            eps_act = est.get("actualEps")
-            line = f"  {period}:"
-            if rev_est is not None:
-                line += f" Rev Est {_fv(rev_est)}"
-                if rev_act is not None:
-                    surprise = (float(rev_act) - float(rev_est)) / abs(float(rev_est)) * 100 if float(rev_est) else 0
-                    line += f" → Actual {_fv(rev_act)} ({surprise:+.1f}% surprise)"
-            if eps_est is not None:
-                line += f" | EPS Est ${float(eps_est):.2f}"
-                if eps_act is not None:
-                    line += f" → Actual ${float(eps_act):.2f} ({float(eps_act) - float(eps_est):+.2f})"
-            parts.append(line)
-
-    # ── Historical growth rates ──────────────────────────────────────────
-    if fin_growth:
-        parts.append(f"\nGrowth Rates ({len(fin_growth)} quarters):")
-        for g in fin_growth[:4]:
-            period = g.get("date", "")[:7]
-            rg = g.get("revenueGrowth")
-            eg = g.get("epsgrowth") or g.get("epsGrowth")
-            fcfg = g.get("freeCashFlowGrowth")
-            line = f"  {period}:"
-            if rg is not None:
-                line += f" Rev Growth {float(rg)*100:+.1f}%"
-            if eg is not None:
-                line += f" | EPS Growth {float(eg)*100:+.1f}%"
-            if fcfg is not None:
-                line += f" | FCF Growth {float(fcfg)*100:+.1f}%"
-            parts.append(line)
-
-    # ── Analyst consensus + price target ───────────────────────────────────
-    if grade_consensus or price_target or ratings_snap:
-        parts.append("\nAnalyst Consensus & Ratings:")
-        if isinstance(grade_consensus, dict) and grade_consensus:
-            sb = grade_consensus.get("strongBuy") or 0
-            b = grade_consensus.get("buy") or 0
-            h = grade_consensus.get("hold") or 0
-            s = grade_consensus.get("sell") or 0
-            ss = grade_consensus.get("strongSell") or 0
-            total = sb + b + h + s + ss
-            label = grade_consensus.get("consensus") or "N/A"
-            parts.append(
-                f"  Consensus: {label} (StrongBuy {sb} / Buy {b} / Hold {h} / Sell {s} / StrongSell {ss}; {total} analysts)"
-            )
-        if isinstance(price_target, dict) and price_target:
-            tc = price_target.get("targetConsensus")
-            th = price_target.get("targetHigh")
-            tl = price_target.get("targetLow")
-            tm = price_target.get("targetMedian")
-            current = profile.get("price") if isinstance(profile, dict) else None
-            line = "  Price Target:"
-            if tc is not None:
-                line += f" avg ${float(tc):.2f}"
-            if tm is not None:
-                line += f" | median ${float(tm):.2f}"
-            if th is not None and tl is not None:
-                line += f" | range ${float(tl):.2f}–${float(th):.2f}"
-            if current and tc:
-                upside = (float(tc) - float(current)) / float(current) * 100
-                line += f" | implied {upside:+.1f}% vs current ${float(current):.2f}"
-            parts.append(line)
-        if isinstance(ratings_snap, dict) and ratings_snap:
-            rating = ratings_snap.get("rating")
-            score = ratings_snap.get("overallScore")
-            if rating or score is not None:
-                parts.append(f"  FMP Rating: {rating or 'N/A'} (overall score {score}/5)")
-
-    # ── Recent analyst rating changes (upgrade / downgrade events) ─────────
-    if isinstance(grades_recent, list) and grades_recent:
-        parts.append(f"\nRecent Analyst Actions ({len(grades_recent[:8])} most recent):")
-        for g in grades_recent[:8]:
-            date_ = g.get("date", "")[:10]
-            firm = g.get("gradingCompany") or "Unknown"
-            prev = g.get("previousGrade") or "—"
-            new = g.get("newGrade") or "—"
-            action = g.get("action") or ""
-            parts.append(f"  {date_} {firm}: {prev} → {new} ({action})")
-
-    # ── Analyst consensus count trend (last few months) ────────────────────
-    if isinstance(grades_hist, list) and grades_hist:
-        parts.append("\nAnalyst Consensus Trend (monthly):")
-        for row in grades_hist[:4]:
-            date_ = row.get("date", "")[:7]
-            sb = row.get("analystRatingsStrongBuy") or 0
-            b = row.get("analystRatingsBuy") or 0
-            h = row.get("analystRatingsHold") or 0
-            s = row.get("analystRatingsSell") or 0
-            ss = row.get("analystRatingsStrongSell") or 0
-            parts.append(f"  {date_}: SB {sb} / B {b} / H {h} / S {s} / SS {ss}")
-
-    # ── Insider transactions (Form 4s with non-zero transactions only) ─────
-    if isinstance(insider_tx, list) and insider_tx:
-        # Filter to market-priced transactions — zero-price rows are usually
-        # option grants or gifts and don't indicate conviction.
-        meaningful = [
-            t for t in insider_tx
-            if float(t.get("securitiesTransacted") or 0) > 0
-            and float(t.get("price") or 0) > 0
-        ]
-        if meaningful:
-            # Aggregate buys vs sells (A = acquisition, D = disposition) for a quick summary
-            buys = sum(
-                float(t.get("securitiesTransacted") or 0) * float(t.get("price") or 0)
-                for t in meaningful if (t.get("acquisitionOrDisposition") or "").upper() == "A"
-            )
-            sells = sum(
-                float(t.get("securitiesTransacted") or 0) * float(t.get("price") or 0)
-                for t in meaningful if (t.get("acquisitionOrDisposition") or "").upper() == "D"
-            )
-            parts.append(f"\nInsider Transactions (last {len(meaningful)} Form 4 filings):")
-            parts.append(
-                f"  Aggregate: ${buys/1e6:.2f}M buys vs ${sells/1e6:.2f}M sells (net ${(buys-sells)/1e6:+.2f}M)"
-            )
-            for t in meaningful[:6]:
-                fdate = (t.get("filingDate") or "")[:10]
-                name = t.get("reportingName") or "Unknown"
-                role = t.get("typeOfOwner") or ""
-                shares = float(t.get("securitiesTransacted") or 0)
-                price = float(t.get("price") or 0)
-                direction = "BUY" if (t.get("acquisitionOrDisposition") or "").upper() == "A" else "SELL"
-                value = shares * price
-                parts.append(
-                    f"  {fdate} {name} ({role}): {direction} {shares:,.0f} sh @ ${price:.2f} = ${value/1e6:.2f}M"
-                )
-
+    parts.extend(_fmt_profile_section(ticker, profile))
+    parts.extend(_fmt_valuation_section(key_metrics, ratios))
+    parts.extend(_fmt_income_trends_section(income))
+    parts.extend(_fmt_balance_sheet_section(balance, income))
+    parts.extend(_fmt_cashflow_section(cashflow))
+    parts.extend(_fmt_dcf_section(dcf))
+    parts.extend(_fmt_estimates_section(estimates))
+    parts.extend(_fmt_growth_section(fin_growth))
+    parts.extend(_fmt_analyst_consensus_section(profile, grade_consensus, price_target, ratings_snap))
+    parts.extend(_fmt_grades_recent_section(grades_recent))
+    parts.extend(_fmt_grades_hist_section(grades_hist))
+    parts.extend(_fmt_insider_tx_section(insider_tx))
     return "\n".join(parts)
 
 
