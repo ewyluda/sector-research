@@ -6,17 +6,12 @@ import { useState } from "react";
 import clsx from "clsx";
 
 const links = [
-  { href: "/",              label: "Today"    },
-  { href: "/themes",        label: "Themes"   },
-  { href: "/filings",       label: "Filings"  },
-  { href: "/catalysts",     label: "Catalysts" },
-  { href: "/status",        label: "Status"   },
-  { href: "/prospectus",    label: "Prospectus" },
-  { href: "/workspace",     label: "Workspace" },
-  { href: "/questions",     label: "Questions" },
-  { href: "/library",       label: "Library"  },
-  { href: "/performance",   label: "Performance" },
-  { href: "/pipeline/new",  label: "+ New Run" },
+  { href: "/",            label: "Today"       },
+  { href: "/status",      label: "Status"      },
+  { href: "/themes",      label: "Themes"      },
+  { href: "/filings",     label: "Filings"     },
+  { href: "/performance", label: "Performance" },
+  { href: "/library",     label: "Library"     },
 ];
 
 export default function Nav() {
@@ -54,7 +49,7 @@ export default function Nav() {
               href={href}
               className={clsx(
                 "px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors",
-                path === href || (href !== "/" && path.startsWith(href.replace("/new", "")))
+                path === href || (href !== "/" && path.startsWith(href))
                   ? "bg-[var(--accent-bg)] text-[var(--primary-dk)] font-medium"
                   : "text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--surface-alt)]"
               )}
@@ -71,6 +66,14 @@ export default function Nav() {
               aria-label="Go to company workspace"
             />
           </form>
+          <button
+            type="button"
+            onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
+            className="ml-1 text-[10px] font-mono text-[var(--text-faint)] border border-[var(--border)] rounded px-1.5 py-0.5 hover:text-[var(--text-muted)] cursor-pointer"
+            aria-label="Open command palette"
+          >
+            ⌘K
+          </button>
         </nav>
       </div>
     </header>
