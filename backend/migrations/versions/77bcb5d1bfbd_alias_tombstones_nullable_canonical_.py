@@ -30,6 +30,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Tombstone rows have null canonical fields and are meaningless under the old
+    # NOT NULL schema — remove them before re-adding the constraint.
+    op.execute("DELETE FROM counterparty_aliases WHERE source = 'curator_private'")
     op.alter_column('counterparty_aliases', 'canonical_name',
                     existing_type=sa.VARCHAR(length=256),
                     nullable=False)

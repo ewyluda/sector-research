@@ -15,12 +15,13 @@ os.environ.setdefault("FRED_API_KEY", "test")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x/x")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
-from backend.app.models.filing import CounterpartyAlias, Relationship
+from backend.app.models.filing import CompetitorLandscape, CounterpartyAlias, Relationship
 from backend.app.services.counterparty_resolver import (
     dismiss_counterparty,
     list_dismissed,
     list_unresolved_counterparties,
     normalize_name,
+    resolve_competition_for_ticker,
     resolve_ticker_relationships,
     undismiss_counterparty,
 )
@@ -160,7 +161,7 @@ class TestDismissCounterparty(unittest.IsolatedAsyncioTestCase):
 
 
 class TestResolverSkipsTombstone(unittest.IsolatedAsyncioTestCase):
-    async def _run_resolve(self, *, rel_name: str, tombstone_norm: str):
+    async def _run_resolve(self, *, rel_name: str):
         """Exercise resolve_ticker_relationships with a tombstoned alias.
 
         Returns the summary dict so callers can assert skipped_private counts.
@@ -173,17 +174,13 @@ class TestResolverSkipsTombstone(unittest.IsolatedAsyncioTestCase):
         rel = _make_rel(rel_name)
         rels_result = _scalars_result([rel])
 
-        call_log = []
-
         async def fake_execute(stmt):
             compiled = str(stmt)
             if "counterparty_aliases" in compiled and "alias_normalized" in compiled:
-                call_log.append("alias_lookup")
                 r = MagicMock()
                 r.scalar_one_or_none = MagicMock(return_value=tombstone)
                 return r
             if "relationships" in compiled and "ticker" in compiled:
-                call_log.append("rels_query")
                 return rels_result
             # write-back cascade query
             scalars = MagicMock()
@@ -218,17 +215,13 @@ class TestResolverSkipsTombstone(unittest.IsolatedAsyncioTestCase):
     async def test_tombstoned_rel_not_resolved(self):
         """A relationship whose normalized counterparty is tombstoned must NOT
         get resolved_to_cik written (Step 1 alias-reuse branch)."""
-        summary, rel = await self._run_resolve(
-            rel_name="OpenAI", tombstone_norm=normalize_name("OpenAI")
-        )
+        summary, rel = await self._run_resolve(rel_name="OpenAI")
         self.assertIsNone(rel.resolved_to_cik)
 
     async def test_tombstoned_increments_skipped_private(self):
         """skipped_private counter must be incremented for each tombstoned name
         encountered via the alias-reuse path."""
-        summary, _ = await self._run_resolve(
-            rel_name="OpenAI", tombstone_norm=normalize_name("OpenAI")
-        )
+        summary, _ = await self._run_resolve(rel_name="OpenAI")
         self.assertEqual(summary["skipped_private"], 1)
 
     async def test_tombstoned_via_cache_also_skipped(self):
@@ -246,7 +239,9 @@ class TestResolverSkipsTombstone(unittest.IsolatedAsyncioTestCase):
 
         async def fake_execute(stmt):
             compiled = str(stmt)
-            if "counterparty_aliases" in compiled and "alias_normalized" in compiled:
+            # _existing_alias_for: WHERE alias_normalized = :alias_normalized_1
+            # (bind param distinguishes it from the write-back cascade select)
+            if "counterparty_aliases" in compiled and "alias_normalized_1" in compiled:
                 alias_calls["n"] += 1
                 r = MagicMock()
                 # First real DB lookup returns tombstone; subsequent calls should
@@ -289,6 +284,8 @@ class TestResolverSkipsTombstone(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(summary["skipped_private"], 2)
         self.assertIsNone(rel1.resolved_to_cik)
         self.assertIsNone(rel2.resolved_to_cik)
+        # Cache should short-circuit: only one real DB alias lookup for two rows
+        self.assertEqual(alias_calls["n"], 1)
 
 
 # ── 3. queue exclusion regression ────────────────────────────────────────────
@@ -398,6 +395,82 @@ class TestListDismissed(unittest.IsolatedAsyncioTestCase):
         db = _make_db(scalars_rows=[])
         rows = await list_dismissed(db)
         self.assertEqual(rows, [])
+
+
+# ── 6. competition resolve tombstone guard ─────────────────────────────────────
+
+
+class TestCompetitionResolveTombstone(unittest.IsolatedAsyncioTestCase):
+    """resolve_competition_for_ticker must honour curator_private tombstones.
+
+    A competitor entry whose normalized name hits a tombstone alias must NOT
+    have resolved_to_cik written into the JSONB, and must be counted in
+    `unresolved` — not `resolved_via_alias`.
+    """
+
+    async def test_tombstoned_competitor_not_resolved_and_not_via_alias(self):
+        comp_name = "PrivateCo"
+        norm = normalize_name(comp_name)
+        tombstone = _alias(
+            alias_name=comp_name,
+            source="curator_private",
+            canonical_cik=None,
+        )
+
+        comp_entry = {"name": comp_name, "name_normalized": norm}
+        landscape_row = CompetitorLandscape(
+            id=str(uuid4()),
+            ticker="AAPL",
+            competitors=[comp_entry],
+        )
+
+        async def fake_execute(stmt):
+            compiled = str(stmt)
+            if "competitor_landscape" in compiled.lower():
+                scalars = MagicMock()
+                scalars.all = MagicMock(return_value=[landscape_row])
+                r = MagicMock()
+                r.scalars = MagicMock(return_value=scalars)
+                return r
+            if "counterparty_aliases" in compiled and "alias_normalized" in compiled:
+                r = MagicMock()
+                r.scalar_one_or_none = MagicMock(return_value=tombstone)
+                return r
+            # _write_back_relationships fallback
+            scalars = MagicMock()
+            scalars.all = MagicMock(return_value=[])
+            r = MagicMock()
+            r.scalars = MagicMock(return_value=scalars)
+            return r
+
+        db = AsyncMock()
+        db.add = MagicMock()
+        db.execute = fake_execute
+        db.flush = AsyncMock()
+
+        mock_edgar = AsyncMock()
+        mock_edgar.close = AsyncMock()
+        mock_resolver = MagicMock()
+        mock_resolver.load = AsyncMock()
+        mock_resolver.match = MagicMock(return_value=[])
+
+        with patch(
+            "backend.app.services.counterparty_resolver.EdgarClient",
+            return_value=mock_edgar,
+        ), patch(
+            "backend.app.services.counterparty_resolver.CounterpartyResolver",
+            return_value=mock_resolver,
+        ):
+            summary = await resolve_competition_for_ticker("AAPL", db)
+
+        # Must NOT be counted as resolved via alias
+        self.assertEqual(summary["resolved_via_alias"], 0)
+        # Must be counted as unresolved
+        self.assertEqual(summary["unresolved"], 1)
+        # JSONB entry must be untouched — no resolved_to_cik written
+        self.assertNotIn("resolved_to_cik", comp_entry)
+        # Row must NOT have been marked as changed
+        self.assertEqual(summary["rows_updated"], 0)
 
 
 if __name__ == "__main__":

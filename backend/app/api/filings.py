@@ -9,6 +9,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
@@ -483,6 +484,7 @@ async def list_dismissed_route(
             "alias_name": r.alias_name,
             "alias_normalized": r.alias_normalized,
             "created_at": r.created_at.isoformat() if r.created_at else None,
+            "created_by": r.created_by,
         }
         for r in rows
     ]
@@ -493,6 +495,8 @@ async def dismiss_counterparty_route(
     body: DismissCounterpartyRequest, db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Tombstone a counterparty (private company / not resolvable). Spec §9."""
+    from backend.app.services.counterparty_resolver import normalize_name
+    norm = normalize_name(body.counterparty_name)
     try:
         result = await dismiss_counterparty(
             db,
@@ -501,7 +505,12 @@ async def dismiss_counterparty_route(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # Two in-flight dismisses hit the unique constraint — treat as idempotent.
+        await db.rollback()
+        result = {"alias_normalized": norm, "dismissed": True}
     return result
 
 

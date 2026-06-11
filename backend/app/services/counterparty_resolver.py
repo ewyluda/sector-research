@@ -387,7 +387,10 @@ async def resolve_ticker_relationships(
     # E.g. AAPL's "Microsoft Corp" alias now applies to ORCL's "Microsoft"
     # row in the same resolution pass.
     new_aliases = await db.execute(
-        select(CounterpartyAlias).order_by(CounterpartyAlias.created_at.desc()).limit(summary["aliases_created"])
+        select(CounterpartyAlias)
+        .where(CounterpartyAlias.canonical_cik.isnot(None))
+        .order_by(CounterpartyAlias.created_at.desc())
+        .limit(summary["aliases_created"])
     )
     for alias in new_aliases.scalars():
         extra_updates = await _write_back_relationships(
@@ -501,6 +504,11 @@ async def resolve_competition_for_ticker(
                 # 1. Alias reuse
                 alias = await _existing_alias_for(db, normalized)
                 if alias is not None:
+                    if alias.canonical_cik is None:
+                        # curator_private tombstone — do not resolve.
+                        summary["unresolved"] += 1
+                        local_cache[normalized] = (None, None)
+                        continue
                     comp["resolved_to_cik"] = alias.canonical_cik
                     comp["resolved_to_ticker"] = alias.canonical_ticker
                     summary["resolved_via_alias"] += 1
