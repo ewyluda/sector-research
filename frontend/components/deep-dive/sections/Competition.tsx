@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { competition } from "@/lib/api";
@@ -10,7 +11,7 @@ interface Props {
   ticker: string;
 }
 
-export function Competition({ ticker }: Props) {
+function CompetitionImpl({ ticker }: Props) {
   const [data, setData] = useState<CompetitionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +72,8 @@ export function Competition({ ticker }: Props) {
     </Shell>
   );
 }
+
+export const Competition = memo(CompetitionImpl);
 
 function Shell({
   children,

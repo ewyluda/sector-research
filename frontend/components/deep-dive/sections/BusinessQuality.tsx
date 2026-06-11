@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis } from "@/lib/api";
 import { MixedSection } from "./MixedSection";
 import { TrendLineChart } from "../charts/TrendLineChart";
@@ -14,7 +15,7 @@ interface BusinessQualityProps {
 
 const BQ_PASSES = ["pass3_qa_tensions", "pass5_consistency"];
 
-export function BusinessQuality({ financials, structured, score, fallback, isLive, transcriptAnalysis }: BusinessQualityProps) {
+function BusinessQualityImpl({ financials, structured, score, fallback, isLive, transcriptAnalysis }: BusinessQualityProps) {
   return (
     <MixedSection id="business_quality" label="Business Quality" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -49,3 +50,5 @@ export function BusinessQuality({ financials, structured, score, fallback, isLiv
     </MixedSection>
   );
 }
+
+export const BusinessQuality = memo(BusinessQualityImpl);

@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { BulletRangeChart } from "../charts/BulletRangeChart";
@@ -18,7 +19,7 @@ function fmtVol(v: number): string {
   return String(Math.round(v));
 }
 
-export function TechnicalMarket({ financials, structured, score, fallback, isLive }: TechnicalMarketProps) {
+function TechnicalMarketImpl({ financials, structured, score, fallback, isLive }: TechnicalMarketProps) {
   return (
     <DataRichSection id="technical_market_structure" label="Technical & Market Structure" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -80,3 +81,5 @@ export function TechnicalMarket({ financials, structured, score, fallback, isLiv
     </DataRichSection>
   );
 }
+
+export const TechnicalMarket = memo(TechnicalMarketImpl);

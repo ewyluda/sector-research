@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis } from "@/lib/api";
 import { MixedSection } from "./MixedSection";
 import { TranscriptInsights } from "../panels/TranscriptInsights";
@@ -12,7 +13,7 @@ interface ManagementGovernanceProps {
 
 const MGMT_PASSES = ["pass1_claims", "pass2_tiers", "pass3_qa_tensions", "pass4_validation", "pass5_consistency"];
 
-export function ManagementGovernance({ structured, score, fallback, transcriptAnalysis, isLive }: ManagementGovernanceProps) {
+function ManagementGovernanceImpl({ structured, score, fallback, transcriptAnalysis, isLive }: ManagementGovernanceProps) {
   return (
     <MixedSection id="management_governance" label="Management & Governance" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {transcriptAnalysis ? (
@@ -21,3 +22,5 @@ export function ManagementGovernance({ structured, score, fallback, transcriptAn
     </MixedSection>
   );
 }
+
+export const ManagementGovernance = memo(ManagementGovernanceImpl);
