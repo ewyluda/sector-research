@@ -1,7 +1,8 @@
 "use client";
+import Link from "next/link";
 import type { UpdateRefreshOutput } from "@/lib/api";
 
-export function UpdateRefreshCard({ output }: { output: UpdateRefreshOutput }) {
+export function UpdateRefreshCard({ output, ticker }: { output: UpdateRefreshOutput; ticker: string }) {
   const grouped = groupByStatement(output.changed_cells);
   const removedCells = output.removed_cells ?? [];
 
@@ -9,9 +10,18 @@ export function UpdateRefreshCard({ output }: { output: UpdateRefreshOutput }) {
     <div className="space-y-3 mt-2">
       <p className="text-sm text-[var(--text)]">{output.summary}</p>
 
-      <div className="text-xs text-[var(--text-muted)]">
-        v{output.version_before} → v{output.version_after ?? "—"} · {output.changed_cells.length} cells changed · {output.new_filings.length} new filings
-      </div>
+      {output.model_skipped ? (
+        <p className="text-xs text-[var(--text-muted)]">
+          No financial model — model refresh skipped.{" "}
+          <Link href={`/model/${ticker}#forecast`} className="text-[var(--primary-dk)] hover:underline">
+            Create model →
+          </Link>
+        </p>
+      ) : (
+        <div className="text-xs text-[var(--text-muted)]">
+          v{output.version_before} → v{output.version_after ?? "—"} · {output.changed_cells.length} cells changed · {output.new_filings.length} new filings
+        </div>
+      )}
 
       {output.new_filings.length > 0 && (
         <div className="text-xs text-[var(--text-muted)]">

@@ -6,7 +6,6 @@ const MISSING_COPY: Record<WorkspacePreflight["missing"][number], string> = {
   no_completed_research_run: "Needs a completed research run for this ticker.",
   research_run_not_completed: "The pinned research run hasn't completed yet.",
   research_run_ticker_mismatch: "The pinned research run doesn't match this ticker.",
-  no_ticker_model: "Initialize a model for this ticker first.",
   unsaved_model_draft: "Save or discard the model draft first.",
   workspace_run_in_flight: "A workspace run is already running.",
 };
@@ -39,7 +38,7 @@ export function useWorkspacePreflight(
       .catch(() => {
         // If preflight itself errors, fall back to optimistic (let kick_off
         // surface the real error). Don't block the button on transient netfails.
-        if (!cancelled) setStatus({ ok: true, missing: [], in_flight_run_id: null });
+        if (!cancelled) setStatus({ ok: true, missing: [], warnings: [], in_flight_run_id: null });
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

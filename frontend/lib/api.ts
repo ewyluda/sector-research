@@ -1626,6 +1626,7 @@ export interface UpdateRefreshOutput {
   new_filings: { form: string; accession: string; fetched_at: string }[];
   consensus_delta: null | { metric: string; period: string; prior_consensus: number | null; new_consensus: number | null; delta_pct: number | null }[];
   summary: string;
+  model_skipped?: boolean;
 }
 
 export interface Highlight {
@@ -1767,10 +1768,10 @@ export interface WorkspacePreflight {
     | "no_completed_research_run"
     | "research_run_not_completed"
     | "research_run_ticker_mismatch"
-    | "no_ticker_model"
     | "unsaved_model_draft"
     | "workspace_run_in_flight"
   )[];
+  warnings: ("no_ticker_model")[];
   in_flight_run_id: string | null;
 }
 
