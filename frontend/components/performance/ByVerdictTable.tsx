@@ -1,8 +1,9 @@
 import type { OutcomeSummary, StatGroup } from "@/lib/api";
 import { ReturnCell } from "./ReturnCell";
 
-const WORKSPACE_HEALTH_SET = new Set(["healthy", "imminent", "triggered", "broken", "stale"]);
 const RUN_VERDICT_ORDER = ["completed", "watchlist", "passed"] as const;
+// "stale" is included to match status-board vocabulary; the backend VerdictStats model
+// does not yet emit this field, so it will never appear until the backend is extended.
 const WORKSPACE_HEALTH_ORDER = ["healthy", "imminent", "stale", "triggered", "broken"] as const;
 
 export function ByVerdictTable({ summary }: { summary: OutcomeSummary }) {
@@ -14,13 +15,7 @@ export function ByVerdictTable({ summary }: { summary: OutcomeSummary }) {
     .map((v) => ({ verdict: v, stats: summary.by_verdict[v] as StatGroup | null | undefined }))
     .filter((r) => r.stats && r.stats.n > 0);
 
-  // Also catch any unknown verdicts not in the predefined orders.
-  const knownVerdicts = new Set<string>([...RUN_VERDICT_ORDER, ...WORKSPACE_HEALTH_ORDER]);
-  const otherRunRows = Object.entries(summary.by_verdict)
-    .filter(([v, s]) => !knownVerdicts.has(v) && !WORKSPACE_HEALTH_SET.has(v) && s && (s as StatGroup).n > 0)
-    .map(([v, s]) => ({ verdict: v, stats: s as StatGroup }));
-
-  const hasRunRows = runRows.length > 0 || otherRunRows.length > 0;
+  const hasRunRows = runRows.length > 0;
   const hasHealthRows = healthRows.length > 0;
 
   if (!hasRunRows && !hasHealthRows) {
@@ -49,7 +44,7 @@ export function ByVerdictTable({ summary }: { summary: OutcomeSummary }) {
               </td>
             </tr>
           )}
-          {[...runRows, ...otherRunRows].map(({ verdict, stats }) => (
+          {runRows.map(({ verdict, stats }) => (
             <VerdictRow key={verdict} verdict={verdict} stats={stats!} />
           ))}
           {hasHealthRows && (

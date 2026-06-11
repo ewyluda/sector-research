@@ -28,30 +28,35 @@ export default async function PerformancePage({ searchParams }: PageProps) {
   const sourceType = sp.source_type ?? "all";
   const showSuperseded = sp.superseded === "1";
 
-  // Fetch summary first (without snapshot_offset) to learn which offsets are populated.
-  // If the URL already specifies an offset, skip the discovery fetch — URL always wins.
+  // Kick off outcomes fetch immediately — it depends on nothing below.
+  const outcomesPromise = outcomesApi.list({
+    themeId: sp.theme_filter,
+    sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+    superseded: showSuperseded ? "all" : "false",
+    limit: 200,
+  });
+
+  // Resolve snapshot_offset: URL param wins; otherwise discover from a summary call.
   let snapshotOffset: SnapshotOffset;
   let summary;
 
   if (sp.snapshot_offset) {
-    // URL param wins — fetch summary and outcomes in parallel.
     snapshotOffset = sp.snapshot_offset;
-    [summary] = await Promise.all([
-      outcomesApi.getSummary({
-        themeId: sp.theme_filter,
-        window,
-        snapshotOffset,
-        benchmark,
-        sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
-      }),
-    ]);
+    summary = await outcomesApi.getSummary({
+      themeId: sp.theme_filter,
+      window,
+      snapshotOffset,
+      benchmark,
+      sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+    });
   } else {
-    // No URL offset: fetch summary first to discover populated offsets, then re-fetch
-    // with the best offset. One extra round-trip on first paint only; URL params avoid it.
+    // No URL offset: fetch summary with "1m" placeholder to learn populated offsets,
+    // then re-fetch only if a better offset exists. One extra round-trip on first paint;
+    // URL params avoid it on subsequent filter changes.
     const discoverySummary = await outcomesApi.getSummary({
       themeId: sp.theme_filter,
       window,
-      snapshotOffset: "1m", // placeholder — we only need populated_offsets from this call
+      snapshotOffset: "1m",
       benchmark,
       sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
     });
@@ -59,7 +64,6 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       OFFSET_PRIORITY.find((o) => discoverySummary.populated_offsets.includes(o)) ?? "1m";
 
     if (snapshotOffset === "1m") {
-      // If the discovery call already fetched 1m, reuse it.
       summary = discoverySummary;
     } else {
       summary = await outcomesApi.getSummary({
@@ -72,12 +76,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
     }
   }
 
-  const outcomes = await outcomesApi.list({
-    themeId: sp.theme_filter,
-    sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
-    superseded: showSuperseded ? "all" : "false",
-    limit: 200,
-  });
+  const outcomes = await outcomesPromise;
 
   return (
     <main id="main-content" className="min-h-screen bg-[var(--bg)] text-[var(--text)]">

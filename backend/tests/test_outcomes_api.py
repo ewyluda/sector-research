@@ -291,14 +291,15 @@ class TestSummary(unittest.TestCase):
 class TestComputeSummaryPopulatedOffsets(unittest.TestCase):
     """Unit tests for the _compute_summary populated_offsets logic.
 
-    Uses an in-memory SQLite DB to avoid needing a live PostgreSQL instance.
-    The summary function uses two queries: one for populated offsets and one
-    for the main rollup. We test the populated_offsets derivation by providing
-    mock DB state that returns known offset rows.
+    Uses MagicMock stubs for the DB session — no real database required.
+    _compute_summary issues three async execute() calls in order:
+      1. distinct offset query → scalars().all() returns the simulated offset list
+      2. main rollup query → all() returns []
+      3. per-theme rollup query → all() returns []
     """
 
     def test_populated_offsets_subset_returned(self):
-        """Seed snapshots at 1d+1w only → exactly ['1d', '1w']."""
+        """Mock DB returns ['1d', '1w'] from the distinct query → same list in result."""
         from unittest.mock import AsyncMock, MagicMock
 
         # Simulate the distinct() query returning {"1d", "1w"}
@@ -330,7 +331,7 @@ class TestComputeSummaryPopulatedOffsets(unittest.TestCase):
         self.assertEqual(result["populated_offsets"], ["1d", "1w"])
 
     def test_populated_offsets_empty_when_no_snapshots(self):
-        """Empty snapshot table → populated_offsets = []."""
+        """Mock DB returns [] from the distinct query → populated_offsets = []."""
         from unittest.mock import AsyncMock, MagicMock
 
         mock_db = MagicMock()
@@ -340,10 +341,8 @@ class TestComputeSummaryPopulatedOffsets(unittest.TestCase):
         main_result = MagicMock()
         main_result.all.return_value = []
 
-        theme_result = MagicMock()
-        theme_result.all.return_value = []
-
-        mock_db.execute = AsyncMock(side_effect=[pop_result, main_result, theme_result])
+        # No theme-lookup query: distinct_ids is empty when main_result is empty.
+        mock_db.execute = AsyncMock(side_effect=[pop_result, main_result])
 
         import asyncio
         from backend.app.api.outcomes import _compute_summary
