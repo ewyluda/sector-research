@@ -507,11 +507,12 @@ class PipelineService:
     # ── SSE streaming ─────────────────────────────────────────────────────────
 
     def _emit(self, run_id: str, event: dict) -> None:
-        """Fan-out an event to every connected SSE client for this run.
+        """Fan out an event to every connected SSE client for this run.
 
         Events emitted before any subscriber has called subscribe() are
-        dropped — this is intentional for pipeline runs (the frontend opens
-        the SSE connection synchronously before the background task can emit).
+        dropped — this is acceptable for pipeline runs because the frontend
+        REST-hydrates /pipeline/[runId] on load, so any events dropped in
+        the connect window are recovered from persisted state.
         A slow/full subscriber queue does not block delivery to other queues.
         """
         queues = self._streams.get(run_id)

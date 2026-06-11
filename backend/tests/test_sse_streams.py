@@ -213,5 +213,58 @@ class TestWorkspaceSSE(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(svc._queues.get(run_id, []), [])
 
 
+class TestCancellationCleanup(unittest.IsolatedAsyncioTestCase):
+    """Pinning that client disconnect (CancelledError through the generator's
+    finally) removes the subscriber queue from the service's internal dict."""
+
+    # ── Pipeline cancellation ─────────────────────────────────────────────────
+
+    async def test_pipeline_cancelled_consumer_removes_subscriber(self):
+        """Cancelling a task consuming pipeline event_stream removes subscriber queue."""
+        import contextlib
+        svc = _make_pipeline()
+        run_id = "run-cancel"
+
+        async def consume():
+            async for _line in svc.event_stream(run_id):
+                pass
+
+        task = asyncio.create_task(consume())
+        # Yield so the task enters event_stream and registers its queue.
+        await asyncio.sleep(0)
+        # At this point the task is blocked inside wait_for(queue.get()).
+        self.assertIn(run_id, svc._streams)
+
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        # The generator's finally block must have run and cleaned up.
+        self.assertNotIn(run_id, svc._streams)
+
+    # ── Workspace cancellation ────────────────────────────────────────────────
+
+    async def test_workspace_cancelled_consumer_removes_subscriber(self):
+        """Cancelling a task consuming workspace event_stream removes subscriber queue."""
+        import contextlib
+        svc = _make_workspace()
+        run_id = "ws-cancel"
+
+        async def consume():
+            async for _evt in svc.event_stream(run_id):
+                pass
+
+        task = asyncio.create_task(consume())
+        # Yield so the task enters event_stream, snapshots the (empty) replay
+        # buffer, and registers its queue before blocking on queue.get().
+        await asyncio.sleep(0)
+        self.assertIn(run_id, svc._queues)
+
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        # The generator's finally block must have run and cleaned up.
+        self.assertNotIn(run_id, svc._queues)
+
+
 if __name__ == "__main__":
     unittest.main()

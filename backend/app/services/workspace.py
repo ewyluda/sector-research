@@ -118,7 +118,10 @@ class WorkspaceService:
         # Per-run SSE state: replay buffer (all events emitted so far) plus
         # a list of live subscriber queues.  The replay buffer ensures that a
         # frontend opening the SSE connection after kick_off() has already
-        # emitted early step events still receives those events.
+        # emitted early step events still receives those events.  run_id keys
+        # are never pruned from _replay — acceptable for process-lifetime run
+        # counts in a single-user tool (each run emits a small, bounded number
+        # of step events).
         self._replay: dict[str, list[dict]] = {}
         self._queues: dict[str, list[asyncio.Queue]] = {}
         self._ticker_locks: dict[str, asyncio.Lock] = {}
@@ -145,7 +148,7 @@ class WorkspaceService:
 
         Atomically snapshots the replay buffer and registers the subscriber
         queue (no await between these steps) so no events can be lost between
-        the replay replay and live delivery.
+        the replay snapshot and live delivery.
 
         No post-terminal drain is required: _emit() never fires after the
         terminal event (workspace_run_complete / workspace_run_failed are the
@@ -156,7 +159,7 @@ class WorkspaceService:
         # Snapshot replay buffer and register subscriber in one synchronous
         # block — no await between snapshot and append so no events are lost.
         replay_snapshot = list(self._replay.get(run_id, []))
-        q: asyncio.Queue = asyncio.Queue()
+        q: asyncio.Queue = asyncio.Queue(maxsize=500)
         self._queues.setdefault(run_id, []).append(q)
 
         try:
