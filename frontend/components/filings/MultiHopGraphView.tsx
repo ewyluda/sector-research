@@ -49,8 +49,9 @@ export default function MultiHopGraphView({ themes }: Props) {
 
   const rootFromUrl = (searchParams.get("root") ?? "").toUpperCase();
   const themeFromUrl = searchParams.get("theme") ?? "";
+  // Default depth is 2 — absence of ?depth means the full 2-hop view.
   const depthFromUrl =
-    searchParams.get("depth") === "2" ? (2 as Depth) : (1 as Depth);
+    searchParams.get("depth") === "1" ? (1 as Depth) : (2 as Depth);
   const directionFromUrl: Direction = (() => {
     const d = searchParams.get("direction");
     return d === "out" || d === "in" || d === "both" ? d : "both";
@@ -131,7 +132,7 @@ export default function MultiHopGraphView({ themes }: Props) {
         themeId={themeFromUrl}
         onThemeChange={(id) => updateParams({ theme: id || null })}
         depth={depthFromUrl}
-        onDepthChange={(d) => updateParams({ depth: d === 2 ? "2" : null })}
+        onDepthChange={(d) => updateParams({ depth: d === 1 ? "1" : null })}
         direction={directionFromUrl}
         onDirectionChange={(d) =>
           updateParams({ direction: d === "both" ? null : d })

@@ -38,7 +38,14 @@ function fmtDate(iso: string): string {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
-const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }>(function TickerFilingsCard({ ticker }, ref) {
+interface TickerFilingsCardProps {
+  ticker: string;
+  /** Reports whether this ticker has any ingested sections — feeds the
+   * page-level "N tickers ready to ingest" chore chip. */
+  onSectionsState?: (ticker: string, hasSections: boolean) => void;
+}
+
+const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, TickerFilingsCardProps>(function TickerFilingsCard({ ticker, onSectionsState }, ref) {
   const [records, setRecords] = useState<FilingRecord[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [ingesting, setIngesting] = useState(false);
@@ -65,6 +72,7 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
     try {
       const rows = await filings.list(ticker);
       setRecords(rows);
+      onSectionsState?.(ticker, rows.some((r) => r.sections.length > 0));
       // Hydrate the "extracted at" badge for the competition button.
       try {
         const cdata = await competition.get(ticker);
@@ -144,7 +152,7 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
         ticker, force,
       );
       if (summary.skipped) {
-        setCompetitionMsg("already extracted (use Re-extract to refresh)");
+        setCompetitionMsg("already extracted (re-run to refresh)");
       } else if (summary.errors.length > 0) {
         setCompetitionMsg(
           `${summary.segments_extracted} segments, ${summary.competitors_extracted} competitors · ${summary.errors.length} error(s)`,
@@ -210,11 +218,16 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, { ticker: string }
               disabled={extractingCompetition}
               className="text-[11px] px-2 py-1 rounded-md border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface-alt)] hover:text-[var(--text)] disabled:opacity-50"
             >
-              {extractingCompetition
-                ? "Extracting…"
-                : competitionExtractedAt
-                ? "Re-extract competition"
-                : "Extract competition"}
+              {extractingCompetition ? (
+                "Extracting…"
+              ) : (
+                <>
+                  Extract competition
+                  {competitionExtractedAt && (
+                    <span className="text-[var(--text-faint)]"> (re-run)</span>
+                  )}
+                </>
+              )}
             </button>
           </div>
         </div>
