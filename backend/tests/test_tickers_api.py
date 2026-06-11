@@ -21,17 +21,6 @@ from backend.app.api.tickers import router
 from backend.app.db import get_db
 
 
-def make_app() -> tuple[TestClient, MagicMock]:
-    app = FastAPI()
-    app.include_router(router)
-    db = MagicMock()
-
-    async def _fake_db():
-        yield db
-
-    app.dependency_overrides[get_db] = _fake_db
-    return TestClient(app), db
-
 
 def _db_with_three_sources() -> MagicMock:
     """Three execute() calls in order: themes, research_runs, ticker_models."""
