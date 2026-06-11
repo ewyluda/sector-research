@@ -3,7 +3,9 @@
  * work unchanged.  No call-site modifications needed.
  */
 
-export * from "./core";
+// Selective from core: BASE/apiFetch were module-private pre-split and stay
+// out of the public surface — api/* modules import them from "./core" directly.
+export type { Citation } from "./core";
 export * from "./themes";
 export * from "./filings";
 export * from "./pipeline";
