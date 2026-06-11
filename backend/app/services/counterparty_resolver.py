@@ -273,6 +273,8 @@ async def resolve_ticker_relationships(
         "unnamed_skipped": 0,
         "relationships_updated": 0,
         "aliases_created": 0,
+        # curator_private tombstones: decided "do not resolve", not surfaced to queue
+        "skipped_private": 0,
     }
 
     # Fetch the ticker's relationship rows
@@ -291,6 +293,9 @@ async def resolve_ticker_relationships(
         # Cache results within this run so we don't hit the resolver
         # multiple times for the same normalized alias.
         local_alias_cache: dict[str, str | None] = {}  # norm → cik or None if unresolvable
+        # Norms whose alias is a curator_private tombstone (decided: do not resolve).
+        # Tracked separately so cache hits can be counted correctly.
+        tombstone_norms: set[str] = set()
 
         for rel in rows:
             summary["rows_considered"] += 1
@@ -307,7 +312,11 @@ async def resolve_ticker_relationships(
                 summary["unresolved_surfaced_to_queue"] += 1
                 continue
 
-            # Check per-run cache (same ticker often has the same name twice)
+            # Check per-run cache (same ticker often has the same name twice).
+            # Count once per relationship row — deliberate, mirrors unresolved_surfaced_to_queue.
+            if norm in tombstone_norms:
+                summary["skipped_private"] += 1
+                continue
             if norm in local_alias_cache:
                 cik = local_alias_cache[norm]
                 if cik is None:
@@ -324,6 +333,11 @@ async def resolve_ticker_relationships(
             # Step 1: alias reuse
             existing = await _existing_alias_for(db, norm)
             if existing is not None:
+                if existing.canonical_cik is None:
+                    # curator_private tombstone — decided: do not resolve.
+                    tombstone_norms.add(norm)
+                    summary["skipped_private"] += 1
+                    continue
                 rel.resolved_to_cik = existing.canonical_cik
                 rel.resolved_to_ticker = existing.canonical_ticker
                 summary["resolved_via_alias"] += 1
@@ -678,3 +692,60 @@ async def upsert_manual_alias(
         "canonical_name": canonical_name,
         "relationships_updated": updated,
     }
+
+
+# ── Tombstone (curator_private) ───────────────────────────────────────────────
+
+
+async def dismiss_counterparty(
+    db: AsyncSession, *, alias_name: str, created_by: str | None = None,
+) -> dict:
+    """Tombstone a counterparty as not-resolvable (private company etc).
+
+    Writes a CounterpartyAlias with null canonical fields and
+    source="curator_private". The unresolved queue already excludes any
+    normalized name that has an alias row; the resolver skips applying
+    null-cik aliases. Commit-free — caller owns the session.
+    """
+    norm = normalize_name(alias_name)
+    if not norm:
+        raise ValueError("alias_name normalizes to empty string")
+    existing = await _existing_alias_for(db, norm)
+    if existing is not None:
+        raise ValueError(
+            f"alias already exists for {norm!r} (source={existing.source})"
+        )
+    db.add(CounterpartyAlias(
+        alias_name=alias_name,
+        alias_normalized=norm,
+        canonical_cik=None,
+        canonical_ticker=None,
+        canonical_name=None,
+        source="curator_private",
+        created_by=created_by,
+    ))
+    return {"alias_normalized": norm, "dismissed": True}
+
+
+async def undismiss_counterparty(
+    db: AsyncSession, *, alias_normalized: str,
+) -> dict:
+    """Delete a curator_private tombstone (Undo). Only tombstones are deletable."""
+    row = await _existing_alias_for(db, alias_normalized)
+    if row is None or row.source != "curator_private":
+        raise ValueError(f"no curator_private tombstone for {alias_normalized!r}")
+    await db.delete(row)
+    return {"alias_normalized": alias_normalized, "restored": True}
+
+
+async def list_dismissed(
+    db: AsyncSession, limit: int = 100,
+) -> list[CounterpartyAlias]:
+    """Return curator_private tombstones, newest first."""
+    result = await db.execute(
+        select(CounterpartyAlias)
+        .where(CounterpartyAlias.source == "curator_private")
+        .order_by(CounterpartyAlias.created_at.desc())
+        .limit(limit)
+    )
+    return list(result.scalars())
