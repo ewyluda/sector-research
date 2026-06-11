@@ -283,6 +283,24 @@ export interface Question {
   resolved_at: string | null;
   dismissed_at: string | null;
   dismiss_note: string | null;
+  snoozed_until: string | null;
+}
+
+export interface QuestionBulkFilter {
+  ticker?: string;
+  theme_id?: string;
+  priority?: 1 | 2 | 3;
+  category?: string;
+  status?: QuestionStatus;
+}
+
+export interface QuestionBulkBody {
+  ids?: string[];
+  filter?: QuestionBulkFilter;
+  action: "dismiss" | "resolve" | "snooze";
+  note?: string;
+  answer_text?: string;
+  snooze_days?: number;
 }
 
 export interface QuestionTickerRollup {
@@ -327,5 +345,11 @@ export const questions = {
   retryAuto: async (id: string): Promise<Question> =>
     apiFetch<Question>(`/api/questions/${encodeURIComponent(id)}/retry-auto`, {
       method: "POST",
+    }),
+
+  bulk: async (body: QuestionBulkBody): Promise<{ affected: number }> =>
+    apiFetch<{ affected: number }>(`/api/questions/bulk`, {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 };
