@@ -179,7 +179,7 @@ quick_screen (Haiku)
   → [optional: position_monitor (Haiku) — manually triggered]
 ```
 
-**No interrupt gates.** Phases 1-5 run continuously after `POST /api/runs` starts a run. Each node sets `state.status = "in_progress"` to advance, or `"completed"` / `"watchlist"` to stop. The `PipelineService._run_phase()` loops while status is `in_progress`, automatically chaining through phases. Position monitor (phase 6) is manually triggered via `POST /api/runs/{run_id}/advance` with action `"approve"` on a completed run. If you add a new phase, update **both** `graph/pipeline.py` edges **and** `services/pipeline.py::_next_phase` — they're parallel sources of truth for routing.
+**No interrupt gates.** Phases 1-5 run continuously after `POST /api/runs` starts a run. Each node sets `state.status = "in_progress"` to advance, or `"completed"` / `"watchlist"` to stop. The `PipelineService._run_phase()` loops while status is `in_progress`, automatically chaining through phases. Position monitor (phase 6) is manually triggered via `POST /api/runs/{run_id}/advance` with action `"approve"` on a completed run. If you add a new phase, update `PHASE_SEQUENCE` and/or `next_phase()` in `graph/pipeline.py` — that is the single source of routing truth. `services/pipeline.py::_next_phase` delegates there; `backend/tests/test_phase_routing.py` pins the contract and will fail at CI time if either side drifts.
 
 **Prompt deduplication:** The thesis prompt receives quick screen context (verdict, thesis, key risk) and a concise deep dive summary (scores + top 2 findings per category) as "established findings" with instructions not to restate them. The risk prompt receives the thesis output with instructions to stress-test it, not re-derive the analysis.
 
@@ -206,13 +206,13 @@ Every data-client method returns `tuple[data, Citation]`, not just data. `models
 
 ### Streaming
 
-`services/pipeline.py::PipelineService` holds an in-memory `dict[run_id, asyncio.Queue]` for SSE subscribers. Events are pushed with `_emit()` and consumed via `event_stream()` which `GET /api/runs/{id}/stream` wraps in a `StreamingResponse`. Event types live as a discriminated union in `frontend/lib/api.ts::SSEEvent` — keep the Python `_emit` calls and the TS union in sync.
+`services/pipeline.py::PipelineService` holds an in-memory `dict[run_id, list[asyncio.Queue]]` for SSE subscribers (fan-out: each browser tab gets its own queue). Events are pushed with `_emit()` and consumed via `event_stream()` which `GET /api/runs/{id}/stream` wraps in a `StreamingResponse`. Event types live as a discriminated union in `frontend/lib/api.ts::SSEEvent` — keep the Python `_emit` calls and the TS union in sync.
 
 ### Background task scheduling
 
 Two kinds of async work run under the FastAPI process:
 
-- **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task holds the DB session passed from the request; if you change session lifecycle, verify the background task still has a live session.
+- **Phase execution** — `asyncio.create_task(pipeline._run_phase(...))` fires on `POST /api/runs` and on every `/advance`. The task opens its own `async_session()` internally (M1.2) — request-scoped sessions never cross into background tasks.
 - **Four `AsyncIOScheduler` cron jobs** registered in `app/main.py::lifespan`: daily X signal refresh (02:00 local, `services.signal_scheduler.run_daily_refresh`), daily earnings-prints refresh (21:00, `services.earnings_scheduler`), verdict-outcome snapshot refresh (03:00 UTC, `services.outcome_tracker.refresh_snapshots`), and the 8-K + Form 4 material-events scan (06:30 UTC, `services.material_events_scheduler`).
 
 ### SEC EDGAR filing pipeline (read this before touching `backend/app/services/edgar*`, `supply_chain.py`, `fanout.py`, or `relationship_context.py`)
@@ -277,7 +277,7 @@ Database tables (all in `models/filing.py`):
 
 Separate from the LangGraph pipeline. The **workspace loop** is a 5-step thesis-refresh orchestrator that pulls a completed research run forward in time: `update_refresh → research → validation → challenge → differentiation` (execution order pinned by `STEP_NAMES` in `services/workspace_steps.py`). Lives at `/workspace` (fleet list) and `/workspace/[runId]` (per-run report).
 
-- `WorkspaceService` (in `services/workspace.py`) wired into `main.py::lifespan` as `app.state.workspace`. Mirrors `PipelineService` — in-memory `dict[run_id, asyncio.Queue]` SSE plumbing, `WorkspaceRunInFlight` guard against duplicate starts per ticker.
+- `WorkspaceService` (in `services/workspace.py`) wired into `main.py::lifespan` as `app.state.workspace`. Mirrors `PipelineService` — fan-out `dict[run_id, list[asyncio.Queue]]` SSE plumbing plus a per-run replay buffer (`dict[run_id, list[dict]]`) so events emitted before the frontend connects are delivered to every (including late) subscriber via a full replay on `event_stream()` entry, `WorkspaceRunInFlight` guard against duplicate starts per ticker.
 - Step implementations in `services/workspace_steps.py`. Output schemas in `models/workspace_schemas.py` (`UpdateRefreshOutput`, `ResearchOutput`, `ChallengeOutput`, `DifferentiationOutput`, `ValidationOutput` — each with a `WorkspaceVerdict` enum: `healthy | imminent | triggered | broken`). Run rows in `workspace_runs` (`models/workspace_run.py`) with a JSONB `step_outputs` column.
 - API surface (`api/workspace.py`, prefix `/api/workspace`): kick off a run, poll status, stream SSE, list recent runs. Frontend `WorkspaceReport.tsx` dual-hydrates — REST on mount, then SSE for live updates as steps complete. `StepCards/` renders each step's output; `VerdictBadge` summarizes the final verdict on the index page.
 - `update_refresh` is the only step that touches `ModelState`: it re-pulls FMP financials, promotes any newly-published forecast period from `ai_baseline` → `historical`, and warns when previously-edited override cells are evicted by a period rollover (`removed_cells` payload, surfaced in `UpdateRefreshCard`).

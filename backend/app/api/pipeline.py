@@ -119,7 +119,7 @@ async def start_run(
 
     # Load initial state and kick off quick_screen in background
     state = ResearchState.from_dict(run.state)
-    asyncio.create_task(pipeline._run_phase(run.id, state, db))
+    asyncio.create_task(pipeline._run_phase(run.id, state))
 
     return _run_to_detail(run)
 
@@ -217,7 +217,7 @@ async def advance_run(
         run.status = "in_progress"
         run.state = state.to_dict()
         await db.commit()
-        asyncio.create_task(pipeline._run_phase(run.id, state, db))
+        asyncio.create_task(pipeline._run_phase(run.id, state))
         return _run_to_detail(run)
 
     # Reject advance on non-advanceable states

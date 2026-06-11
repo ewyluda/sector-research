@@ -37,7 +37,7 @@ from backend.app.clients.edgar import EdgarClient
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
 from backend.app.graph import nodes
-from backend.app.graph.pipeline import make_graph
+from backend.app.graph.pipeline import make_graph, next_phase as _next_phase_fn
 from backend.app.graph.state import ResearchState
 from backend.app.db import async_session, unit_of_work
 from backend.app.services import outcome_tracker
@@ -89,8 +89,10 @@ class PipelineService:
         self._fred = fred
         self._edgar = edgar
         self._graph = make_graph(fmp)
-        # Active SSE queues keyed by run_id
-        self._streams: dict[str, asyncio.Queue] = {}
+        # Active SSE subscriber queues keyed by run_id.  Multiple subscribers
+        # (e.g. two browser tabs) are each given their own queue; fan-out
+        # delivers every event to all of them independently.
+        self._streams: dict[str, list[asyncio.Queue]] = {}
 
     # ── Run creation ──────────────────────────────────────────────────────────
 
@@ -172,89 +174,52 @@ class PipelineService:
         await db.commit()
 
         # Run the next phase in background
-        asyncio.create_task(self._run_phase(run_id, state, db))
+        asyncio.create_task(self._run_phase(run_id, state))
         return run
 
     def _next_phase(self, state: ResearchState) -> str:
-        """Determine next phase based on current phase and state."""
-        phase_sequence = {
-            "quick_screen": "deep_dive",
-            "deep_dive": "targeted_followup",
-            "targeted_followup": "thesis_construction",
-            "thesis_construction": "risk_stress_test",
-            "risk_stress_test": (
-                "deep_dive" if (state.loop_context and state.loop_count <= 2)
-                else "completed"
-            ),
-        }
-        return phase_sequence.get(state.phase, "completed")
+        """Determine next phase based on current phase and state.
+
+        Delegates to the single source of routing truth in graph/pipeline.py.
+        """
+        return _next_phase_fn(
+            state.phase,
+            loop_context=state.loop_context,
+            loop_count=state.loop_count,
+        )
 
     async def _run_phase(
-        self, run_id: str, state: ResearchState, db: AsyncSession
+        self, run_id: str, state: ResearchState
     ) -> None:
         """Execute phases in a loop, auto-advancing while status is in_progress."""
-        while state.status == "in_progress":
-            phase = state.phase
-            self._emit(run_id, {"type": "phase_start", "phase": phase,
-                                 "label": PHASE_META.get(phase, {}).get("label", phase)})
+        async with async_session() as db:
+            while state.status == "in_progress":
+                phase = state.phase
+                self._emit(run_id, {"type": "phase_start", "phase": phase,
+                                     "label": PHASE_META.get(phase, {}).get("label", phase)})
 
-            try:
-                if phase == "quick_screen":
-                    state = await nodes.node_quick_screen(state, self._fmp)
-                elif phase == "deep_dive":
-                    state = await self._run_deep_dive_with_streaming(state, run_id, db)
-                elif phase == "targeted_followup":
-                    state = await nodes.node_targeted_followup(state)
-                elif phase == "thesis_construction":
-                    state = await nodes.node_thesis_construction(state)
-                elif phase == "risk_stress_test":
-                    state = await nodes.node_risk_stress_test(state)
-                elif phase == "position_monitor":
-                    state = await nodes.node_position_monitor(state)
+                try:
+                    if phase == "quick_screen":
+                        state = await nodes.node_quick_screen(state, self._fmp)
+                    elif phase == "deep_dive":
+                        state = await self._run_deep_dive_with_streaming(state, run_id, db)
+                    elif phase == "targeted_followup":
+                        state = await nodes.node_targeted_followup(state)
+                    elif phase == "thesis_construction":
+                        state = await nodes.node_thesis_construction(state)
+                    elif phase == "risk_stress_test":
+                        state = await nodes.node_risk_stress_test(state)
+                    elif phase == "position_monitor":
+                        state = await nodes.node_position_monitor(state)
 
-                terminal = state.status in ("completed", "watchlist", "pass")
-                if terminal:
-                    mark_terminal_completed_at(state)
+                    terminal = state.status in ("completed", "watchlist", "pass")
+                    if terminal:
+                        mark_terminal_completed_at(state)
 
-                # Persist state after phase execution — committed BEFORE outcome
-                # recording so research_runs is the atomic source of truth. A
-                # crash between this commit and the background outcome task is
-                # recovered by the daily backfill cron (idempotent).
-                async with db.begin():
-                    result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
-                    run = result.scalar_one_or_none()
-                    if run:
-                        run.state = state.to_dict()
-                        run.phase = state.phase
-                        run.status = state.status
-                        run.loop_count = state.loop_count
-
-                if terminal:
-                    # Fire-and-forget: outcome recording makes ~N+3 serial FMP
-                    # calls and must not block the phase_complete / complete
-                    # SSE events. Inner function logs and swallows all errors.
-                    asyncio.create_task(self._record_terminal_outcome(run_id=run_id, state=state))
-
-                # Emit phase_complete event
-                output_key = PHASE_OUTPUT_KEYS.get(phase, phase)
-                phase_output = state.phase_outputs.get(output_key, {})
-                self._emit(run_id, {
-                    "type": "phase_complete",
-                    "phase": phase,
-                    "output": phase_output,
-                    "conviction_score": state.conviction_score,
-                })
-
-                # If still in_progress, advance to next phase
-                if state.status == "in_progress":
-                    next_phase = self._next_phase(state)
-                    if next_phase == "completed":
-                        state.status = "completed"
-                        state.phase = "completed"
-                    else:
-                        state.phase = next_phase
-
-                    # Persist the phase advance
+                    # Persist state after phase execution — committed BEFORE outcome
+                    # recording so research_runs is the atomic source of truth. A
+                    # crash between this commit and the background outcome task is
+                    # recovered by the daily backfill cron (idempotent).
                     async with db.begin():
                         result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
                         run = result.scalar_one_or_none()
@@ -264,21 +229,56 @@ class PipelineService:
                             run.status = state.status
                             run.loop_count = state.loop_count
 
-            except Exception as e:
-                logger.error("Phase %s failed for run %s: %s", phase, run_id, e)
-                state.status = "error"
-                try:
-                    async with db.begin():
-                        result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
-                        run = result.scalar_one_or_none()
-                        if run:
-                            run.state = state.to_dict()
-                            run.phase = state.phase
-                            run.status = "error"
-                except Exception:
-                    logger.error("Failed to persist error state for run %s", run_id)
-                self._emit(run_id, {"type": "error", "phase": phase, "message": str(e)})
-                break
+                    if terminal:
+                        # Fire-and-forget: outcome recording makes ~N+3 serial FMP
+                        # calls and must not block the phase_complete / complete
+                        # SSE events. Inner function logs and swallows all errors.
+                        asyncio.create_task(self._record_terminal_outcome(run_id=run_id, state=state))
+
+                    # Emit phase_complete event
+                    output_key = PHASE_OUTPUT_KEYS.get(phase, phase)
+                    phase_output = state.phase_outputs.get(output_key, {})
+                    self._emit(run_id, {
+                        "type": "phase_complete",
+                        "phase": phase,
+                        "output": phase_output,
+                        "conviction_score": state.conviction_score,
+                    })
+
+                    # If still in_progress, advance to next phase
+                    if state.status == "in_progress":
+                        next_phase = self._next_phase(state)
+                        if next_phase == "completed":
+                            state.status = "completed"
+                            state.phase = "completed"
+                        else:
+                            state.phase = next_phase
+
+                        # Persist the phase advance
+                        async with db.begin():
+                            result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+                            run = result.scalar_one_or_none()
+                            if run:
+                                run.state = state.to_dict()
+                                run.phase = state.phase
+                                run.status = state.status
+                                run.loop_count = state.loop_count
+
+                except Exception as e:
+                    logger.error("Phase %s failed for run %s: %s", phase, run_id, e)
+                    state.status = "error"
+                    try:
+                        async with db.begin():
+                            result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
+                            run = result.scalar_one_or_none()
+                            if run:
+                                run.state = state.to_dict()
+                                run.phase = state.phase
+                                run.status = "error"
+                    except Exception:
+                        logger.error("Failed to persist error state for run %s", run_id)
+                    self._emit(run_id, {"type": "error", "phase": phase, "message": str(e)})
+                    break
 
         # After the loop: emit terminal event
         if state.status in ("completed", "watchlist", "pass"):
@@ -507,21 +507,40 @@ class PipelineService:
     # ── SSE streaming ─────────────────────────────────────────────────────────
 
     def _emit(self, run_id: str, event: dict) -> None:
-        """Push an event to all connected SSE clients for this run."""
-        if run_id in self._streams:
+        """Fan out an event to every connected SSE client for this run.
+
+        Events emitted before any subscriber has called subscribe() are
+        dropped — this is acceptable for pipeline runs because the frontend
+        REST-hydrates /pipeline/[runId] on load, so any events dropped in
+        the connect window are recovered from persisted state.
+        A slow/full subscriber queue does not block delivery to other queues.
+        """
+        queues = self._streams.get(run_id)
+        if not queues:
+            return
+        for q in queues:
             try:
-                self._streams[run_id].put_nowait(event)
+                q.put_nowait(event)
             except asyncio.QueueFull:
-                logger.warning("SSE queue full for run %s", run_id)
+                logger.warning("SSE queue full for run %s (subscriber %s); dropping event", run_id, id(q))
 
     def subscribe(self, run_id: str) -> asyncio.Queue:
-        """Register an SSE client for a run. Returns the event queue."""
+        """Register a new SSE subscriber for a run. Returns that subscriber's queue."""
         q: asyncio.Queue = asyncio.Queue(maxsize=500)
-        self._streams[run_id] = q
+        self._streams.setdefault(run_id, []).append(q)
         return q
 
-    def unsubscribe(self, run_id: str) -> None:
-        self._streams.pop(run_id, None)
+    def unsubscribe(self, run_id: str, queue: asyncio.Queue) -> None:
+        """Remove a single subscriber queue. Cleans up the dict entry when empty."""
+        queues = self._streams.get(run_id)
+        if queues is None:
+            return
+        try:
+            queues.remove(queue)
+        except ValueError:
+            pass
+        if not queues:
+            self._streams.pop(run_id, None)
 
     async def event_stream(self, run_id: str) -> AsyncGenerator[str, None]:
         """Async generator for FastAPI SSE response."""
@@ -536,7 +555,7 @@ class PipelineService:
                 except asyncio.TimeoutError:
                     yield "data: {\"type\": \"heartbeat\"}\n\n"
         finally:
-            self.unsubscribe(run_id)
+            self.unsubscribe(run_id, queue)
 
     # ── Querying ──────────────────────────────────────────────────────────────
 

@@ -115,39 +115,75 @@ class WorkspaceService:
         self._fmp = fmp
         self._edgar = edgar
         self._anthropic = anthropic
-        self._queues: dict[str, asyncio.Queue] = {}
+        # Per-run SSE state: replay buffer (all events emitted so far) plus
+        # a list of live subscriber queues.  The replay buffer ensures that a
+        # frontend opening the SSE connection after kick_off() has already
+        # emitted early step events still receives those events.  run_id keys
+        # are never pruned from _replay — acceptable for process-lifetime run
+        # counts in a single-user tool (each run emits a small, bounded number
+        # of step events).
+        self._replay: dict[str, list[dict]] = {}
+        self._queues: dict[str, list[asyncio.Queue]] = {}
         self._ticker_locks: dict[str, asyncio.Lock] = {}
         self._ticker_locks_guard = asyncio.Lock()
 
     # ── SSE plumbing ───────────────────────────────────────────────────────────
 
-    def _get_or_create_queue(self, run_id: str) -> asyncio.Queue:
-        q = self._queues.get(run_id)
-        if q is None:
-            q = asyncio.Queue()
-            self._queues[run_id] = q
-        return q
-
     def _emit(self, run_id: str, event: dict) -> None:
-        """Push an event to the SSE queue for this run."""
-        queue = self._get_or_create_queue(run_id)
-        try:
-            queue.put_nowait(event)
-        except asyncio.QueueFull:
-            logger.warning("workspace SSE queue full for run %s; dropping event", run_id)
+        """Append event to the replay buffer and fan-out to live subscribers.
+
+        The replay buffer is unbounded per run — workspace runs emit a small,
+        bounded number of step events so this is acceptable for a single-process
+        local tool.  A full subscriber queue does not block other subscribers.
+        """
+        self._replay.setdefault(run_id, []).append(event)
+        for q in self._queues.get(run_id, []):
+            try:
+                q.put_nowait(event)
+            except asyncio.QueueFull:
+                logger.warning("workspace SSE queue full for run %s (subscriber %s); dropping event", run_id, id(q))
 
     async def event_stream(self, run_id: str) -> AsyncIterator[dict]:
-        """Async generator yielding raw event dicts until a terminal event."""
-        queue = self._get_or_create_queue(run_id)
+        """Async generator yielding raw event dicts until a terminal event.
+
+        Atomically snapshots the replay buffer and registers the subscriber
+        queue (no await between these steps) so no events can be lost between
+        the replay snapshot and live delivery.
+
+        No post-terminal drain is required: _emit() never fires after the
+        terminal event (workspace_run_complete / workspace_run_failed are the
+        last calls in every _run_workspace code path — confirmed by inspection).
+        """
         terminal = {"workspace_run_complete", "workspace_run_failed"}
-        while True:
-            evt = await queue.get()
-            yield evt
-            if evt.get("type") in terminal:
-                # Drain any remaining queued events
-                while not queue.empty():
-                    yield queue.get_nowait()
-                return
+
+        # Snapshot replay buffer and register subscriber in one synchronous
+        # block — no await between snapshot and append so no events are lost.
+        replay_snapshot = list(self._replay.get(run_id, []))
+        q: asyncio.Queue = asyncio.Queue(maxsize=500)
+        self._queues.setdefault(run_id, []).append(q)
+
+        try:
+            # Replay buffered events first.
+            for evt in replay_snapshot:
+                yield evt
+                if evt.get("type") in terminal:
+                    return
+
+            # Consume live events.
+            while True:
+                evt = await q.get()
+                yield evt
+                if evt.get("type") in terminal:
+                    return
+        finally:
+            queues = self._queues.get(run_id)
+            if queues is not None:
+                try:
+                    queues.remove(q)
+                except ValueError:
+                    pass
+                if not queues:
+                    self._queues.pop(run_id, None)
 
     # ── Per-ticker concurrency guard ───────────────────────────────────────────
 
