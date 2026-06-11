@@ -84,7 +84,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       <header className="px-4 py-3 border-b border-[var(--border)]">
         <h1 className="text-lg font-semibold">Performance</h1>
       </header>
-      <PerformanceFilters showSuperseded={showSuperseded} />
+      <PerformanceFilters showSuperseded={showSuperseded} activeOffset={snapshotOffset} />
       <HeroBand summary={summary} />
       <ByVerdictTable summary={summary} />
       <ByThemeTable summary={summary} />

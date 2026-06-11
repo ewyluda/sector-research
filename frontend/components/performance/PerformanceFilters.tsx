@@ -8,13 +8,21 @@ const OFFSETS: SnapshotOffset[] = ["1d", "1w", "1m", "3m", "6m"];
 const BENCHMARKS: Benchmark[] = ["spy", "sector", "theme_basket"];
 const SOURCES: ("all" | SourceType)[] = ["all", "research_run", "workspace_run"];
 
-export function PerformanceFilters({ showSuperseded }: { showSuperseded: boolean }) {
+export function PerformanceFilters({
+  showSuperseded,
+  activeOffset,
+}: {
+  showSuperseded: boolean;
+  // The offset the page actually resolved (URL param or largest populated
+  // default) — deriving from the URL alone would wrongly highlight 3m on first load.
+  activeOffset: SnapshotOffset;
+}) {
   const router = useRouter();
   const sp = useSearchParams();
 
   const current = {
     window: (sp.get("window") as Window) ?? "90d",
-    snapshot_offset: (sp.get("snapshot_offset") as SnapshotOffset) ?? "3m",
+    snapshot_offset: activeOffset,
     benchmark: (sp.get("benchmark") as Benchmark) ?? "spy",
     source_type: (sp.get("source_type") as "all" | SourceType) ?? "all",
   };
