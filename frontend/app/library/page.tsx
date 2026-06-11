@@ -206,8 +206,19 @@ function TickerGroupCard({
         allAbandoned ? "opacity-60" : ""
       }`}
     >
-      <button
+      {/* div+role, not <button>: the ticker <Link> inside would be invalid
+          interactive-inside-interactive HTML. Keyboard parity via Enter/Space. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded((e) => !e)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setExpanded((x) => !x);
+          }
+        }}
+        aria-expanded={expanded}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left cursor-pointer
                    hover:bg-[var(--color-accent)]/3 transition-colors"
       >
@@ -241,7 +252,7 @@ function TickerGroupCard({
             {fmtDate(latest.updated_at ?? latest.created_at)}
           </span>
         </span>
-      </button>
+      </div>
 
       {expanded && group.runs.map((run) => <RunRow key={run.id} run={run} onAbandon={onAbandon} />)}
     </div>
