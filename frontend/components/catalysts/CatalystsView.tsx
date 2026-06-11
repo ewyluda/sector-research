@@ -11,7 +11,13 @@ import type { CatalystBuckets } from "@/lib/api";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
 import { CalendarView } from "./CalendarView";
 
-export function CatalystsView({ buckets }: { buckets: CatalystBuckets }) {
+export function CatalystsView({
+  buckets,
+  activeTickers,
+}: {
+  buckets: CatalystBuckets;
+  activeTickers?: Set<string>; // tickers with an active board entry — see AgendaList
+}) {
   const [view, setView] = useState<"calendar" | "list">("calendar");
 
   return (
@@ -34,7 +40,11 @@ export function CatalystsView({ buckets }: { buckets: CatalystBuckets }) {
           </button>
         ))}
       </div>
-      {view === "calendar" ? <CalendarView /> : <CatalystCalendar buckets={buckets} />}
+      {view === "calendar" ? (
+        <CalendarView activeTickers={activeTickers} />
+      ) : (
+        <CatalystCalendar buckets={buckets} />
+      )}
     </div>
   );
 }

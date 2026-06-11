@@ -23,7 +23,7 @@ const KIND_CHIPS: Array<{ kind: CalendarEventKind; label: string }> = [
   { kind: "catalyst", label: "Catalysts" },
 ];
 
-export function CalendarView() {
+export function CalendarView({ activeTickers }: { activeTickers?: Set<string> }) {
   const [rangeDays, setRangeDays] = useState<RangeDays>(14);
   const [kinds, setKinds] = useState<Set<CalendarEventKind>>(
     () => new Set<CalendarEventKind>(["economic", "earnings", "catalyst"])
@@ -151,7 +151,7 @@ export function CalendarView() {
                 ))}
               </div>
             </div>
-            <AgendaList events={comingUp} />
+            <AgendaList events={comingUp} activeTickers={activeTickers} />
           </section>
         </>
       ) : null}

@@ -164,6 +164,13 @@ function TodayDashboard() {
     };
   }, [tab, buckets]);
 
+  // Tickers with an active board entry — the Calendar tab's agenda tags
+  // catalyst rows for tickers outside this set as "archived thesis".
+  const activeTickers = useMemo(
+    () => (board ? new Set(board.map((e) => e.ticker)) : undefined),
+    [board],
+  );
+
   const summary = useMemo(() => deriveSummary(board ?? [], rollup ?? []), [board, rollup]);
   const attentionRows = useMemo(
     () => deriveAttention(board ?? [], rollup ?? [], materialEvents ?? []),
@@ -218,7 +225,7 @@ function TodayDashboard() {
               {bucketsError}
             </div>
           )}
-          {buckets && <CatalystsView buckets={buckets} />}
+          {buckets && <CatalystsView buckets={buckets} activeTickers={activeTickers} />}
         </>
       )}
     </div>
