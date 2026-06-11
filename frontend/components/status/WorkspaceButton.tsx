@@ -34,12 +34,12 @@ export function WorkspaceButton({ ticker, researchRunId }: { ticker: string; res
             alert(`Workspace kick-off failed: ${err instanceof Error ? err.message : err}`);
           }
         }}
-        className="rounded bg-[var(--surface-alt)] px-2 py-0.5 text-[11px] text-[var(--text-muted)] ring-1 ring-[var(--border)] hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="rounded bg-[var(--surface-alt)] px-2 py-0.5 text-[11px] text-[var(--text-muted)] ring-1 ring-[var(--border)] enabled:hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         ↻ Workspace
       </button>
       {!canKickOff && reasons.length > 0 && (
-        <span className="text-[10px] text-[var(--text-faint)]" onClick={(e) => e.stopPropagation()}>
+        <span className="max-w-[160px] text-[10px] text-[var(--text-faint)]" onClick={(e) => e.stopPropagation()}>
           {reasons[0]}{" "}
           {cta && (
             <Link href={cta.href(ticker)} className="text-[var(--primary-dk)] hover:underline">
