@@ -245,7 +245,12 @@ class WorkspaceService:
                         id=run_id,
                         ticker=ticker,
                         parent_research_run_id=str(ctx_data["research_run"].id),
-                        ticker_model_version_before=ctx_data["ticker_model"].version,
+                        # 0 = "no saved model at kick-off"; workspace_steps uses the
+                        # same sentinel so version_before/after compare correctly.
+                        ticker_model_version_before=(
+                            ctx_data["ticker_model"].version
+                            if ctx_data["ticker_model"] is not None else 0
+                        ),
                         status="running",
                         step_outputs={},
                         citations=[],
