@@ -3,6 +3,10 @@
 Shared by three consumers: the /api/peers router, the /compare page (via that
 router), and workspace step 5 (differentiation). One builder, one set of
 numbers everywhere.
+
+Scaling convention: the backend emits fraction-form ratios (0.69 = 69%); the
+frontend (PeerCompTable.tsx) multiplies by 100 exactly once. Pinned by
+backend/tests/test_metric_scaling.py — do not re-litigate.
 """
 from __future__ import annotations
 
@@ -11,6 +15,7 @@ from statistics import median
 from typing import Any
 
 from backend.app.models.peer_comp import PeerCompTable, PeerCompRow, PeerError
+from backend.app.services.metric_guards import guard_margin
 
 METRIC_FIELDS = (
     "pe",
@@ -147,10 +152,21 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
         peg=_first((ratios, "priceToEarningsGrowthRatioTTM"), (km, "pegRatioTTM")),
         revenue_yoy=_first((fg_row, "revenueGrowth")),
         eps_yoy=_first((fg_row, "epsGrowth"), (fg_row, "epsgrowth")),
-        gross_margin=_first((ratios, "grossProfitMarginTTM")),
-        operating_margin=_first((ratios, "operatingProfitMarginTTM")),
-        ebitda_margin=_first((ratios, "ebitdaMarginTTM")),
-        fcf_margin=fcf_margin,
+        # guard_margin: gross > 1.0 is impossible → nulled; others warn-only
+        # outside [-5.0, 1.5] (see services/metric_guards.py).
+        gross_margin=guard_margin(
+            _first((ratios, "grossProfitMarginTTM")),
+            metric="grossProfitMarginTTM", ticker=ticker,
+        ),
+        operating_margin=guard_margin(
+            _first((ratios, "operatingProfitMarginTTM")),
+            metric="operatingProfitMarginTTM", ticker=ticker,
+        ),
+        ebitda_margin=guard_margin(
+            _first((ratios, "ebitdaMarginTTM")),
+            metric="ebitdaMarginTTM", ticker=ticker,
+        ),
+        fcf_margin=guard_margin(fcf_margin, metric="fcf_margin", ticker=ticker),
         roe=_first((km, "returnOnEquityTTM"), (km, "roeTTM")),
         roic=_first((km, "returnOnInvestedCapitalTTM"), (km, "roicTTM")),
         # returnOnAssetsTTM is on km (verified 2026-06-09); tangible-assets

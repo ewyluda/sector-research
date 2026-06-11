@@ -6,6 +6,13 @@ export function formatStat(value: number | null, unit: StatItem["unit"]): string
   switch (unit) {
     case "pct":
       return `${(value * 100).toFixed(1)}%`;
+    case "pct_growth":
+      // Tiny-base growth rates beyond ±1000% (e.g. ORCL FCF growth -59.1 →
+      // "-5911.7%") are arithmetic noise, not signal — render "not meaningful".
+      // Margins are guarded backend-side (metric_guards.py); this rule is
+      // growth/CAGR-only.
+      if (Math.abs(value) > 10) return "n/m";
+      return `${(value * 100).toFixed(1)}%`;
     case "x":
       return `${value.toFixed(1)}x`;
     case "int":

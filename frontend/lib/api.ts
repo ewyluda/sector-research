@@ -2363,7 +2363,8 @@ export async function getCompanyHeader(ticker: string): Promise<CompanyHeader> {
 export interface StatItem {
   label: string;
   value: number | null;
-  unit: "pct" | "x" | "money" | "num" | "int";
+  // "pct_growth" = growth/CAGR rates: tiny-base artifacts render as "n/m".
+  unit: "pct" | "pct_growth" | "x" | "money" | "num" | "int";
 }
 
 export interface OverviewStatGroup {
