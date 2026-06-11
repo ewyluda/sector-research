@@ -1917,6 +1917,7 @@ export interface OutcomeSummary {
   by_verdict: Record<string, StatGroup | null>;
   by_theme: ThemeStat[];
   by_signal_bucket: Record<string, SignalBucket[]>;
+  populated_offsets: SnapshotOffset[];
 }
 
 export interface BackfillSummary {

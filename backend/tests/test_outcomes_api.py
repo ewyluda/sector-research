@@ -209,19 +209,25 @@ class TestListOutcomes(unittest.TestCase):
 
 
 class TestSummary(unittest.TestCase):
+    def _empty_summary(self, **overrides) -> dict:
+        base = {
+            "window": "90d", "snapshot_offset": "3m", "benchmark": "spy", "source_type": "all",
+            "overall": {"n": 0, "mean_return_pct": None, "mean_excess_pct": None,
+                        "win_rate": None, "median_excess_pct": None},
+            "by_verdict": {},
+            "by_theme": [],
+            "by_signal_bucket": {},
+            "populated_offsets": [],
+        }
+        base.update(overrides)
+        return base
+
     def test_summary_empty_window_returns_zero_filled(self):
         from backend.app.main import app
 
         with patch(
             "backend.app.api.outcomes._compute_summary",
-            new=AsyncMock(return_value={
-                "window": "90d", "snapshot_offset": "3m", "benchmark": "spy", "source_type": "all",
-                "overall": {"n": 0, "mean_return_pct": None, "mean_excess_pct": None,
-                            "win_rate": None, "median_excess_pct": None},
-                "by_verdict": {},
-                "by_theme": [],
-                "by_signal_bucket": {},
-            }),
+            new=AsyncMock(return_value=self._empty_summary()),
         ):
             client = TestClient(app)
             r = client.get("/api/outcomes/summary")
@@ -244,6 +250,7 @@ class TestSummary(unittest.TestCase):
                 "overall": {"n": 0, "mean_return_pct": None, "mean_excess_pct": None,
                             "win_rate": None, "median_excess_pct": None},
                 "by_verdict": {}, "by_theme": [], "by_signal_bucket": {},
+                "populated_offsets": [],
             }
 
         with patch("backend.app.api.outcomes._compute_summary", new=_stub):
@@ -253,6 +260,104 @@ class TestSummary(unittest.TestCase):
             self.assertEqual(captured["window"], "30d")
             self.assertEqual(captured["benchmark"], "sector")
             self.assertEqual(captured["source_type"], "workspace_run")
+
+    def test_populated_offsets_present_in_response(self):
+        """populated_offsets is serialized in the summary response."""
+        from backend.app.main import app
+
+        with patch(
+            "backend.app.api.outcomes._compute_summary",
+            new=AsyncMock(return_value=self._empty_summary(populated_offsets=["1d", "1w"])),
+        ):
+            client = TestClient(app)
+            r = client.get("/api/outcomes/summary")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json()["populated_offsets"], ["1d", "1w"])
+
+    def test_populated_offsets_empty_when_no_snapshots(self):
+        """populated_offsets is [] when there are no snapshot rows at all."""
+        from backend.app.main import app
+
+        with patch(
+            "backend.app.api.outcomes._compute_summary",
+            new=AsyncMock(return_value=self._empty_summary(populated_offsets=[])),
+        ):
+            client = TestClient(app)
+            r = client.get("/api/outcomes/summary")
+            self.assertEqual(r.status_code, 200)
+            self.assertEqual(r.json()["populated_offsets"], [])
+
+
+class TestComputeSummaryPopulatedOffsets(unittest.TestCase):
+    """Unit tests for the _compute_summary populated_offsets logic.
+
+    Uses an in-memory SQLite DB to avoid needing a live PostgreSQL instance.
+    The summary function uses two queries: one for populated offsets and one
+    for the main rollup. We test the populated_offsets derivation by providing
+    mock DB state that returns known offset rows.
+    """
+
+    def test_populated_offsets_subset_returned(self):
+        """Seed snapshots at 1d+1w only → exactly ['1d', '1w']."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        # Simulate the distinct() query returning {"1d", "1w"}
+        mock_db = MagicMock()
+        pop_result = MagicMock()
+        pop_result.scalars.return_value.all.return_value = ["1d", "1w"]
+
+        main_result = MagicMock()
+        main_result.all.return_value = []
+
+        theme_result = MagicMock()
+        theme_result.all.return_value = []
+
+        mock_db.execute = AsyncMock(side_effect=[pop_result, main_result, theme_result])
+
+        import asyncio
+        from backend.app.api.outcomes import _compute_summary
+
+        result = asyncio.run(_compute_summary(
+            theme_id=None,
+            window="all",
+            snapshot_offset="1d",
+            benchmark="spy",
+            source_type="all",
+            db=mock_db,
+        ))
+
+        # Order preserved: 1d before 1w (following _ALL_OFFSETS order)
+        self.assertEqual(result["populated_offsets"], ["1d", "1w"])
+
+    def test_populated_offsets_empty_when_no_snapshots(self):
+        """Empty snapshot table → populated_offsets = []."""
+        from unittest.mock import AsyncMock, MagicMock
+
+        mock_db = MagicMock()
+        pop_result = MagicMock()
+        pop_result.scalars.return_value.all.return_value = []
+
+        main_result = MagicMock()
+        main_result.all.return_value = []
+
+        theme_result = MagicMock()
+        theme_result.all.return_value = []
+
+        mock_db.execute = AsyncMock(side_effect=[pop_result, main_result, theme_result])
+
+        import asyncio
+        from backend.app.api.outcomes import _compute_summary
+
+        result = asyncio.run(_compute_summary(
+            theme_id=None,
+            window="all",
+            snapshot_offset="1d",
+            benchmark="spy",
+            source_type="all",
+            db=mock_db,
+        ))
+
+        self.assertEqual(result["populated_offsets"], [])
 
 
 class TestQuartileBuckets(unittest.TestCase):

@@ -126,6 +126,7 @@ class OutcomeSummary(BaseModel):
     by_verdict: VerdictStats
     by_theme: list[ThemeStat]
     by_signal_bucket: dict[str, list[SignalBucket]]  # key = signal name (e.g. 'velocity', 'fundamental', 'discovery')
+    populated_offsets: list[str] = Field(default_factory=list)
 
 
 class RefreshSummary(BaseModel):
