@@ -38,8 +38,10 @@ export default function CurationPanel() {
     try {
       const rows = await relationships.listDismissed();
       setDismissed(rows);
-    } catch {
-      // non-blocking; leave dismissed as null
+    } catch (e) {
+      setError(
+        `Dismissed list failed: ${e instanceof Error ? e.message : "load failed"}`,
+      );
     } finally {
       setDismissedLoading(false);
     }
@@ -78,7 +80,9 @@ export default function CurationPanel() {
         cur?.filter((r) => r.alias_normalized !== row.alias_normalized) ?? null
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : "alias failed");
+      setError(
+        `Resolve failed: ${e instanceof Error ? e.message : "alias failed"}`,
+      );
     } finally {
       setBusy(null);
     }
@@ -95,20 +99,28 @@ export default function CurationPanel() {
       // Invalidate dismissed list so it reloads on next expand.
       setDismissed(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "dismiss failed");
+      setError(
+        `Dismiss failed: ${e instanceof Error ? e.message : "dismiss failed"}`,
+      );
     } finally {
       setBusy(null);
     }
   }
 
   async function onUndismiss(row: DismissedAlias) {
+    setBusy(row.alias_normalized);
+    setError(null);
     try {
       await relationships.undismiss(row.alias_normalized);
       // Reload both lists.
       setDismissed(null);
       setItems(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "undo failed");
+      setError(
+        `Undo failed: ${e instanceof Error ? e.message : "undo failed"}`,
+      );
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -174,8 +186,8 @@ export default function CurationPanel() {
               className="rounded-lg border border-[var(--border)] p-3 space-y-2"
             >
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-medium text-[var(--text)] text-sm">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium text-[var(--text)] text-sm truncate">
                     {row.counterparty_name}
                   </div>
                   <div className="text-[11px] text-[var(--text-faint)]">
@@ -264,6 +276,18 @@ export default function CurationPanel() {
                 {dismissedLoading && (
                   <div className="text-xs text-[var(--text-faint)]">Loading…</div>
                 )}
+                {!dismissedLoading && dismissed === null && (
+                  <div className="flex items-center gap-2 text-xs text-[var(--text-faint)]">
+                    <span>Couldn&apos;t load —</span>
+                    <button
+                      type="button"
+                      onClick={loadDismissed}
+                      className="underline hover:text-[var(--text)] transition"
+                    >
+                      retry
+                    </button>
+                  </div>
+                )}
                 {!dismissedLoading && dismissed && dismissed.length === 0 && (
                   <div className="text-xs text-[var(--text-faint)]">
                     No dismissed counterparties.
@@ -287,9 +311,10 @@ export default function CurationPanel() {
                     <button
                       type="button"
                       onClick={() => onUndismiss(row)}
+                      disabled={busy === row.alias_normalized}
                       className="shrink-0 text-[11px] px-2 py-1 rounded border border-[var(--border)] text-[var(--text-muted)] hover:bg-[var(--surface)] disabled:opacity-50 transition"
                     >
-                      Undo
+                      {busy === row.alias_normalized ? "…" : "Undo"}
                     </button>
                   </div>
                 ))}
