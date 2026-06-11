@@ -81,10 +81,11 @@ function QuestionsPageInner() {
     router.replace(params.toString() ? `${pathname}?${params}` : pathname, { scroll: false });
   };
 
-  const categories = useMemo(
-    () => Array.from(new Set(list.map((q) => q.category))).sort(),
-    [list],
-  );
+  const categories = useMemo(() => {
+    const fromList = list.map((q) => q.category);
+    const all = categoryParam ? [categoryParam, ...fromList] : fromList;
+    return Array.from(new Set(all)).sort();
+  }, [list, categoryParam]);
 
   const visible = useMemo(
     () =>
@@ -126,6 +127,8 @@ function QuestionsPageInner() {
       });
       setSelected(new Set());
       setRefreshKey((k) => k + 1);
+    } catch (e) {
+      alert(`Bulk ${action} failed: ${e instanceof Error ? e.message : e}`);
     } finally {
       setBulkBusy(false);
     }

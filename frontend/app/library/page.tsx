@@ -33,8 +33,8 @@ const STATUS_DOT: Record<string, string> = {
   paused:      "bg-amber-400",
   completed:   "bg-emerald-400",
   watchlist:   "bg-amber-400",
-  pass:        "bg-slate-400",
-  abandoned:   "bg-slate-500",
+  pass:        "bg-[var(--text-muted)]",
+  abandoned:   "bg-[var(--text-faint)]",
   error:       "bg-red-400",
 };
 

@@ -13,6 +13,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x/x")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
 from fastapi import HTTPException
+from pydantic import ValidationError
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession as SAAsyncSession
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -247,6 +248,10 @@ class BulkActionTests(unittest.TestCase):
                 self.assertIsNotNone(target.resolved_at)
 
         asyncio.run(_run())
+
+    def test_bulk_filter_rejects_bogus_status(self):
+        with self.assertRaises(ValidationError):
+            questions.BulkFilter(status="bogus_status")
 
     def test_bulk_validation_errors(self):
         _, Session = _build_async_test_session()

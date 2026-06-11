@@ -101,7 +101,7 @@ class BulkFilter(BaseModel):
     theme_id: Optional[str] = None
     priority: Optional[int] = None
     category: Optional[str] = None
-    status: str = "open"
+    status: Literal["open", "dismissed", "resolved_auto", "resolved_inline", "resolved_manual"] = "open"
 
 
 class BulkBody(BaseModel):
