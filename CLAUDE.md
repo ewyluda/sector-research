@@ -206,7 +206,7 @@ Every data-client method returns `tuple[data, Citation]`, not just data. `models
 
 ### Streaming
 
-`services/pipeline.py::PipelineService` holds an in-memory `dict[run_id, asyncio.Queue]` for SSE subscribers. Events are pushed with `_emit()` and consumed via `event_stream()` which `GET /api/runs/{id}/stream` wraps in a `StreamingResponse`. Event types live as a discriminated union in `frontend/lib/api.ts::SSEEvent` — keep the Python `_emit` calls and the TS union in sync.
+`services/pipeline.py::PipelineService` holds an in-memory `dict[run_id, list[asyncio.Queue]]` for SSE subscribers (fan-out: each browser tab gets its own queue). Events are pushed with `_emit()` and consumed via `event_stream()` which `GET /api/runs/{id}/stream` wraps in a `StreamingResponse`. Event types live as a discriminated union in `frontend/lib/api.ts::SSEEvent` — keep the Python `_emit` calls and the TS union in sync.
 
 ### Background task scheduling
 
@@ -277,7 +277,7 @@ Database tables (all in `models/filing.py`):
 
 Separate from the LangGraph pipeline. The **workspace loop** is a 5-step thesis-refresh orchestrator that pulls a completed research run forward in time: `update_refresh → research → validation → challenge → differentiation` (execution order pinned by `STEP_NAMES` in `services/workspace_steps.py`). Lives at `/workspace` (fleet list) and `/workspace/[runId]` (per-run report).
 
-- `WorkspaceService` (in `services/workspace.py`) wired into `main.py::lifespan` as `app.state.workspace`. Mirrors `PipelineService` — in-memory `dict[run_id, asyncio.Queue]` SSE plumbing, `WorkspaceRunInFlight` guard against duplicate starts per ticker.
+- `WorkspaceService` (in `services/workspace.py`) wired into `main.py::lifespan` as `app.state.workspace`. Mirrors `PipelineService` — fan-out `dict[run_id, list[asyncio.Queue]]` SSE plumbing plus a per-run replay buffer (`dict[run_id, list[dict]]`) so events emitted before the frontend connects are delivered to the first subscriber, `WorkspaceRunInFlight` guard against duplicate starts per ticker.
 - Step implementations in `services/workspace_steps.py`. Output schemas in `models/workspace_schemas.py` (`UpdateRefreshOutput`, `ResearchOutput`, `ChallengeOutput`, `DifferentiationOutput`, `ValidationOutput` — each with a `WorkspaceVerdict` enum: `healthy | imminent | triggered | broken`). Run rows in `workspace_runs` (`models/workspace_run.py`) with a JSONB `step_outputs` column.
 - API surface (`api/workspace.py`, prefix `/api/workspace`): kick off a run, poll status, stream SSE, list recent runs. Frontend `WorkspaceReport.tsx` dual-hydrates — REST on mount, then SSE for live updates as steps complete. `StepCards/` renders each step's output; `VerdictBadge` summarizes the final verdict on the index page.
 - `update_refresh` is the only step that touches `ModelState`: it re-pulls FMP financials, promotes any newly-published forecast period from `ai_baseline` → `historical`, and warns when previously-edited override cells are evicted by a period rollover (`removed_cells` payload, surfaced in `UpdateRefreshCard`).

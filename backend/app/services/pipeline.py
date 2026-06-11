@@ -89,8 +89,10 @@ class PipelineService:
         self._fred = fred
         self._edgar = edgar
         self._graph = make_graph(fmp)
-        # Active SSE queues keyed by run_id
-        self._streams: dict[str, asyncio.Queue] = {}
+        # Active SSE subscriber queues keyed by run_id.  Multiple subscribers
+        # (e.g. two browser tabs) are each given their own queue; fan-out
+        # delivers every event to all of them independently.
+        self._streams: dict[str, list[asyncio.Queue]] = {}
 
     # ── Run creation ──────────────────────────────────────────────────────────
 
@@ -505,21 +507,39 @@ class PipelineService:
     # ── SSE streaming ─────────────────────────────────────────────────────────
 
     def _emit(self, run_id: str, event: dict) -> None:
-        """Push an event to all connected SSE clients for this run."""
-        if run_id in self._streams:
+        """Fan-out an event to every connected SSE client for this run.
+
+        Events emitted before any subscriber has called subscribe() are
+        dropped — this is intentional for pipeline runs (the frontend opens
+        the SSE connection synchronously before the background task can emit).
+        A slow/full subscriber queue does not block delivery to other queues.
+        """
+        queues = self._streams.get(run_id)
+        if not queues:
+            return
+        for q in queues:
             try:
-                self._streams[run_id].put_nowait(event)
+                q.put_nowait(event)
             except asyncio.QueueFull:
-                logger.warning("SSE queue full for run %s", run_id)
+                logger.warning("SSE queue full for run %s (subscriber %s); dropping event", run_id, id(q))
 
     def subscribe(self, run_id: str) -> asyncio.Queue:
-        """Register an SSE client for a run. Returns the event queue."""
+        """Register a new SSE subscriber for a run. Returns that subscriber's queue."""
         q: asyncio.Queue = asyncio.Queue(maxsize=500)
-        self._streams[run_id] = q
+        self._streams.setdefault(run_id, []).append(q)
         return q
 
-    def unsubscribe(self, run_id: str) -> None:
-        self._streams.pop(run_id, None)
+    def unsubscribe(self, run_id: str, queue: asyncio.Queue) -> None:
+        """Remove a single subscriber queue. Cleans up the dict entry when empty."""
+        queues = self._streams.get(run_id)
+        if queues is None:
+            return
+        try:
+            queues.remove(queue)
+        except ValueError:
+            pass
+        if not queues:
+            self._streams.pop(run_id, None)
 
     async def event_stream(self, run_id: str) -> AsyncGenerator[str, None]:
         """Async generator for FastAPI SSE response."""
@@ -534,7 +554,7 @@ class PipelineService:
                 except asyncio.TimeoutError:
                     yield "data: {\"type\": \"heartbeat\"}\n\n"
         finally:
-            self.unsubscribe(run_id)
+            self.unsubscribe(run_id, queue)
 
     # ── Querying ──────────────────────────────────────────────────────────────
 

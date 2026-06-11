@@ -92,14 +92,10 @@ class TestWorkspaceServiceSkeleton(unittest.IsolatedAsyncioTestCase):
         with patch("backend.app.services.workspace.run_steps_in_sequence",
                    new=AsyncMock(return_value=stub_outputs)):
             run_id = "test-run-1"
-            queue = service._get_or_create_queue(run_id)
 
             async def consume():
-                while True:
-                    evt = await queue.get()
+                async for evt in service.event_stream(run_id):
                     events.append(evt)
-                    if evt.get("type") in ("workspace_run_complete", "workspace_run_failed"):
-                        return
 
             consumer = asyncio.create_task(consume())
 
