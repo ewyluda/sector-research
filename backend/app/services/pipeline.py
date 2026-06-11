@@ -37,7 +37,7 @@ from backend.app.clients.edgar import EdgarClient
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
 from backend.app.graph import nodes
-from backend.app.graph.pipeline import make_graph
+from backend.app.graph.pipeline import make_graph, next_phase as _next_phase_fn
 from backend.app.graph.state import ResearchState
 from backend.app.db import async_session, unit_of_work
 from backend.app.services import outcome_tracker
@@ -176,18 +176,15 @@ class PipelineService:
         return run
 
     def _next_phase(self, state: ResearchState) -> str:
-        """Determine next phase based on current phase and state."""
-        phase_sequence = {
-            "quick_screen": "deep_dive",
-            "deep_dive": "targeted_followup",
-            "targeted_followup": "thesis_construction",
-            "thesis_construction": "risk_stress_test",
-            "risk_stress_test": (
-                "deep_dive" if (state.loop_context and state.loop_count <= 2)
-                else "completed"
-            ),
-        }
-        return phase_sequence.get(state.phase, "completed")
+        """Determine next phase based on current phase and state.
+
+        Delegates to the single source of routing truth in graph/pipeline.py.
+        """
+        return _next_phase_fn(
+            state.phase,
+            loop_context=state.loop_context,
+            loop_count=state.loop_count,
+        )
 
     async def _run_phase(
         self, run_id: str, state: ResearchState
