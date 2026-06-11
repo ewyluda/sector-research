@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, EdgarFacts } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { StackedBarChart } from "../charts/StackedBarChart";
@@ -14,7 +15,7 @@ interface FinancialHealthProps {
   edgarFacts?: EdgarFacts;
 }
 
-export function FinancialHealth({ financials, structured, score, fallback, isLive, edgarFacts }: FinancialHealthProps) {
+function FinancialHealthImpl({ financials, structured, score, fallback, isLive, edgarFacts }: FinancialHealthProps) {
   return (
     <DataRichSection id="financial_health" label="Financial Health" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -72,3 +73,5 @@ export function FinancialHealth({ financials, structured, score, fallback, isLiv
     </DataRichSection>
   );
 }
+
+export const FinancialHealth = memo(FinancialHealthImpl);

@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { CuratedFinancials, QuarterlyMetric } from "@/lib/api";
 import { TrendLineChart } from "../charts/TrendLineChart";
 import { ChartSkeleton } from "../skeleton/ChartSkeleton";
@@ -83,7 +84,7 @@ function buildPairs(f: CuratedFinancials): CorrelationPair[] {
   return pairs;
 }
 
-export function CrossCategoryCorrelation({ financials, isLive }: CrossCategoryCorrelationProps) {
+function CrossCategoryCorrelationImpl({ financials, isLive }: CrossCategoryCorrelationProps) {
   if (!financials) {
     if (isLive) return <section id="cross_category"><ChartSkeleton /></section>;
     return null;
@@ -114,3 +115,5 @@ export function CrossCategoryCorrelation({ financials, isLive }: CrossCategoryCo
     </section>
   );
 }
+
+export const CrossCategoryCorrelation = memo(CrossCategoryCorrelationImpl);

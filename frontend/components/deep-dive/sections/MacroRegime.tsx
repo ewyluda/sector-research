@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, MacroDataPoint, QuarterlyMetric } from "@/lib/api";
 import { MixedSection } from "./MixedSection";
 import { BetaGauge } from "../charts/BetaGauge";
@@ -38,7 +39,7 @@ function MetricCard({ label, value, color }: { label: string; value: string; col
   );
 }
 
-export function MacroRegime({ financials, structured, score, fallback, isLive }: MacroRegimeProps) {
+function MacroRegimeImpl({ financials, structured, score, fallback, isLive }: MacroRegimeProps) {
   const macro = financials?.macro_indicators;
   const spreadLatest = macro?.yield_curve_spread?.length ? macro.yield_curve_spread[macro.yield_curve_spread.length - 1].value : null;
   const spreadColor = spreadLatest != null ? (spreadLatest < 0 ? "text-red-400" : "text-emerald-400") : undefined;
@@ -162,3 +163,5 @@ export function MacroRegime({ financials, structured, score, fallback, isLive }:
     </MixedSection>
   );
 }
+
+export const MacroRegime = memo(MacroRegimeImpl);

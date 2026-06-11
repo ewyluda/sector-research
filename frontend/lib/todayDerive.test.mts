@@ -19,6 +19,7 @@ function entry(over: Partial<StatusBoardEntry>): StatusBoardEntry {
     next_catalyst: null,
     kill_criteria_summary: { total: 0, triggered: 0 },
     material_events: null,
+    archived_at: null,
     ...over,
   };
 }

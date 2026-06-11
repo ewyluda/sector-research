@@ -77,6 +77,7 @@ class StatusBoardEntry:
         default_factory=lambda: KillCriteriaSummary(0, 0)
     )
     material_events: MaterialEventsSummary | None = None
+    archived_at: datetime | None = None
 
 
 @dataclass
@@ -388,6 +389,7 @@ async def build_status_board(
                     total=kc_total, triggered=kc_triggered
                 ),
                 material_events=events_by_ticker.get(row["ticker"]),
+                archived_at=row["archived_at"],
             )
         )
 

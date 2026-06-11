@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { relationships } from "@/lib/api";
@@ -79,7 +80,7 @@ function SectionShell({
   );
 }
 
-export function SupplyChainEcosystem({ ticker }: Props) {
+function SupplyChainEcosystemImpl({ ticker }: Props) {
   const [graph, setGraph] = useState<SupplyChainGraph | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -202,6 +203,8 @@ export function SupplyChainEcosystem({ ticker }: Props) {
     </SectionShell>
   );
 }
+
+export const SupplyChainEcosystem = memo(SupplyChainEcosystemImpl);
 
 function EdgeRow({ entry }: { entry: SupplyChainEntry }) {
   const tracked = entry.counterparty_tracked;

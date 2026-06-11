@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import {
   transcriptDeltaApi,
   type TranscriptAxisDelta,
@@ -18,7 +18,7 @@ function magnitudeLabel(m: TranscriptAxisDelta["magnitude"]): string {
   return { minor: "minor", material: "material", regime_change: "regime change" }[m];
 }
 
-export function WhatChangedPanel({ ticker }: { ticker: string }) {
+function WhatChangedPanelImpl({ ticker }: { ticker: string }) {
   const [delta, setDelta] = useState<TranscriptDeltaRead | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -167,3 +167,5 @@ export function WhatChangedPanel({ ticker }: { ticker: string }) {
     </section>
   );
 }
+
+export const WhatChangedPanel = memo(WhatChangedPanelImpl);

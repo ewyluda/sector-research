@@ -22,6 +22,12 @@ import { EarningsDrawer } from "@/components/status/EarningsDrawer";
 import { MaterialEventsDrawer } from "@/components/status/MaterialEventsDrawer";
 import { WorkspaceButton } from "@/components/status/WorkspaceButton";
 
+const VIS_REFRESH_FLOOR_MS = 30_000;
+
+function shouldRefetchOnVisibility(lastFetchAtRef: React.MutableRefObject<number>): boolean {
+  return Date.now() - lastFetchAtRef.current >= VIS_REFRESH_FLOOR_MS;
+}
+
 const HEALTH_PILL: Record<Health, string> = {
   healthy:   "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
   imminent:  "bg-blue-500/10 text-blue-400 border-blue-500/30",
@@ -243,6 +249,13 @@ export default function StatusPage() {
   const [eventsByTicker, setEventsByTicker] = useState<Record<string, MaterialEvent[]>>({});
   const [eventsExpanded, setEventsExpanded] = useState<Record<string, boolean>>({});
 
+  // Visibility-debounce refs: stamp Date.now() after each fetch so the
+  // onVis handler skips re-fetches within VIS_REFRESH_FLOOR_MS.
+  const lastBoardFetchAtRef = useRef<number>(0);
+  const lastRtFetchAtRef = useRef<number>(0);
+  const lastEarningsFetchAtRef = useRef<number>(0);
+  const lastEventsFetchAtRef = useRef<number>(0);
+
   useEffect(() => {
     themesApi.list().then(setThemes).catch(() => {});
   }, []);
@@ -254,24 +267,9 @@ export default function StatusPage() {
         include_archived: includeArchived,
       });
       setEntries(res.entries);
-      // Track which entries are currently archived (we sent
-      // include_archived=true but the API doesn't tag them — infer from
-      // the entry list when toggle is on by checking the next refetch.)
-      // Simpler: when include_archived is on, we don't visually distinguish
-      // unless we know archived_at. The API exposes it implicitly by the
-      // fact they're absent when include_archived=false. Compute the set
-      // by diff'ing against an include_archived=false fetch.
-      if (includeArchived) {
-        const visible = await statusApi.board({
-          theme_id: themeId || undefined,
-          include_archived: false,
-        });
-        const visibleIds = new Set(visible.entries.map((e) => e.run_id));
-        setArchived(new Set(res.entries.filter((e) => !visibleIds.has(e.run_id)).map((e) => e.run_id)));
-      } else {
-        setArchived(new Set());
-      }
+      setArchived(new Set(res.entries.filter((e) => e.archived_at !== null).map((e) => e.run_id)));
       setError(null);
+      lastBoardFetchAtRef.current = Date.now();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load board");
     } finally {
@@ -283,7 +281,9 @@ export default function StatusPage() {
     setLoading(true);
     fetchBoard();
     const onVis = () => {
-      if (document.visibilityState === "visible") fetchBoard();
+      if (document.visibilityState !== "visible") return;
+      if (!shouldRefetchOnVisibility(lastBoardFetchAtRef)) return;
+      fetchBoard();
     };
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") fetchBoard();
@@ -302,6 +302,7 @@ export default function StatusPage() {
       try {
         const data = await readThroughs.list();
         if (!cancelled) setRtByRun(data);
+        lastRtFetchAtRef.current = Date.now();
       } catch {
         // best-effort — leave previous data on the screen
       }
@@ -311,7 +312,9 @@ export default function StatusPage() {
       if (document.visibilityState === "visible") load();
     }, 60_000);
     const onVis = () => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState !== "visible") return;
+      if (!shouldRefetchOnVisibility(lastRtFetchAtRef)) return;
+      load();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -333,6 +336,7 @@ export default function StatusPage() {
           next[e.run_id] = e;
         }
         setEarningsByRun(next);
+        lastEarningsFetchAtRef.current = Date.now();
       } catch {
         // soft fail; do not unmount the rest of the page
       }
@@ -342,7 +346,9 @@ export default function StatusPage() {
       if (document.visibilityState === "visible") refresh();
     }, 60_000);
     const onVis = () => {
-      if (document.visibilityState === "visible") refresh();
+      if (document.visibilityState !== "visible") return;
+      if (!shouldRefetchOnVisibility(lastEarningsFetchAtRef)) return;
+      refresh();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -363,6 +369,7 @@ export default function StatusPage() {
           (grouped[ev.ticker] ??= []).push(ev);
         }
         setEventsByTicker(grouped);
+        lastEventsFetchAtRef.current = Date.now();
       } catch {
         // best-effort — leave previous data on the screen
       }
@@ -372,7 +379,9 @@ export default function StatusPage() {
       if (document.visibilityState === "visible") load();
     }, 60_000);
     const onVis = () => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState !== "visible") return;
+      if (!shouldRefetchOnVisibility(lastEventsFetchAtRef)) return;
+      load();
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {

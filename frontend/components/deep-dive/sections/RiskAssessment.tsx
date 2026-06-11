@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { DeepDiveCategoryStructured, CategoryOutput } from "@/lib/api";
 import { MixedSection } from "./MixedSection";
 import { RAGStrip } from "../charts/RAGStrip";
@@ -9,7 +10,7 @@ interface RiskAssessmentProps {
   isLive?: boolean;
 }
 
-export function RiskAssessment({ structured, score, fallback, isLive }: RiskAssessmentProps) {
+function RiskAssessmentImpl({ structured, score, fallback, isLive }: RiskAssessmentProps) {
   return (
     <MixedSection id="risk_assessment" label="Risk Assessment" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {structured ? (
@@ -21,3 +22,5 @@ export function RiskAssessment({ structured, score, fallback, isLive }: RiskAsse
     </MixedSection>
   );
 }
+
+export const RiskAssessment = memo(RiskAssessmentImpl);

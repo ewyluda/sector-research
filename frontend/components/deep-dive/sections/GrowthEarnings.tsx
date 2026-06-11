@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { CuratedFinancials, DeepDiveCategoryStructured, CategoryOutput, TranscriptAnalysis, EdgarFacts } from "@/lib/api";
 import { DataRichSection } from "./DataRichSection";
 import { GroupedBarChart } from "../charts/GroupedBarChart";
@@ -19,7 +20,7 @@ interface GrowthEarningsProps {
 
 const GE_PASSES = ["pass1_claims", "pass4_validation", "pass6_bom"];
 
-export function GrowthEarnings({ financials, structured, score, fallback, isLive, transcriptAnalysis, edgarFacts }: GrowthEarningsProps) {
+function GrowthEarningsImpl({ financials, structured, score, fallback, isLive, transcriptAnalysis, edgarFacts }: GrowthEarningsProps) {
   return (
     <DataRichSection id="growth_earnings" label="Growth & Earnings" score={score} structured={structured} fallback={fallback} isLive={isLive}>
       {financials ? (
@@ -82,3 +83,5 @@ export function GrowthEarnings({ financials, structured, score, fallback, isLive
     </DataRichSection>
   );
 }
+
+export const GrowthEarnings = memo(GrowthEarningsImpl);

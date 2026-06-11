@@ -1186,6 +1186,7 @@ export interface StatusBoardEntry {
   next_catalyst: NextCatalyst | null;
   kill_criteria_summary: KillCriteriaSummary;
   material_events: MaterialEventsSummary | null;
+  archived_at: string | null;
 }
 
 export interface StatusBoardResponse {

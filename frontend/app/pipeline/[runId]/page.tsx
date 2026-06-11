@@ -31,6 +31,8 @@ import { CatalystCalendar } from "@/components/CatalystCalendar";
 import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
 import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
 import { PHASE_ETA_SECONDS, PHASE_LABELS, PHASE_ORDER } from "@/lib/pipeline-progress";
+import { buildCategoryWrappers } from "@/lib/categoryWrappers";
+import type { CategoryState, WrapperCache } from "@/lib/categoryWrappers";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -44,15 +46,6 @@ function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
-}
-
-type CatStatus = "pending" | "running" | "pass" | "fail";
-
-interface CategoryState {
-  status: CatStatus;
-  score: number | null;
-  key_findings: string[];
-  structured: DeepDiveCategoryStructured | null;
 }
 
 // ── Thesis fallback (when Pydantic validation fails) ──────────────────────────
@@ -215,6 +208,10 @@ export default function PipelineRunnerPage() {
   const [generatingPosition, setGeneratingPosition] = useState(false);
 
   const esRef = useRef<EventSource | null>(null);
+  // Persistent cache for buildCategoryWrappers — keeps wrapper objects
+  // referentially stable across renders when their CategoryState hasn't changed,
+  // so React.memo on the section components can actually short-circuit.
+  const wrapperCacheRef = useRef<WrapperCache>(new Map());
 
   const loadCatalystData = useCallback(async (id: string) => {
     try {
@@ -568,21 +565,14 @@ export default function PipelineRunnerPage() {
     }
   }
 
-  // Build dashboard categories in the format DeepDiveDashboard expects
-  const dashboardCategories: Record<string, CategoryOutput | null> = {};
-  for (const [k, v] of Object.entries(categories)) {
-    if (v.status === "fail") {
-      dashboardCategories[k] = null;
-    } else {
-      dashboardCategories[k] = {
-        score: v.score ?? 0,
-        content: "",
-        key_findings: v.key_findings,
-        citations: [],
-        structured: v.structured ?? undefined,
-      };
-    }
-  }
+  // Build dashboard categories in the format DeepDiveDashboard expects.
+  // buildCategoryWrappers returns the same wrapper object reference when the
+  // underlying CategoryState reference is unchanged, so React.memo on the
+  // section components can short-circuit on SSE events that don't affect them.
+  const dashboardCategories = useMemo(
+    () => buildCategoryWrappers(categories, wrapperCacheRef.current),
+    [categories],
+  );
 
   // ── Loading state ───────────────────────────────────────────────────────────
 

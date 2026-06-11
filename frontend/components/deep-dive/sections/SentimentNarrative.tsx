@@ -1,3 +1,4 @@
+import { memo } from "react";
 import type { DeepDiveCategoryStructured, CategoryOutput, XSignalVelocity } from "@/lib/api";
 import { QualitativeCard } from "./QualitativeCard";
 import { VelocitySparkline } from "../VelocitySparkline";
@@ -12,7 +13,7 @@ interface SentimentNarrativeProps {
   ticker?: string;
 }
 
-export function SentimentNarrative({ structured, score, fallback, isLive, xSignalVelocity, themeId, ticker }: SentimentNarrativeProps) {
+function SentimentNarrativeImpl({ structured, score, fallback, isLive, xSignalVelocity, themeId, ticker }: SentimentNarrativeProps) {
   return (
     <QualitativeCard
       id="sentiment_narrative"
@@ -29,3 +30,5 @@ export function SentimentNarrative({ structured, score, fallback, isLive, xSigna
     />
   );
 }
+
+export const SentimentNarrative = memo(SentimentNarrativeImpl);

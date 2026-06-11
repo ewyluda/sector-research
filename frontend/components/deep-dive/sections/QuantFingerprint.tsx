@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type {
   CuratedFinancials,
   QuantFingerprint as QuantFingerprintData,
@@ -117,7 +118,7 @@ function slopeProps(fp: QuantFingerprintData, key: "gross" | "operating" | "net"
   return { slope: entry?.slope_pp_per_quarter ?? null, quarters: entry?.quarters ?? 0 };
 }
 
-export function QuantFingerprint({ financials }: QuantFingerprintProps) {
+function QuantFingerprintImpl({ financials }: QuantFingerprintProps) {
   const fp: QuantFingerprintData | null | undefined = financials?.quant_fingerprint;
   if (!fp) return null; // old runs have no fingerprint — render nothing
 
@@ -208,3 +209,5 @@ export function QuantFingerprint({ financials }: QuantFingerprintProps) {
     </section>
   );
 }
+
+export const QuantFingerprint = memo(QuantFingerprintImpl);
