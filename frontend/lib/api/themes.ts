@@ -99,6 +99,17 @@ export const themes = {
       `/api/themes/${id}/tickers/${encodeURIComponent(ticker)}`,
       { method: "DELETE" },
     ),
+  /**
+   * Manually trigger an X-signal refresh for one theme. Synchronous on the
+   * backend — blocks until every ticker finishes (2s sleep between X API
+   * calls), so this can take a while. Per-ticker X failures degrade to the
+   * `errors` count (HTTP 200), so callers must inspect the summary.
+   */
+  refreshSignals: (id: string) =>
+    apiFetch<{ theme: string; processed: number; errors: number; surprises_fired: number }>(
+      `/api/themes/${id}/signals/refresh`,
+      { method: "POST" },
+    ),
 };
 
 // ── Tickers ───────────────────────────────────────────────────────────────────

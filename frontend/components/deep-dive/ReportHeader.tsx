@@ -120,7 +120,11 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
         <div className="flex items-center gap-3 min-w-0">
           <div className="min-w-0">
             <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">{ticker}</h1>
+              <h1 className="text-2xl font-bold font-mono text-[var(--color-text-primary)]">
+                <a href={`/company/${ticker}`} className="hover:underline" title="Open company workspace">
+                  {ticker}
+                </a>
+              </h1>
               {quickScreen && <VerdictBadge recommendation={quickScreen.recommendation} />}
               <span data-print-hide="true" className="flex items-center gap-2">
                 <ModelStatusBadge ticker={ticker} />
@@ -135,6 +139,12 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
                     {loading ? "Launching..." : inFlightRunId ? "View running →" : "Refresh workspace →"}
                   </button>
                 )}
+                <a
+                  href={`/company/${ticker}`}
+                  className="text-xs text-slate-300 hover:text-slate-100 hover:underline"
+                >
+                  Company →
+                </a>
               </span>
             </div>
             {financials && (

@@ -53,7 +53,7 @@ export function EventCard({ event }: { event: CalendarEvent }) {
         {event.kind === "earnings" ? event.ticker : event.title}
       </div>
       <div className="text-[10px] text-[var(--text-muted)] leading-tight">
-        {event.kind === "catalyst" ? event.title : eventSubtitle(event)}
+        {eventSubtitle(event)}
       </div>
       {event.kind === "catalyst" && (
         <div className="text-[9px] text-[var(--text-muted)] opacity-70">{event.ticker}</div>

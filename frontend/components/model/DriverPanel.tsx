@@ -4,6 +4,10 @@ import type { ModelState } from "@/lib/api";
 import { driverPath, toWire } from "@/lib/cellPath";
 import { CellRenderer } from "./CellRenderer";
 
+// Drivers surfaced for future use but currently no-op'd by model_balancing.py —
+// rendered as muted "n/a" so they read differently from genuinely missing values.
+const NOOP_KEYS = new Set(["interest_income_yield", "revolver_rate"]);
+
 const GROUPS: Array<{ label: string; keys: string[] }> = [
   { label: "Revenue",       keys: ["revenue_growth_pct", "revenue_absolute"] },
   { label: "Margins",       keys: ["gross_margin_pct", "sga_pct_revenue", "rd_pct_revenue", "other_opex_pct_revenue", "da_pct_revenue"] },
@@ -46,6 +50,17 @@ export function DriverPanel({
                       <td className="text-left text-xs text-[var(--text)] pr-2 py-0.5">{k}</td>
                       {periods.map((p) => {
                         const path = toWire(driverPath(p.label, k));
+                        if (NOOP_KEYS.has(k)) {
+                          return (
+                            <td
+                              key={path}
+                              className="px-2 py-1 text-right text-sm text-[var(--text-faint)]"
+                              title="Surfaced for future use — not consumed by the model engine yet"
+                            >
+                              n/a
+                            </td>
+                          );
+                        }
                         return <CellRenderer key={path} cell={state.drivers[p.label]?.[k]} cellPath={path}
                                              focused={focused === path} onFocus={onFocus} onCommitEdit={onEdit} />;
                       })}

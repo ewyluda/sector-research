@@ -204,7 +204,14 @@ function Row({
       className={`grid grid-cols-[80px_110px_60px_minmax(0,1fr)_120px_70px_auto_40px] gap-3 items-center px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-bg)] hover:bg-[var(--surface-alt)] cursor-pointer transition-colors ${archived ? "opacity-50" : ""}`}
     >
       <div className="font-mono font-bold text-sm text-[var(--text)] tracking-wide">
-        {entry.ticker}
+        <Link
+          href={`/company/${entry.ticker}`}
+          onClick={(e) => e.stopPropagation()}
+          className="hover:text-[var(--primary)] hover:underline"
+          title="Open company workspace"
+        >
+          {entry.ticker}
+        </Link>
       </div>
       <div><HealthPill health={entry.health} /></div>
       <div className="font-mono text-sm text-[var(--text)] tabular-nums">
