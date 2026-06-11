@@ -65,7 +65,8 @@ Convention:
 
 ### P2 — FMP API key is logged in every request URL
 
-- [ ] `backend/app/clients/fmp.py::_request` passes `apikey` as part of the `params` dict, and httpx logs the full URL at INFO level:
+- [x] **FIXED 2026-06-10 (PR #41):** `ApiKeyRedactionFilter` in `backend/app/logging_filters.py`, installed in `main.py` on the `httpx` logger AND on the root handlers (the second install also redacts the FMP client's retry-warning path, where the key rides inside `HTTPStatusError` messages). Pinned by `backend/tests/test_logging_filters.py` incl. an integration test asserting the filters are installed. Original hunch below for context.
+- `backend/app/clients/fmp.py::_request` passes `apikey` as part of the `params` dict, and httpx logs the full URL at INFO level:
   ```
   INFO:httpx:HTTP Request: GET https://financialmodelingprep.com/stable/profile?symbol=NVDA&apikey=REDACTED "HTTP/1.1 200 OK"
   ```
@@ -92,7 +93,8 @@ Convention:
 
 ### P3 — No test framework configured
 
-- [ ] No pytest setup in backend, no jest/vitest in frontend, no smoke tests anywhere. Every bug in this session was caught by manually hitting a URL.
+- [x] **RESOLVED 2026-06-10 (PR #41, via stdlib unittest rather than pytest):** `backend/tests/` now holds 641 unittest tests (incl. the converted math-core and parser smoke/verify scripts), frontend has 4 `lib/*.test.mts` logic suites under `node --test`, and `.github/workflows/ci.yml` runs ruff + the full backend suite + frontend tsc/eslint/node-test on every push. Original hunch below for context.
+- No pytest setup in backend, no jest/vitest in frontend, no smoke tests anywhere. Every bug in this session was caught by manually hitting a URL.
 - **Next action:** install pytest + `pytest-asyncio`. Start with API-level smoke tests: `POST /api/themes`, `GET /api/themes/{id}/discover`, `POST /api/runs` + poll for `awaiting_approval`. Frontend can wait.
 
 ### P3 — Python 3.12+ floor is not enforced

@@ -113,7 +113,13 @@ cd backend && alembic upgrade head
 cd backend && alembic revision --autogenerate -m "description"
 ```
 
-Backend tests live in `backend/tests/` and run via Python's stdlib `unittest`. Invoke as `python -m unittest backend.tests.<module>` from project root with the venv active. No pytest, no coverage harness.
+Backend tests live in `backend/tests/` and run via Python's stdlib `unittest`. Invoke as `python -m unittest backend.tests.<module>` from project root with the venv active. No pytest, no coverage harness. `backend/tests/` has no `__init__.py` (PEP 420 namespace package) — `unittest discover` fails; run the full suite via explicit enumeration:
+
+```bash
+python -m unittest $(ls backend/tests/test_*.py | sed 's|/|.|g; s|\.py$||' | tr '\n' ' ')
+```
+
+Backend lint is ruff (config in root `ruff.toml`, pinned in `backend/requirements-dev.txt`): `ruff check backend` from project root. Shared `ModelState` test fixtures live in `backend/tests/model_fixtures.py` (no `test_` prefix so the enumeration glob skips it).
 
 **Frontend:**
 
@@ -123,7 +129,11 @@ npm install
 npm run dev        # Next dev server on :3000
 npm run build
 npm run lint       # eslint (flat config in eslint.config.mjs)
+npm run typecheck  # tsc --noEmit (tsconfig has allowImportingTsExtensions for the .mts tests)
+npm test           # node --test lib/*.test.mts (4 logic suites)
 ```
+
+**CI:** `.github/workflows/ci.yml` runs on every push — backend job (ruff + full unittest suite, dummy env vars for the required keys) and frontend job (tsc / eslint / node --test). Keep it green; it's the only regression gate.
 
 Frontend talks to the backend via `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). CORS on the backend allows `http://localhost:3000` by default.
 
