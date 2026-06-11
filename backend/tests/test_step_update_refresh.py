@@ -247,6 +247,44 @@ class TestStepUpdateRefresh(unittest.IsolatedAsyncioTestCase):
         # FMP must NOT be called when there is no model to refresh
         ctx.fmp.get_income_statement.assert_not_called()
 
+    async def test_update_refresh_skip_with_no_new_filing(self):
+        """prior_ticker_model=None + EDGAR returns no CIK → model_skipped=True, new_filings=[]."""
+        ctx = WorkspaceContext(
+            run_id="r4", ticker="NVDA", db=_mock_db(),
+            fmp=_mock_fmp_no_change(),
+            edgar=_mock_edgar_no_new(),
+            anthropic=MagicMock(),
+            prior_research_run=MagicMock(),
+            prior_ticker_model=None,
+            emit=MagicMock(),
+        )
+        out = await step_update_refresh(ctx)
+
+        self.assertIsInstance(out, UpdateRefreshOutput)
+        self.assertTrue(out.model_skipped)
+        self.assertEqual(out.new_filings, [])
+        self.assertTrue(out.summary.startswith("no new EDGAR filing detected"))
+
+    async def test_edgar_exception_yields_clean_skip(self):
+        """get_ticker_to_cik raising must not propagate — best-effort degrades to new_filings=[]."""
+        edgar_err = AsyncMock()
+        edgar_err.get_ticker_to_cik = AsyncMock(side_effect=Exception("SEC timeout"))
+
+        ctx = WorkspaceContext(
+            run_id="r5", ticker="NVDA", db=_mock_db(),
+            fmp=_mock_fmp_no_change(),
+            edgar=edgar_err,
+            anthropic=MagicMock(),
+            prior_research_run=MagicMock(),
+            prior_ticker_model=None,
+            emit=MagicMock(),
+        )
+        out = await step_update_refresh(ctx)
+
+        self.assertIsInstance(out, UpdateRefreshOutput)
+        self.assertTrue(out.model_skipped)
+        self.assertEqual(out.new_filings, [])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -164,9 +164,9 @@ async def _fetch_new_filings(ctx: WorkspaceContext) -> list[FilingRef]:
     # EdgarClient has no get_latest_filing() helper; call get_ticker_to_cik +
     # get_submissions and replicate the _latest_per_form logic from edgar_sections_ingest.
     new_filings: list[FilingRef] = []
-    cik, _ = await ctx.edgar.get_ticker_to_cik(ctx.ticker)
-    if cik:
-        try:
+    try:
+        cik, _ = await ctx.edgar.get_ticker_to_cik(ctx.ticker)
+        if cik:
             submissions, _ = await ctx.edgar.get_submissions(cik)
             recent = submissions.get("filings", {}).get("recent", {}) or {}
             forms = recent.get("form", [])
@@ -182,8 +182,8 @@ async def _fetch_new_filings(ctx: WorkspaceContext) -> list[FilingRef]:
                         fetched_at=filed_date,
                     ))
                     break  # only the most recent 10-Q or 10-K
-        except Exception:  # noqa: BLE001 — EDGAR is best-effort
-            pass
+    except Exception:  # noqa: BLE001 — EDGAR is best-effort
+        pass
     return new_filings
 
 
