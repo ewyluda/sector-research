@@ -7,8 +7,7 @@ surprise_alert, and asserts the count is 1 even when multiple tickers are presen
 import os
 import uuid
 import unittest
-from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, call
+from unittest.mock import MagicMock
 
 os.environ.setdefault("FMP_API_KEY", "test")
 os.environ.setdefault("X_BEARER_TOKEN", "test")
@@ -19,7 +18,6 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x/x")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
 from backend.app.services.discovery import DiscoveryEngine
-from backend.app.models.surprise_alert import SurpriseAlert
 
 
 def _make_theme(tickers=("AAPL", "MSFT", "GOOG")):
