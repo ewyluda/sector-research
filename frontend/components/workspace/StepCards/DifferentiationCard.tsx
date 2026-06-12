@@ -3,6 +3,11 @@
 import type { DifferentiationOutput } from "@/lib/api";
 import { PeerCompTable } from "@/components/peers/PeerCompTable";
 
+const READ_THROUGH_LABEL: Record<string, string> = {
+  earnings: "Earnings",
+  run_complete: "Run completed",
+};
+
 export function DifferentiationCard({ output }: { output: DifferentiationOutput }) {
   const { peer_comp, read_throughs, per_peer_errors } = output;
 
@@ -29,10 +34,16 @@ export function DifferentiationCard({ output }: { output: DifferentiationOutput 
           <ul className="space-y-1">
             {read_throughs.map((rt, i) => (
               <li key={i} className="text-sm text-[var(--text)]">
-                <span className="text-xs px-1 rounded mr-2 bg-[var(--surface-alt)] text-[var(--text-muted)]">
-                  {rt.event_key}
+                <span
+                  title={rt.event_key}
+                  className="text-xs px-1 rounded mr-2 bg-[var(--surface-alt)] text-[var(--text-muted)]"
+                >
+                  {READ_THROUGH_LABEL[rt.event_type] ?? rt.event_type} · {rt.event_date}
                 </span>
-                <span className="text-[var(--text-muted)]">{rt.peer_ticker} · {rt.event_type}</span>
+                <span className="text-[var(--text-muted)]">
+                  {rt.peer_ticker}
+                  {typeof rt.payload.description === "string" ? ` — ${rt.payload.description}` : null}
+                </span>
               </li>
             ))}
           </ul>
