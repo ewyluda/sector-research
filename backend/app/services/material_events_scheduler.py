@@ -30,11 +30,7 @@ from backend.app.models.theme import Theme
 from backend.app.services.congress_ingest import upsert_congress_transactions
 from backend.app.services.congress_signal import (
     WINDOW_DAYS as CONGRESS_WINDOW_DAYS,
-)
-from backend.app.services.congress_signal import (
     compute_congress_aggregate,
-)
-from backend.app.services.congress_signal import (
     signal_value as congress_signal_value,
 )
 from backend.app.services.edgar_sections_ingest import _upsert_filing
