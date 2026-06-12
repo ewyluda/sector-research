@@ -254,6 +254,9 @@ async def refresh_theme_centrality(theme: Theme, db: AsyncSession) -> dict:
         logger.exception(
             "Centrality refresh failed for theme '%s'", theme.name,
         )
+        # discard partial staged writes — the session is shared with the next
+        # theme's refresh, whose first commit would otherwise flush them
+        await db.rollback()
         summary["error"] = f"exception during centrality refresh for {theme.name}"
 
     return summary

@@ -48,6 +48,7 @@ def _theme_graph(too_dense=False, nodes=None, edges=None):
 def _db():
     db = MagicMock()
     db.commit = AsyncMock()
+    db.rollback = AsyncMock()
     return db
 
 
@@ -225,8 +226,35 @@ class RefreshThemeCentralityTests(unittest.IsolatedAsyncioTestCase):
 
         mock_persist.assert_not_awaited()
         db.commit.assert_not_awaited()
+        db.rollback.assert_awaited_once()
         self.assertIsNotNone(summary["error"])
         self.assertEqual(summary["persisted"], 0)
+
+    async def test_mid_persist_exception_rolls_back(self):
+        """_persist_signal_set raises on the second ticker → rollback awaited,
+        commit NOT called, error captured, no raise."""
+        theme = _theme()
+        db = _db()
+
+        with patch(
+            "backend.app.services.signal_scheduler.build_theme_graph",
+            new=AsyncMock(return_value=_theme_graph()),
+        ), patch(
+            "backend.app.services.signal_scheduler.compute_theme_centrality",
+            return_value=_SCORES,  # 2 tickers
+        ), patch(
+            "backend.app.services.signal_scheduler._persist_signal_set",
+            new=AsyncMock(side_effect=[None, RuntimeError("boom")]),
+        ) as mock_persist:
+            from backend.app.services.signal_scheduler import refresh_theme_centrality
+            # Must NOT raise.
+            summary = await refresh_theme_centrality(theme=theme, db=db)
+
+        # Two _persist calls were attempted (first succeeded, second raised).
+        self.assertEqual(mock_persist.await_count, 2)
+        db.rollback.assert_awaited_once()
+        db.commit.assert_not_awaited()
+        self.assertIsNotNone(summary["error"])
 
 
 if __name__ == "__main__":
