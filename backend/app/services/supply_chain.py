@@ -32,7 +32,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.models.filing import Filing, Relationship
@@ -343,6 +343,150 @@ async def get_graph(
             next_frontier.extend(new_nodes)
         frontier = next_frontier
 
+    return graph
+
+
+# ── Theme-wide graph ──────────────────────────────────────────────────────────
+
+MAX_THEME_NODES = 300
+
+
+@dataclass
+class ThemeGraph:
+    theme_id: str
+    theme_name: str
+    nodes: list[GraphNode] = field(default_factory=list)
+    edges: list[GraphEdge] = field(default_factory=list)
+    # Hard rail: when the node count exceeds MAX_THEME_NODES, nodes/edges are
+    # emptied and too_dense flips true. Counts always reflect the full graph.
+    too_dense: bool = False
+    node_count: int = 0
+    edge_count: int = 0
+
+
+def _theme_node_id(rel: Relationship) -> str:
+    """Node identity for the theme-wide graph.
+
+    Unlike `_node_id_for_counterparty`, resolved counterparties are keyed by
+    TICKER first: the same company appearing as a filer (`ticker:ORCL`) and
+    as another filer's resolved counterparty must unify into one node.
+    """
+    if rel.resolved_to_ticker:
+        return f"ticker:{rel.resolved_to_ticker.upper()}"
+    if rel.resolved_to_cik:
+        return f"cik:{rel.resolved_to_cik}"
+    return f"unresolved:{normalize_name(rel.counterparty_name)}"
+
+
+async def build_theme_graph(
+    theme_id: str, *, db: AsyncSession,
+) -> ThemeGraph | None:
+    """Build the theme-wide supply-chain graph: every named `relationships`
+    row where the filer OR the resolved counterparty is in the theme's
+    seed_tickers.
+
+    Returns None when the theme doesn't exist (caller 404s). Unnamed rows
+    (`unnamed=true`) are excluded in SQL — per-type synthetic buckets are
+    noise in a density view (the per-root `get_graph` still shows them).
+    Self-edges (a filer resolved to itself) are skipped.
+    """
+    theme = (
+        await db.execute(select(Theme).where(Theme.id == theme_id))
+    ).scalar_one_or_none()
+    if theme is None:
+        return None
+
+    seeds = {
+        t.upper() for t in (theme.seed_tickers or [])
+        if isinstance(t, str) and t.strip()
+    }
+    graph = ThemeGraph(theme_id=theme_id, theme_name=theme.name)
+    if not seeds:
+        return graph
+
+    tracked = await _load_tracked_set(db)
+
+    rows = await db.execute(
+        select(Relationship, Filing)
+        .join(Filing, Filing.id == Relationship.filing_id)
+        .where(Relationship.unnamed.is_(False))
+        .where(or_(
+            Relationship.ticker.in_(seeds),
+            Relationship.resolved_to_ticker.in_(seeds),
+        ))
+    )
+
+    node_index: dict[str, GraphNode] = {}
+
+    def upsert(
+        node_id: str, *, ticker: str | None, cik: str | None, name: str,
+    ) -> GraphNode:
+        existing = node_index.get(node_id)
+        if existing is not None:
+            # Prefer the most-complete copy (same policy as get_graph).
+            if not existing.cik and cik:
+                existing.cik = cik
+            if not existing.name and name:
+                existing.name = name
+            return existing
+        up = ticker.upper() if ticker else None
+        node = GraphNode(
+            id=node_id,
+            ticker=up,
+            cik=cik,
+            name=name,
+            is_root=False,
+            tracked=(up in tracked) if up else False,
+            unnamed=False,
+            # hop doubles as seed-flag for the theme view: 0 = theme seed.
+            hop=0 if (up and up in seeds) else 1,
+            in_selected_theme=bool(up and up in seeds),
+        )
+        node_index[node_id] = node
+        graph.nodes.append(node)
+        return node
+
+    for rel, filing in rows.all():
+        if (
+            rel.resolved_to_ticker
+            and rel.resolved_to_ticker.upper() == rel.ticker.upper()
+        ):
+            continue  # self-edge: a filer resolved to itself renders as a loop
+        src = upsert(
+            f"ticker:{rel.ticker.upper()}",
+            ticker=rel.ticker, cik=None, name=rel.ticker,
+        )
+        cp = upsert(
+            _theme_node_id(rel),
+            ticker=rel.resolved_to_ticker,
+            cik=rel.resolved_to_cik,
+            name=rel.counterparty_name,
+        )
+        graph.edges.append(GraphEdge(
+            from_id=src.id,
+            to_id=cp.id,
+            relationship_type=rel.relationship_type,
+            direction="out",
+            magnitude_pct=(
+                float(rel.magnitude_pct)
+                if rel.magnitude_pct is not None else None
+            ),
+            unnamed=False,
+            confirmed_bilateral=rel.confirmed_bilateral,
+            verbatim_quote=rel.verbatim_quote,
+            source_ticker=rel.ticker,
+            accession_number=filing.accession_number,
+            filing_date=filing.filing_date.isoformat(),
+            section_key=rel.section_key,
+            hop=1,
+        ))
+
+    graph.node_count = len(graph.nodes)
+    graph.edge_count = len(graph.edges)
+    if graph.node_count > MAX_THEME_NODES:
+        graph.nodes = []
+        graph.edges = []
+        graph.too_dense = True
     return graph
 
 
