@@ -281,6 +281,10 @@ export const relationships = {
       `/api/relationships/graph/${encodeURIComponent(ticker)}?${params.toString()}`
     );
   },
+  getThemeGraph: (themeId: string) =>
+    apiFetch<ThemeGraphResponse>(
+      `/api/relationships/theme-graph/${encodeURIComponent(themeId)}`
+    ),
   reconcile: () =>
     apiFetch<{ pairs_reconciled: number; rows_flipped: number }>(
       `/api/relationships/reconcile`,
@@ -395,4 +399,14 @@ export interface SupplyChainGraph {
       in_named: SupplyChainEntry[];
     }
   >;
+}
+
+export interface ThemeGraphResponse {
+  theme_id: string;
+  theme_name: string;
+  nodes: SupplyChainGraphNode[];
+  edges: SupplyChainGraphEdge[];
+  too_dense: boolean;
+  node_count: number;
+  edge_count: number;
 }

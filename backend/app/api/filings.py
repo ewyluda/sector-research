@@ -47,6 +47,7 @@ from backend.app.services.edgar_sections_ingest import (
 )
 from backend.app.services.supply_chain import (
     SupplyChainGraph,
+    build_theme_graph,
     get_graph,
     reconcile_bilaterals,
     summarize_for_card,
@@ -628,6 +629,60 @@ async def get_ticker_graph(
             ) for e in graph.edges
         ],
         summary=summary,
+    )
+
+
+class ThemeGraphResponse(BaseModel):
+    theme_id: str
+    theme_name: str
+    nodes: list[GraphNodeResponse]
+    edges: list[GraphEdgeResponse]
+    too_dense: bool
+    node_count: int
+    edge_count: int
+
+
+@router.get("/relationships/theme-graph/{theme_id}")
+async def get_theme_graph(
+    theme_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> ThemeGraphResponse:
+    """Theme-wide supply-chain graph: every named relationship row where the
+    filer or the resolved counterparty is in the theme's seed_tickers.
+
+    Unnamed rows are excluded (synthetic per-type buckets are noise in a
+    density view — the per-root graph endpoint still includes them). When the
+    node count exceeds the hard rail, `too_dense=true` is returned with empty
+    nodes/edges and the full counts.
+    """
+    graph = await build_theme_graph(theme_id, db=db)
+    if graph is None:
+        raise HTTPException(status_code=404, detail="theme not found")
+    return ThemeGraphResponse(
+        theme_id=graph.theme_id,
+        theme_name=graph.theme_name,
+        nodes=[
+            GraphNodeResponse(
+                id=n.id, ticker=n.ticker, cik=n.cik, name=n.name,
+                is_root=n.is_root, tracked=n.tracked, unnamed=n.unnamed,
+                hop=n.hop, in_selected_theme=n.in_selected_theme,
+            ) for n in graph.nodes
+        ],
+        edges=[
+            GraphEdgeResponse(
+                from_id=e.from_id, to_id=e.to_id,
+                relationship_type=e.relationship_type, direction=e.direction,
+                magnitude_pct=e.magnitude_pct, unnamed=e.unnamed,
+                confirmed_bilateral=e.confirmed_bilateral,
+                verbatim_quote=e.verbatim_quote, source_ticker=e.source_ticker,
+                accession_number=e.accession_number,
+                filing_date=e.filing_date, section_key=e.section_key,
+                hop=e.hop,
+            ) for e in graph.edges
+        ],
+        too_dense=graph.too_dense,
+        node_count=graph.node_count,
+        edge_count=graph.edge_count,
     )
 
 

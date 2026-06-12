@@ -1,19 +1,18 @@
 /**
- * Page — /filings/graph
+ * Page — /filings/graph/theme
  *
- * Multi-hop supply-chain graph view. Server component fetches the theme list
- * (for the theme picker dropdown); MultiHopGraphView is the client component
- * that owns root/theme/depth/direction state, URL sync, and the graph fetch.
+ * Theme-wide force-directed supply-chain graph. Server component fetches
+ * the theme list; ThemeGraphView owns ?theme= URL state and the graph
+ * fetch + rendering.
  */
-
 import Link from "next/link";
 import { themes as themesApi } from "@/lib/api";
 import type { Theme } from "@/lib/api";
-import MultiHopGraphView from "@/components/filings/MultiHopGraphView";
+import ThemeGraphView from "@/components/filings/ThemeGraphView";
 
 export const dynamic = "force-dynamic";
 
-export default async function FilingsGraphPage() {
+export default async function ThemeGraphPage() {
   let allThemes: Theme[] = [];
   let error: string | null = null;
 
@@ -28,19 +27,19 @@ export default async function FilingsGraphPage() {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-[var(--text)]">
-            Supply-chain graph
+            Theme graph map
           </h1>
           <p className="text-sm text-[var(--text-muted)] mt-0.5">
-            Multi-hop counterparty relationships extracted from SEC filings.
-            Pick a ticker as the root; expand into a theme to see its 2-hop
-            neighbourhood.
+            Force-directed view of every extracted relationship touching a
+            theme&apos;s tickers. Hubs and dense clusters surface structure
+            the per-ticker view hides.
           </p>
         </div>
         <Link
-          href="/filings/graph/theme"
+          href="/filings/graph"
           className="shrink-0 text-sm text-[var(--color-accent)] hover:underline"
         >
-          Theme map →
+          Root graph view →
         </Link>
       </div>
 
@@ -50,7 +49,7 @@ export default async function FilingsGraphPage() {
         </div>
       )}
 
-      <MultiHopGraphView themes={allThemes} />
+      <ThemeGraphView themes={allThemes} />
     </div>
   );
 }
