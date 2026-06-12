@@ -385,6 +385,112 @@ def _fmt_insider_tx_section(insider_tx: list | None) -> list[str]:
     return parts
 
 
+def _humanize(val: float | int | None) -> str:
+    """Humanize a large number: 1.2B, 450M, 3.1K, or plain int for small values."""
+    if val is None:
+        return "—"
+    v = float(val)
+    if abs(v) >= 1e9:
+        return f"{v/1e9:.1f}B"
+    if abs(v) >= 1e6:
+        return f"{v/1e6:.1f}M"
+    if abs(v) >= 1e3:
+        return f"{v/1e3:.1f}K"
+    return f"{v:,.0f}"
+
+
+def _section_institutional(
+    inst_summary: dict | None,
+    inst_holders: list | None,
+) -> str:
+    """13F institutional ownership section (filings-lag framed)."""
+    if not inst_summary and not inst_holders:
+        return ""
+
+    parts: list[str] = []
+
+    if inst_summary and isinstance(inst_summary, dict):
+        quarter_date = inst_summary.get("date") or "unknown quarter-end"
+        parts.append(
+            f"\nINSTITUTIONAL OWNERSHIP (13F, as of {quarter_date} quarter-end"
+            " — filings lag ≥45 days; positioning context, NOT current data):"
+        )
+
+        # Holders count + 13F shares + ownership %
+        holders = inst_summary.get("investorsHolding")
+        holders_chg = inst_summary.get("investorsHoldingChange")
+        shares13f = inst_summary.get("numberOf13Fshares")
+        shares13f_chg = inst_summary.get("numberOf13FsharesChange")
+        own_pct = inst_summary.get("ownershipPercent")
+
+        holders_str = f"{holders:,}" if holders is not None else "—"
+        holders_chg_str = f" ({holders_chg:+,} QoQ)" if holders_chg is not None else ""
+        shares_str = _humanize(shares13f)
+        shares_chg_str = (
+            f" ({_humanize(shares13f_chg)} QoQ)" if shares13f_chg is not None else ""
+        )
+        own_str = f"{own_pct:.1f}%" if own_pct is not None else "—"
+        parts.append(
+            f"  Holders: {holders_str}{holders_chg_str}"
+            f" | 13F shares: {shares_str}{shares_chg_str}"
+            f" | {own_str} of shares"
+        )
+
+        # Position churn
+        new_pos = inst_summary.get("newPositions")
+        inc_pos = inst_summary.get("increasedPositions")
+        red_pos = inst_summary.get("reducedPositions")
+        cls_pos = inst_summary.get("closedPositions")
+        if any(v is not None for v in (new_pos, inc_pos, red_pos, cls_pos)):
+            parts.append(
+                f"  Position churn QoQ:"
+                f" {new_pos if new_pos is not None else '—'} new"
+                f" / {inc_pos if inc_pos is not None else '—'} increased"
+                f" / {red_pos if red_pos is not None else '—'} reduced"
+                f" / {cls_pos if cls_pos is not None else '—'} closed"
+            )
+
+        # Put/call ratio
+        pcr = inst_summary.get("putCallRatio")
+        pcr_chg = inst_summary.get("putCallRatioChange")
+        if pcr is not None:
+            pcr_chg_str = f" ({pcr_chg:+.1f}% QoQ)" if pcr_chg is not None else ""
+            parts.append(f"  13F options positioning: put/call {pcr:.2f}{pcr_chg_str}")
+    else:
+        # holders-only path — still emit the header without a date
+        parts.append(
+            "\nINSTITUTIONAL OWNERSHIP (13F"
+            " — filings lag ≥45 days; positioning context, NOT current data):"
+        )
+
+    # Top holders
+    if isinstance(inst_holders, list) and inst_holders:
+        sorted_holders = sorted(
+            inst_holders,
+            key=lambda h: float(h.get("marketValue") or 0),
+            reverse=True,
+        )
+        parts.append("Top holders (by market value):")
+        for h in sorted_holders[:10]:
+            name = (h.get("investorName") or "Unknown")[:40]
+            shares = h.get("sharesNumber")
+            mv = h.get("marketValue")
+            chg_shares = h.get("changeInSharesNumber")
+            is_new = h.get("isNew", False)
+
+            shares_str = _humanize(shares)
+            mv_str = _humanize(mv)
+
+            line = f"  {name} — {shares_str} sh (${mv_str})"
+            if chg_shares and float(chg_shares) != 0:
+                line += f", {_humanize(chg_shares)} sh QoQ"
+            if is_new:
+                line += " [NEW]"
+            parts.append(line)
+
+    return "\n".join(parts)
+
+
 def _fmt_fundamentals(
     ticker: str,
     income: list,
@@ -403,6 +509,8 @@ def _fmt_fundamentals(
     grades_recent: list | None = None,
     grades_hist: list | None = None,
     insider_tx: list | None = None,
+    inst_summary: dict | None = None,
+    inst_holders: list | None = None,
 ) -> str:
     """Format raw FMP data into a comprehensive block for LLM prompts.
 
@@ -425,6 +533,9 @@ def _fmt_fundamentals(
     parts.extend(_fmt_grades_recent_section(grades_recent))
     parts.extend(_fmt_grades_hist_section(grades_hist))
     parts.extend(_fmt_insider_tx_section(insider_tx))
+    inst_section = _section_institutional(inst_summary, inst_holders)
+    if inst_section:
+        parts.append(inst_section)
     return "\n".join(parts)
 
 
