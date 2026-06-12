@@ -25,6 +25,14 @@ def unwrap_gather_result(result: object, default: T) -> T:
     return result[0]  # type: ignore[index, return-value]
 
 
+def unwrap_gather_citation(result: object):
+    """Citation counterpart of unwrap_gather_result: pull the Citation half
+    of a `(data, citation)` gather slot, or None for a failed slot."""
+    if isinstance(result, BaseException):
+        return None
+    return result[1]  # type: ignore[index]
+
+
 def format_fact_value(value: float, unit: str) -> str:
     """Format an XBRL fact value for inclusion in an LLM prompt.
 

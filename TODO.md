@@ -4,7 +4,7 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## In progress
 
-- _Nothing in flight._ **The 2026-06-10 improvement campaign is COMPLETE** (all 8 blocks; PRs #41-#51, #53). Loose ends parked: FMP key rotation still pending user (A1); small refactor candidates — `useWorkspaceKickoff` extraction (3 copies of the kick-off closure), ValidationCard's 2 pre-existing `any` adapters, `peersApi`/`getSignalHistory`/fmt-helper placement in `lib/api/`, DifferentiationCard raw `event_key` badge, architecture.json touch-up for B3 phases 2-4.
+- _Nothing in flight._ **The 2026-06-10 improvement campaign is COMPLETE** (all 8 blocks; PRs #41-#51, #53). Loose ends parked: FMP key rotation still pending user (A1); architecture.json touch-up for B3 phases 2-4.
 
 ## Backlog / polish
 
@@ -23,9 +23,11 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 - Options IV / put-call / short interest — new vendor or FMP higher tier.
 - Credit ratings — new vendor.
 - Institutional ownership (13F) via FMP — current plan returns 404 on ticker-side endpoints; would need daily polling of `institutional-ownership/latest` into a local ticker→holder aggregation.
-- Persist FMP citations on state — currently discarded for primary FMP fetches in `node_deep_dive` (only transcript + FRED citations land in state).
+- Dedupe citations on risk-loop re-runs — `node_deep_dive` appends its FMP/FRED/transcript citations again when `risk_stress_test` loops back; duplicate chips in the report CitationList after a loop. Dedupe on `(source_url, metric)` at `add_citation` or render time.
 
 ## Done (recent)
+
+- **Fill-in polish pack (2026-06-11)** — six parked items closed. `useWorkspaceKickoff` hook replaces the 3 copied kick-off closures (WorkspaceButton / ReportHeader / RetryRunButton; ReportHeader's loading state → hook `busy`). ValidationCard adapters typed (`SensitivityGrid` / `ReverseDcfResponse["thesis_vs_priced_in"]`) — last 2 workspace-UI `any`s gone. DifferentiationCard read-through badge human-readable (label + event_date; raw event_key → tooltip; payload description shown). lib/api placement: 13th domain module `peers.ts` (peersApi + 4 types out of workspace.ts, barrel-exported, zero call-site changes), `getSignalHistory` → themes.ts, fmt helpers → `lib/format.ts` (2 importers updated). FMP citations persisted: `unwrap_gather_citation` helper + node_deep_dive wiring — all 10 primary + 6 tier-2 FMP citations land in `state.citations` (was transcript + FRED only); loop-rerun dedupe parked in Backlog. Correlated metric guard (tier 3 in `metric_guards.py`): impossible-gross corruption also nulls ebitdaMarginTTM + EV/EBITDA (both builders) + Net Debt/EBITDA (overview); stale test pin flipped, MSFT clean-control added. Suites: backend 853, frontend node 32; all gates green.
 
 - **Post-campaign fix pack (2026-06-11)** — three daily-use dead ends closed. (1) Issue #52: `GET /api/earnings/board` now surfaces past prints with null actuals as `post_pending` (extracted `_choose_print` helper, precedence post > post_pending > pre; pinned by `backend/tests/test_earnings_board_selection.py`); status board shows an amber `pending` badge and the EarningsDrawer renders estimates with an awaiting-actuals note — the `expand_earnings` deep link works the morning after a print. (2) Seed-only 8-K dead end: `OrphanEventsSection` on /status renders material events for tickers with no board row (`deriveOrphanEvents` in `lib/orphanEvents.ts`, node-tested); `?expand_events=` auto-opens orphan rows; dismiss works via the existing handler. (3) Snoozed-question visibility: `?status=snoozed` virtual filter + idempotent `POST /api/questions/{id}/unsnooze` (409 on non-open), Snoozed view on /questions with per-row "Snoozed until" chip + Unsnooze button. Suites: backend +11 tests, frontend +4 node tests; all gates green.
 

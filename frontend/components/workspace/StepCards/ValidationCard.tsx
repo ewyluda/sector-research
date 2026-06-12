@@ -1,9 +1,8 @@
 "use client";
 import Link from "next/link";
-import type { ValidationOutput, WorkspaceSensitivityGrid } from "@/lib/api";
+import type { ValidationOutput, WorkspaceSensitivityGrid, SensitivityGrid, ReverseDcfResponse } from "@/lib/api";
 // Shape transforms: WorkspaceSensitivityGrid (dim_x/x_axis) → model SensitivityGrid (x_dim/x_values)
 // required by SensitivityHeatmap. ThesisVsPricedTable expects dimension/thesis/priced_in/delta.
-// We cast to `any` to bridge shapes without modifying the shared model components.
 //
 // Note: if the heatmap renders as solid red, it means all DCF-implied per-share values
 // are below the current market price — the model sees the stock as overvalued at every
@@ -11,8 +10,7 @@ import type { ValidationOutput, WorkspaceSensitivityGrid } from "@/lib/api";
 import { SensitivityHeatmap } from "@/components/model/SensitivityHeatmap";
 import { ThesisVsPricedTable } from "@/components/model/ThesisVsPricedTable";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toModelGrid(g: WorkspaceSensitivityGrid): any {
+function toModelGrid(g: WorkspaceSensitivityGrid): SensitivityGrid {
   return {
     x_dim: g.dim_x,
     y_dim: g.dim_y,
@@ -22,8 +20,9 @@ function toModelGrid(g: WorkspaceSensitivityGrid): any {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function toModelThesisRows(rows: ValidationOutput["thesis_vs_priced_in"]): any[] {
+function toModelThesisRows(
+  rows: ValidationOutput["thesis_vs_priced_in"],
+): ReverseDcfResponse["thesis_vs_priced_in"] {
   return rows.map((r) => ({
     dimension: r.metric,
     thesis: r.thesis_value,

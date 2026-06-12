@@ -12,6 +12,7 @@ export * from "./pipeline";
 export * from "./catalysts";
 export * from "./status";
 export * from "./workspace";
+export * from "./peers";
 export * from "./performance";
 export * from "./transcripts";
 export * from "./model";

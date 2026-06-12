@@ -1,7 +1,7 @@
 "use client";
 
 import type { PeerCompTable as PeerCompTableData, PeerCompRow } from "@/lib/api";
-import { fmtMarketCap } from "@/lib/api";
+import { fmtMarketCap } from "@/lib/format";
 import { isNotMeaningfulGrowth } from "@/components/company/formatStat";
 
 type MetricKey = Exclude<keyof PeerCompRow, "ticker">;

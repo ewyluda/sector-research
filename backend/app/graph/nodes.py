@@ -34,7 +34,10 @@ from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
 from backend.app.db import async_session, unit_of_work
 from backend.app.graph.deep_dive_context import DeepDiveContext, build_all_contexts
-from backend.app.graph.deep_dive_helpers import unwrap_gather_result as _unwrap
+from backend.app.graph.deep_dive_helpers import (
+    unwrap_gather_citation,
+    unwrap_gather_result as _unwrap,
+)
 from backend.app.graph.formatters import (  # noqa: F401  re-exported for backwards compat
     _build_curated_financials,
     _build_technical_data,
@@ -294,7 +297,7 @@ async def node_deep_dive(
         one_year_ago = (today - timedelta(days=365)).isoformat()
         today_str = today.isoformat()
 
-        (income, _), (balance, _), (cashflow, _), (profile, _), (dcf, _), (estimates, _), (hist_prices, _), (transcripts, transcript_cit), (key_metrics, _), (ratios_ttm, _), (fin_growth, _) = (
+        (income, income_cit), (balance, balance_cit), (cashflow, cashflow_cit), (profile, profile_cit), (dcf, dcf_cit), (estimates, estimates_cit), (hist_prices, hist_cit), (transcripts, transcript_cit), (key_metrics, km_cit), (ratios_ttm, ratios_cit), (fin_growth, growth_cit) = (
             await asyncio.gather(
                 fmp.get_income_statement(state.ticker, period="quarter", limit=8),
                 fmp.get_balance_sheet(state.ticker, period="quarter", limit=8),
@@ -309,6 +312,15 @@ async def node_deep_dive(
                 fmp.get_financial_growth(state.ticker, period="quarter", limit=8),
             )
         )
+
+        # Persist the FMP citations alongside the data (previously discarded).
+        # transcript_cit is handled separately below, gated on transcript
+        # analysis succeeding. Note: a risk-loop re-run of this node appends
+        # again — same convention as the FRED/transcript citations.
+        for _cit in (income_cit, balance_cit, cashflow_cit, profile_cit, dcf_cit,
+                     estimates_cit, hist_cit, km_cit, ratios_cit, growth_cit):
+            if _cit is not None:
+                state.add_citation(StateCitation.from_citation(_cit))
 
         # Tier 2 secondary fetch: analyst ratings + price targets + insider Form 4s.
         # Each call degrades independently via return_exceptions — a single 404
@@ -329,6 +341,11 @@ async def node_deep_dive(
         grades_recent = _unwrap(secondary[3], []) or []
         grades_hist = _unwrap(secondary[4], []) or []
         insider_tx = _unwrap(secondary[5], []) or []
+
+        for _slot in secondary:
+            _t2_cit = unwrap_gather_citation(_slot)
+            if _t2_cit is not None:
+                state.add_citation(StateCitation.from_citation(_t2_cit))
 
         data_text = _fmt_fundamentals(
             state.ticker,

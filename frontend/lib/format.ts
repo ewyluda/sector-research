@@ -37,3 +37,21 @@ export function formatPercent(v: number, fractionDigits = 1): string {
   if (v == null || !Number.isFinite(v)) return "—";
   return `${v.toFixed(fractionDigits)}%`;
 }
+
+export function fmtMarketCap(n: number | null): string {
+  if (!n) return "—";
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
+  if (n >= 1e9)  return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6)  return `$${(n / 1e6).toFixed(1)}M`;
+  return `$${n.toFixed(0)}`;
+}
+
+/** Fraction input (0.69 → "69.0%") — unlike formatPercent, which takes 0–100. */
+export function fmtPct(n: number | null): string {
+  if (n === null || n === undefined) return "—";
+  return `${(n * 100).toFixed(1)}%`;
+}
+
+export function fmtScore(n: number): string {
+  return n.toFixed(0);
+}
