@@ -80,9 +80,16 @@ def _db(theme, all_seeds, rel_rows):
 
 class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
     async def test_unknown_theme_returns_none(self):
+        # Valid UUID that matches no theme — exercises the lookup-miss path
+        # (the malformed-id short-circuit has its own test below).
         db = AsyncMock()
         db.execute.side_effect = [_result(scalar_value=None)]
-        self.assertIsNone(await build_theme_graph("nope", db=db))
+        self.assertIsNone(
+            await build_theme_graph(
+                "ffffffff-ffff-ffff-ffff-ffffffffffff", db=db,
+            )
+        )
+        db.execute.assert_called_once()
 
     async def test_empty_seeds_returns_empty_graph(self):
         theme = _make_theme([])
