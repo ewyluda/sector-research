@@ -25,6 +25,10 @@ from backend.app.models.filing import Filing, Relationship
 from backend.app.models.theme import Theme
 from backend.app.services.supply_chain import MAX_THEME_NODES, build_theme_graph
 
+# Fixed UUID used as the test theme's id — must be a valid UUID string because
+# themes.id is a Postgres UUID column and build_theme_graph guards on this.
+_THEME_UUID = "a1b2c3d4-0000-0000-0000-000000000001"
+
 
 def _result(rows=None, scalar_value=...):
     r = MagicMock()
@@ -57,7 +61,7 @@ def _make_filing(ticker, accession="0000000000-00-000000"):
 
 def _make_theme(seeds):
     t = MagicMock(spec=Theme)
-    t.id = "theme-1"
+    t.id = _THEME_UUID
     t.name = "AI infra"
     t.seed_tickers = seeds
     return t
@@ -84,7 +88,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
         theme = _make_theme([])
         db = AsyncMock()
         db.execute.side_effect = [_result(scalar_value=theme)]
-        g = await build_theme_graph("theme-1", db=db)
+        g = await build_theme_graph(_THEME_UUID, db=db)
         self.assertEqual(g.nodes, [])
         self.assertEqual(g.edges, [])
         self.assertFalse(g.too_dense)
@@ -96,7 +100,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
                         resolved_to_cik="0001046179")
         theme = _make_theme(["NVDA"])
         g = await build_theme_graph(
-            "theme-1", db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
+            _THEME_UUID, db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
         ids = {n.id for n in g.nodes}
         self.assertEqual(ids, {"ticker:NVDA", "ticker:TSM"})
         nvda = next(n for n in g.nodes if n.id == "ticker:NVDA")
@@ -122,7 +126,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
                           relationship_type="customer")
         theme = _make_theme(["MSFT", "ORCL"])
         g = await build_theme_graph(
-            "theme-1",
+            _THEME_UUID,
             db=_db(theme, [["MSFT", "ORCL"]],
                    [(rel_a, _make_filing("MSFT")), (rel_b, _make_filing("ORCL"))]))
         orcl_nodes = [n for n in g.nodes if n.ticker == "ORCL"]
@@ -136,7 +140,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
                         relationship_type="customer")
         theme = _make_theme(["NVDA"])
         g = await build_theme_graph(
-            "theme-1", db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
+            _THEME_UUID, db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
         unresolved = [n for n in g.nodes if n.id.startswith("unresolved:")]
         self.assertEqual(len(unresolved), 1)
         self.assertIsNone(unresolved[0].ticker)
@@ -147,7 +151,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
                         relationship_type="supplier", resolved_to_cik="0009999999")
         theme = _make_theme(["NVDA"])
         g = await build_theme_graph(
-            "theme-1", db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
+            _THEME_UUID, db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
         self.assertIn("cik:0009999999", {n.id for n in g.nodes})
 
     async def test_self_edges_skipped(self):
@@ -155,7 +159,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
                         relationship_type="other", resolved_to_ticker="NVDA")
         theme = _make_theme(["NVDA"])
         g = await build_theme_graph(
-            "theme-1", db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
+            _THEME_UUID, db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
         self.assertEqual(g.edges, [])
 
     async def test_magnitude_and_bilateral_pass_through(self):
@@ -164,7 +168,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
                         magnitude_pct=22.5, confirmed_bilateral=True)
         theme = _make_theme(["NVDA"])
         g = await build_theme_graph(
-            "theme-1", db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
+            _THEME_UUID, db=_db(theme, [["NVDA"]], [(rel, _make_filing("NVDA"))]))
         self.assertEqual(g.edges[0].magnitude_pct, 22.5)
         self.assertTrue(g.edges[0].confirmed_bilateral)
 
@@ -174,11 +178,18 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
                         relationship_type="supplier", resolved_to_ticker="TSM")
         theme = _make_theme(["NVDA"])
         g = await build_theme_graph(
-            "theme-1",
+            _THEME_UUID,
             db=_db(theme, [["NVDA"], ["TSM"]], [(rel, _make_filing("NVDA"))]))
         tsm = next(n for n in g.nodes if n.id == "ticker:TSM")
         self.assertTrue(tsm.tracked)
         self.assertFalse(tsm.in_selected_theme)
+
+    async def test_malformed_uuid_returns_none_without_query(self):
+        # themes.id is a Postgres UUID column — a malformed id must short-
+        # circuit to None (endpoint 404) instead of an asyncpg DataError 500.
+        db = AsyncMock()
+        self.assertIsNone(await build_theme_graph("bogus-id", db=db))
+        db.execute.assert_not_called()
 
     async def test_too_dense_rail(self):
         # MAX_THEME_NODES+ distinct unresolved counterparties trip the rail.
@@ -188,7 +199,7 @@ class ThemeGraphBuilderTests(unittest.IsolatedAsyncioTestCase):
             for i in range(MAX_THEME_NODES + 1)
         ]
         theme = _make_theme(["NVDA"])
-        g = await build_theme_graph("theme-1", db=_db(theme, [["NVDA"]], rels))
+        g = await build_theme_graph(_THEME_UUID, db=_db(theme, [["NVDA"]], rels))
         self.assertTrue(g.too_dense)
         self.assertEqual(g.nodes, [])
         self.assertEqual(g.edges, [])

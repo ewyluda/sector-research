@@ -29,6 +29,7 @@ reciprocal relationship type, both rows are flipped to
 from __future__ import annotations
 
 import logging
+import uuid
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -389,7 +390,14 @@ async def build_theme_graph(
     (`unnamed=true`) are excluded in SQL — per-type synthetic buckets are
     noise in a density view (the per-root `get_graph` still shows them).
     Self-edges (a filer resolved to itself) are skipped.
+    Malformed (non-UUID) theme_ids short-circuit to None — themes.id is a
+    UUID column and would otherwise raise at the driver.
     """
+    try:
+        uuid.UUID(theme_id)
+    except ValueError:
+        return None  # malformed id can't match a UUID-keyed theme — treat as unknown
+
     theme = (
         await db.execute(select(Theme).where(Theme.id == theme_id))
     ).scalar_one_or_none()
