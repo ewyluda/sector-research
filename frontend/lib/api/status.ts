@@ -175,7 +175,7 @@ export const events = {
 
 // ── Earnings cycle navigator ────────────────────────────────────────────────
 
-export type VerdictPhase = "pre" | "post" | "none";
+export type VerdictPhase = "pre" | "post" | "post_pending" | "none";
 export type Verdict = "confirms" | "threatens" | "neutral" | "insufficient";
 
 export interface EarningsPrintRow {

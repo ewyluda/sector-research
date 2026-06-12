@@ -663,6 +663,18 @@ export default function StatusPage() {
                             </button>
                           );
                         }
+                        if (eb.phase === "post_pending") {
+                          const days = daysSince(eb.print.earnings_date);
+                          return (
+                            <button
+                              onClick={onClick}
+                              data-print-hide="true"
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400 text-[11px] font-semibold"
+                            >
+                              📊 {days}d ago · pending
+                            </button>
+                          );
+                        }
                         if (eb.phase === "pre") {
                           const days = daysUntil(eb.print.earnings_date);
                           return (
