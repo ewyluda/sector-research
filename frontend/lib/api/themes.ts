@@ -58,6 +58,16 @@ export interface CongressSnapshot {
   is_stale: boolean;
 }
 
+export interface CentralitySnapshot {
+  modifier: number;
+  betweenness: number | null;
+  eigenvector: number | null;
+  degree: number;
+  is_hub: boolean;
+  is_broker: boolean;
+  is_stale: boolean;
+}
+
 export interface CompanySignalCard {
   ticker: string;
   company_name: string;
@@ -76,6 +86,7 @@ export interface CompanySignalCard {
   x_signal: XSignalSnapshot;
   insider: InsiderSnapshot;
   congress: CongressSnapshot;
+  centrality: CentralitySnapshot;
   citations: Citation[];
 }
 

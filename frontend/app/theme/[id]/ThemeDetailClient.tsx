@@ -161,6 +161,14 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
               {card.congress.modifier > 0 ? "Congress buying" : "Congress selling"}
             </span>
           )}
+          {card.centrality && card.centrality.modifier !== 0 && (
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-900/40 text-emerald-300"
+              title={`Combined score +${card.centrality.modifier} from supply-graph centrality (degree ${card.centrality.degree}; betweenness ${card.centrality.betweenness != null ? card.centrality.betweenness.toFixed(2) : "–"}, eigenvector ${card.centrality.eigenvector != null ? card.centrality.eigenvector.toFixed(2) : "–"})`}
+            >
+              {card.centrality.is_hub ? "Hub" : "Broker"} +{card.centrality.modifier}
+            </span>
+          )}
         </div>
       </div>
 

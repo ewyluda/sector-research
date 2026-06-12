@@ -26,6 +26,9 @@ apscheduler==3.11.0
 anthropic>=0.52.0
 langgraph>=0.4.1
 
+# Graph analysis
+networkx==3.4.2
+
 # Utilities
 python-dotenv==1.1.0
 aiosqlite==0.22.1
