@@ -39,6 +39,7 @@ export default function ForceGraphCanvas({
   nodes, links, selectedId, onSelect,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const innerGRef = useRef<SVGGElement | null>(null);
   const [transform, setTransform] = useState<ZoomTransform>(zoomIdentity);
   // Manual drag overrides, keyed by node id.
   const [overrides, setOverrides] = useState<Map<string, { x: number; y: number }>>(
@@ -82,13 +83,12 @@ export default function ForceGraphCanvas({
     overrides.get(n.id) ?? { x: n.x ?? 0, y: n.y ?? 0 };
 
   const toGraphCoords = (clientX: number, clientY: number) => {
-    const rect = svgRef.current!.getBoundingClientRect();
-    const sx = ((clientX - rect.left) / rect.width) * WIDTH - WIDTH / 2;
-    const sy = ((clientY - rect.top) / rect.height) * HEIGHT - HEIGHT / 2;
-    return {
-      x: (sx - transform.x) / transform.k,
-      y: (sy - transform.y) / transform.k,
-    };
+    const g = innerGRef.current;
+    if (!g) return { x: 0, y: 0 };
+    const ctm = g.getScreenCTM();
+    if (!ctm) return { x: 0, y: 0 };
+    const { x, y } = new DOMPoint(clientX, clientY).matrixTransform(ctm.inverse());
+    return { x, y };
   };
 
   return (
@@ -111,12 +111,15 @@ export default function ForceGraphCanvas({
           onSelect(selectedId === drag.id ? null : drag.id);
         }
       }}
+      onPointerCancel={() => {
+        dragRef.current = null;
+      }}
       onClick={(e) => {
         // Background click clears selection (node clicks stopPropagation).
         if (e.target === svgRef.current) onSelect(null);
       }}
     >
-      <g transform={transform.toString()}>
+      <g ref={innerGRef} transform={transform.toString()}>
         {layout.simLinks.map((l, i) => {
           // After forceLink(...).id(...) + tick(), d3 has replaced the string
           // source/target with node object references — the cast is sound.
@@ -154,6 +157,7 @@ export default function ForceGraphCanvas({
               style={{ cursor: "pointer" }}
               onPointerDown={(e) => {
                 e.stopPropagation();
+                svgRef.current?.setPointerCapture(e.pointerId);
                 dragRef.current = { id: n.id, moved: false };
               }}
               onClick={(e) => e.stopPropagation()}
