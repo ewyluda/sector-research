@@ -8,6 +8,7 @@ os.environ.setdefault("ANTHROPIC_API_KEY", "test")
 
 from backend.app.graph.deep_dive_helpers import (
     format_fact_value,
+    unwrap_gather_citation,
     unwrap_gather_result,
 )
 
@@ -45,6 +46,18 @@ class FormatFactValueTests(unittest.TestCase):
 
     def test_other_unit_appends_suffix(self):
         self.assertEqual(format_fact_value(1234, "shares"), "1,234 shares")
+
+
+class UnwrapGatherCitationTests(unittest.TestCase):
+    def test_exception_slot_returns_none(self):
+        self.assertIsNone(unwrap_gather_citation(RuntimeError("boom")))
+
+    def test_tuple_slot_returns_citation_half(self):
+        sentinel = object()
+        self.assertIs(unwrap_gather_citation(("data", sentinel)), sentinel)
+
+    def test_none_citation_passes_through(self):
+        self.assertIsNone(unwrap_gather_citation(("data", None)))
 
 
 if __name__ == "__main__":
