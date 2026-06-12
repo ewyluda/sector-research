@@ -22,6 +22,8 @@ import { EarningsDrawer } from "@/components/status/EarningsDrawer";
 import { MaterialEventsDrawer } from "@/components/status/MaterialEventsDrawer";
 import { KillCriteriaDrawer } from "@/components/status/KillCriteriaDrawer";
 import { WorkspaceButton } from "@/components/status/WorkspaceButton";
+import { deriveOrphanEvents } from "@/lib/orphanEvents";
+import { OrphanEventsSection } from "@/components/status/OrphanEventsSection";
 
 const VIS_REFRESH_FLOOR_MS = 30_000;
 
@@ -281,6 +283,11 @@ export default function StatusPage() {
   const [eventsByTicker, setEventsByTicker] = useState<Record<string, MaterialEvent[]>>({});
   const [eventsExpanded, setEventsExpanded] = useState<Record<string, boolean>>({});
   const [kcExpanded, setKcExpanded] = useState<Record<string, boolean>>({});
+  const [orphanAutoExpand, setOrphanAutoExpand] = useState<string | null>(null);
+  const orphanGroups = useMemo(
+    () => deriveOrphanEvents(eventsByTicker, new Set(entries.map((e) => e.ticker))),
+    [eventsByTicker, entries],
+  );
 
   // Visibility-debounce refs: stamp Date.now() after each fetch so the
   // onVis handler skips re-fetches within VIS_REFRESH_FLOOR_MS.
@@ -448,9 +455,16 @@ export default function StatusPage() {
       ?.toUpperCase();
     if (!ticker || entries.length === 0) return;
     const entry = entries.find((en) => en.ticker === ticker);
-    if (entry && (eventsByTicker[ticker] ?? []).length > 0) {
+    const hasEvents = (eventsByTicker[ticker] ?? []).length > 0;
+    if (entry && hasEvents) {
       expandEventsConsumed.current = true;
       setEventsExpanded((prev) => ({ ...prev, [entry.run_id]: true }));
+    } else if (!entry && hasEvents) {
+      // Seed-only ticker: no board row — open its orphan-section drawer.
+      // (Still gated on entries.length > 0 so we don't misclassify a
+      // board ticker as orphan while the board is mid-load.)
+      expandEventsConsumed.current = true;
+      setOrphanAutoExpand(ticker);
     }
   }, [entries, eventsByTicker]);
 
@@ -756,6 +770,11 @@ export default function StatusPage() {
           })}
         </div>
       )}
+      <OrphanEventsSection
+        groups={orphanGroups}
+        autoExpandTicker={orphanAutoExpand}
+        onDismissed={handleEventDismissed}
+      />
     </main>
   );
 }
