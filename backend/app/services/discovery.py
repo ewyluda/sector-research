@@ -26,6 +26,7 @@ from backend.app.models.signal import Signal
 from backend.app.models.theme import Theme
 from backend.app.models.surprise_alert import SurpriseAlert
 from backend.app.services.congress_signal import CONGRESS_STALE_HOURS
+from backend.app.services.graph_centrality import CENTRALITY_STALE_HOURS
 from backend.app.services.insider_signal import INSIDER_STALE_HOURS
 
 logger = logging.getLogger(__name__)
@@ -83,6 +84,19 @@ class CongressSnapshot:
 
 
 @dataclass
+class CentralitySnapshot:
+    """Cached graph-centrality signal as applied to this card.
+    Same shape conventions and is_stale overloading as InsiderSnapshot (see its NOTE)."""
+    modifier: int = 0
+    betweenness: float | None = None
+    eigenvector: float | None = None
+    degree: int = 0
+    is_hub: bool = False
+    is_broker: bool = False
+    is_stale: bool = True
+
+
+@dataclass
 class CompanySignalCard:
     """The complete per-company object rendered in the Theme Detail view."""
     ticker: str
@@ -95,6 +109,7 @@ class CompanySignalCard:
     x_signal: XSignalSnapshot = field(default_factory=XSignalSnapshot)
     insider: InsiderSnapshot = field(default_factory=InsiderSnapshot)
     congress: CongressSnapshot = field(default_factory=CongressSnapshot)
+    centrality: CentralitySnapshot = field(default_factory=CentralitySnapshot)
 
     combined_score: float = 0.0
     fundamental_quality_score: float = 0.0
@@ -252,6 +267,20 @@ def apply_congress_modifier(
     """Same bounded-modifier semantics over the signal_type='congress'
     cache (third insider-adjacent signal — same rationale as above)."""
     return _apply_cached_modifier(base_score, congress_data, now, CONGRESS_STALE_HOURS)
+
+
+def apply_centrality_modifier(
+    base_score: float, centrality_data: dict, now: datetime
+) -> tuple[float, int]:
+    """Graph-derived bounded modifier from the signal_type='centrality' cache.
+
+    Hub +3 / Broker +2 — larger wins, set upstream in graph_centrality.
+    Deliberately NOT a 4th combined-score weight (same rationale as
+    insider/congress): centrality is sparse and slow-moving; a weight would
+    multiply zeros and force per-theme weight rework. Stale (>48h) or absent
+    → unchanged. Returns (adjusted_score, applied_modifier).
+    """
+    return _apply_cached_modifier(base_score, centrality_data, now, CENTRALITY_STALE_HOURS)
 
 
 # ── FMP data extraction helpers ───────────────────────────────────────────────
@@ -588,6 +617,20 @@ class DiscoveryEngine:
                 is_stale=congress_modifier == 0 and bool(congress_data),
             )
 
+            centrality_data = ticker_signals.get("centrality", {})
+            combined, centrality_modifier = apply_centrality_modifier(
+                combined, centrality_data, datetime.now(timezone.utc)
+            )
+            centrality_snap = CentralitySnapshot(
+                modifier=centrality_modifier,
+                betweenness=centrality_data.get("betweenness"),
+                eigenvector=centrality_data.get("eigenvector"),
+                degree=int(centrality_data.get("degree", 0) or 0),
+                is_hub=bool(centrality_data.get("is_hub", False)),
+                is_broker=bool(centrality_data.get("is_broker", False)),
+                is_stale=centrality_modifier == 0 and bool(centrality_data),
+            )
+
             badge = "FMP + X Signal" if (has_x_signal and not is_stale) else "FMP Only (X signal pending)"
 
             is_surprise = ticker in surprise_tickers
@@ -604,6 +647,7 @@ class DiscoveryEngine:
                 x_signal=x_snap,
                 insider=insider_snap,
                 congress=congress_snap,
+                centrality=centrality_snap,
                 combined_score=combined,
                 fundamental_quality_score=fund_score,
                 signal_source_badge=badge,
