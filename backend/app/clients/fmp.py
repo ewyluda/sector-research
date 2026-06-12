@@ -547,6 +547,26 @@ class FMPClient:
         )
         return data if isinstance(data, list) else [], citation
 
+    # ── Congressional trading (senate + house PTRs) ──────────────────────────
+
+    async def get_senate_trades(self, ticker: str) -> tuple[list[dict], Citation]:
+        """Senate periodic-transaction-report lines filtered by symbol."""
+        params = {"symbol": ticker}
+        data = await self._request("senate-trades", params, ttl=TTL_FUNDAMENTAL)
+        citation = self._make_citation(
+            "senate-trades", "Senate Trades", ticker, params
+        )
+        return data if isinstance(data, list) else [], citation
+
+    async def get_house_trades(self, ticker: str) -> tuple[list[dict], Citation]:
+        """House periodic-transaction-report lines filtered by symbol."""
+        params = {"symbol": ticker}
+        data = await self._request("house-trades", params, ttl=TTL_FUNDAMENTAL)
+        citation = self._make_citation(
+            "house-trades", "House Trades", ticker, params
+        )
+        return data if isinstance(data, list) else [], citation
+
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
     async def close(self) -> None:

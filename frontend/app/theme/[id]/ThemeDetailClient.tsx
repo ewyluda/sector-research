@@ -149,6 +149,18 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
               {card.insider.modifier > 0 ? "Insider buying" : "Insider selling"}
             </span>
           )}
+          {card.congress && card.congress.modifier !== 0 && (
+            <span
+              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                card.congress.modifier > 0
+                  ? "bg-emerald-900/40 text-emerald-300"
+                  : "bg-amber-900/40 text-amber-300"
+              }`}
+              title={`Combined score ${card.congress.modifier > 0 ? "+" : ""}${card.congress.modifier} from 90-day congressional trading (${card.congress.buy_count} buys / ${card.congress.sell_count} sells)`}
+            >
+              {card.congress.modifier > 0 ? "Congress buying" : "Congress selling"}
+            </span>
+          )}
         </div>
       </div>
 
