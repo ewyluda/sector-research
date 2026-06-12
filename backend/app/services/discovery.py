@@ -25,6 +25,7 @@ from backend.app.models.citation import Citation
 from backend.app.models.signal import Signal
 from backend.app.models.theme import Theme
 from backend.app.models.surprise_alert import SurpriseAlert
+from backend.app.services.congress_signal import CONGRESS_STALE_HOURS
 from backend.app.services.insider_signal import INSIDER_STALE_HOURS
 
 logger = logging.getLogger(__name__)
@@ -70,6 +71,18 @@ class InsiderSnapshot:
 
 
 @dataclass
+class CongressSnapshot:
+    """Cached congressional-trading signal as applied to this card.
+    Same shape and is_stale overloading as InsiderSnapshot (see its NOTE)."""
+    modifier: int = 0
+    buy_count: int = 0
+    sell_count: int = 0
+    cluster_buy: bool = False
+    net_value: float | None = None
+    is_stale: bool = True
+
+
+@dataclass
 class CompanySignalCard:
     """The complete per-company object rendered in the Theme Detail view."""
     ticker: str
@@ -81,6 +94,7 @@ class CompanySignalCard:
     fmp: FMPSnapshot = field(default_factory=FMPSnapshot)
     x_signal: XSignalSnapshot = field(default_factory=XSignalSnapshot)
     insider: InsiderSnapshot = field(default_factory=InsiderSnapshot)
+    congress: CongressSnapshot = field(default_factory=CongressSnapshot)
 
     combined_score: float = 0.0
     fundamental_quality_score: float = 0.0
@@ -198,6 +212,27 @@ def compute_combined_score(
     )
 
 
+def _apply_cached_modifier(
+    base_score: float, signal_data: dict, now: datetime, stale_hours: int
+) -> tuple[float, int]:
+    """Clamped combined-score adjustment from a cached bounded-modifier
+    signal (insider / congress). Stale or absent → unchanged.
+    Returns (adjusted_score, applied_modifier)."""
+    if not signal_data:
+        return base_score, 0
+    raw = signal_data.get("computed_at")
+    try:
+        computed = datetime.fromisoformat(raw) if raw else None
+    except (ValueError, TypeError):
+        computed = None
+    if computed is None or computed < now - timedelta(hours=stale_hours):
+        return base_score, 0
+    modifier = int(signal_data.get("modifier", 0) or 0)
+    if modifier == 0:
+        return base_score, 0
+    return round(min(100.0, max(0.0, base_score + modifier)), 1), modifier
+
+
 def apply_insider_modifier(
     base_score: float, insider_data: dict, now: datetime
 ) -> tuple[float, int]:
@@ -208,19 +243,15 @@ def apply_insider_modifier(
     weights and the cold-start collapse. Stale (>48h) or absent → unchanged.
     Returns (adjusted_score, applied_modifier).
     """
-    if not insider_data:
-        return base_score, 0
-    raw = insider_data.get("computed_at")
-    try:
-        computed = datetime.fromisoformat(raw) if raw else None
-    except (ValueError, TypeError):
-        computed = None
-    if computed is None or computed < now - timedelta(hours=INSIDER_STALE_HOURS):
-        return base_score, 0
-    modifier = int(insider_data.get("modifier", 0) or 0)
-    if modifier == 0:
-        return base_score, 0
-    return round(min(100.0, max(0.0, base_score + modifier)), 1), modifier
+    return _apply_cached_modifier(base_score, insider_data, now, INSIDER_STALE_HOURS)
+
+
+def apply_congress_modifier(
+    base_score: float, congress_data: dict, now: datetime
+) -> tuple[float, int]:
+    """Same bounded-modifier semantics over the signal_type='congress'
+    cache (third insider-adjacent signal — same rationale as above)."""
+    return _apply_cached_modifier(base_score, congress_data, now, CONGRESS_STALE_HOURS)
 
 
 # ── FMP data extraction helpers ───────────────────────────────────────────────
@@ -544,6 +575,19 @@ class DiscoveryEngine:
                 is_stale=applied_modifier == 0 and bool(insider_data),
             )
 
+            congress_data = ticker_signals.get("congress", {})
+            combined, congress_modifier = apply_congress_modifier(
+                combined, congress_data, datetime.now(timezone.utc)
+            )
+            congress_snap = CongressSnapshot(
+                modifier=congress_modifier,
+                buy_count=int(congress_data.get("buy_count", 0) or 0),
+                sell_count=int(congress_data.get("sell_count", 0) or 0),
+                cluster_buy=bool(congress_data.get("cluster_buy", False)),
+                net_value=congress_data.get("net_value"),
+                is_stale=congress_modifier == 0 and bool(congress_data),
+            )
+
             badge = "FMP + X Signal" if (has_x_signal and not is_stale) else "FMP Only (X signal pending)"
 
             is_surprise = ticker in surprise_tickers
@@ -559,6 +603,7 @@ class DiscoveryEngine:
                 fmp=fmp_snap,
                 x_signal=x_snap,
                 insider=insider_snap,
+                congress=congress_snap,
                 combined_score=combined,
                 fundamental_quality_score=fund_score,
                 signal_source_badge=badge,

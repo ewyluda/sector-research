@@ -16,14 +16,16 @@ Cross-session task tracker. Context for each item is in `docs/superpowers/specs/
 
 ## Backlog / v3
 
-- **Congressional trading as a third insider-adjacent signal.** Capitol Trades JSON (free, unofficial) → same pattern as the shipped 8-K/Form 4 scan (`material_events_scheduler`). ~½ day. (8-K + Form 4 themselves shipped 2026-06-10 — see Done.)
 - Interactive D3 force-directed full-graph viewer.
 - Sankey revenue-flow visualization for supply chain.
 - Graph centrality (betweenness, eigenvector) as an input to discovery ranking.
 - Options IV / put-call / short interest — new vendor or FMP higher tier.
 - Credit ratings — new vendor.
 - Institutional ownership (13F) via FMP — current plan returns 404 on ticker-side endpoints; would need daily polling of `institutional-ownership/latest` into a local ticker→holder aggregation.
+
 ## Done (recent)
+
+- **Congressional-trading signal (2026-06-11)** — third insider-adjacent signal, premise revised: Capitol Trades' unofficial API is dead (CloudFront 503), built on FMP `/stable/senate-trades` + `house-trades` instead (live-verified on the current plan; official efdsearch/clerk.house.gov links per row). New `congress_transactions` table (migration `c4d8e91f72a6`; sha256 natural key over parsed values incl. `owner` — Self/Spouse same-day lines distinct; coarse amount ranges mean genuinely identical same-day lines collapse, accepted) + `congress_ingest.py` (amount-range midpoint parser, open-ended ranges use the lower bound) + pure `congress_signal.py` (90-day aggregate, net value from `amount_mid` midpoints, cluster = ≥2 distinct politicians in 30d, modifier +3/+1/−2 — half-ish of insider's due to ≤45-day disclosure lag). Wired into the daily material scan fault-isolated AFTER the insider commit so a congress FMP failure rolls back only its own rows; `_persist_insider_signal` generalized with a `signal_type` param → `signals` `signal_type="congress"` + history dual-write. Discovery: shared `_apply_cached_modifier` (insider path delegates, zero behavior change), `CongressSnapshot` on the card, congress chip on theme detail. Live smoke on NVDA: 200 rows ingested, idempotent re-ingest (added=0), cluster +3 computed. 47 new tests (18 signal + 16 ingest + 4 FMP client + 3 scheduler + 6 discovery); suite 906 green; all frontend gates green.
 
 - **Citation dedupe on risk-loop re-runs (2026-06-11)** — `ResearchState.add_citation` now dedupes on `(source_url, metric)`: a duplicate key replaces the existing entry in place (latest fetch wins, stable position) instead of appending, so loop-back deep-dive re-runs no longer mint duplicate chips in the report CitationList. Single seam — all 7 call sites route through `add_citation`; dict-form citations dedupe too. Note: states persisted before this fix keep their historical duplicates (no render-time pass — re-run if it matters). 6 new tests in `test_state_citation_dedupe.py`; suite 859 green.
 

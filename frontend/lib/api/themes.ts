@@ -49,6 +49,15 @@ export interface InsiderSnapshot {
   is_stale: boolean;
 }
 
+export interface CongressSnapshot {
+  modifier: number;
+  buy_count: number;
+  sell_count: number;
+  cluster_buy: boolean;
+  net_value: number | null;
+  is_stale: boolean;
+}
+
 export interface CompanySignalCard {
   ticker: string;
   company_name: string;
@@ -66,6 +75,7 @@ export interface CompanySignalCard {
   fmp: FMPSnapshot;
   x_signal: XSignalSnapshot;
   insider: InsiderSnapshot;
+  congress: CongressSnapshot;
   citations: Citation[];
 }
 

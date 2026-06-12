@@ -1,4 +1,5 @@
-"""Daily material-events scan: 8-K classification + Form 4 insider ingest.
+"""Daily material-events scan: 8-K classification + Form 4 insider ingest
++ congressional-trade ingest (senate/house PTRs via FMP).
 
 Universe = theme seed_tickers ∪ active-thesis tickers (the calendar's
 definition — same private import of the status board's latest-runs SQL,
@@ -19,12 +20,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.clients.edgar import EdgarClient
 from backend.app.clients.fmp import FMPClient
 from backend.app.db import async_session
+from backend.app.models.congress_transaction import CongressTransaction
 from backend.app.models.filing import Filing
 from backend.app.models.insider_transaction import InsiderTransaction
 from backend.app.models.material_event import MaterialEvent
 from backend.app.models.signal import Signal
 from backend.app.models.signal_history import SignalHistory
 from backend.app.models.theme import Theme
+from backend.app.services.congress_ingest import upsert_congress_transactions
+from backend.app.services.congress_signal import (
+    WINDOW_DAYS as CONGRESS_WINDOW_DAYS,
+    compute_congress_aggregate,
+    signal_value as congress_signal_value,
+)
 from backend.app.services.edgar_sections_ingest import _upsert_filing
 from backend.app.services.event_classifier import classify_8k, should_classify
 from backend.app.services.insider_ingest import upsert_insider_transactions
@@ -169,21 +177,21 @@ async def _scan_ticker_8ks(
 
 async def _persist_insider_signal(
     *, db: AsyncSession, ticker: str, theme_id: str, value: dict,
-    computed_at: datetime,
+    computed_at: datetime, signal_type: str = "insider",
 ) -> None:
     await db.execute(
         delete(Signal).where(
             Signal.ticker == ticker,
             Signal.theme_id == theme_id,
-            Signal.signal_type == "insider",
+            Signal.signal_type == signal_type,
         )
     )
     db.add(Signal(
-        ticker=ticker, theme_id=theme_id, signal_type="insider",
+        ticker=ticker, theme_id=theme_id, signal_type=signal_type,
         value=value, computed_at=computed_at, is_stale=False,
     ))
     db.add(SignalHistory(
-        ticker=ticker, theme_id=theme_id, signal_type="insider",
+        ticker=ticker, theme_id=theme_id, signal_type=signal_type,
         value=value, computed_at=computed_at,
     ))
 
@@ -200,6 +208,7 @@ async def run_daily_material_scan(*, edgar: EdgarClient, fmp: FMPClient) -> dict
         "events_skipped_prefilter": 0,
         "events_skipped_existing": 0,
         "transactions_added": 0,
+        "congress_transactions_added": 0,
         "signals_written": 0,
         "errors": [],
     }
@@ -210,7 +219,9 @@ async def run_daily_material_scan(*, edgar: EdgarClient, fmp: FMPClient) -> dict
     today = date.today()
     since = today - timedelta(days=LOOKBACK_DAYS)
     window_cutoff = today - timedelta(days=WINDOW_DAYS)
+    congress_cutoff = today - timedelta(days=CONGRESS_WINDOW_DAYS)
     insider_values: dict[str, dict] = {}
+    congress_values: dict[str, dict] = {}
 
     for ticker in all_tickers:
         try:
@@ -248,6 +259,32 @@ async def run_daily_material_scan(*, edgar: EdgarClient, fmp: FMPClient) -> dict
                 insider_values[ticker] = signal_value(agg)
 
                 await db.commit()
+
+                # Congress side — after the insider commit and isolated, so
+                # an FMP failure here rolls back only its own rows and can't
+                # discard the insider work above.
+                try:
+                    senate_rows, _ = await fmp.get_senate_trades(ticker)
+                    house_rows, _ = await fmp.get_house_trades(ticker)
+                    cg = await upsert_congress_transactions(
+                        db, ticker, senate_rows=senate_rows, house_rows=house_rows
+                    )
+                    summary["congress_transactions_added"] += cg["added"]
+
+                    cg_rows = (await db.execute(
+                        select(CongressTransaction).where(
+                            CongressTransaction.ticker == ticker,
+                            CongressTransaction.transaction_date >= congress_cutoff,
+                        )
+                    )).scalars().all()
+                    congress_values[ticker] = congress_signal_value(
+                        compute_congress_aggregate(cg_rows, today)
+                    )
+                    await db.commit()
+                except Exception as e:
+                    logger.exception("congress scan failed for %s", ticker)
+                    summary["errors"].append(f"{ticker} congress: {e}")
+                    await db.rollback()
             summary["tickers_scanned"] += 1
         except Exception as e:
             logger.exception("material scan failed for %s", ticker)
@@ -263,6 +300,13 @@ async def run_daily_material_scan(*, edgar: EdgarClient, fmp: FMPClient) -> dict
                         await _persist_insider_signal(
                             db=db, ticker=t, theme_id=theme_id,
                             value=insider_values[t], computed_at=now,
+                        )
+                        summary["signals_written"] += 1
+                    if t in congress_values:
+                        await _persist_insider_signal(
+                            db=db, ticker=t, theme_id=theme_id,
+                            value=congress_values[t], computed_at=now,
+                            signal_type="congress",
                         )
                         summary["signals_written"] += 1
             await db.commit()

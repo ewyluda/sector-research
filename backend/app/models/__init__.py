@@ -2,6 +2,7 @@ from backend.app.models.base import Base
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.citation import Citation, CitationRecord
 from backend.app.models.earnings_print import EarningsPrint
+from backend.app.models.congress_transaction import CongressTransaction  # noqa: F401
 from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, Relationship, XBRLFact
 from backend.app.models.insider_transaction import InsiderTransaction  # noqa: F401
 from backend.app.models.journal_trade import JournalTrade  # noqa: F401
@@ -28,6 +29,7 @@ __all__ = [
     "Catalyst",
     "Citation",
     "CitationRecord",
+    "CongressTransaction",
     "CounterpartyAlias",
     "EarningsPrint",
     "Filing",
