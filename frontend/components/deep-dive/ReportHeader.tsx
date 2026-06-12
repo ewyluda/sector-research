@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { CuratedFinancials, QuickScreenStructured, PhaseStatus } from "@/lib/api";
-import { getModel, workspaceApi } from "@/lib/api";
+import { getModel } from "@/lib/api";
 import ScoreRing from "@/components/ScoreRing";
 import { useWorkspacePreflight } from "@/lib/hooks/useWorkspacePreflight";
+import { useWorkspaceKickoff } from "@/lib/hooks/useWorkspaceKickoff";
 
 interface ReportHeaderProps {
   financials: CuratedFinancials | null;
@@ -90,28 +90,11 @@ function VerdictBadge({ recommendation }: { recommendation: "GO" | "WATCHLIST" |
 }
 
 export function ReportHeader({ financials, quickScreen, convictionScore, ticker, runId, isLive, runStatus }: ReportHeaderProps) {
-  const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const { status: preflight, reasons } = useWorkspacePreflight(ticker, runId);
   const inFlightRunId = preflight?.in_flight_run_id ?? null;
   const canKickOff = (preflight?.ok ?? false) || inFlightRunId != null;
   const workspaceTooltip = reasons.length > 0 ? reasons.join(" • ") : "Run a workspace refresh for this ticker";
-
-  const handleWorkspaceRefresh = async () => {
-    if (inFlightRunId) {
-      router.push(`/workspace/${inFlightRunId}`);
-      return;
-    }
-    try {
-      setLoading(true);
-      const { run_id } = await workspaceApi.kickOff(ticker, runId);
-      router.push(`/workspace/${run_id}`);
-    } catch (err) {
-      alert(`Workspace kick-off failed: ${err instanceof Error ? err.message : err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { kickOff, busy } = useWorkspaceKickoff({ ticker, researchRunId: runId, inFlightRunId });
 
   return (
     <section id="report_header" className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] overflow-hidden">
@@ -131,12 +114,12 @@ export function ReportHeader({ financials, quickScreen, convictionScore, ticker,
                 {runStatus === "completed" && (
                   <button
                     type="button"
-                    onClick={handleWorkspaceRefresh}
-                    disabled={loading || !canKickOff}
+                    onClick={() => void kickOff()}
+                    disabled={busy || !canKickOff}
                     className="text-xs px-2 py-1 rounded border border-[var(--border)] hover:border-[var(--text-faint)] disabled:opacity-50 disabled:cursor-not-allowed text-[var(--text-muted)] hover:text-[var(--text)] transition-colors"
                     title={workspaceTooltip}
                   >
-                    {loading ? "Launching..." : inFlightRunId ? "View running →" : "Refresh workspace →"}
+                    {busy ? "Launching..." : inFlightRunId ? "View running →" : "Refresh workspace →"}
                   </button>
                 )}
                 <a
