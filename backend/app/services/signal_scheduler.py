@@ -21,6 +21,8 @@ from backend.app.models.signal import Signal
 from backend.app.models.signal_history import SignalHistory
 from backend.app.models.surprise_alert import SurpriseAlert
 from backend.app.models.theme import Theme
+from backend.app.services.graph_centrality import compute_theme_centrality, signal_value
+from backend.app.services.supply_chain import build_theme_graph
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +186,79 @@ async def refresh_theme_signals(
     }
 
 
+async def refresh_theme_centrality(theme: Theme, db: AsyncSession) -> dict:
+    """Per-theme centrality over the theme-wide relationship graph.
+
+    Builds the theme graph, computes betweenness/eigenvector centrality via
+    NetworkX, and persists one signals row per scored ticker
+    (signal_type="centrality"). Absent rows are a downstream no-op modifier —
+    same contract as insider/congress.
+
+    Returns a summary dict:
+      tickers_scored  — number of tickers compute returned
+      persisted       — number of _persist_signal_set calls made
+      skipped         — reason string if skipped, else None
+      error           — exception str if build/compute raised, else None
+    """
+    summary: dict = {
+        "theme": theme.name,
+        "tickers_scored": 0,
+        "persisted": 0,
+        "skipped": None,
+        "error": None,
+    }
+    try:
+        graph = await build_theme_graph(theme.id, db=db)
+        if graph is None:
+            summary["skipped"] = "no_theme"
+            logger.info("Centrality skipped for '%s': theme not found", theme.name)
+            return summary
+
+        if graph.too_dense:
+            summary["skipped"] = "too_dense"
+            logger.info(
+                "Centrality skipped for '%s': graph too dense (%d nodes)",
+                theme.name, graph.node_count,
+            )
+            return summary
+
+        scores = compute_theme_centrality(graph.nodes, graph.edges)
+        if not scores:
+            summary["skipped"] = "below_density_gate"
+            logger.info(
+                "Centrality skipped for '%s': below MIN_EDGES density gate",
+                theme.name,
+            )
+            return summary
+
+        summary["tickers_scored"] = len(scores)
+        computed_at = datetime.now(timezone.utc)
+
+        for ticker, s in scores.items():
+            await _persist_signal_set(
+                db=db,
+                ticker=ticker,
+                theme_id=theme.id,
+                results={"centrality": signal_value(s)},
+                computed_at=computed_at,
+            )
+            summary["persisted"] += 1
+
+        await db.commit()
+        logger.info(
+            "Centrality refresh complete for '%s': %d tickers scored, %d persisted",
+            theme.name, summary["tickers_scored"], summary["persisted"],
+        )
+
+    except Exception:
+        logger.exception(
+            "Centrality refresh failed for theme '%s'", theme.name,
+        )
+        summary["error"] = f"exception during centrality refresh for {theme.name}"
+
+    return summary
+
+
 async def run_daily_refresh(fmp: FMPClient, x_client: XClient) -> None:
     """
     Full daily refresh: process each theme sequentially.
@@ -209,6 +284,9 @@ async def run_daily_refresh(fmp: FMPClient, x_client: XClient) -> None:
             total_errors += summary["errors"]
             total_surprises += summary["surprises_fired"]
             logger.info("Theme '%s': %s", theme.name, summary)
+
+            centrality_summary = await refresh_theme_centrality(theme=theme, db=db)
+            logger.info("Theme '%s' centrality: %s", theme.name, centrality_summary)
 
     elapsed = (datetime.now(timezone.utc) - start).total_seconds()
     logger.info(
