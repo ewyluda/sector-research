@@ -391,11 +391,24 @@ class ResearchState:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
     def add_citation(self, citation: Any) -> None:
-        """Add a citation (models.citation.Citation or StateCitation) to state."""
+        """Add a citation (models.citation.Citation or StateCitation) to state.
+
+        Deduped on (source_url, metric): risk-loop re-runs offer every
+        deep-dive citation a second time, so a duplicate key replaces the
+        existing entry in place (latest fetch wins) instead of appending.
+        """
         if hasattr(citation, "to_dict"):
-            self.citations.append(citation.to_dict())
+            d = citation.to_dict()
         elif isinstance(citation, dict):
-            self.citations.append(citation)
+            d = citation
+        else:
+            return
+        key = (d.get("source_url"), d.get("metric"))
+        for i, existing in enumerate(self.citations):
+            if (existing.get("source_url"), existing.get("metric")) == key:
+                self.citations[i] = d
+                return
+        self.citations.append(d)
 
     def set_category_result(self, result: CategoryResult | CategoryError) -> None:
         self.phase_outputs[result.category] = result.to_dict()
