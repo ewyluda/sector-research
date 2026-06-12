@@ -6,6 +6,7 @@
  * that owns root/theme/depth/direction state, URL sync, and the graph fetch.
  */
 
+import Link from "next/link";
 import { themes as themesApi } from "@/lib/api";
 import type { Theme } from "@/lib/api";
 import MultiHopGraphView from "@/components/filings/MultiHopGraphView";
@@ -24,15 +25,23 @@ export default async function FilingsGraphPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-[var(--text)]">
-          Supply-chain graph
-        </h1>
-        <p className="text-sm text-[var(--text-muted)] mt-0.5">
-          Multi-hop counterparty relationships extracted from SEC filings.
-          Pick a ticker as the root; expand into a theme to see its 2-hop
-          neighbourhood.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-[var(--text)]">
+            Supply-chain graph
+          </h1>
+          <p className="text-sm text-[var(--text-muted)] mt-0.5">
+            Multi-hop counterparty relationships extracted from SEC filings.
+            Pick a ticker as the root; expand into a theme to see its 2-hop
+            neighbourhood.
+          </p>
+        </div>
+        <Link
+          href="/filings/graph/theme"
+          className="shrink-0 text-sm text-[var(--color-accent)] hover:underline"
+        >
+          Theme map →
+        </Link>
       </div>
 
       {error && (

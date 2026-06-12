@@ -31,6 +31,7 @@ const SURFACES: { title: string; href: string }[] = [
   { title: "Themes", href: "/themes" },
   { title: "Filings", href: "/filings" },
   { title: "Filings graph", href: "/filings/graph" },
+  { title: "Theme graph map", href: "/filings/graph/theme" },
   { title: "Performance", href: "/performance" },
   { title: "Library", href: "/library" },
   { title: "Questions", href: "/questions" },
