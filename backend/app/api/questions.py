@@ -264,6 +264,28 @@ async def resolve_endpoint(
     return _serialize(q)
 
 
+@router.post("/{question_id}/unsnooze", response_model=QuestionResponse)
+async def unsnooze_endpoint(
+    question_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> QuestionResponse:
+    """Clear an active snooze so the question rejoins the open list.
+
+    Idempotent: unsnoozing a never-/no-longer-snoozed open question is a
+    no-op success.
+    """
+    q = (await db.execute(select(Question).where(Question.id == question_id))).scalar_one_or_none()
+    if q is None:
+        raise HTTPException(404, "question not found")
+    if q.status != "open":
+        raise HTTPException(409, f"question is {q.status}, cannot unsnooze")
+    if q.snoozed_until is not None:
+        q.snoozed_until = None
+        await db.commit()
+        await db.refresh(q)
+    return _serialize(q)
+
+
 @router.post("/{question_id}/retry-auto", response_model=QuestionResponse)
 async def retry_auto_endpoint(
     question_id: str,

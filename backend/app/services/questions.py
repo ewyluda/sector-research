@@ -10,7 +10,7 @@ import logging
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.graph.llm import SONNET, complete
@@ -30,6 +30,11 @@ def _not_snoozed():
     return or_(Question.snoozed_until.is_(None), Question.snoozed_until <= func.now())
 
 
+def _snoozed():
+    """Predicate: snooze set and unexpired (inverse of _not_snoozed)."""
+    return and_(Question.snoozed_until.is_not(None), Question.snoozed_until > func.now())
+
+
 async def list_questions(
     db: AsyncSession,
     *,
@@ -45,7 +50,11 @@ async def list_questions(
         stmt = stmt.where(Question.ticker == ticker.upper())
     if theme_id is not None:
         stmt = stmt.where(Question.theme_id == theme_id)
-    if status:
+    if status == "snoozed":
+        # Virtual filter: snoozed rows are status="open" with an unexpired
+        # snoozed_until — hidden from the default open view, surfaced here.
+        stmt = stmt.where(Question.status == "open").where(_snoozed())
+    elif status:
         stmt = stmt.where(Question.status == status)
     if status == "open":
         # Snoozed questions drop out of the default open view until expiry.

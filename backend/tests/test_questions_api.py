@@ -287,5 +287,79 @@ class BulkActionTests(unittest.TestCase):
         asyncio.run(_run())
 
 
+class SnoozedFilterTests(unittest.TestCase):
+    def test_snoozed_filter_returns_only_active_snoozes(self):
+        _, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                db.add(_question(question_text="open-now"))
+                db.add(_question(
+                    question_text="active-snooze",
+                    snoozed_until=datetime.now(timezone.utc) + timedelta(days=7),
+                ))
+                db.add(_question(
+                    question_text="expired-snooze",
+                    snoozed_until=datetime.now(timezone.utc) - timedelta(days=1),
+                ))
+                db.add(_question(question_text="dismissed", status="dismissed"))
+                db.add(_question(
+                    question_text="dismissed-but-snoozed",
+                    status="dismissed",
+                    snoozed_until=datetime.now(timezone.utc) + timedelta(days=7),
+                ))
+                await db.commit()
+
+                rows = await list_questions(db, status="snoozed")
+                self.assertEqual([q.question_text for q in rows], ["active-snooze"])
+
+        asyncio.run(_run())
+
+
+class UnsnoozeEndpointTests(unittest.TestCase):
+    def test_unsnooze_clears_and_rejoins_open_list(self):
+        _, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                q = _question(
+                    question_text="snoozed",
+                    snoozed_until=datetime.now(timezone.utc) + timedelta(days=7),
+                )
+                db.add(q)
+                await db.commit()
+
+                out = await questions.unsnooze_endpoint(q.id, db)
+                self.assertIsNone(out.snoozed_until)
+                rows = await list_questions(db, status="open")
+                self.assertEqual([r.question_text for r in rows], ["snoozed"])
+
+        asyncio.run(_run())
+
+    def test_unsnooze_is_idempotent_on_never_snoozed(self):
+        _, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                q = _question(question_text="plain-open")
+                db.add(q)
+                await db.commit()
+                out = await questions.unsnooze_endpoint(q.id, db)
+                self.assertIsNone(out.snoozed_until)
+
+        asyncio.run(_run())
+
+    def test_unsnooze_unknown_id_404s(self):
+        _, Session = _build_async_test_session()
+
+        async def _run():
+            async with Session() as db:
+                with self.assertRaises(HTTPException) as ctx:
+                    await questions.unsnooze_endpoint(str(uuid.uuid4()), db)
+                self.assertEqual(ctx.exception.status_code, 404)
+
+        asyncio.run(_run())
+
+
 if __name__ == "__main__":
     unittest.main()
