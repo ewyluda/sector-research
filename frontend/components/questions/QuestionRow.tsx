@@ -77,6 +77,19 @@ export function QuestionRow({ question, onChange, selected, onToggleSelect }: Pr
   };
 
   const isOpen = question.status === "open";
+  const isSnoozed =
+    question.snoozed_until != null && new Date(question.snoozed_until) > new Date();
+
+  const handleUnsnooze = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const updated = await questionsApi.unsnooze(question.id);
+      onChange?.(updated);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="border border-[var(--surface)] rounded-md bg-slate-950/40 p-3 text-sm">
@@ -97,6 +110,11 @@ export function QuestionRow({ question, onChange, selected, onToggleSelect }: Pr
         <span className={`px-1.5 py-0.5 rounded text-xs font-medium border ${STATUS_CHIP[question.status] ?? STATUS_CHIP.open}`}>
           {STATUS_LABEL[question.status] ?? question.status}
         </span>
+        {isSnoozed && (
+          <span className="px-1.5 py-0.5 rounded text-xs font-medium border bg-amber-900/40 text-amber-200 border-amber-700/60">
+            Snoozed until {question.snoozed_until!.slice(0, 10)}
+          </span>
+        )}
         <p className="flex-1 text-[var(--text)]">{question.question_text}</p>
       </div>
 
@@ -122,6 +140,16 @@ export function QuestionRow({ question, onChange, selected, onToggleSelect }: Pr
 
       {isOpen && (
         <div className="mt-2 flex gap-2" data-print-hide="true">
+          {isSnoozed && (
+            <button
+              type="button"
+              onClick={handleUnsnooze}
+              disabled={busy}
+              className="px-2 py-1 text-xs rounded border border-amber-700 text-amber-200 hover:bg-amber-900/30 disabled:opacity-50"
+            >
+              Unsnooze
+            </button>
+          )}
           <button
             type="button"
             onClick={handleRetry}

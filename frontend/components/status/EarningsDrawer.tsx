@@ -56,6 +56,7 @@ export function EarningsDrawer({ entry, onVerdictGenerated }: Props) {
   if (!entry.print) return null;
   if (entry.verdict) return <VerdictBlock entry={entry} />;
   if (entry.phase === "post") return <PostEarningsBlock entry={entry} onVerdictGenerated={onVerdictGenerated} />;
+  if (entry.phase === "post_pending") return <PendingActualsBlock entry={entry} />;
   return <PreEarningsBlock entry={entry} />;
 }
 
@@ -111,6 +112,24 @@ function PreEarningsBlock({ entry }: { entry: EarningsBoardEntry }) {
           <SafeMarkdownBlock source={brief.summary_md} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Post-print, actuals pending (issue #52) ─────────────────────────────────
+
+function PendingActualsBlock({ entry }: { entry: EarningsBoardEntry }) {
+  const p = entry.print!;
+  return (
+    <div data-print-hide="true" className="px-4 py-3 bg-[var(--bg)]/40 border-t border-[var(--surface)]">
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-[var(--text-muted)]">
+        <span><span className="text-[var(--text-faint)]">Reported:</span> {p.earnings_date} ({p.fiscal_year}Q{p.fiscal_quarter})</span>
+        <span><span className="text-[var(--text-faint)]">EPS est:</span> {p.eps_estimated?.toFixed(2) ?? "—"}</span>
+        <span><span className="text-[var(--text-faint)]">Rev est:</span> {fmtUSD(p.revenue_estimated)}</span>
+      </div>
+      <p className="mt-2 text-xs text-amber-400">
+        Awaiting actuals — the nightly earnings refresh (21:00 UTC) hasn&apos;t landed yet. Estimates shown.
+      </p>
     </div>
   );
 }

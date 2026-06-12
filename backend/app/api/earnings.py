@@ -8,6 +8,7 @@ Routes:
   POST  /api/earnings/refresh/{ticker}
 """
 import logging
+from collections.abc import Sequence
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
@@ -67,7 +68,7 @@ class EarningsBoardEntry(BaseModel):
     run_id: str
     ticker: str
     theme_id: str
-    phase: str  # "pre" | "post" | "none"
+    phase: str  # "pre" | "post" | "post_pending"
     print: Optional[EarningsPrintRow]
     matched_catalyst: Optional[MatchedEarningsCatalyst]
     verdict: Optional[ThesisPrintVerdictRow]
@@ -115,6 +116,38 @@ def _verdict_to_pydantic(v: ThesisPrintVerdict) -> ThesisPrintVerdictRow:
     )
 
 
+# ── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _choose_print(
+    candidates: Sequence[EarningsPrint], today: date
+) -> tuple[EarningsPrint, str] | None:
+    """Pick the board print + phase for one thesis row.
+
+    Precedence: most recent reported print ("post") > most recent past
+    print awaiting actuals ("post_pending") > upcoming print ("pre").
+    `candidates` must be ordered earnings_date DESC (the board query does
+    this). A past print with null actuals is the issue-#52 morning-after
+    case: FMP's nightly earnings refresh (21:00) hasn't filled actuals yet.
+    """
+    post = next((p for p in candidates if p.eps_actual is not None), None)
+    if post is not None:
+        return post, "post"
+    pending = next(
+        (p for p in candidates if p.eps_actual is None and p.earnings_date < today),
+        None,
+    )
+    if pending is not None:
+        return pending, "post_pending"
+    upcoming = next(
+        (p for p in candidates if p.eps_actual is None and p.earnings_date >= today),
+        None,
+    )
+    if upcoming is not None:
+        return upcoming, "pre"
+    return None
+
+
 # ── Endpoints ───────────────────────────────────────────────────────────────
 
 
@@ -158,17 +191,10 @@ async def get_earnings_board(
         if not candidates:
             continue  # no print in window; skip row entirely
 
-        # Pick the most recent post-print if any, else the nearest upcoming.
-        post = next((p for p in candidates if p.eps_actual is not None), None)
-        upcoming = next(
-            (p for p in candidates if p.eps_actual is None and p.earnings_date >= today),
-            None,
-        )
-        chosen = post or upcoming
-        if chosen is None:
+        chosen_phase = _choose_print(candidates, today)
+        if chosen_phase is None:
             continue
-
-        phase = "post" if chosen.eps_actual is not None else "pre"
+        chosen, phase = chosen_phase
 
         cat_q = (
             select(Catalyst)
@@ -206,12 +232,15 @@ async def get_earnings_board(
             )
         )
 
-    # Sort: post-print first (most recent), then pre-print (nearest upcoming).
+    # Sort: post-print first (most recent; post_pending sorts with post),
+    # then pre-print (nearest upcoming).
     def sort_key(e: EarningsBoardEntry) -> tuple[int, int]:
         if e.print is None:
             return (2, 0)
         ord_ = e.print.earnings_date.toordinal()
-        return (0, -ord_) if e.phase == "post" else (1, ord_)
+        if e.phase in ("post", "post_pending"):
+            return (0, -ord_)
+        return (1, ord_)
     entries.sort(key=sort_key)
     return EarningsBoardResponse(entries=entries)
 

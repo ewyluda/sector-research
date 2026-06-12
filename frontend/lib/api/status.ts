@@ -175,7 +175,7 @@ export const events = {
 
 // ── Earnings cycle navigator ────────────────────────────────────────────────
 
-export type VerdictPhase = "pre" | "post" | "none";
+export type VerdictPhase = "pre" | "post" | "post_pending" | "none";
 export type Verdict = "confirms" | "threatens" | "neutral" | "insufficient";
 
 export interface EarningsPrintRow {
@@ -356,5 +356,10 @@ export const questions = {
     apiFetch<{ affected: number }>(`/api/questions/bulk`, {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+
+  unsnooze: async (id: string): Promise<Question> =>
+    apiFetch<Question>(`/api/questions/${encodeURIComponent(id)}/unsnooze`, {
+      method: "POST",
     }),
 };
