@@ -15,6 +15,8 @@ os.environ.setdefault("FRED_API_KEY", "test")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x/x")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
+from unittest.mock import patch
+
 from backend.app.services.graph_centrality import (
     MIN_EDGES,
     CentralityScores,
@@ -106,6 +108,77 @@ class ComputeTests(unittest.TestCase):
         edges.append(_edge("ticker:HUB", "unresolved:leaf0", rel_type="supplier"))
         scores = compute_theme_centrality(nodes, edges)
         self.assertEqual(scores["HUB"].degree, 12)
+
+
+class DisconnectedTests(unittest.TestCase):
+    """Per-component classification tests."""
+
+    def test_disconnected_components_each_get_local_hubs(self):
+        # Two disjoint stars: ticker AAA (7 leaves) and ticker BBB (6 leaves).
+        # Together they exceed MIN_EDGES; each component exceeds MIN_COMPONENT_EDGES.
+        nodes, edges = [], []
+        nodes.append(_node("ticker:AAA", "AAA", seed=True))
+        for i in range(7):
+            nodes.append(_node(f"unresolved:aaa_leaf{i}"))
+            edges.append(_edge("ticker:AAA", f"unresolved:aaa_leaf{i}"))
+        nodes.append(_node("ticker:BBB", "BBB", seed=True))
+        for i in range(6):
+            nodes.append(_node(f"unresolved:bbb_leaf{i}"))
+            edges.append(_edge("ticker:BBB", f"unresolved:bbb_leaf{i}"))
+        # Total edges = 13 >= MIN_EDGES; each component has 7 or 6 >= MIN_COMPONENT_EDGES.
+        scores = compute_theme_centrality(nodes, edges)
+        self.assertIn("AAA", scores)
+        self.assertIn("BBB", scores)
+        self.assertTrue(scores["AAA"].is_hub, "AAA should be a hub in its component")
+        self.assertTrue(scores["BBB"].is_hub, "BBB should be a hub in its component")
+
+    def test_trivial_component_minted_no_badges(self):
+        # Big star: ticker AAA with 10 leaves (10 edges, >= MIN_COMPONENT_EDGES).
+        # Tiny fragment: ticker CCC with 2 leaves (2 edges, < MIN_COMPONENT_EDGES).
+        nodes, edges = [], []
+        nodes.append(_node("ticker:AAA", "AAA", seed=True))
+        for i in range(10):
+            nodes.append(_node(f"unresolved:big_leaf{i}"))
+            edges.append(_edge("ticker:AAA", f"unresolved:big_leaf{i}"))
+        nodes.append(_node("ticker:CCC", "CCC", seed=True))
+        for i in range(2):
+            nodes.append(_node(f"unresolved:small_leaf{i}"))
+            edges.append(_edge("ticker:CCC", f"unresolved:small_leaf{i}"))
+        # Total edges = 12 >= MIN_EDGES.
+        scores = compute_theme_centrality(nodes, edges)
+        self.assertIn("CCC", scores, "CCC must appear in scores even in a trivial component")
+        ccc = scores["CCC"]
+        self.assertFalse(ccc.is_hub, "trivial component should not mint hub badge")
+        self.assertFalse(ccc.is_broker, "trivial component should not mint broker badge")
+
+    def test_eigenvector_nonconvergence_keeps_broker(self):
+        # Bridge ticker BRG connecting two 4-cliques (same as test_bridge_ticker_is_broker).
+        nodes, edges = [], []
+        for side in ("a", "b"):
+            ids = [f"unresolved:{side}{i}" for i in range(4)]
+            nodes += [_node(i) for i in ids]
+            for i in range(4):
+                for j in range(i + 1, 4):
+                    edges.append(_edge(ids[i], ids[j]))
+        nodes.append(_node("ticker:BRG", "BRG", seed=True))
+        edges.append(_edge("ticker:BRG", "unresolved:a0"))
+        edges.append(_edge("ticker:BRG", "unresolved:b0"))
+
+        import networkx as nx_mod
+        with patch(
+            "backend.app.services.graph_centrality.nx.eigenvector_centrality",
+            side_effect=nx_mod.PowerIterationFailedConvergence(500),
+        ):
+            scores = compute_theme_centrality(nodes, edges)
+
+        self.assertIn("BRG", scores)
+        brg = scores["BRG"]
+        # Hub impossible — eigenvector is None for the whole component.
+        self.assertFalse(brg.is_hub, "hub requires eigenvector; must be False on non-convergence")
+        self.assertIsNone(brg.eigenvector, "eigenvector must be None on non-convergence")
+        # Broker classification should still work via betweenness.
+        self.assertTrue(brg.is_broker, "broker via betweenness must survive eigenvector failure")
+        self.assertGreater(brg.betweenness, 0)
 
 
 class ModifierTests(unittest.TestCase):
