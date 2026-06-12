@@ -1,11 +1,11 @@
 {
   "meta": {
     "project": "sector-research",
-    "tagline": "Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider modifier) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.",
-    "generated_at": "2026-06-11T14:30:00-04:00",
-    "generator": "claude-opus-4-7 (original) · refreshed 2026-06-10 by claude-fable-5 · incremental refreshes 2026-06-11 by claude-fable-5 (PRs #42-48: A2 sessions/routing/SSE, C1 perf, B3 UX phase 1, C2 module splits, C3 backend types · PRs #50-53: B3 UX phases 2-4 — global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens)",
+    "tagline": "Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider/congress modifiers) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.",
+    "generated_at": "2026-06-12T07:17:01-04:00",
+    "generator": "claude-opus-4-7 (original) · refreshed 2026-06-10 by claude-fable-5 · incremental refreshes 2026-06-11 by claude-fable-5 (PRs #42-48: A2 sessions/routing/SSE, C1 perf, B3 UX phase 1, C2 module splits, C3 backend types · PRs #50-53: B3 UX phases 2-4 — global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens) · PRs #54-57 refresh 2026-06-12 by claude-fable-5 (fix pack — post_pending earnings, orphan events, snoozed-question view/unsnooze; polish pack — peers api module, useWorkspaceKickoff, FMP citation persistence, correlated metric guards; citation dedupe; congress-trading signal)",
     "main_branch": "main",
-    "source_commit": "3cc8666",
+    "source_commit": "4c03582",
     "source_of_truth_files": [
       "CLAUDE.md",
       "CONTEXT.md",
@@ -36,7 +36,7 @@
         "recharts",
         "lightweight-charts (TradingView candlestick + RSI)"
       ],
-      "data_fetch": "Native fetch through the frontend/lib/api/ package only (12 domain modules, barrel at lib/api/index.ts; legacy lib/api.ts shim re-exports — zero call-site changes)",
+      "data_fetch": "Native fetch through the frontend/lib/api/ package only (13 domain modules, barrel at lib/api/index.ts; legacy lib/api.ts shim re-exports — zero call-site changes)",
       "next16_warning": "Next.js 16 has breaking changes vs prior releases. Read node_modules/next/dist/docs/ before editing Server Component / middleware / route-handler code. Do not assume training-data conventions apply."
     },
     "data": {
@@ -113,7 +113,7 @@
       "scheduled_jobs": [
         "Daily X signal refresh at 2 AM (services/signal_scheduler.py)"
       ],
-      "scoring": "40% X velocity + 40% fundamental quality + 20% discovery score when X is fresh; degrades to 80% fund + 20% disc when X is stale/missing",
+      "scoring": "40% X velocity + 40% fundamental quality + 20% discovery score when X is fresh; degrades to 80% fund + 20% disc when X is stale/missing; insider + congress signals then apply bounded cached modifiers (+5 cluster / +2 net buying / −3 selling insider; +3/+1/−2 congress — half-ish, disclosures lag ≤45d; shared _apply_cached_modifier, clamp [0,100]) — deliberately NOT extra weights",
       "perf_notes": "surprise-alert lookup batched via one SurpriseAlert.ticker.in_(all_tickers) query (PR #43)"
     },
     {
@@ -227,7 +227,8 @@
         "Daily earnings refresh at 21:00 UTC (services/earnings_scheduler.py)"
       ],
       "perf_notes": "archived_at carried on StatusBoardEntry rows; partial index eb21c3df2ad5 (latest-run composite, archived_at IS NULL); /status refetch is visibility-debounced (PR #43)",
-      "b3_ux_notes": "B3 phases 2-4 (PRs #50-52): /status rows carry a ⋯ menu (Company workspace / Model / View questions) + a KC n/m KillCriteriaDrawer; /questions has URL-state priority/category filter chips and row checkboxes + a bulk bar over POST /api/questions/bulk (ids XOR filter; dismiss/resolve/snooze — snoozed_until rows drop out of open lists and by-ticker rollups until expiry via a shared predicate in services/questions.py)"
+      "b3_ux_notes": "B3 phases 2-4 (PRs #50-52): /status rows carry a ⋯ menu (Company workspace / Model / View questions) + a KC n/m KillCriteriaDrawer; /questions has URL-state priority/category filter chips and row checkboxes + a bulk bar over POST /api/questions/bulk (ids XOR filter; dismiss/resolve/snooze — snoozed_until rows drop out of open lists and by-ticker rollups until expiry via a shared predicate in services/questions.py)",
+      "fix_pack_notes": "PR #54: GET /api/earnings/board surfaces past prints with null actuals as post_pending (precedence post > post_pending > pre via _choose_print; amber pending badge, EarningsDrawer shows estimates + awaiting-actuals note); /questions gains a ?status=snoozed virtual filter, per-row Snoozed-until chip and idempotent POST /api/questions/{id}/unsnooze (409 on non-open); OrphanEventsSection on /status renders material events for seed-only tickers"
     },
     {
       "id": "financial_model",
@@ -340,20 +341,24 @@
     },
     {
       "id": "material_events",
-      "name": "Material events + insider signal",
-      "purpose": "Daily 06:30 UTC universe scan (theme seeds ∪ active theses): 8-Ks item-code-prefiltered then Haiku-classified into material_events; Form 4 via FMP into insider_transactions → pure 90-day aggregate → signals row (signal_type=insider) → bounded discovery-score modifier (+5 cluster / +2 net buying / −3 pronounced selling, clamp [0,100]). 8-K failures fault-isolated from insider ingest. Merged in PR #38.",
+      "name": "Material events + insider + congress signals",
+      "purpose": "Daily 06:30 UTC universe scan (theme seeds ∪ active theses): 8-Ks item-code-prefiltered then Haiku-classified into material_events; Form 4 via FMP into insider_transactions → pure 90-day aggregate → signals row (signal_type=insider) → bounded discovery-score modifier (+5 cluster / +2 net buying / −3 pronounced selling, clamp [0,100]). 8-K failures fault-isolated from insider ingest. Merged in PR #38. Congress side (PR #57): FMP /stable/senate-trades + house-trades → congress_transactions (sha256 natural key over parsed values incl. owner) → pure 90-day aggregate in congress_signal.py (net value from amount-range MIDPOINTS, lower bound for open-ended ranges; cluster = ≥2 distinct politicians in 30d) → signals row (signal_type=congress) + history dual-write → modifier +3/+1/−2; runs AFTER the insider commit, fault-isolated.",
       "primary_services": [
         "backend/app/services/material_events_scheduler.py",
         "backend/app/services/event_classifier.py",
         "backend/app/services/insider_ingest.py",
         "backend/app/services/insider_signal.py",
-        "backend/app/services/material_events_grouping.py"
+        "backend/app/services/material_events_grouping.py",
+        "backend/app/services/congress_ingest.py",
+        "backend/app/services/congress_signal.py"
       ],
       "grouping": "Near-duplicate 8-Ks (same ticker + event_type within 4 days) are grouped at the API layer by pure services/material_events_grouping.py::group_events — newest member is primary; list responses extend with group_count/group_member_ids/group_headlines while primary fields stay top-level (PR #51). The status board joins a 14-day undismissed summary per ticker that counts groups (materiality still escalates over raw members). Frontend: ×N badges expandable to member headlines.",
       "frontend_surfaces": [
         "/status 8-K badge + MaterialEventsDrawer (?expand_events=)",
         "/ (Today) high-materiality amber rows",
-        "discovery card insider chip"
+        "discovery card insider chip",
+        "discovery card congress chip (inline in app/theme/[id]/ThemeDetailClient.tsx; CongressSnapshot in lib/api/themes.ts)",
+        "/status Orphan-events section for seed-only tickers — ?expand_events auto-opens (PR #54)"
       ],
       "key_endpoints": [
         "GET /api/events (grouped)",
@@ -361,7 +366,7 @@
         "POST /api/events/{id}/dismiss?group=true (default — also dismisses near-duplicate members within ±4d of the dismissed primary's filing_date; subtly different anchor than display grouping, documented at the endpoint)"
       ],
       "scheduled_jobs": [
-        "Daily 8-K + Form 4 scan at 06:30 UTC (services/material_events_scheduler.py)"
+        "Daily 8-K + Form 4 + senate/house congress-trades scan at 06:30 UTC (services/material_events_scheduler.py)"
       ]
     },
     {
@@ -844,35 +849,35 @@
             "method": "GET",
             "path": "/api/earnings/board",
             "handler": "get_earnings_board",
-            "line": 121,
-            "summary": "Earnings board for active thesis runs (upcoming + recent prints)"
+            "line": 155,
+            "summary": "Earnings board for active thesis runs (upcoming + recent prints); past prints with null actuals surface as post_pending (precedence post > post_pending > pre via _choose_print, PR #54)"
           },
           {
             "method": "POST",
             "path": "/api/runs/{run_id}/earnings/{print_id}/brief",
             "handler": "post_brief",
-            "line": 219,
+            "line": 252,
             "summary": "Generate pre-earnings brief (3-5 bullets, Haiku)"
           },
           {
             "method": "POST",
             "path": "/api/runs/{run_id}/earnings/{print_id}/verdict",
             "handler": "post_verdict",
-            "line": 242,
+            "line": 275,
             "summary": "Generate post-print verdict (confirms/threatens/neutral/insufficient)"
           },
           {
             "method": "GET",
             "path": "/api/earnings/prints/{ticker}",
             "handler": "get_prints_by_ticker",
-            "line": 264,
+            "line": 294,
             "summary": "8 most recent earnings prints for ticker"
           },
           {
             "method": "POST",
             "path": "/api/earnings/refresh/{ticker}",
             "handler": "post_refresh",
-            "line": 279,
+            "line": 309,
             "summary": "Manually refresh earnings prints for ticker"
           }
         ]
@@ -886,7 +891,7 @@
             "path": "/api/questions",
             "handler": "list_questions_endpoint",
             "line": 126,
-            "summary": "List questions with filters (ticker, theme_id, status, priority, category); open lists exclude snoozed_until rows until expiry (shared predicate in services/questions.py)"
+            "summary": "List questions with filters (ticker, theme_id, status, priority, category); open lists exclude snoozed_until rows until expiry (shared predicate in services/questions.py); ?status=snoozed is a virtual filter listing actively-snoozed rows (PR #54)"
           },
           {
             "method": "GET",
@@ -918,9 +923,16 @@
           },
           {
             "method": "POST",
+            "path": "/api/questions/{question_id}/unsnooze",
+            "handler": "unsnooze_endpoint",
+            "line": 268,
+            "summary": "Idempotently clear an active snooze; 409 on non-open questions (PR #54)"
+          },
+          {
+            "method": "POST",
             "path": "/api/questions/{question_id}/retry-auto",
             "handler": "retry_auto_endpoint",
-            "line": 268,
+            "line": 290,
             "summary": "Retry auto-answering a question (re-runs targeted-followup Haiku)"
           }
         ]
@@ -1344,6 +1356,16 @@
         "purpose": "Transcript list / read / on-demand summary for the company workspace"
       },
       {
+        "name": "congress_ingest",
+        "file": "backend/app/services/congress_ingest.py",
+        "purpose": "Senate/house trades via FMP /stable/senate-trades + house-trades; amount-range midpoint parser (lower bound for open-ended ranges); upsert idempotent on sha256 natural_key over parsed values incl. owner (PR #57)"
+      },
+      {
+        "name": "congress_signal",
+        "file": "backend/app/services/congress_signal.py",
+        "purpose": "Pure 90-day congressional-trading aggregate (net value from amount_mid midpoints; cluster = ≥2 distinct politicians in 30d) → signals row signal_type=congress + bounded discovery modifier +3/+1/−2. CongressSnapshot.is_stale has the same overloading as InsiderSnapshot — read the docstring (PR #57)"
+      },
+      {
         "name": "counterparty_resolver",
         "file": "backend/app/services/counterparty_resolver.py",
         "purpose": "Map free-text counterparty names to canonical SEC entities via fuzzy matching (RapidFuzz token_set_ratio ≥95 auto, 80-94 queue, <80 queue-only)"
@@ -1456,7 +1478,7 @@
       {
         "name": "metric_guards",
         "file": "backend/app/services/metric_guards.py",
-        "purpose": "Two-tier FMP margin sanity guard (impossible gross > 1.0 nulled; suspicious [-5,1.5] log-only) shared by company_snapshot + peer_comp (PR #44)"
+        "purpose": "Three-tier FMP metric sanity guard shared by company_snapshot + peer_comp: impossible gross > 1.0 nulled (gross_corruption); suspicious margins [-5,1.5] log-only; guard_correlated nulls the EBITDA-derived siblings (ebitdaMarginTTM, EV/EBITDA, Net Debt/EBITDA on the overview) when the gross trigger fires (PRs #44, #55)"
       },
       {
         "name": "model_balancing",
@@ -2198,6 +2220,27 @@
         ]
       },
       {
+        "table": "congress_transactions",
+        "file": "backend/app/models/congress_transaction.py",
+        "purpose": "Senate/house periodic-transaction-report lines via FMP; idempotent on sha256 natural_key over parsed values incl. owner (same-day Self/Spouse lines distinct; coarse amount ranges mean genuinely identical same-day lines collapse — accepted)",
+        "foreign_keys": [],
+        "key_columns": [
+          "ticker",
+          "politician_name",
+          "chamber",
+          "district",
+          "owner",
+          "transaction_type",
+          "direction",
+          "transaction_date",
+          "disclosure_date",
+          "amount_range",
+          "amount_mid",
+          "disclosure_link",
+          "natural_key (UNIQUE)"
+        ]
+      },
+      {
         "table": "journal_trades",
         "file": "backend/app/models/journal_trade.py",
         "purpose": "One row = one entry + one exit (null exit_date = open); price sources manual | fmp_eod_adjusted",
@@ -2369,8 +2412,8 @@
       }
     },
     "migrations": {
-      "head": "a1ea628ef06d",
-      "count": 28,
+      "head": "c4d8e91f72a6",
+      "count": 29,
       "chain": [
         {
           "rev": "8eebd8f4659a",
@@ -2606,6 +2649,14 @@
           "name": "question_snoozed_until",
           "adds": [],
           "alters": "questions.snoozed_until (nullable tz-aware datetime — bulk snooze, PR #51)"
+        },
+        {
+          "rev": "c4d8e91f72a6",
+          "down": "a1ea628ef06d",
+          "name": "congress_transactions",
+          "adds": [
+            "congress_transactions"
+          ]
         }
       ]
     },
@@ -2632,7 +2683,7 @@
         "service": "material_events_scheduler",
         "cron": "daily at 06:30 UTC",
         "registered_in": "app/main.py lifespan",
-        "purpose": "8-K classify + Form 4 insider ingest over the universe (theme seeds ∪ active theses); 8-K failures fault-isolated from insider side"
+        "purpose": "8-K classify + Form 4 insider ingest + senate/house congress-trades ingest over the universe (theme seeds ∪ active theses); 8-K failures fault-isolated from insider side; congress side runs after the insider commit, fault-isolated (PR #57)"
       }
     ]
   },
@@ -3243,7 +3294,8 @@
         },
         {
           "name": "OpenQuestionsPanel",
-          "file": "frontend/components/questions/OpenQuestionsPanel.tsx"
+          "file": "frontend/components/questions/OpenQuestionsPanel.tsx",
+          "summary": "Open + Snoozed views (?status=snoozed); per-row Snoozed-until chip + Unsnooze button; checkbox bulk bar (PRs #51, #54)"
         },
         {
           "name": "QuestionTickerRollupTable",
@@ -3271,6 +3323,11 @@
           "name": "KillCriteriaDrawer",
           "file": "frontend/components/status/KillCriteriaDrawer.tsx",
           "summary": "KC n/m drawer off the status board — per-criterion armed/triggered toggles (PR #51)"
+        },
+        {
+          "name": "OrphanEventsSection",
+          "file": "frontend/components/status/OrphanEventsSection.tsx",
+          "summary": "Material events for seed-only tickers (no board row); ?expand_events deep link auto-opens (PR #54)"
         }
       ],
       "workspace": [
@@ -3487,7 +3544,7 @@
       ]
     },
     "api_client": {
-      "package": "frontend/lib/api/ (PR #48 — split from the former 2,451-line lib/api.ts)",
+      "package": "frontend/lib/api/ (PR #48 — split from the former 2,451-line lib/api.ts); PR #55 split peers.ts out of workspace.ts as the 13th module",
       "modules": [
         "core",
         "themes",
@@ -3496,6 +3553,7 @@
         "catalysts",
         "status",
         "workspace",
+        "peers",
         "performance",
         "transcripts",
         "model",
@@ -3620,6 +3678,7 @@
             "dismiss",
             "resolve",
             "retryAuto",
+            "unsnooze",
             "bulk"
           ]
         },
@@ -3712,16 +3771,12 @@
         "getTranscript",
         "summarizeTranscript"
       ],
-      "formatters": [
-        "fmtMarketCap",
-        "fmtPct",
-        "fmtScore"
-      ]
+      "notes": "fmt helpers (fmtMarketCap/fmtPct/fmtScore) moved out of the api package to lib/format.ts (PR #55); getSignalHistory lives in themes.ts"
     },
     "lib_utilities": [
       {
         "file": "frontend/lib/format.ts",
-        "purpose": "Date/number/percentage formatting"
+        "purpose": "Date/number/percentage formatting incl. fmtMarketCap/fmtPct/fmtScore (moved from the api package in PR #55)"
       },
       {
         "file": "frontend/lib/cellPath.ts",
@@ -3742,6 +3797,14 @@
       {
         "file": "frontend/lib/todayDerive.ts",
         "purpose": "Today-briefing derivation logic (node --test suite)"
+      },
+      {
+        "file": "frontend/lib/orphanEvents.ts",
+        "purpose": "deriveOrphanEvents — material-events rows for seed-only tickers with no board row (node --test suite, PR #54)"
+      },
+      {
+        "file": "frontend/lib/hooks/useWorkspaceKickoff.ts",
+        "purpose": "Shared workspace kick-off hook — replaces the 3 copied closures in WorkspaceButton / ReportHeader / RetryRunButton (PR #55)"
       }
     ],
     "globals": "frontend/app/globals.css — @media print hides any element with data-print-hide='true'. Tag new sticky UI accordingly so it drops out of PDF."
@@ -4000,7 +4063,7 @@
         "CitationRecord": "ORM persisted form in same file (citations table)",
         "StateCitation": "JSON-serializable form in backend/app/graph/state.py with ISO-string timestamp — what lives inside ResearchState.state JSONB"
       },
-      "note": "Adding a new data source requires preserving the (data, Citation) tuple convention. Migration 2db2e8812418 added cell_path so research citations can deep-link to model cells; existing JSONB rows round-trip as dicts."
+      "note": "Adding a new data source requires preserving the (data, Citation) tuple convention. Migration 2db2e8812418 added cell_path so research citations can deep-link to model cells; existing JSONB rows round-trip as dicts. ResearchState.add_citation dedupes on (source_url, metric) — a duplicate key replaces the existing entry in place, latest fetch wins, so risk-loop re-runs don't mint duplicate chips (PR #56). node_deep_dive persists the Citation halves of all primary + tier-2 FMP fetches into state.citations via unwrap_gather_citation (PR #55)."
     },
     {
       "id": "score_keys_normalization",

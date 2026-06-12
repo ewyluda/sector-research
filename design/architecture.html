@@ -388,11 +388,11 @@
 <div class="hero">
   <div>
     <h1><span class="accent">sector-research</span> · architecture map</h1>
-    <p class="tagline">Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider modifier) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.</p>
+    <p class="tagline">Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider/congress modifiers) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.</p>
   </div>
   <div class="meta">
-    <div>generated 2026-06-11 (PM refresh)</div>
-    <div>source 3cc8666 · main</div>
+    <div>generated 2026-06-12</div>
+    <div>source 4c03582 · main</div>
     <div>local-only · no auth</div>
   </div>
 </div>
@@ -400,11 +400,11 @@
 <!-- STATS -->
 <div class="stats">
   <div class="stat"><div class="v">13</div><div class="l">subsystems</div></div>
-  <div class="stat"><div class="v">112</div><div class="l">endpoints</div></div>
-  <div class="stat"><div class="v">56</div><div class="l">services</div></div>
-  <div class="stat"><div class="v">33</div><div class="l">db tables</div></div>
+  <div class="stat"><div class="v">113</div><div class="l">endpoints</div></div>
+  <div class="stat"><div class="v">58</div><div class="l">services</div></div>
+  <div class="stat"><div class="v">34</div><div class="l">db tables</div></div>
   <div class="stat"><div class="v">28</div><div class="l">pages</div></div>
-  <div class="stat"><div class="v">28</div><div class="l">migrations</div></div>
+  <div class="stat"><div class="v">29</div><div class="l">migrations</div></div>
 </div>
 
 <!-- TECH STACK -->
@@ -431,7 +431,7 @@
         <li>Next.js 16 · App Router · React 19</li>
         <li>Tailwind v4 (@tailwindcss/postcss)</li>
         <li>Recharts + lightweight-charts</li>
-        <li>Native <code>fetch</code> via the <code>lib/api/</code> package (12 domain modules, barrel re-export)</li>
+        <li>Native <code>fetch</code> via the <code>lib/api/</code> package (13 domain modules, barrel re-export)</li>
         <li>Path alias <code>@/*</code> → frontend root</li>
       </ul>
       <div class="label" style="margin-top:12px">launch</div>
@@ -497,8 +497,9 @@
                                                                   ├─► <span class="v">peer_sets</span>        ──► <span class="b">peer_comp + peer_sets</span> ──► <span class="g">/api/peers/*</span>    ──► <span class="b">/company/[ticker]/peers</span> · <span class="b">/compare</span>
                                                                   └─► <span class="v">journal_trades</span>   ──► <span class="b">journal + journal_comparison</span> ──► <span class="g">/api/journal/*</span> ──► <span class="b">/performance</span> (trade journal)
 
-   <span class="c">SEC EDGAR + FMP</span> ─► <span class="b">material_events_scheduler (cron 06:30 UTC)</span> ──► <span class="v">material_events</span> · <span class="v">insider_transactions</span> ──► <span class="g">/api/events</span> ──► <span class="b">/status</span> drawer · <span class="b">/</span> (Today) · discovery insider chip
-                                                                            └─► <span class="b">insider_signal</span> ──► <span class="v">signals</span> (signal_type=insider) ──► bounded discovery-score modifier
+   <span class="c">SEC EDGAR + FMP</span> ─► <span class="b">material_events_scheduler (cron 06:30 UTC)</span> ──► <span class="v">material_events</span> · <span class="v">insider_transactions</span> · <span class="v">congress_transactions</span> ──► <span class="g">/api/events</span> ──► <span class="b">/status</span> drawer · <span class="b">/</span> (Today) · discovery insider/congress chips
+                                                                            ├─► <span class="b">insider_signal</span> ──► <span class="v">signals</span> (signal_type=insider) ──► bounded discovery-score modifier
+                                                                            └─► <span class="b">congress_signal</span> ──► <span class="v">signals</span> (signal_type=congress) ──► bounded discovery-score modifier (PR #57)
 
    <span class="c">FMP</span> ─► <span class="b">company_snapshot · company_transcripts</span> ──► <span class="g">/api/company/*</span> ──► <span class="b">/company/[ticker]</span> (overview · financials · model · peers · research · theses · transcripts · filings)
 
@@ -600,10 +601,10 @@
       </div>
     </div>
     <div class="subsys-card" data-color="amber">
-      <h4>Material events + insider signal</h4>
-      <p class="purpose">Daily 06:30 UTC universe scan: 8-Ks Haiku-classified into material_events; Form 4 → insider_transactions → 90-day aggregate → bounded discovery modifier. Near-duplicate 8-Ks grouped at the API layer (×N badges; group-dismiss default). PRs #38, #51.</p>
+      <h4>Material events + insider + congress signals</h4>
+      <p class="purpose">Daily 06:30 UTC universe scan: 8-Ks Haiku-classified into material_events; Form 4 → insider_transactions → 90-day aggregate → bounded discovery modifier. Near-duplicate 8-Ks grouped at the API layer (×N badges; group-dismiss default). Congress trades (FMP senate/house) → congress_transactions → 90-day aggregate → modifier +3/+1/−2, fault-isolated after the insider commit. PRs #38, #51, #57.</p>
       <div class="meta-row">
-        <div><strong>services</strong> material_events_scheduler · event_classifier · insider_ingest · insider_signal</div>
+        <div><strong>services</strong> material_events_scheduler · event_classifier · insider_ingest · insider_signal · congress_ingest · congress_signal</div>
         <div><strong>endpoints</strong> /api/events · drawer on /status · Today rows</div>
       </div>
     </div>
@@ -808,7 +809,7 @@
     <summary><span>earnings <span class="prefix-pill">/api</span></span><span class="count">5 endpoints</span></summary>
     <div class="details-body">
       <table class="endpoints">
-        <tr><td><span class="method GET">GET</span></td><td class="path">/api/earnings/board</td><td class="handler">get_earnings_board</td><td class="summary-cell">Active thesis runs · upcoming + recent prints</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/earnings/board</td><td class="handler">get_earnings_board</td><td class="summary-cell">Active thesis runs · upcoming + recent prints · null-actual past prints = post_pending (PR #54)</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/earnings/<span class="param">{print_id}</span>/brief</td><td class="handler">post_brief</td><td class="summary-cell">Pre-earnings brief (3-5 bullets, Haiku)</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/earnings/<span class="param">{print_id}</span>/verdict</td><td class="handler">post_verdict</td><td class="summary-cell">Post-print verdict (confirms/threatens/neutral/insufficient)</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/earnings/prints/<span class="param">{ticker}</span></td><td class="handler">get_prints_by_ticker</td><td class="summary-cell">8 most recent prints</td></tr>
@@ -826,6 +827,7 @@
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/bulk</td><td class="handler">bulk_endpoint</td><td class="summary-cell">Bulk dismiss/resolve/snooze · exactly one of ids|filter · PR #51</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/<span class="param">{question_id}</span>/dismiss</td><td class="handler">dismiss_endpoint</td><td class="summary-cell">Dismiss with optional note</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/<span class="param">{question_id}</span>/resolve</td><td class="handler">resolve_endpoint</td><td class="summary-cell">Manual resolve</td></tr>
+        <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/<span class="param">{question_id}</span>/unsnooze</td><td class="handler">unsnooze_endpoint</td><td class="summary-cell">Idempotently clear an active snooze · 409 on non-open · PR #54</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/questions/<span class="param">{question_id}</span>/retry-auto</td><td class="handler">retry_auto_endpoint</td><td class="summary-cell">Re-run targeted-followup Haiku</td></tr>
       </table>
     </div>
@@ -1020,6 +1022,7 @@
     <div class="table-card"><div class="tname">peer_sets</div><div class="tpurpose">Curated peer list per ticker (auto-seeded cap 8, manual cap 12)</div><div class="cols">ticker (PK) · peers (JSONB)</div><div class="fk">—</div></div>
     <div class="table-card"><div class="tname">material_events</div><div class="tpurpose">Haiku-classified 8-K events; unique per filing; classification errors NOT tombstoned (retry next cron)</div><div class="cols">ticker · item_codes · event_type · materiality · headline · summary · filing_date · classified_at · dismissed_at</div><div class="fk">filing_id → filings.id</div></div>
     <div class="table-card"><div class="tname">insider_transactions</div><div class="tpurpose">Form 4 rows via FMP; idempotent on sha256 natural_key over PARSED values</div><div class="cols">ticker · insider_name · insider_title · transaction_type · direction · transaction_date · shares · price · shares_owned_after · accession_number · sec_link · natural_key</div><div class="fk">—</div></div>
+    <div class="table-card"><div class="tname">congress_transactions</div><div class="tpurpose">Senate/house trade lines via FMP; idempotent on sha256 natural_key over parsed values incl. owner (PR #57)</div><div class="cols">ticker · politician_name · chamber · district · owner · transaction_type · direction · transaction_date · disclosure_date · amount_range · amount_mid · disclosure_link · natural_key</div><div class="fk">—</div></div>
     <div class="table-card"><div class="tname">journal_trades</div><div class="tpurpose">One row = one entry + one exit (null exit_date = open); price sources manual | fmp_eod_adjusted</div><div class="cols">ticker · direction · entry_date/price/price_source · exit_date/price/price_source · quantity · spy_entry/exit_price · entry_rationale · exit_reason · exit_note</div><div class="fk">outcome_id → verdict_outcomes.id (SET NULL)</div></div>
   </div>
 
@@ -1060,7 +1063,8 @@
     <div class="mig"><span class="rev">a2c6676dd30d</span><span class="mname">journal_trades</span><span class="notable">PR #40 · nullable FK → verdict_outcomes (SET NULL)</span></div>
     <div class="mig"><span class="rev">77bcb5d1bfbd</span><span class="mname">alias_tombstones_nullable_canonical</span><span class="notable">PR #44 · counterparty_aliases.canonical_cik/name NULLABLE (curator_private tombstones)</span></div>
     <div class="mig"><span class="rev">eb21c3df2ad5</span><span class="mname">add_status_board_latest_run_composite</span><span class="notable">PR #43 · partial composite index for the status-board latest-run query</span></div>
-    <div class="mig head"><span class="rev">a1ea628ef06d</span><span class="mname">question_snoozed_until</span><span class="notable">PR #51 · questions.snoozed_until (bulk snooze)</span><span class="badge">HEAD</span></div>
+    <div class="mig"><span class="rev">a1ea628ef06d</span><span class="mname">question_snoozed_until</span><span class="notable">PR #51 · questions.snoozed_until (bulk snooze)</span></div>
+    <div class="mig head"><span class="rev">c4d8e91f72a6</span><span class="mname">congress_transactions</span><span class="notable">PR #57 · senate/house trade lines, sha256 natural key</span><span class="badge">HEAD</span></div>
   </div>
 </section>
 
@@ -1251,7 +1255,7 @@
   </details>
 
   <details>
-    <summary><span>lib/api/ <span class="muted" style="color:var(--dim);font-weight:400">— 12 domain modules + barrel (legacy lib/api.ts shim), 20 namespaces + standalone functions, ~110 functions</span></span></summary>
+    <summary><span>lib/api/ <span class="muted" style="color:var(--dim);font-weight:400">— 13 domain modules + barrel (legacy lib/api.ts shim), 20 namespaces + standalone functions, ~110 functions</span></span></summary>
     <div class="details-body">
       <div class="grid grid-4">
         <div class="comp-folder"><h4>themes</h4><ul><li>list, get, create, update, delete</li><li>addTicker, removeTicker</li></ul></div>
@@ -1309,11 +1313,13 @@
       <div class="item-row"><div><div class="name">fanout</div><div class="file">services/fanout.py</div></div><div class="purpose">Phase E — serial ingest → extract → resolve orchestrator; in-memory status</div></div>
       <div class="item-row"><div><div class="name">insider_ingest</div><div class="file">services/insider_ingest.py</div></div><div class="purpose">Form 4 rows via FMP insider-trading/search; idempotent on sha256 natural_key over parsed values</div></div>
       <div class="item-row"><div><div class="name">insider_signal</div><div class="file">services/insider_signal.py</div></div><div class="purpose">Pure 90-day insider aggregate → signals row (signal_type=insider) + bounded discovery modifier; is_stale is overloaded — read docstring</div></div>
+      <div class="item-row"><div><div class="name">congress_ingest</div><div class="file">services/congress_ingest.py</div></div><div class="purpose">Senate/house trades via FMP; amount-range midpoint parser; idempotent sha256 natural_key incl. owner (PR #57)</div></div>
+      <div class="item-row"><div><div class="name">congress_signal</div><div class="file">services/congress_signal.py</div></div><div class="purpose">Pure 90-day congressional aggregate → signals row (signal_type=congress) + bounded modifier +3/+1/−2 (PR #57)</div></div>
       <div class="item-row"><div><div class="name">journal</div><div class="file">services/journal.py</div></div><div class="purpose">Trade-journal CRUD + FMP price auto-fill — commit-free, callers own the session</div></div>
       <div class="item-row"><div><div class="name">journal_comparison</div><div class="file">services/journal_comparison.py</div></div><div class="purpose">Pure math: direction-aware returns, SPY excess, decision-vs-paper at nearest snapshot offset</div></div>
       <div class="item-row"><div><div class="name">material_events_grouping</div><div class="file">services/material_events_grouping.py</div></div><div class="purpose">Pure group_events() — near-duplicate 8-Ks (ticker + event_type within 4d) collapsed, newest member primary (PR #51)</div></div>
       <div class="item-row"><div><div class="name">material_events_scheduler</div><div class="file">services/material_events_scheduler.py</div></div><div class="purpose">Daily 06:30 UTC universe scan (8-K classify + Form 4 ingest; 8-K failures fault-isolated from insider side)</div></div>
-      <div class="item-row"><div><div class="name">metric_guards</div><div class="file">services/metric_guards.py</div></div><div class="purpose">Two-tier FMP margin sanity guard shared by company_snapshot + peer_comp (PR #44)</div></div>
+      <div class="item-row"><div><div class="name">metric_guards</div><div class="file">services/metric_guards.py</div></div><div class="purpose">Three-tier FMP metric sanity guard shared by company_snapshot + peer_comp — impossible gross nulled; suspicious margins log-only; correlated EBITDA-derived siblings nulled on gross corruption (PRs #44, #55)</div></div>
       <div class="item-row"><div><div class="name">model_balancing</div><div class="file">services/model_balancing.py</div></div><div class="purpose">Pure recompute: drivers → IS → CF → BS; plug into retained_earnings</div></div>
       <div class="item-row"><div><div class="name">model_baseline</div><div class="file">services/model_baseline.py</div></div><div class="purpose">Orchestrate AI baseline seeding into ModelState</div></div>
       <div class="item-row"><div><div class="name">model_diff</div><div class="file">services/model_diff.py</div></div><div class="purpose">Cell-path-keyed JSON diff between two ModelStates</div></div>
@@ -1323,7 +1329,7 @@
       <div class="item-row"><div><div class="name">pipeline</div><div class="file">services/pipeline.py</div></div><div class="purpose">PipelineService — run lifecycle, state persistence, SSE plumbing</div></div>
       <div class="item-row"><div><div class="name">quant_fingerprint</div><div class="file">services/quant_fingerprint.py</div></div><div class="purpose">Pure deterministic quant layer: Piotroski F, Altman Z, Beneish M, accruals, FCF conversion, SBC dilution, margin OLS slopes (TTM vs prior-TTM)</div></div>
       <div class="item-row"><div><div class="name">question_lifecycle</div><div class="file">services/question_lifecycle.py</div></div><div class="purpose">Open-question helpers across pipeline runs — persist, fetch/render, apply resurfaced resolutions (C2, PR #45)</div></div>
-      <div class="item-row"><div><div class="name">questions</div><div class="file">services/questions.py</div></div><div class="purpose">Question log query helpers + retry-auto orchestration + shared snooze-exclusion predicate (PR #51)</div></div>
+      <div class="item-row"><div><div class="name">questions</div><div class="file">services/questions.py</div></div><div class="purpose">Question log query helpers + retry-auto orchestration + shared snooze-exclusion predicate (PR #51); ?status=snoozed virtual filter + unsnooze (PR #54)</div></div>
       <div class="item-row"><div><div class="name">read_through</div><div class="file">services/read_through.py</div></div><div class="purpose">Read-through engine (peer events against thesis tickers)</div></div>
       <div class="item-row"><div><div class="name">relationship_context</div><div class="file">services/relationship_context.py</div></div><div class="purpose">CounterpartyContext (outbound + inbound, capped 20/bucket)</div></div>
       <div class="item-row"><div><div class="name">reverse_dcf</div><div class="file">services/reverse_dcf.py</div></div><div class="purpose">Bisection solvers + 21×21 sensitivity grids + thesis vs priced-in</div></div>
@@ -1358,7 +1364,7 @@
     <div class="xref-row"><span class="route">/filings</span><span class="arr">→</span><span class="ep">GET /api/themes</span> · <span class="ep">/api/filings/*</span> · <span class="ep">/api/relationships/*</span> · <span class="ep">/api/themes/{id}/relationships/fanout</span> · <span class="ep">/api/fanouts/{id}</span></div>
     <div class="xref-row"><span class="route">/filings/graph</span><span class="arr">→</span><span class="ep">GET /api/relationships/graph/{ticker}?depth=2&amp;theme_id=</span></div>
     <div class="xref-row"><span class="route">/status</span><span class="arr">→</span><span class="ep">/api/status/board</span> · <span class="ep">/api/runs/{id}/kill-criteria</span> · <span class="ep">/api/status/read-throughs</span> · <span class="ep">/api/earnings/board</span> · <span class="ep">/api/runs/{id}/earnings/{print}/{brief|verdict}</span> · <span class="ep">/api/events</span> · <span class="ep">/api/workspace/{ticker}/preflight</span></div>
-    <div class="xref-row"><span class="route">/questions</span><span class="arr">→</span><span class="ep">/api/questions</span> · <span class="ep">/api/questions/by-ticker</span> · <span class="ep">/api/questions/{id}/{dismiss|resolve|retry-auto}</span> · <span class="ep">/api/questions/bulk</span></div>
+    <div class="xref-row"><span class="route">/questions</span><span class="arr">→</span><span class="ep">/api/questions</span> · <span class="ep">/api/questions/by-ticker</span> · <span class="ep">/api/questions/{id}/{dismiss|resolve|retry-auto|unsnooze}</span> · <span class="ep">/api/questions/bulk</span></div>
     <div class="xref-row"><span class="route">/library</span><span class="arr">→</span><span class="ep">GET /api/runs</span> · <span class="ep">/api/runs/data-gaps</span> · <span class="ep">POST /api/runs/{id}/abandon</span> · <span class="ep">GET /api/themes</span></div>
     <div class="xref-row"><span class="route">/performance</span><span class="arr">→</span><span class="ep">/api/outcomes/summary</span> · <span class="ep">/api/outcomes</span> · <span class="ep">/api/outcomes/backfill</span> · <span class="ep">/api/journal/*</span> (trades CRUD, summary, price-preview, link-candidates)</div>
     <div class="xref-row"><span class="route">/company/[ticker]</span><span class="arr">→</span><span class="ep">/api/company/{ticker}/*</span> · <span class="ep">/api/peers/{ticker}</span> · <span class="ep">/api/peers/{ticker}/comp</span> · <span class="ep">/api/models/{ticker}</span> · <span class="ep">/api/filings/{ticker}</span></div>
@@ -1569,7 +1575,7 @@
 </section>
 
 <footer>
-  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), refreshed 2026-06-11 (through PR #53 — B3 UX phases 2-4: global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens) · companion JSON at <code>design/architecture.json</code>
+  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), refreshed 2026-06-11 (through PR #53 — B3 UX phases 2-4: global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens), refreshed 2026-06-12 (through PR #57 — post-campaign fix pack, polish pack, citation dedupe, congress-trading signal) · companion JSON at <code>design/architecture.json</code>
 </footer>
 
 </body>
