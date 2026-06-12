@@ -1,5 +1,6 @@
 import { apiFetch } from "./core";
 import type { Citation } from "./core";
+import type { SignalHistoryResponse } from "./pipeline";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -135,3 +136,16 @@ export const discovery = {
     return apiFetch<DiscoverResponse>(`/api/themes/${themeId}/discover?${params}`);
   },
 };
+
+export async function getSignalHistory(
+  themeId: string,
+  ticker: string,
+  opts: { signalType?: "velocity" | "narrative" | "discovery"; days?: number } = {},
+): Promise<SignalHistoryResponse> {
+  const params = new URLSearchParams();
+  if (opts.signalType) params.set("signal_type", opts.signalType);
+  if (opts.days != null) params.set("days", String(opts.days));
+  const qs = params.toString();
+  const path = `/api/themes/${encodeURIComponent(themeId)}/signals/${encodeURIComponent(ticker)}/history${qs ? `?${qs}` : ""}`;
+  return apiFetch<SignalHistoryResponse>(path);
+}

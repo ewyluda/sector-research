@@ -516,21 +516,3 @@ export const pipeline = {
     `${BASE}/api/runs/${runId}/stream`,
 };
 
-// ── Formatting helpers ────────────────────────────────────────────────────────
-
-export function fmtMarketCap(n: number | null): string {
-  if (!n) return "—";
-  if (n >= 1e12) return `$${(n / 1e12).toFixed(1)}T`;
-  if (n >= 1e9)  return `$${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6)  return `$${(n / 1e6).toFixed(1)}M`;
-  return `$${n.toFixed(0)}`;
-}
-
-export function fmtPct(n: number | null): string {
-  if (n === null || n === undefined) return "—";
-  return `${(n * 100).toFixed(1)}%`;
-}
-
-export function fmtScore(n: number): string {
-  return n.toFixed(0);
-}
