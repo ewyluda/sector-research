@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   questions as questionsApi,
   type Question,
-  type QuestionStatus,
   type QuestionTickerRollup,
 } from "@/lib/api";
 import { QuestionRow } from "@/components/questions/QuestionRow";
@@ -14,6 +13,7 @@ import {
   initialQuestionsTab,
   syncQuestionsTabForTickerFilter,
   type QuestionsTab,
+  type QuestionStatusFilter,
 } from "@/lib/questions-ui";
 
 const CHIP_BASE = "px-2 py-1 rounded-full text-xs border transition";
@@ -31,7 +31,7 @@ function QuestionsPageInner() {
   const [tab, setTab] = useState<QuestionsTab>(initialQuestionsTab(tickerFilter));
   const [rollup, setRollup] = useState<QuestionTickerRollup[]>([]);
   const [list, setList] = useState<Question[]>([]);
-  const [statusFilter, setStatusFilter] = useState<QuestionStatus | "all">("open");
+  const [statusFilter, setStatusFilter] = useState<QuestionStatusFilter>("open");
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -182,10 +182,11 @@ function QuestionsPageInner() {
         <div className="flex flex-wrap items-center gap-2 mb-4 text-xs">
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as QuestionStatus | "all")}
+            onChange={(e) => setStatusFilter(e.target.value as QuestionStatusFilter)}
             className="bg-[var(--bg)] border border-[var(--border)] rounded px-2 py-1 text-[var(--text)]"
           >
             <option value="open">Open</option>
+            <option value="snoozed">Snoozed</option>
             <option value="resolved_auto">Auto-resolved</option>
             <option value="resolved_inline">Resolved (next run)</option>
             <option value="resolved_manual">Manually resolved</option>

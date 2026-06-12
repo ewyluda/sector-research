@@ -1,6 +1,7 @@
 export type QuestionsTab = "by_ticker" | "by_question";
 export type QuestionStatusFilter =
   | "open"
+  | "snoozed"
   | "resolved_auto"
   | "resolved_inline"
   | "resolved_manual"

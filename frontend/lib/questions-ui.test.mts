@@ -28,3 +28,10 @@ test("dismissPromptToAction distinguishes cancel from empty note", () => {
     note: "duplicate",
   });
 });
+
+test("snoozed status builds list path", () => {
+  assert.equal(
+    buildQuestionListPath({ status: "snoozed" }),
+    "/api/questions?status=snoozed",
+  );
+});

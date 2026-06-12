@@ -357,4 +357,9 @@ export const questions = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  unsnooze: async (id: string): Promise<Question> =>
+    apiFetch<Question>(`/api/questions/${encodeURIComponent(id)}/unsnooze`, {
+      method: "POST",
+    }),
 };
