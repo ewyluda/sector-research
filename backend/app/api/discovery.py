@@ -67,6 +67,14 @@ def _card_to_dict(card: CompanySignalCard) -> dict[str, Any]:
             "net_value": card.insider.net_value,
             "is_stale": card.insider.is_stale,
         },
+        "congress": {
+            "modifier": card.congress.modifier,
+            "buy_count": card.congress.buy_count,
+            "sell_count": card.congress.sell_count,
+            "cluster_buy": card.congress.cluster_buy,
+            "net_value": card.congress.net_value,
+            "is_stale": card.congress.is_stale,
+        },
         "centrality": {
             "modifier": card.centrality.modifier,
             "betweenness": card.centrality.betweenness,
