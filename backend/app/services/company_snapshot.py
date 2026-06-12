@@ -13,7 +13,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from backend.app.services.metric_guards import guard_margin
+from backend.app.services.metric_guards import gross_corruption, guard_correlated, guard_margin
 
 
 class CompanyHeader(BaseModel):
@@ -160,6 +160,9 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
     # (key-metrics-ttm + ratios-ttm). NOTE: these intentionally differ from the
     # keys graph/nodes.py reads (e.g. returnOnEquityTTM here vs roeTTM there);
     # the ratios live on ratios-ttm, not key-metrics-ttm. Do not "align" to nodes.py.
+    raw_gross = _f(ra, "grossProfitMarginTTM")
+    corrupt = gross_corruption(raw_gross)
+
     stats = [
         StatGroup(title="Profile", items=[
             StatItem(label="Market Cap", value=market_cap, unit="money"),
@@ -170,8 +173,12 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
         StatGroup(title="Margins", items=[
             # guard_margin: gross > 1.0 is impossible → nulled; others warn-only
             # outside [-5.0, 1.5] (see services/metric_guards.py).
-            StatItem(label="Gross", value=guard_margin(_f(ra, "grossProfitMarginTTM"), metric="grossProfitMarginTTM", ticker=ticker), unit="pct"),
-            StatItem(label="EBITDA", value=guard_margin(_f(ra, "ebitdaMarginTTM"), metric="ebitdaMarginTTM", ticker=ticker), unit="pct"),
+            # guard_correlated: when gross is corrupt, EBITDA margin is also poisoned.
+            StatItem(label="Gross", value=guard_margin(raw_gross, metric="grossProfitMarginTTM", ticker=ticker), unit="pct"),
+            StatItem(label="EBITDA", value=guard_correlated(
+                guard_margin(_f(ra, "ebitdaMarginTTM"), metric="ebitdaMarginTTM", ticker=ticker),
+                corrupt=corrupt, metric="ebitdaMarginTTM", ticker=ticker,
+            ), unit="pct"),
             StatItem(label="Operating", value=guard_margin(_f(ra, "operatingProfitMarginTTM"), metric="operatingProfitMarginTTM", ticker=ticker), unit="pct"),
             StatItem(label="Pre-Tax", value=guard_margin(_f(ra, "pretaxProfitMarginTTM"), metric="pretaxProfitMarginTTM", ticker=ticker), unit="pct"),
             StatItem(label="Net", value=guard_margin(_f(ra, "netProfitMarginTTM"), metric="netProfitMarginTTM", ticker=ticker), unit="pct"),
@@ -188,7 +195,9 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
             StatItem(label="P/B", value=_f(ra, "priceToBookRatioTTM"), unit="x"),
             StatItem(label="P/S", value=_f(ra, "priceToSalesRatioTTM"), unit="x"),
             StatItem(label="P/FCF", value=_f(ra, "priceToFreeCashFlowRatioTTM"), unit="x"),
-            StatItem(label="EV/EBITDA", value=_f(km, "evToEBITDATTM"), unit="x"),
+            StatItem(label="EV/EBITDA", value=guard_correlated(
+                _f(km, "evToEBITDATTM"), corrupt=corrupt, metric="evToEBITDATTM", ticker=ticker,
+            ), unit="x"),
             StatItem(label="EV/Sales", value=_f(km, "evToSalesTTM"), unit="x"),
             StatItem(label="PEG", value=_f(ra, "priceToEarningsGrowthRatioTTM"), unit="x"),
         ]),
@@ -200,7 +209,9 @@ async def build_company_overview(fmp, ticker: str) -> CompanyOverview:
         ]),
         StatGroup(title="Financial Health", items=[
             StatItem(label="Current Ratio", value=_f(km, "currentRatioTTM"), unit="x"),
-            StatItem(label="Net Debt/EBITDA", value=_f(km, "netDebtToEBITDATTM"), unit="x"),
+            StatItem(label="Net Debt/EBITDA", value=guard_correlated(
+                _f(km, "netDebtToEBITDATTM"), corrupt=corrupt, metric="netDebtToEBITDATTM", ticker=ticker,
+            ), unit="x"),
             StatItem(label="Cash/Share", value=_f(ra, "cashPerShareTTM"), unit="money"),
             StatItem(label="Working Capital", value=_f(km, "workingCapitalTTM"), unit="money"),
         ]),

@@ -15,7 +15,7 @@ from statistics import median
 from typing import Any
 
 from backend.app.models.peer_comp import PeerCompTable, PeerCompRow, PeerError
-from backend.app.services.metric_guards import guard_margin
+from backend.app.services.metric_guards import gross_corruption, guard_correlated, guard_margin
 
 METRIC_FIELDS = (
     "pe",
@@ -149,12 +149,18 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
     if fcf_margin is None and p_s is not None and p_fcf:
         fcf_margin = p_s / p_fcf
 
+    raw_gross = _first((ratios, "grossProfitMarginTTM"))
+    corrupt = gross_corruption(raw_gross)
+
     return PeerCompRow(
         ticker=ticker,
         pe=_first((ratios, "priceToEarningsRatioTTM"), (km, "peRatioTTM")),
-        ev_ebitda=_first(
-            (ratios, "enterpriseValueMultipleTTM"),
-            (km, "enterpriseValueOverEBITDATTM"),
+        ev_ebitda=guard_correlated(
+            _first(
+                (ratios, "enterpriseValueMultipleTTM"),
+                (km, "enterpriseValueOverEBITDATTM"),
+            ),
+            corrupt=corrupt, metric="ev_ebitda", ticker=ticker,
         ),
         p_b=_first((ratios, "priceToBookRatioTTM"), (km, "priceToBookRatioTTM")),
         p_fcf=p_fcf,
@@ -164,17 +170,21 @@ async def _fetch_one(ticker: str, fmp) -> PeerCompRow:
         eps_yoy=_first((fg_row, "epsGrowth"), (fg_row, "epsgrowth")),
         # guard_margin: gross > 1.0 is impossible → nulled; others warn-only
         # outside [-5.0, 1.5] (see services/metric_guards.py).
+        # guard_correlated: when gross is corrupt, EBITDA margin is also poisoned.
         gross_margin=guard_margin(
-            _first((ratios, "grossProfitMarginTTM")),
+            raw_gross,
             metric="grossProfitMarginTTM", ticker=ticker,
         ),
         operating_margin=guard_margin(
             _first((ratios, "operatingProfitMarginTTM")),
             metric="operatingProfitMarginTTM", ticker=ticker,
         ),
-        ebitda_margin=guard_margin(
-            _first((ratios, "ebitdaMarginTTM")),
-            metric="ebitdaMarginTTM", ticker=ticker,
+        ebitda_margin=guard_correlated(
+            guard_margin(
+                _first((ratios, "ebitdaMarginTTM")),
+                metric="ebitdaMarginTTM", ticker=ticker,
+            ),
+            corrupt=corrupt, metric="ebitdaMarginTTM", ticker=ticker,
         ),
         fcf_margin=guard_margin(fcf_margin, metric="fcf_margin", ticker=ticker),
         roe=_first((km, "returnOnEquityTTM"), (km, "roeTTM")),

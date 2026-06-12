@@ -85,6 +85,7 @@ KM = {
         "returnOnAssetsTTM": 0.1803672568666202,
         "returnOnInvestedCapitalTTM": 0.21313559289430895,
         "evToEBITDATTM": 14.812080796580396,
+        "netDebtToEBITDATTM": 0.4078350670341544,
         "marketCap": 2951760944800,
     },
     "ORCL": {
@@ -92,6 +93,7 @@ KM = {
         "returnOnAssetsTTM": 0.06527760268032809,
         "returnOnInvestedCapitalTTM": 0.07925101567123531,
         "evToEBITDATTM": 113.48702111917433,
+        "netDebtToEBITDATTM": 2.0193241886555748,
         "marketCap": 578833017960,
     },
     "CORZ": {
@@ -207,7 +209,28 @@ class ImpossibleGrossMarginTest(unittest.IsolatedAsyncioTestCase):
             row = await _fetch_one("ORCL", _StubFMP())
         self.assertIsNone(row.gross_margin)
         self.assertIn("impossible grossProfitMarginTTM", "\n".join(cm.output))
-        self.assertAlmostEqual(row.ebitda_margin, 0.09206033433296713)
+        self.assertIsNone(row.ebitda_margin)
+
+    async def test_overview_nulls_correlated_ebitda_metrics(self):
+        with self.assertLogs(GUARD_LOGGER, level="WARNING"):
+            ov = await build_company_overview(_StubFMP(), "ORCL")
+        self.assertIsNone(_stat(ov, "Margins", "EBITDA"))
+        self.assertIsNone(_stat(ov, "Valuation (TTM)", "EV/EBITDA"))
+        self.assertIsNone(_stat(ov, "Financial Health", "Net Debt/EBITDA"))
+        # Operating is not EBITDA-derived — still passes through.
+        self.assertAlmostEqual(_stat(ov, "Margins", "Operating"), 0.3059176341340301)
+
+    async def test_clean_ticker_keeps_ebitda_metrics(self):
+        ov = await build_company_overview(_StubFMP(), "MSFT")
+        self.assertAlmostEqual(_stat(ov, "Margins", "EBITDA"), 0.6314044860858445)
+        self.assertAlmostEqual(_stat(ov, "Valuation (TTM)", "EV/EBITDA"), 14.812080796580396)
+        self.assertAlmostEqual(_stat(ov, "Financial Health", "Net Debt/EBITDA"), 0.4078350670341544)
+
+    async def test_peer_row_nulls_correlated_ebitda_metrics(self):
+        with self.assertLogs(GUARD_LOGGER, level="WARNING"):
+            row = await _fetch_one("ORCL", _StubFMP())
+        self.assertIsNone(row.ebitda_margin)
+        self.assertIsNone(row.ev_ebitda)
 
 
 class DeepLossMarginPassthroughTest(unittest.IsolatedAsyncioTestCase):
