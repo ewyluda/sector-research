@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "clsx": "^2.1.1",
+    "d3-force": "^3.0.0",
+    "d3-selection": "^3.0.0",
+    "d3-zoom": "^3.0.0",
     "lightweight-charts": "^5.1.0",
     "next": "16.2.3",
     "react": "19.2.4",
@@ -20,6 +23,9 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3-force": "^3.0.10",
+    "@types/d3-selection": "^3.0.11",
+    "@types/d3-zoom": "^3.0.8",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
