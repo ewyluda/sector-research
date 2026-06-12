@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { relationships } from "@/lib/api";
 import type { SupplyChainEntry, SupplyChainGraph } from "@/lib/api";
 import { usePersistedCollapse } from "../usePersistedCollapse";
+import { ConcentrationFlow } from "./ConcentrationFlow";
 
 const TYPE_LABEL: Record<string, string> = {
   customer: "Customers",
@@ -156,6 +157,7 @@ function SupplyChainEcosystemImpl({ ticker }: Props) {
       stat={`${totalOut} disclosed · ${totalIn} reciprocal`}
     >
       <div className="space-y-3">
+        <ConcentrationFlow graph={graph} />
         <div className="flex justify-end">
           <Link
             href={`/filings/graph?root=${encodeURIComponent(ticker)}`}
