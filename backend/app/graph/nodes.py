@@ -29,8 +29,9 @@ import asyncio
 import logging
 import re
 import traceback
+from datetime import date
 
-from backend.app.clients.fmp import FMPClient
+from backend.app.clients.fmp import FMPClient, recent_13f_quarters
 from backend.app.clients.fred import FREDClient
 from backend.app.db import async_session, unit_of_work
 from backend.app.graph.deep_dive_context import DeepDiveContext, build_all_contexts
@@ -78,6 +79,40 @@ logger = logging.getLogger(__name__)
 
 CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
 TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
+
+
+# ── Tier-2 degradable helpers ─────────────────────────────────────────────────
+
+async def _fetch_institutional(
+    fmp: FMPClient, ticker: str
+) -> tuple[tuple[dict | None, list], list]:
+    """13F summary + top holders for the latest filed quarter.
+
+    Walks back up to 4 quarters (a 13F for the in-progress quarter cannot
+    exist). Degradable: any failure or no-data returns empty — the
+    fundamentals section simply doesn't render.
+    Returns ((summary | None, holders: list), citations: list[Citation]).
+    """
+    try:
+        citations = []
+        for year, quarter in recent_13f_quarters(date.today()):
+            summary, sum_cit = await fmp.get_institutional_summary(ticker, year, quarter)
+            if summary is None:
+                continue
+            # Found a quarter with data — also fetch holders (degrade independently)
+            citations.append(sum_cit)
+            try:
+                holders, hld_cit = await fmp.get_institutional_holders(ticker, year, quarter)
+                citations.append(hld_cit)
+            except Exception as e:
+                logger.warning("[%s] _fetch_institutional holders failed: %s", ticker, e)
+                holders = []
+            return (summary, holders), citations
+        # All quarters returned empty
+        return (None, []), []
+    except Exception as e:
+        logger.warning("[%s] _fetch_institutional failed: %s", ticker, e)
+        return (None, []), []
 
 
 # ── Phase 1+2: quick_screen ───────────────────────────────────────────────────
@@ -333,6 +368,7 @@ async def node_deep_dive(
             fmp.get_analyst_grades(state.ticker, limit=10),
             fmp.get_analyst_grades_historical(state.ticker, limit=6),
             fmp.get_insider_trading(state.ticker, limit=20),
+            _fetch_institutional(fmp, state.ticker),
             return_exceptions=True,
         )
         grade_consensus = _unwrap(secondary[0], {}) or {}
@@ -341,11 +377,24 @@ async def node_deep_dive(
         grades_recent = _unwrap(secondary[3], []) or []
         grades_hist = _unwrap(secondary[4], []) or []
         insider_tx = _unwrap(secondary[5], []) or []
+        # _fetch_institutional returns ((summary, holders), [citations]) — not a
+        # (data, citation) pair, so unwrap manually; exceptions degrade to empty.
+        _inst_slot = secondary[6]
+        if isinstance(_inst_slot, BaseException):
+            inst_summary, inst_holders = None, []
+            _inst_citations: list = []
+        else:
+            (inst_summary, inst_holders), _inst_citations = _inst_slot
 
-        for _slot in secondary:
+        # Persist tier-2 citations: the first 6 slots are standard (data, cit) pairs
+        for _slot in secondary[:6]:
             _t2_cit = unwrap_gather_citation(_slot)
             if _t2_cit is not None:
                 state.add_citation(StateCitation.from_citation(_t2_cit))
+        # Persist institutional citations (list, not a single Citation)
+        for _cit in _inst_citations:
+            if _cit is not None:
+                state.add_citation(StateCitation.from_citation(_cit))
 
         data_text = _fmt_fundamentals(
             state.ticker,
@@ -364,6 +413,8 @@ async def node_deep_dive(
             grades_recent=grades_recent if isinstance(grades_recent, list) else [],
             grades_hist=grades_hist if isinstance(grades_hist, list) else [],
             insider_tx=insider_tx if isinstance(insider_tx, list) else [],
+            inst_summary=inst_summary if isinstance(inst_summary, dict) else None,
+            inst_holders=inst_holders if isinstance(inst_holders, list) else [],
         )
 
         # Build curated financials for frontend dashboard
