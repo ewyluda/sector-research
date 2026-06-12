@@ -128,7 +128,7 @@ export default function ThemeGraphView({ themes }: { themes: Theme[] }) {
           {error}
         </div>
       )}
-      {themeId && graph?.too_dense && (
+      {themeId && graph?.too_dense && !loading && (
         <div className="rounded-xl border-2 border-dashed border-[var(--color-border)] py-12 text-center">
           <p className="text-sm text-[var(--color-text-muted)]">
             Too dense to render ({graph.node_count} nodes,{" "}
@@ -144,7 +144,7 @@ export default function ThemeGraphView({ themes }: { themes: Theme[] }) {
           </p>
         </div>
       )}
-      {themeId && graph && !graph.too_dense && graph.edge_count > 0 && sim && (
+      {themeId && graph && !loading && !graph.too_dense && graph.edge_count > 0 && sim && (
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="min-w-0 flex-1">
             <ForceGraphCanvas
