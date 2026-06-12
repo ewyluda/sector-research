@@ -18,6 +18,7 @@ import time
 import hashlib
 import json
 import logging
+from datetime import date
 from typing import Any
 
 import httpx
@@ -37,6 +38,32 @@ TTL_CALENDAR = 21600    # 6 hours — calendar contents shift slowly, but same-d
 # ── Retry config ──────────────────────────────────────────────────────────────
 MAX_RETRIES = 3
 BASE_TIMEOUT = 10.0  # seconds
+
+
+def recent_13f_quarters(today: date, n: int = 4) -> list[tuple[int, int]]:
+    """Return the n most-recent completed calendar quarters as (year, quarter) tuples.
+
+    A 13F for the in-progress quarter cannot yet exist, so we start from the
+    PREVIOUS quarter and walk back n steps.
+
+    Example: date(2026, 6, 12) → [(2026,1),(2025,4),(2025,3),(2025,2)]
+    """
+    # Determine the previous completed quarter
+    current_q = (today.month - 1) // 3 + 1  # 1-based quarter for today's month
+    year = today.year
+    q = current_q - 1
+    if q == 0:
+        q = 4
+        year -= 1
+
+    result = []
+    for _ in range(n):
+        result.append((year, q))
+        q -= 1
+        if q == 0:
+            q = 4
+            year -= 1
+    return result
 
 
 class FMPClientError(Exception):
@@ -566,6 +593,52 @@ class FMPClient:
             "house-trades", "House Trades", ticker, params
         )
         return data if isinstance(data, list) else [], citation
+
+    # ── Institutional ownership (13F) ────────────────────────────────────────
+
+    async def get_institutional_summary(
+        self, symbol: str, year: int, quarter: int
+    ) -> tuple[dict | None, Citation]:
+        """Aggregate 13F positions summary for a ticker for the given quarter.
+
+        FMP returns a single-element list; we unwrap it to a dict.
+        Returns None data on empty list or non-list (error dict pass-through).
+        """
+        params = {"symbol": symbol, "year": year, "quarter": quarter}
+        data = await self._request(
+            "institutional-ownership/symbol-positions-summary", params, ttl=TTL_FUNDAMENTAL
+        )
+        citation = self._make_citation(
+            "institutional-ownership/symbol-positions-summary",
+            "13F institutional ownership summary",
+            symbol,
+            params,
+        )
+        if not isinstance(data, list) or len(data) == 0:
+            return None, citation
+        return data[0], citation
+
+    async def get_institutional_holders(
+        self, symbol: str, year: int, quarter: int, limit: int = 25
+    ) -> tuple[list, Citation]:
+        """Per-holder 13F rows for a ticker for the given quarter.
+
+        Rows are sorted by the API (largest holders first). We cap client-side
+        at `limit` — do NOT send a limit wire param (unverified behavior).
+        """
+        params = {"symbol": symbol, "year": year, "quarter": quarter}
+        data = await self._request(
+            "institutional-ownership/extract-analytics/holder", params, ttl=TTL_FUNDAMENTAL
+        )
+        citation = self._make_citation(
+            "institutional-ownership/extract-analytics/holder",
+            "13F institutional holders",
+            symbol,
+            params,
+        )
+        if not isinstance(data, list):
+            return [], citation
+        return data[:limit], citation
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
