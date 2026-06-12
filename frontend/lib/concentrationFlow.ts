@@ -27,8 +27,7 @@ export interface ConcentrationFlowData {
   eligible: boolean; // ≥2 non-Other bands total across both sides
 }
 
-const SIDES = ["supplier", "customer"] as const;
-type Side = (typeof SIDES)[number];
+type Side = "supplier" | "customer";
 
 function buildSide(
   side: Side,
