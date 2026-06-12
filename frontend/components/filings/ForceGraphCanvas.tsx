@@ -18,7 +18,7 @@ import {
   type SimulationNodeDatum,
 } from "d3-force";
 import { select } from "d3-selection";
-import { zoom, zoomIdentity, type ZoomTransform } from "d3-zoom";
+import { zoom, zoomIdentity, type ZoomBehavior, type ZoomTransform } from "d3-zoom";
 import { edgeColor, edgeWidth, type SimLink, type SimNode } from "@/lib/themeGraph";
 
 type LayoutNode = SimNode & SimulationNodeDatum;
@@ -46,6 +46,11 @@ export default function ForceGraphCanvas({
     new Map(),
   );
   const dragRef = useRef<{ id: string; moved: boolean } | null>(null);
+  // Pointer capture retargets node clicks to the svg element, so e.target
+  // can't distinguish a node click from a background click. This ref lets the
+  // node pointerdown signal that the upcoming svg onClick should be skipped.
+  const skipBackgroundClearRef = useRef(false);
+  const zoomBehaviorRef = useRef<ZoomBehavior<SVGSVGElement, unknown> | null>(null);
 
   const layout = useMemo(() => {
     // d3-force mutates node/link objects — work on copies.
@@ -63,7 +68,14 @@ export default function ForceGraphCanvas({
       .force("collide", forceCollide<LayoutNode>().radius((d) => d.radius + 6))
       .stop();
     sim.tick(300);
-    return { simNodes, simLinks };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const n of simNodes) {
+      minX = Math.min(minX, (n.x ?? 0) - n.radius);
+      maxX = Math.max(maxX, (n.x ?? 0) + n.radius);
+      minY = Math.min(minY, (n.y ?? 0) - n.radius);
+      maxY = Math.max(maxY, (n.y ?? 0) + n.radius);
+    }
+    return { simNodes, simLinks, bounds: { minX, minY, maxX, maxY } };
   }, [nodes, links]);
 
   useEffect(() => {
@@ -72,12 +84,31 @@ export default function ForceGraphCanvas({
       .scaleExtent([0.2, 6])
       .filter((event) => !(event.type === "mousedown" && dragRef.current))
       .on("zoom", (event) => setTransform(event.transform));
+    zoomBehaviorRef.current = behavior;
     const sel = select(svgRef.current);
     sel.call(behavior);
     return () => {
       sel.on(".zoom", null);
     };
   }, []);
+
+  // Fit the graph to the viewport whenever the layout changes.
+  useEffect(() => {
+    const svg = svgRef.current;
+    const behavior = zoomBehaviorRef.current;
+    if (!svg || !behavior) return;
+    const { minX, minY, maxX, maxY } = layout.bounds;
+    if (!Number.isFinite(minX)) return;
+    const bw = Math.max(1, maxX - minX);
+    const bh = Math.max(1, maxY - minY);
+    const pad = 40; // label margin in viewBox units
+    const k = Math.max(0.2, Math.min(6, Math.min(WIDTH / (bw + pad * 2), HEIGHT / (bh + pad * 2), 1)));
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    // viewBox is centered on (0,0): translate so the bounds-center lands there.
+    const t = zoomIdentity.translate(-cx * k, -cy * k).scale(k);
+    select(svg).call(behavior.transform, t);
+  }, [layout]);
 
   const pos = (n: LayoutNode) =>
     overrides.get(n.id) ?? { x: n.x ?? 0, y: n.y ?? 0 };
@@ -114,9 +145,14 @@ export default function ForceGraphCanvas({
       onPointerCancel={() => {
         dragRef.current = null;
       }}
-      onClick={(e) => {
-        // Background click clears selection (node clicks stopPropagation).
-        if (e.target === svgRef.current) onSelect(null);
+      onClick={() => {
+        // Pointer capture retargets node clicks to the svg, so e.target can't
+        // distinguish node vs background — the ref does.
+        if (skipBackgroundClearRef.current) {
+          skipBackgroundClearRef.current = false;
+          return;
+        }
+        onSelect(null);
       }}
     >
       <g ref={innerGRef} transform={transform.toString()}>
@@ -157,10 +193,10 @@ export default function ForceGraphCanvas({
               style={{ cursor: "pointer" }}
               onPointerDown={(e) => {
                 e.stopPropagation();
+                skipBackgroundClearRef.current = true;
                 svgRef.current?.setPointerCapture(e.pointerId);
                 dragRef.current = { id: n.id, moved: false };
               }}
-              onClick={(e) => e.stopPropagation()}
             >
               <circle
                 r={n.radius}
