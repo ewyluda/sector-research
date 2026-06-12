@@ -106,3 +106,15 @@ test("edgeWidth scales with magnitude and caps", () => {
   assert.ok(edgeWidth(20) > edgeWidth(null));
   assert.ok(edgeWidth(95) <= 6);
 });
+
+test("buildSimGraph keeps a single link's magnitude as-is", () => {
+  const nodes = [node({}), node({ id: "ticker:TSM", ticker: "TSM" })];
+  const { links } = buildSimGraph(nodes, [edge({ magnitude_pct: 12 })]);
+  assert.equal(links[0].magnitudePct, 12);
+});
+
+test("buildSimGraph collapse of all-null magnitudes stays null", () => {
+  const nodes = [node({}), node({ id: "ticker:TSM", ticker: "TSM" })];
+  const { links } = buildSimGraph(nodes, [edge({}), edge({})]);
+  assert.equal(links[0].magnitudePct, null);
+});

@@ -73,6 +73,10 @@ export function buildSimGraph(
   nodes: SupplyChainGraphNode[],
   edges: SupplyChainGraphEdge[],
 ): { nodes: SimNode[]; links: SimLink[] } {
+  // Degree counts raw filing rows (disclosure volume), NOT distinct
+  // neighbors — a counterparty named in 3 filings of the same type gets a
+  // bigger radius than one named once. Deliberate: radius encodes how much
+  // filing evidence touches a node.
   const degree = new Map<string, number>();
   for (const e of edges) {
     degree.set(e.from_id, (degree.get(e.from_id) ?? 0) + 1);
