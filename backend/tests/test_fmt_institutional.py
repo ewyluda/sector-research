@@ -299,3 +299,21 @@ class TestFmtFundamentalsInstKwargsIdentity(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CikFallbackTests(unittest.TestCase):
+    def test_empty_investor_name_falls_back_to_cik(self):
+        # FMP serves empty investorName for freshly re-registered filer CIKs
+        # (live-observed 2026-06-12).
+        section = _section_institutional(None, [
+            {"investorName": "", "cik": "0002100119",
+             "sharesNumber": 1_538_550_382, "marketValue": 268_300_000_000},
+        ])
+        self.assertIn("CIK 0002100119", section)
+        self.assertNotIn("Unknown", section)
+
+    def test_no_name_no_cik_stays_unknown(self):
+        section = _section_institutional(None, [
+            {"sharesNumber": 100, "marketValue": 1000},
+        ])
+        self.assertIn("Unknown", section)

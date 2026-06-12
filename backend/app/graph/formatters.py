@@ -472,7 +472,10 @@ def _section_institutional(
         )
         parts.append("Top holders (by market value):")
         for h in sorted_holders[:10]:
-            name = (h.get("investorName") or "Unknown")[:40]
+            # FMP serves empty investorName for freshly re-registered filer
+            # CIKs (live-observed 2026-06-12) — the CIK beats "Unknown".
+            cik = h.get("cik")
+            name = (h.get("investorName") or (f"CIK {cik}" if cik else "Unknown"))[:40]
             shares = h.get("sharesNumber")
             mv = h.get("marketValue")
             chg_shares = h.get("changeInSharesNumber")
