@@ -45,6 +45,8 @@ function buildSide(
   if (participating.length === 0) return [];
 
   // Rule 2: latest-filing dedup — keep only edges from the max filing_date.
+  // Assumes one filing per side at the max date — two same-day filings
+  // disclosing the same counterparty would double-count; accepted (not observed in practice).
   const maxDate = participating.reduce(
     (best, e) => (e.filing_date > best ? e.filing_date : best),
     participating[0].filing_date,
@@ -75,10 +77,10 @@ function buildSide(
   bands.sort((a, b) => b.pct - a.pct);
 
   const total = bands.reduce((s, b) => s + b.pct, 0);
-  if (total < 100) {
+  if (total < 100 - 1e-6) {
     bands.push({
       label: "Other / undisclosed",
-      pct: 100 - total,
+      pct: Math.round((100 - total) * 10) / 10,
       side,
       isOther: true,
       isUnnamed: false,
@@ -88,6 +90,26 @@ function buildSide(
   }
 
   return bands;
+}
+
+/**
+ * Compute per-band rect heights given a list of band pcts.
+ * Returns { h } for each band in input order, with a minimum of 16px per band.
+ * The caller is responsible for stacking the rects (each h + gap) and deriving
+ * the svg height from the summed output rather than assuming proportional fit.
+ *
+ * Exported for node-testability.
+ */
+export function computeBandHeights(
+  pcts: number[],
+  available: number,
+  gap = 4,
+): number[] {
+  if (pcts.length === 0) return [];
+  const totalGap = gap * (pcts.length - 1);
+  const drawArea = available - totalGap;
+  const totalPct = pcts.reduce((s, p) => s + p, 0);
+  return pcts.map((p) => Math.max(16, (p / totalPct) * drawArea));
 }
 
 export function buildConcentrationFlow(

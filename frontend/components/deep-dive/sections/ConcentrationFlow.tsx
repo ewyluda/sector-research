@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { SupplyChainGraph } from "@/lib/api";
-import { buildConcentrationFlow } from "@/lib/concentrationFlow";
+import { buildConcentrationFlow, computeBandHeights } from "@/lib/concentrationFlow";
 import type { FlowBand } from "@/lib/concentrationFlow";
 import { REL_TYPE_COLORS } from "@/lib/themeGraph";
 
@@ -36,27 +36,30 @@ function bandOpacity(band: FlowBand): number {
   return band.isOther ? 1 : 0.8;
 }
 
-/**
- * Compute per-band rect y-positions given a list of bands and available height.
- * Distributes bands evenly with a small gap.
- */
-function computeBandRects(
-  bands: FlowBand[],
-  totalHeight: number,
-): { y: number; h: number }[] {
-  if (bands.length === 0) return [];
-  const gap = 4;
-  const totalGap = gap * (bands.length - 1);
-  const totalPct = bands.reduce((s, b) => s + b.pct, 0);
-  const available = totalHeight - totalGap;
+const BAND_GAP = 4;
 
+/**
+ * Stack band rects top-to-bottom.
+ * Heights are provided by computeBandHeights (lib); this function only adds y
+ * positions. Keeping y-stacking here (render layer) and height math in the lib
+ * (node-testable) follows the house pattern.
+ */
+function stackBandRects(heights: number[]): { y: number; h: number }[] {
   let cursor = 0;
-  return bands.map((b) => {
-    const h = Math.max(16, (b.pct / totalPct) * available);
+  return heights.map((h) => {
     const rect = { y: cursor, h };
-    cursor += h + gap;
+    cursor += h + BAND_GAP;
     return rect;
   });
+}
+
+/**
+ * Derive the column content height (excluding padding) from actual stacked band
+ * heights so bands never overflow: sum of heights + gaps between them.
+ */
+function columnContentHeight(heights: number[]): number {
+  if (heights.length === 0) return 0;
+  return heights.reduce((s, h) => s + h, 0) + BAND_GAP * (heights.length - 1);
 }
 
 /**
@@ -73,7 +76,6 @@ function ribbonPath(
   companyH: number,
   pct: number,
   totalPct: number,
-  svgH: number,
 ): string {
   const thickness = Math.max(3, (pct / totalPct) * companyH * 0.9);
   const companyMidY = companyY + companyH / 2;
@@ -112,8 +114,6 @@ function ribbonPath(
       `Z`,
     ].join(" ");
   }
-
-  void svgH; // unused but keeps signature consistent for future use
 }
 
 // ── Band SVG column ────────────────────────────────────────────────────────────
@@ -121,17 +121,16 @@ function ribbonPath(
 function BandColumn({
   bands,
   side,
-  svgH,
+  rects,
   companyY,
   companyH,
 }: {
   bands: FlowBand[];
   side: "supplier" | "customer";
-  svgH: number;
+  rects: { y: number; h: number }[];
   companyY: number;
   companyH: number;
 }) {
-  const rects = computeBandRects(bands, svgH - SVG_PADDING_Y * 2);
   const xBase = side === "supplier" ? COL_LEFT_X : COL_RIGHT_X;
   const totalPct = bands.reduce((s, b) => s + b.pct, 0);
 
@@ -151,6 +150,23 @@ function BandColumn({
               .filter(Boolean)
               .join(" · ") || band.label;
 
+        // Never truncate the two fixed-width generic labels; widen truncation
+        // to 20 chars for arbitrary counterparty names.
+        const isGenericLabel =
+          band.label === "Undisclosed supplier" ||
+          band.label === "Undisclosed customer" ||
+          band.label === "Other / undisclosed";
+        const displayLabel = isGenericLabel
+          ? band.label
+          : band.label.length > 20
+            ? `${band.label.slice(0, 19)}…`
+            : band.label;
+
+        const pctStr =
+          band.pct % 1 === 0
+            ? band.pct.toFixed(0)
+            : band.pct.toFixed(1);
+
         return (
           <g key={i}>
             {/* Ribbon */}
@@ -164,7 +180,6 @@ function BandColumn({
                 companyH,
                 band.pct,
                 totalPct,
-                svgH,
               )}
               fill={color}
               opacity={opacity * 0.5}
@@ -189,7 +204,7 @@ function BandColumn({
               fill="var(--color-text-primary)"
               opacity={0.9}
             >
-              {band.label.length > 14 ? `${band.label.slice(0, 13)}…` : band.label}
+              {displayLabel}
             </text>
             {/* Pct text */}
             <text
@@ -205,7 +220,7 @@ function BandColumn({
               fontFamily="monospace"
               fill="var(--color-text-muted)"
             >
-              {band.pct}%
+              {pctStr}%
             </text>
             <title>{tooltip}</title>
           </g>
@@ -230,11 +245,27 @@ export function ConcentrationFlow({ graph }: Props) {
   // Self-hide when not enough data — mirrors RPOTrend prior art.
   if (!data.eligible) return null;
 
-  const maxBands = Math.max(data.suppliers.length, data.customers.length, 1);
+  // Derive svg height from actual stacked band heights — prevents overflow on
+  // skewed distributions (e.g. [90,8,2]) where the 16px floor pushes cumulative
+  // height past any fixed proportional budget.
+  const supplierHeights = computeBandHeights(
+    data.suppliers.map((b) => b.pct),
+    SVG_HEIGHT_PER_BAND * Math.max(data.suppliers.length, 1),
+  );
+  const customerHeights = computeBandHeights(
+    data.customers.map((b) => b.pct),
+    SVG_HEIGHT_PER_BAND * Math.max(data.customers.length, 1),
+  );
+
+  const supplierContent = columnContentHeight(supplierHeights);
+  const customerContent = columnContentHeight(customerHeights);
   const svgH = Math.max(
     SVG_MIN_HEIGHT,
-    maxBands * SVG_HEIGHT_PER_BAND + SVG_PADDING_Y * 2,
+    Math.max(supplierContent, customerContent) + SVG_PADDING_Y * 2,
   );
+
+  const supplierRects = stackBandRects(supplierHeights);
+  const customerRects = stackBandRects(customerHeights);
 
   const companyY = svgH / 2 - COMPANY_NODE_H / 2;
 
@@ -261,7 +292,7 @@ export function ConcentrationFlow({ graph }: Props) {
           <BandColumn
             bands={data.suppliers}
             side="supplier"
-            svgH={svgH}
+            rects={supplierRects}
             companyY={companyY}
             companyH={COMPANY_NODE_H}
           />
@@ -270,7 +301,7 @@ export function ConcentrationFlow({ graph }: Props) {
           <BandColumn
             bands={data.customers}
             side="customer"
-            svgH={svgH}
+            rects={customerRects}
             companyY={companyY}
             companyH={COMPANY_NODE_H}
           />
