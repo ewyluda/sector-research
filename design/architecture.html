@@ -523,7 +523,7 @@
       <div class="meta-row">
         <div><strong>service</strong> services/discovery.py</div>
         <div><strong>route</strong> /theme/[id]</div>
-        <div><strong>score</strong> 40 vel + 40 fund + 20 disc</div>
+        <div><strong>score</strong> 40 vel + 40 fund + 20 disc · then bounded insider/congress/centrality modifiers (+3 hub / +2 broker, PR #59)</div>
       </div>
     </div>
     <div class="subsys-card" data-color="indigo">
@@ -537,10 +537,10 @@
     </div>
     <div class="subsys-card" data-color="violet">
       <h4>SEC EDGAR · 5 phases A–E</h4>
-      <p class="purpose">Section extraction → relationship extraction (Haiku) → counterparty resolution (RapidFuzz) → supply-chain graph → fan-out orchestration.</p>
+      <p class="purpose">Section extraction → relationship extraction (Haiku) → counterparty resolution (RapidFuzz) → supply-chain graph → fan-out orchestration. Sibling theme-wide force-graph (build_theme_graph, PR #58) + concentration-flow ribbon (PR #60).</p>
       <div class="meta-row">
-        <div><strong>services</strong> edgar_*.py · supply_chain.py · fanout.py</div>
-        <div><strong>routes</strong> /filings · /filings/graph</div>
+        <div><strong>services</strong> edgar_*.py · supply_chain.py · graph_centrality.py · fanout.py</div>
+        <div><strong>routes</strong> /filings · /filings/graph · /filings/graph/theme</div>
       </div>
     </div>
     <div class="subsys-card" data-color="green">
@@ -677,7 +677,7 @@
 
 <!-- BACKEND ENDPOINTS -->
 <section>
-  <h2>Backend endpoints · 21 routers · 112 endpoints</h2>
+  <h2>Backend endpoints · 21 routers · 114 endpoints</h2>
 
   <details open>
     <summary><span>health <span class="prefix-pill">(none)</span></span><span class="count">3 endpoints</span></summary>
@@ -750,6 +750,7 @@
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/unresolved</td><td class="handler">list_unresolved</td><td class="summary-cell">Curation queue by occurrence count</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/alias</td><td class="handler">create_manual_alias</td><td class="summary-cell">Manual alias override</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/graph/<span class="param">{ticker}</span></td><td class="handler">get_ticker_graph</td><td class="summary-cell">Phase D — supply-chain graph (depth=1|2)</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/theme-graph/<span class="param">{theme_id}</span></td><td class="handler">get_theme_graph</td><td class="summary-cell">Theme-wide force-graph (filer ∪ counterparty ∈ seeds) · 404 on bad UUID · too_dense &gt;300 nodes (PR #58)</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/relationships/reconcile</td><td class="handler">reconcile_all_bilaterals</td><td class="summary-cell">Flip confirmed_bilateral on reciprocal pairs</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/competition/<span class="param">{ticker}</span></td><td class="handler">get_competition</td><td class="summary-cell">Structured Competition view from latest 10-K</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/relationships/dismissed</td><td class="handler">list_dismissed_route</td><td class="summary-cell">List curator_private tombstones · ⚠ must stay declared above /relationships/{param}</td></tr>
@@ -1070,7 +1071,7 @@
 
 <!-- FRONTEND PAGES -->
 <section>
-  <h2>Frontend pages · 28 routes</h2>
+  <h2>Frontend pages · 29 routes</h2>
   <div class="grid grid-2">
     <div class="card"><h4>/</h4><div class="label">Today morning briefing + Calendar tab · PRs #37, #50</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Briefing/Calendar tab strip (?tab=calendar absorbed /catalysts): severity banner → today+3d calendar lanes → needs-attention list. Pure composition of board/calendar/questions endpoints; 60s visibility-gated polling</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/page.tsx · components/today/ · components/catalysts/ · lib/todayDerive.ts</code></div>
     <div class="card"><h4>/themes</h4><div class="label">Theme dashboard (moved from /)</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Grid of theme cards with seed tickers + creation CTA</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/themes/page.tsx</code></div>
@@ -1080,6 +1081,7 @@
     <div class="card"><h4>/catalysts</h4><div class="label">Server redirect · PR #50</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Redirects to /?tab=calendar — Today absorbed the unified calendar (week lanes + agenda, List toggle, /status?expand_earnings= deep links); old links/bookmarks keep working</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/catalysts/page.tsx</code></div>
     <div class="card"><h4>/filings</h4><div class="label">SEC EDGAR sections · PR #52</div><p style="color:var(--muted);font-size:12px;margin:6px 0">FilingsWorkbench client shell · grouped by theme → ticker · inline curation panel · ingest-chore chip · collapsed Prospectus-reports disclosure</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/page.tsx · components/filings/FilingsWorkbench.tsx</code></div>
     <div class="card"><h4>/filings/graph</h4><div class="label">Multi-hop supply-chain graph</div><p style="color:var(--muted);font-size:12px;margin:6px 0">1-2 hop, optional theme gate · render-layer edge dedup</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/graph/page.tsx</code></div>
+    <div class="card"><h4>/filings/graph/theme</h4><div class="label">Theme-wide D3 force-graph map · PR #58</div><p style="color:var(--muted);font-size:12px;margin:6px 0">URL is the state (?theme=) · ForceGraphCanvas (d3-force/d3-zoom, CTM-inverse drag) + ThemeGraphSidePanel · pick/loading/too-dense/zero-edge rails</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/filings/graph/theme/page.tsx · lib/themeGraph.ts</code></div>
     <div class="card"><h4>/library</h4><div class="label">Research Library · PR #52</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Grouped-by-ticker archive · status/theme/has-thesis filters · greyed abandoned runs · confirm-guarded Abandon on &gt;7-day zombies · data-gaps view</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/library/page.tsx</code></div>
     <div class="card"><h4>/status</h4><div class="label">Status board · PR #51</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Fleet thesis view · health/conviction · 60s polling · read-through / earnings / material-events / kill-criteria drawers (?expand_earnings= · ?expand_events= one-shot deep links) · row ⋯ menu → Company / Model / Questions</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/status/page.tsx</code></div>
     <div class="card"><h4>/performance</h4><div class="label">Outcome dashboard</div><p style="color:var(--muted);font-size:12px;margin:6px 0">Verdict / theme / signal-bucket rollups + outcome list + trade-journal section (?log_trade=TICKER one-shot deep link)</p><code class="mono" style="font-size:10.5px;color:var(--dim)">frontend/app/performance/page.tsx</code></div>
@@ -1122,7 +1124,7 @@
           <h3 style="margin-top:0">9 category sections + charts</h3>
           <ul style="margin:0;padding-left:18px;color:var(--muted);font-size:12.5px;line-height:1.7">
             <li><code style="color:var(--accent-2)">sections/</code> · BusinessQuality, FinancialHealth, GrowthEarnings, ManagementGovernance, TechnicalMarket, MacroRegime, SentimentNarrative, RiskAssessment, FutureDurability</li>
-            <li>+ <code style="color:var(--accent-2)">SupplyChainEcosystem</code> (calls getGraph depth=1; links to /filings/graph)</li>
+            <li>+ <code style="color:var(--accent-2)">SupplyChainEcosystem</code> (calls getGraph depth=1; links to /filings/graph) — hosts <code style="color:var(--accent-2)">ConcentrationFlow</code> ribbon (PR #60, self-hiding &lt;2 bands, hand-rolled SVG, lib/concentrationFlow.ts)</li>
             <li>+ <code style="color:var(--accent-2)">Competition</code> · <code style="color:var(--accent-2)">CrossCategoryCorrelation</code> · <code style="color:var(--accent-2)">WhatChangedPanel</code> · <code style="color:var(--accent-2)">QuantFingerprint</code> (PR #39 — hidden for pre-feature runs)</li>
             <li>shells: <code style="color:var(--accent-2)">DataRichSection</code> · <code style="color:var(--accent-2)">MixedSection</code> · <code style="color:var(--accent-2)">QualitativeCard</code></li>
             <li><code style="color:var(--accent-2)">charts/</code> · BetaGauge, BulletRangeChart, CandlestickChart (lightweight-charts), DebtMaturityLadder, GroupedBarChart, RAGStrip, RPOTrend, StackedBarChart, TrendLineChart</li>
@@ -1161,6 +1163,7 @@
             <li><span class="cname">MultiHopGraphView</span> · render-layer edge dedup with disclosure-count badge · 2-hop default (PR #52)</li>
             <li><span class="cname">CurationPanel</span></li>
             <li><span class="cname">FilingsWorkbench</span> · client shell for /filings + ingest-chore chip (PR #52)</li>
+            <li><span class="cname">ThemeGraphView</span> · <span class="cname">ForceGraphCanvas</span> · <span class="cname">ThemeGraphSidePanel</span> · /filings/graph/theme D3 force map (PR #58)</li>
           </ul>
         </div>
         <div class="comp-folder">
@@ -1286,7 +1289,7 @@
 
 <!-- SERVICES -->
 <section>
-  <h2>Backend services · 56 files</h2>
+  <h2>Backend services · 59 files</h2>
   <details>
     <summary><span>Full service list</span><span class="count">backend/app/services/*.py</span></summary>
     <div class="details-body">
@@ -1298,7 +1301,7 @@
       <div class="item-row"><div><div class="name">counterparty_resolver</div><div class="file">services/counterparty_resolver.py</div></div><div class="purpose">RapidFuzz fuzzy matching against company_tickers.json (≥95 auto, 80-94 queue, &lt;80 queue-only)</div></div>
       <div class="item-row"><div><div class="name">data_gaps</div><div class="file">services/data_gaps.py</div></div><div class="purpose">Detect hard errors and soft data gaps in research run state</div></div>
       <div class="item-row"><div><div class="name">dcf</div><div class="file">services/dcf.py</div></div><div class="purpose">Pure DCF engine — no IO, no DB. Caller must recompute() first.</div></div>
-      <div class="item-row"><div><div class="name">discovery</div><div class="file">services/discovery.py</div></div><div class="purpose">Discovery Engine — FMP screener + cached X signal passes</div></div>
+      <div class="item-row"><div><div class="name">discovery</div><div class="file">services/discovery.py</div></div><div class="purpose">Discovery Engine — FMP screener + cached X signal passes; applies bounded insider/congress/centrality modifiers (_apply_cached_modifier / apply_centrality_modifier)</div></div>
       <div class="item-row"><div><div class="name">earnings_brief</div><div class="file">services/earnings_brief.py</div></div><div class="purpose">Pre-earnings brief synthesis (3-5 bullets, Haiku)</div></div>
       <div class="item-row"><div><div class="name">earnings_prints</div><div class="file">services/earnings_prints.py</div></div><div class="purpose">Earnings prints indexer (FMP calendar → DB)</div></div>
       <div class="item-row"><div><div class="name">earnings_scheduler</div><div class="file">services/earnings_scheduler.py</div></div><div class="purpose">Daily cron 21:00 UTC for earnings refresh</div></div>
@@ -1311,6 +1314,7 @@
       <div class="item-row"><div><div class="name">edgar_transcripts_relationships</div><div class="file">services/edgar_transcripts_relationships.py</div></div><div class="purpose">Extract relationships from last 4Q earnings transcripts</div></div>
       <div class="item-row"><div><div class="name">event_classifier</div><div class="file">services/event_classifier.py</div></div><div class="purpose">Haiku 8-K classification (event_type + materiality); errors NOT tombstoned — retry next cron</div></div>
       <div class="item-row"><div><div class="name">fanout</div><div class="file">services/fanout.py</div></div><div class="purpose">Phase E — serial ingest → extract → resolve orchestrator; in-memory status</div></div>
+      <div class="item-row"><div><div class="name">graph_centrality</div><div class="file">services/graph_centrality.py</div></div><div class="purpose">Pure NetworkX (networkx==3.4.2) betweenness + eigenvector over the theme-wide graph, classified per connected component; ≥10-edge theme / ≥5-edge component gates; hub (top-20% eigenvector ∧ deg≥3, +3) / broker (top-20% betweenness, +2) → signals signal_type=centrality (PR #59)</div></div>
       <div class="item-row"><div><div class="name">insider_ingest</div><div class="file">services/insider_ingest.py</div></div><div class="purpose">Form 4 rows via FMP insider-trading/search; idempotent on sha256 natural_key over parsed values</div></div>
       <div class="item-row"><div><div class="name">insider_signal</div><div class="file">services/insider_signal.py</div></div><div class="purpose">Pure 90-day insider aggregate → signals row (signal_type=insider) + bounded discovery modifier; is_stale is overloaded — read docstring</div></div>
       <div class="item-row"><div><div class="name">congress_ingest</div><div class="file">services/congress_ingest.py</div></div><div class="purpose">Senate/house trades via FMP; amount-range midpoint parser; idempotent sha256 natural_key incl. owner (PR #57)</div></div>
@@ -1335,9 +1339,9 @@
       <div class="item-row"><div><div class="name">reverse_dcf</div><div class="file">services/reverse_dcf.py</div></div><div class="purpose">Bisection solvers + 21×21 sensitivity grids + thesis vs priced-in</div></div>
       <div class="item-row"><div><div class="name">run_timestamps</div><div class="file">services/run_timestamps.py</div></div><div class="purpose">Stable timestamp helpers for research runs</div></div>
       <div class="item-row"><div><div class="name">signal_history</div><div class="file">services/signal_history.py</div></div><div class="purpose">Time-series read access to signal_history table</div></div>
-      <div class="item-row"><div><div class="name">signal_scheduler</div><div class="file">services/signal_scheduler.py</div></div><div class="purpose">Daily X signal refresh at 2 AM via AsyncIOScheduler</div></div>
+      <div class="item-row"><div><div class="name">signal_scheduler</div><div class="file">services/signal_scheduler.py</div></div><div class="purpose">Daily X signal refresh at 2 AM via AsyncIOScheduler; also runs refresh_theme_centrality after the X pass (never raises, rolls back partial writes), PR #59</div></div>
       <div class="item-row"><div><div class="name">status_board</div><div class="file">services/status_board.py</div></div><div class="purpose">Status board aggregator with health bucketing + 14-day material-events summary per ticker (counts groups)</div></div>
-      <div class="item-row"><div><div class="name">supply_chain</div><div class="file">services/supply_chain.py</div></div><div class="purpose">Phase D — supply-chain graph (depth=1|2 BFS) + bilateral reconciliation</div></div>
+      <div class="item-row"><div><div class="name">supply_chain</div><div class="file">services/supply_chain.py</div></div><div class="purpose">Phase D — supply-chain graph (depth=1|2 BFS) + bilateral reconciliation; sibling build_theme_graph (PR #58 — theme-wide, ticker-first node identity, 300-node too_dense rail) for /api/relationships/theme-graph</div></div>
       <div class="item-row"><div><div class="name">transcript_analysis</div><div class="file">services/transcript_analysis.py</div></div><div class="purpose">Runs the 6 deep-dive transcript passes; typed TranscriptAnalysisResult (C2, PRs #45/#46)</div></div>
       <div class="item-row"><div><div class="name">transcript_delta</div><div class="file">services/transcript_delta.py</div></div><div class="purpose">Haiku QoQ language deltas across multiple axes</div></div>
       <div class="item-row"><div><div class="name">workspace</div><div class="file">services/workspace.py</div></div><div class="purpose">WorkspaceService orchestrating 5-step workspace loop</div></div>
@@ -1542,6 +1546,12 @@
     <div class="irule">Any query for "open" questions must reuse the shared snooze-exclusion predicate in <code>services/questions.py</code></div>
     <div class="iwhy"><strong>Why:</strong> PR #51 added bulk snooze (<code>snoozed_until</code>). A consumer filtering <code>status == 'open'</code> directly would resurface snoozed questions before expiry.</div>
   </div>
+
+  <div class="invariant">
+    <div class="iname">discovery_card_manual_serializer</div>
+    <div class="irule"><code>api/discovery.py::_card_to_dict</code> is a MANUAL serializer — every new <code>CompanySignalCard</code> field must be added there explicitly</div>
+    <div class="iwhy"><strong>Why:</strong> the congress chip (PR #57) never rendered until PR #59 added its key. All three snapshot keys (insider/congress/centrality) are now pinned by <code>test_discovery_card_serialization.py</code>.</div>
+  </div>
 </section>
 
 <!-- ENTRY POINTS -->
@@ -1552,7 +1562,7 @@
       <h4>Backend dev server</h4>
       <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">source backend/venv/bin/activate</code>
       <code style="display:block; background:var(--bg-2); padding:8px 12px; border-radius:6px; margin:6px 0">uvicorn backend.app.main:app --reload</code>
-      <p style="color:var(--muted); font-size:12px; margin:8px 0 0">Run from PROJECT ROOT · port 8000 · lifespan attaches <code>app.state.{edgar,fmp,fred,x_client,pipeline,fanout,workspace,prospectus,anthropic}</code> + 4 cron jobs (signals 02:00 · earnings 21:00 UTC · outcome snapshots 03:00 UTC · 8-K/Form 4 scan 06:30 UTC).</p>
+      <p style="color:var(--muted); font-size:12px; margin:8px 0 0">Run from PROJECT ROOT · port 8000 · lifespan attaches <code>app.state.{edgar,fmp,fred,x_client,pipeline,fanout,workspace,prospectus,anthropic}</code> + 4 cron jobs (signals + theme centrality 02:00 · earnings 21:00 UTC · outcome snapshots 03:00 UTC · 8-K/Form 4/congress scan 06:30 UTC).</p>
     </div>
     <div class="card">
       <h4>Frontend dev server</h4>
@@ -1575,7 +1585,7 @@
 </section>
 
 <footer>
-  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), refreshed 2026-06-11 (through PR #53 — B3 UX phases 2-4: global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens), refreshed 2026-06-12 (through PR #57 — post-campaign fix pack, polish pack, citation dedupe, congress-trading signal) · companion JSON at <code>design/architecture.json</code>
+  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), refreshed 2026-06-11 (through PR #53 — B3 UX phases 2-4: global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens), refreshed 2026-06-12 (through PR #57 — post-campaign fix pack, polish pack, citation dedupe, congress-trading signal), refreshed 2026-06-13 (through PR #61 — v3 graph pack: theme-wide D3 force-graph viewer, graph-centrality discovery signal, concentration-flow ribbon, 13F institutional ownership) · companion JSON at <code>design/architecture.json</code>
 </footer>
 
 </body>
