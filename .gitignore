@@ -28,8 +28,8 @@ node_modules/
 # Superpowers brainstorming session files (local-only mockups)
 .superpowers/
 
-# Specs and plans
-#docs/
+# Design specs are local-only (plans + audits stay tracked under docs/superpowers/)
+docs/superpowers/specs/
 
 # Playwright MCP session output (screenshots, console logs)
 .playwright-mcp/
