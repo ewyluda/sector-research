@@ -19,6 +19,8 @@ os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 from backend.app.api.discovery import _card_to_dict
 from backend.app.services.discovery import (
     CompanySignalCard,
+    FMPSnapshot,
+    XSignalSnapshot,
     InsiderSnapshot,
     CongressSnapshot,
     CentralitySnapshot,
@@ -39,8 +41,20 @@ def _make_card(**overrides) -> CompanySignalCard:
         last_run_id=None,
         last_conviction_score=None,
         last_thesis_status=None,
-        fmp=_Fmp(),
-        x_signal=_XSignal(),
+        fmp=FMPSnapshot(
+            roic=0.35,
+            gross_margin=0.44,
+            revenue_growth_yoy=0.06,
+            pe_ratio=28.0,
+            market_cap=3e12,
+        ),
+        x_signal=XSignalSnapshot(
+            direction="accelerating",
+            ratio=1.4,
+            narrative_summary="strong momentum",
+            discovery_score=80.0,
+            is_stale=False,
+        ),
         insider=InsiderSnapshot(),
         congress=CongressSnapshot(),
         centrality=CentralitySnapshot(),
@@ -48,22 +62,6 @@ def _make_card(**overrides) -> CompanySignalCard:
     )
     defaults.update(overrides)
     return CompanySignalCard(**defaults)
-
-
-class _Fmp:
-    roic = 0.35
-    gross_margin = 0.44
-    revenue_growth_yoy = 0.06
-    pe_ratio = 28.0
-    market_cap = 3e12
-
-
-class _XSignal:
-    direction = "accelerating"
-    ratio = 1.4
-    narrative_summary = "strong momentum"
-    discovery_score = 80.0
-    is_stale = False
 
 
 class TestCardToDict(unittest.TestCase):
@@ -150,6 +148,26 @@ class TestCardToDict(unittest.TestCase):
         self.assertFalse(cong["cluster_buy"])
         self.assertIsNone(cong["net_value"])
         self.assertTrue(cong["is_stale"])
+
+    def test_every_card_field_reaches_the_wire(self):
+        """Inversion guard: every CompanySignalCard dataclass field is present
+        in the serialized dict. A newly-added field (scalar or nested snapshot)
+        can no longer ship invisible — the regression that hid the congress and
+        centrality chips. Nested snapshot fields are covered the same way by the
+        per-snapshot tests above."""
+        from dataclasses import fields as dc_fields
+
+        result = _card_to_dict(_make_card())
+        for f in dc_fields(CompanySignalCard):
+            self.assertIn(f.name, result, f"card field dropped from wire: {f.name}")
+
+    def test_nested_fmp_and_x_signal_serialize(self):
+        """The fmp / x_signal snapshots round-trip through the generic
+        serializer (not just the insider/congress/centrality blocks)."""
+        result = _card_to_dict(_make_card())
+        self.assertEqual(result["fmp"]["roic"], 0.35)
+        self.assertEqual(result["x_signal"]["direction"], "accelerating")
+        self.assertFalse(result["x_signal"]["is_stale"])
 
 
 if __name__ == "__main__":

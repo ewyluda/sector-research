@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models.theme import Theme
+from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.services.discovery import DiscoveryEngine, CompanySignalCard
 from backend.app.services.signal_history import list_signal_history
 from backend.app.services.signal_scheduler import refresh_theme_signals
@@ -30,71 +31,13 @@ MAX_HISTORY_DAYS = 365
 
 
 def _card_to_dict(card: CompanySignalCard) -> dict[str, Any]:
-    """Serialize a CompanySignalCard to a JSON-safe dict."""
-    return {
-        "ticker": card.ticker,
-        "company_name": card.company_name,
-        "market_cap": card.market_cap,
-        "sector": card.sector,
-        "industry": card.industry,
-        "signal_source_badge": card.signal_source_badge,
-        "is_surprise": card.is_surprise,
-        "is_seed": card.is_seed,
-        "combined_score": card.combined_score,
-        "fundamental_quality_score": card.fundamental_quality_score,
-        "last_run_id": card.last_run_id,
-        "last_conviction_score": card.last_conviction_score,
-        "last_thesis_status": card.last_thesis_status,
-        "fmp": {
-            "roic": card.fmp.roic,
-            "gross_margin": card.fmp.gross_margin,
-            "revenue_growth_yoy": card.fmp.revenue_growth_yoy,
-            "pe_ratio": card.fmp.pe_ratio,
-            "market_cap": card.fmp.market_cap,
-        },
-        "x_signal": {
-            "direction": card.x_signal.direction,
-            "ratio": card.x_signal.ratio,
-            "narrative_summary": card.x_signal.narrative_summary,
-            "discovery_score": card.x_signal.discovery_score,
-            "is_stale": card.x_signal.is_stale,
-        },
-        "insider": {
-            "modifier": card.insider.modifier,
-            "buy_count": card.insider.buy_count,
-            "sell_count": card.insider.sell_count,
-            "cluster_buy": card.insider.cluster_buy,
-            "net_value": card.insider.net_value,
-            "is_stale": card.insider.is_stale,
-        },
-        "congress": {
-            "modifier": card.congress.modifier,
-            "buy_count": card.congress.buy_count,
-            "sell_count": card.congress.sell_count,
-            "cluster_buy": card.congress.cluster_buy,
-            "net_value": card.congress.net_value,
-            "is_stale": card.congress.is_stale,
-        },
-        "centrality": {
-            "modifier": card.centrality.modifier,
-            "betweenness": card.centrality.betweenness,
-            "eigenvector": card.centrality.eigenvector,
-            "degree": card.centrality.degree,
-            "is_hub": card.centrality.is_hub,
-            "is_broker": card.centrality.is_broker,
-            "is_stale": card.centrality.is_stale,
-        },
-        "citations": [
-            {
-                "metric": c.metric,
-                "source_name": c.source_name,
-                "source_url": c.source_url,
-                "tier": c.tier,
-                "value": str(c.value),
-            }
-            for c in card.citations
-        ],
-    }
+    """Serialize a CompanySignalCard to a JSON-safe dict.
+
+    Thin shim over `CompanySignalCard.to_dict`, which derives the wire shape
+    from the dataclass fields so new fields can't ship invisible. Kept as a
+    named function because the serialization regression test imports it.
+    """
+    return card.to_dict()
 
 
 @router.get("/themes/{theme_id}/discover")
@@ -187,7 +130,7 @@ async def refresh_theme_signals_endpoint(
 @router.get("/themes/{theme_id}/signals/{ticker}/history")
 async def get_signal_history_endpoint(
     theme_id: str,
-    ticker: str,
+    ticker: Ticker = Depends(TickerPath),
     signal_type: str = "velocity",
     days: int = 90,
     db: AsyncSession = Depends(get_db),
@@ -219,10 +162,9 @@ async def get_signal_history_endpoint(
     if not theme:
         raise HTTPException(status_code=404, detail="Theme not found")
 
-    ticker_norm = ticker.upper()
     rows = await list_signal_history(
         db=db,
-        ticker=ticker_norm,
+        ticker=ticker,
         theme_id=theme_id,
         signal_type=signal_type,
         days=days,
@@ -230,7 +172,7 @@ async def get_signal_history_endpoint(
 
     return {
         "theme_id": theme_id,
-        "ticker": ticker_norm,
+        "ticker": ticker,
         "signal_type": signal_type,
         "days": days,
         "points": [

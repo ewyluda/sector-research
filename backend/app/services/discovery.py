@@ -13,8 +13,9 @@ Produces a ranked list of CompanySignalCard objects with:
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from datetime import datetime, timezone, timedelta
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +97,29 @@ class CentralitySnapshot:
     is_stale: bool = True
 
 
+def _wire_value(value: Any) -> Any:
+    """Recursively project a card value to its JSON-safe wire form.
+
+    `Citation` is special-cased (its `value` is coerced to str to match the
+    frontend `Citation` type). Nested snapshot dataclasses recurse field by
+    field, so the wire shape tracks the dataclass automatically — that is what
+    keeps a newly-added snapshot from shipping invisible.
+    """
+    if isinstance(value, Citation):
+        return {
+            "metric": value.metric,
+            "source_name": value.source_name,
+            "source_url": value.source_url,
+            "tier": value.tier,
+            "value": str(value.value),
+        }
+    if is_dataclass(value) and not isinstance(value, type):
+        return {f.name: _wire_value(getattr(value, f.name)) for f in fields(value)}
+    if isinstance(value, list):
+        return [_wire_value(v) for v in value]
+    return value
+
+
 @dataclass
 class CompanySignalCard:
     """The complete per-company object rendered in the Theme Detail view."""
@@ -129,6 +153,18 @@ class CompanySignalCard:
     last_run_id: str | None = None
     last_conviction_score: int | None = None
     last_thesis_status: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """JSON-safe wire shape, derived from the dataclass fields.
+
+        A new field — a scalar or a whole new nested snapshot — reaches the
+        frontend automatically; you opt one *out* by excluding it here. This
+        inverts the old hand-enumerated serializer that silently dropped any
+        unmapped field (both the congress and centrality chips shipped
+        invisible that way). `api/discovery._card_to_dict` is a thin shim over
+        this. New frontend type lives in `frontend/lib/api/themes.ts`.
+        """
+        return {f.name: _wire_value(getattr(self, f.name)) for f in fields(self)}
 
 
 # ── Fundamental quality scorer ────────────────────────────────────────────────

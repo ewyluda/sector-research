@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 
 from backend.app.db import async_session, unit_of_work
@@ -24,7 +24,7 @@ from backend.app.models.journal_schemas import (
 )
 from backend.app.models.journal_trade import JournalTrade
 from backend.app.models.outcome import VerdictOutcome
-from backend.app.models.ticker import normalize_ticker
+from backend.app.models.ticker import Ticker, TickerPath
 from backend.app.services import journal
 from backend.app.services import journal_comparison as comparison
 
@@ -158,13 +158,6 @@ async def _unrealized(fmp, trade: JournalTrade) -> comparison.TradeReturns:
     )
 
 
-def _normalized_or_400(raw: str) -> str:
-    try:
-        return normalize_ticker(raw)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-
-
 # ── Static routes (declared before /trades/{trade_id} by convention) ─────────
 
 @router.get("/summary", response_model=JournalSummary)
@@ -205,13 +198,11 @@ async def get_summary() -> JournalSummary:
 @router.get("/price-preview", response_model=PricePreview)
 async def price_preview(
     request: Request,
-    ticker: str,
+    ticker: Ticker = Depends(TickerPath),
     on: date = Query(alias="date"),
 ) -> PricePreview:
     fmp = request.app.state.fmp
-    found = await journal.adjusted_close_on_or_before(
-        fmp, _normalized_or_400(ticker), on
-    )
+    found = await journal.adjusted_close_on_or_before(fmp, ticker, on)
     if found is None:
         raise HTTPException(status_code=404, detail="no price available for that date")
     price, price_date = found
@@ -219,10 +210,9 @@ async def price_preview(
 
 
 @router.get("/link-candidates", response_model=list[LinkCandidate])
-async def get_link_candidates(ticker: str) -> list[LinkCandidate]:
-    focus = _normalized_or_400(ticker)
+async def get_link_candidates(ticker: Ticker = Depends(TickerPath)) -> list[LinkCandidate]:
     async with async_session() as db:
-        rows = await journal.link_candidates(db, focus)
+        rows = await journal.link_candidates(db, ticker)
     return [
         LinkCandidate(
             id=o.id,
@@ -241,7 +231,7 @@ async def get_link_candidates(ticker: str) -> list[LinkCandidate]:
 @router.post("/trades", status_code=201, response_model=TradeDetail)
 async def create_trade(body: TradeCreate, request: Request) -> TradeDetail:
     fmp = request.app.state.fmp
-    focus = _normalized_or_400(body.ticker)
+    focus = TickerPath(body.ticker)
     async with unit_of_work() as db:
         if body.outcome_id is not None:
             exists = (
@@ -320,7 +310,7 @@ async def list_trades(
 ) -> list[TradeDetail]:
     fmp = request.app.state.fmp
     limit = max(1, min(limit, 500))
-    focus = _normalized_or_400(ticker) if ticker else None
+    focus = TickerPath(ticker) if ticker else None
     async with async_session() as db:
         trades = await journal.list_trades(
             db, status=status, ticker=focus, limit=limit, offset=offset

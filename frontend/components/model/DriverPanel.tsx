@@ -2,20 +2,12 @@
 import { useState } from "react";
 import type { ModelState } from "@/lib/api";
 import { driverPath, toWire } from "@/lib/cellPath";
+import { DRIVER_GROUPS } from "@/lib/modelVocab";
 import { CellRenderer } from "./CellRenderer";
 
 // Drivers surfaced for future use but currently no-op'd by model_balancing.py —
 // rendered as muted "n/a" so they read differently from genuinely missing values.
 const NOOP_KEYS = new Set(["interest_income_yield", "revolver_rate"]);
-
-const GROUPS: Array<{ label: string; keys: string[] }> = [
-  { label: "Revenue",       keys: ["revenue_growth_pct", "revenue_absolute"] },
-  { label: "Margins",       keys: ["gross_margin_pct", "sga_pct_revenue", "rd_pct_revenue", "other_opex_pct_revenue", "da_pct_revenue"] },
-  { label: "Below the line",keys: ["effective_tax_rate", "interest_income_yield", "interest_expense_rate"] },
-  { label: "Capex / WC",    keys: ["capex_pct_revenue", "dso_days", "dio_days", "dpo_days"] },
-  { label: "Capital return",keys: ["dividend_payout_ratio", "buyback_dollars", "share_count_change_pct"] },
-  { label: "Debt",          keys: ["debt_repayment_dollars", "revolver_rate"] },
-];
 
 export function DriverPanel({
   state, focused, onFocus, onEdit,
@@ -34,7 +26,7 @@ export function DriverPanel({
       </button>
       {open && (
         <div className="px-6 pb-3 overflow-x-auto">
-          {GROUPS.map((g) => (
+          {DRIVER_GROUPS.map((g) => (
             <div key={g.label} className="mb-3">
               <div className="text-xs uppercase tracking-wide text-[var(--text-muted)] mb-1">{g.label}</div>
               <table className="w-full border-collapse">

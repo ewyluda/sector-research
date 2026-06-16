@@ -1,5 +1,7 @@
 """Pins signal-history endpoint contract: 404 unknown theme, 400 bad
-signal_type, response shape, ticker normalization."""
+signal_type, response shape. Ticker normalization now happens at the
+``TickerPath`` boundary (see test_ticker.py), so the handler receives an
+already-normalized ticker — these direct calls pass it pre-normalized."""
 
 import os
 import unittest
@@ -86,7 +88,7 @@ class SignalHistoryEndpointTests(unittest.IsolatedAsyncioTestCase):
         ):
             out = await get_signal_history_endpoint(
                 theme_id="t1",
-                ticker="nvda",
+                ticker="NVDA",
                 signal_type="velocity",
                 days=90,
                 db=db,
