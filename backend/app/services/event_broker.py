@@ -81,9 +81,9 @@ class EventBroker:
         set, idle periods yield {"type": "heartbeat"} instead of blocking
         forever.
 
-        No post-terminal drain is required: emit() never fires after the
-        terminal event in any service (terminal events are the last emit in
-        every run path).
+        No post-terminal drain is required: subscribers close at the first
+        terminal event; anything emitted after it is discarded from live
+        queues on cleanup and truncated out of the replay on delivery.
         """
         replay_snapshot = list(self._replay_buffers.get(run_id, []))
         q: asyncio.Queue = asyncio.Queue(maxsize=self.queue_maxsize)

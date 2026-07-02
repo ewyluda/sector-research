@@ -39,6 +39,10 @@ class TestFanOut(unittest.IsolatedAsyncioTestCase):
         t2 = asyncio.create_task(consume(received_2))
         await asyncio.sleep(0)  # let both consumers register
 
+        # Live queues must honor the configured bound (default 500)
+        for q in broker._queues[run_id]:
+            self.assertEqual(q.maxsize, 500)
+
         broker.emit(run_id, {"type": "phase_start", "phase": "quick_screen"})
         broker.emit(run_id, {"type": "complete", "status": "completed"})
 
@@ -71,6 +75,25 @@ class TestFanOut(unittest.IsolatedAsyncioTestCase):
 
         async def consume():
             async for _evt in broker.stream(run_id):
+                pass
+
+        task = asyncio.create_task(consume())
+        await asyncio.sleep(0)  # consumer registers, blocks on queue.get()
+        self.assertIn(run_id, broker._queues)
+
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        self.assertNotIn(run_id, broker._queues)
+
+    async def test_cancelled_sse_consumer_removes_subscriber(self):
+        """Cancellation must propagate through sse()'s nested generator into
+        stream()'s finally block — the pipeline's actual wire path."""
+        broker = _broker()
+        run_id = "run-sse-cancel"
+
+        async def consume():
+            async for _line in broker.sse(run_id):
                 pass
 
         task = asyncio.create_task(consume())
