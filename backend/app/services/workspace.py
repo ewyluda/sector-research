@@ -23,6 +23,7 @@ from backend.app.models.workspace_schemas import (
     ValidationOutput,
 )
 from backend.app.services import outcome_tracker
+from backend.app.services.event_broker import EventBroker
 from backend.app.services.workspace_context import WorkspaceContext
 from backend.app.services.workspace_steps import run_steps_in_sequence
 
@@ -118,75 +119,26 @@ class WorkspaceService:
         self._fmp = fmp
         self._edgar = edgar
         self._anthropic = anthropic
-        # Per-run SSE state: replay buffer (all events emitted so far) plus
-        # a list of live subscriber queues.  The replay buffer ensures that a
-        # frontend opening the SSE connection after kick_off() has already
-        # emitted early step events still receives those events.  run_id keys
-        # are never pruned from _replay — acceptable for process-lifetime run
-        # counts in a single-user tool (each run emits a small, bounded number
-        # of step events).
-        self._replay: dict[str, list[dict]] = {}
-        self._queues: dict[str, list[asyncio.Queue]] = {}
+        # SSE fan-out with replay: events emitted by kick_off() before the
+        # frontend connects are delivered to every (including late)
+        # subscriber. See services/event_broker.py for the policy docs.
+        self._broker = EventBroker(
+            terminal_types=frozenset({"workspace_run_complete", "workspace_run_failed"}),
+            replay=True,
+            name="workspace",
+        )
         self._ticker_locks: dict[str, asyncio.Lock] = {}
         self._ticker_locks_guard = asyncio.Lock()
 
     # ── SSE plumbing ───────────────────────────────────────────────────────────
 
     def _emit(self, run_id: str, event: dict) -> None:
-        """Append event to the replay buffer and fan-out to live subscribers.
+        """Fan out an event (replay-buffered) to every subscriber for this run."""
+        self._broker.emit(run_id, event)
 
-        The replay buffer is unbounded per run — workspace runs emit a small,
-        bounded number of step events so this is acceptable for a single-process
-        local tool.  A full subscriber queue does not block other subscribers.
-        """
-        self._replay.setdefault(run_id, []).append(event)
-        for q in self._queues.get(run_id, []):
-            try:
-                q.put_nowait(event)
-            except asyncio.QueueFull:
-                logger.warning("workspace SSE queue full for run %s (subscriber %s); dropping event", run_id, id(q))
-
-    async def event_stream(self, run_id: str) -> AsyncIterator[dict]:
-        """Async generator yielding raw event dicts until a terminal event.
-
-        Atomically snapshots the replay buffer and registers the subscriber
-        queue (no await between these steps) so no events can be lost between
-        the replay snapshot and live delivery.
-
-        No post-terminal drain is required: _emit() never fires after the
-        terminal event (workspace_run_complete / workspace_run_failed are the
-        last calls in every _run_workspace code path — confirmed by inspection).
-        """
-        terminal = {"workspace_run_complete", "workspace_run_failed"}
-
-        # Snapshot replay buffer and register subscriber in one synchronous
-        # block — no await between snapshot and append so no events are lost.
-        replay_snapshot = list(self._replay.get(run_id, []))
-        q: asyncio.Queue = asyncio.Queue(maxsize=500)
-        self._queues.setdefault(run_id, []).append(q)
-
-        try:
-            # Replay buffered events first.
-            for evt in replay_snapshot:
-                yield evt
-                if evt.get("type") in terminal:
-                    return
-
-            # Consume live events.
-            while True:
-                evt = await q.get()
-                yield evt
-                if evt.get("type") in terminal:
-                    return
-        finally:
-            queues = self._queues.get(run_id)
-            if queues is not None:
-                try:
-                    queues.remove(q)
-                except ValueError:
-                    pass
-                if not queues:
-                    self._queues.pop(run_id, None)
+    def event_stream(self, run_id: str) -> AsyncIterator[dict]:
+        """Raw event-dict stream (replay first, then live) until a terminal event."""
+        return self._broker.stream(run_id)
 
     # ── Per-ticker concurrency guard ───────────────────────────────────────────
 

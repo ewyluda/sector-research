@@ -11,7 +11,6 @@ Responsibilities:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -49,6 +48,7 @@ from backend.app.services.relationship_context import (
     get_counterparty_context,
 )
 from backend.app.services.run_timestamps import mark_terminal_completed_at
+from backend.app.services.event_broker import EventBroker
 from backend.app.graph.deep_dive_routing import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
@@ -89,10 +89,17 @@ class PipelineService:
         self._fred = fred
         self._edgar = edgar
         self._graph = make_graph(fmp)
-        # Active SSE subscriber queues keyed by run_id.  Multiple subscribers
-        # (e.g. two browser tabs) are each given their own queue; fan-out
-        # delivers every event to all of them independently.
-        self._streams: dict[str, list[asyncio.Queue]] = {}
+        # SSE fan-out. replay=False: events emitted before any subscriber are
+        # dropped — acceptable because the frontend REST-hydrates
+        # /pipeline/[runId] on load, so events dropped in the connect window
+        # are recovered from persisted state (and pipeline runs emit hundreds
+        # of "token" chunks that must not replay into a hydrated UI).
+        self._broker = EventBroker(
+            terminal_types=frozenset({"complete", "error"}),
+            replay=False,
+            heartbeat_seconds=30.0,
+            name="pipeline",
+        )
 
     # ── Run creation ──────────────────────────────────────────────────────────
 
@@ -507,55 +514,12 @@ class PipelineService:
     # ── SSE streaming ─────────────────────────────────────────────────────────
 
     def _emit(self, run_id: str, event: dict) -> None:
-        """Fan out an event to every connected SSE client for this run.
+        """Fan out an event to every connected SSE client for this run."""
+        self._broker.emit(run_id, event)
 
-        Events emitted before any subscriber has called subscribe() are
-        dropped — this is acceptable for pipeline runs because the frontend
-        REST-hydrates /pipeline/[runId] on load, so any events dropped in
-        the connect window are recovered from persisted state.
-        A slow/full subscriber queue does not block delivery to other queues.
-        """
-        queues = self._streams.get(run_id)
-        if not queues:
-            return
-        for q in queues:
-            try:
-                q.put_nowait(event)
-            except asyncio.QueueFull:
-                logger.warning("SSE queue full for run %s (subscriber %s); dropping event", run_id, id(q))
-
-    def subscribe(self, run_id: str) -> asyncio.Queue:
-        """Register a new SSE subscriber for a run. Returns that subscriber's queue."""
-        q: asyncio.Queue = asyncio.Queue(maxsize=500)
-        self._streams.setdefault(run_id, []).append(q)
-        return q
-
-    def unsubscribe(self, run_id: str, queue: asyncio.Queue) -> None:
-        """Remove a single subscriber queue. Cleans up the dict entry when empty."""
-        queues = self._streams.get(run_id)
-        if queues is None:
-            return
-        try:
-            queues.remove(queue)
-        except ValueError:
-            pass
-        if not queues:
-            self._streams.pop(run_id, None)
-
-    async def event_stream(self, run_id: str) -> AsyncGenerator[str, None]:
-        """Async generator for FastAPI SSE response."""
-        queue = self.subscribe(run_id)
-        try:
-            while True:
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
-                    yield f"data: {json.dumps(event)}\n\n"
-                    if event.get("type") in ("complete", "error"):
-                        break
-                except asyncio.TimeoutError:
-                    yield "data: {\"type\": \"heartbeat\"}\n\n"
-        finally:
-            self.unsubscribe(run_id, queue)
+    def event_stream(self, run_id: str) -> AsyncGenerator[str, None]:
+        """SSE-framed event stream for the FastAPI StreamingResponse."""
+        return self._broker.sse(run_id)
 
     # ── Querying ──────────────────────────────────────────────────────────────
 
