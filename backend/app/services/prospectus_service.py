@@ -28,6 +28,7 @@ from backend.app.models.prospectus_schemas import (
 from backend.app.services.counterparty_resolver import resolve_ticker_relationships
 from backend.app.services.edgar_relationships import extract_ticker_relationships
 from backend.app.services.edgar_sections_ingest import get_latest_sections_by_keys
+from backend.app.services.event_broker import EventBroker
 from backend.app.services.prospectus_categories import run_categories
 from backend.app.services.prospectus_financials import extract_financials
 from backend.app.services.prospectus_ingest import (
@@ -50,72 +51,23 @@ class ProspectusService:
     def __init__(self, *, edgar: EdgarClient, fred: Any = None) -> None:
         self._edgar = edgar
         self._fred = fred
-        # Per-run SSE state: replay buffer (all events emitted so far) plus
-        # a list of live subscriber queues.  The replay buffer ensures that a
-        # frontend opening the SSE connection after kick_off() has already
-        # emitted early step events still receives those events.  run_id keys
-        # are never pruned from _replay — acceptable for process-lifetime run
-        # counts in a single-user tool (each run emits a small, bounded number
-        # of step events).
-        self._replay: dict[str, list[dict]] = {}
-        self._queues: dict[str, list[asyncio.Queue]] = {}
+        # SSE fan-out with replay: late subscribers get the full event
+        # history. See services/event_broker.py for the policy docs.
+        self._broker = EventBroker(
+            terminal_types=frozenset(TERMINAL_EVENTS),
+            replay=True,
+            name="prospectus",
+        )
 
     # ── SSE plumbing ──────────────────────────────────────────────────────────
 
     def _emit(self, rid: str, evt: dict) -> None:
-        """Append event to the replay buffer and fan-out to live subscribers.
+        """Fan out an event (replay-buffered) to every subscriber for this report."""
+        self._broker.emit(rid, evt)
 
-        A full subscriber queue does not block other subscribers.
-        """
-        self._replay.setdefault(rid, []).append(evt)
-        for q in self._queues.get(rid, []):
-            try:
-                q.put_nowait(evt)
-            except asyncio.QueueFull:
-                logger.warning(
-                    "prospectus SSE queue full for %s (subscriber %s); dropping event",
-                    rid, id(q),
-                )
-
-    async def event_stream(self, rid: str) -> AsyncIterator[dict]:
-        """Async generator yielding raw event dicts until a terminal event.
-
-        Atomically snapshots the replay buffer and registers the subscriber
-        queue (no await between these steps) so no events can be lost between
-        the replay snapshot and live delivery.
-
-        No post-terminal drain is required: _emit() never fires after the
-        terminal event (prospectus_complete / prospectus_failed are the last
-        calls in every _run_pipeline code path — confirmed by inspection).
-        """
-        # Snapshot replay buffer and register subscriber in one synchronous
-        # block — no await between snapshot and append so no events are lost.
-        replay_snapshot = list(self._replay.get(rid, []))
-        q: asyncio.Queue = asyncio.Queue(maxsize=500)
-        self._queues.setdefault(rid, []).append(q)
-
-        try:
-            # Replay buffered events first.
-            for evt in replay_snapshot:
-                yield evt
-                if evt.get("type") in TERMINAL_EVENTS:
-                    return
-
-            # Consume live events.
-            while True:
-                evt = await q.get()
-                yield evt
-                if evt.get("type") in TERMINAL_EVENTS:
-                    return
-        finally:
-            queues = self._queues.get(rid)
-            if queues is not None:
-                try:
-                    queues.remove(q)
-                except ValueError:
-                    pass
-                if not queues:
-                    self._queues.pop(rid, None)
+    def event_stream(self, rid: str) -> AsyncIterator[dict]:
+        """Raw event-dict stream (replay first, then live) until a terminal event."""
+        return self._broker.stream(rid)
 
     # ── Kick-off ──────────────────────────────────────────────────────────────
 

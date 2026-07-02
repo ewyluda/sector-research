@@ -17,6 +17,7 @@ os.environ.setdefault("X_BEARER_TOKEN", "test")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test")
 
 from backend.app.services.pipeline import PipelineService
+from backend.app.services.prospectus_service import ProspectusService
 from backend.app.services.workspace import WorkspaceService
 
 
@@ -90,6 +91,35 @@ class TestWorkspaceBrokerConfig(unittest.IsolatedAsyncioTestCase):
             ["workspace_run_start", "step_start", "workspace_run_complete"],
         )
         self.assertEqual(svc._broker._queues.get(run_id, []), [])
+
+
+def _make_prospectus() -> ProspectusService:
+    return ProspectusService(edgar=MagicMock())
+
+
+class TestProspectusBrokerConfig(unittest.IsolatedAsyncioTestCase):
+    def test_broker_configuration(self):
+        svc = _make_prospectus()
+        self.assertEqual(
+            svc._broker.terminal_types,
+            frozenset({"prospectus_complete", "prospectus_failed"}),
+        )
+        self.assertTrue(svc._broker.replay)
+        self.assertIsNone(svc._broker.heartbeat_seconds)
+        self.assertEqual(svc._broker.queue_maxsize, 500)
+
+    async def test_late_subscriber_after_terminal_gets_replay_and_exits(self):
+        svc = _make_prospectus()
+        rid = "pr-c"
+        svc._emit(rid, {"type": "step_start", "step": "ingest"})
+        svc._emit(rid, {"type": "prospectus_complete", "report_id": rid})
+
+        collected: list[dict] = []
+        async for evt in svc.event_stream(rid):
+            collected.append(evt)
+
+        self.assertEqual([e["type"] for e in collected], ["step_start", "prospectus_complete"])
+        self.assertEqual(svc._broker._queues.get(rid, []), [])
 
 
 if __name__ == "__main__":
