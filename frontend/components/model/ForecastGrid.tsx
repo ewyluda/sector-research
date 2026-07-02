@@ -1,19 +1,8 @@
 "use client";
 import type { ModelState } from "@/lib/api";
 import { statementPath, toWire, type Statement } from "@/lib/cellPath";
+import { PNL_LINES, BS_LINES, CF_LINES } from "@/lib/modelVocab";
 import { CellRenderer } from "./CellRenderer";
-
-const PNL_LINES = ["revenue", "cost_of_revenue", "gross_profit", "sga", "rd", "other_opex", "operating_expenses",
-                   "ebit", "depreciation_amortization", "ebitda", "interest_income", "interest_expense",
-                   "pretax_income", "income_tax", "net_income", "shares_diluted", "eps_diluted"];
-const BS_LINES = ["cash_and_equivalents", "accounts_receivable", "inventory", "other_current_assets",
-                  "total_current_assets", "ppe_net", "goodwill", "other_long_term_assets", "total_assets",
-                  "accounts_payable", "short_term_debt", "other_current_liabilities", "total_current_liabilities",
-                  "long_term_debt", "other_long_term_liabilities", "total_liabilities",
-                  "common_equity", "retained_earnings", "total_equity", "total_liab_and_equity"];
-const CF_LINES = ["net_income_cf", "depreciation_amortization_cf", "delta_accounts_receivable",
-                  "delta_inventory", "delta_accounts_payable", "operating_cash_flow", "capex",
-                  "free_cash_flow", "debt_issued", "debt_repaid", "dividends_paid", "buybacks", "net_change_in_cash"];
 
 function StmtTable({ title, lines, stmt, state, focused, onFocus, onEdit }: {
   title: string; lines: string[]; stmt: Statement;

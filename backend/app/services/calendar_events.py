@@ -8,7 +8,6 @@ docs/superpowers/specs/2026-06-09-unified-calendar-design.md
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from typing import Any, Literal
 
@@ -18,8 +17,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.models.citation import Citation
+from backend.app.services.universe import Universe, resolve_universe as get_universe
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["Universe", "get_universe"]  # re-exported for callers/tests of this module
 
 
 # ── Wire schemas ──────────────────────────────────────────────────────────────
@@ -50,14 +52,6 @@ class CalendarResponse(BaseModel):
     events: list[CalendarEvent]
     universe_size: int
     warnings: list[str]
-
-
-@dataclass
-class Universe:
-    """Theme seeds ∪ active theses (spec decision #1)."""
-
-    tickers: set[str]
-    thesis_runs: dict[str, str]  # ticker -> an active run_id (first CTE row wins)
 
 
 def _citation_out(c: Citation) -> CitationOut:
@@ -141,35 +135,6 @@ def _earnings_events(
             citation=cit,
         ))
     return out
-
-
-# ── Universe ──────────────────────────────────────────────────────────────────
-
-
-async def get_universe(db: AsyncSession) -> Universe:
-    """Theme seeds ∪ active theses (latest completed/watchlist, non-archived
-    run per (ticker, theme) — the status board's universe)."""
-    # Deferred to avoid a circular import:
-    # calendar_events -> status_board -> api.catalysts -> calendar_events.
-    # Private import is deliberate: the status board owns the "active thesis"
-    # semantics (completed/watchlist, non-archived, theme-attached). Duplicating
-    # that SQL here is the bigger hazard.
-    from backend.app.services.status_board import _build_latest_runs_sql  # noqa: PLC0415
-
-    tickers: set[str] = set()
-
-    seed_rows = (await db.execute(text("SELECT seed_tickers FROM themes"))).scalars().all()
-    for seeds in seed_rows:
-        tickers.update(str(s).upper() for s in (seeds or []))
-
-    sql, params = _build_latest_runs_sql(theme_id=None, include_archived=False)
-    run_rows = (await db.execute(text(sql), params)).mappings().all()
-    thesis_runs: dict[str, str] = {}
-    for r in run_rows:
-        thesis_runs.setdefault(str(r["ticker"]).upper(), str(r["id"]))
-    tickers.update(thesis_runs)
-
-    return Universe(tickers=tickers, thesis_runs=thesis_runs)
 
 
 # ── Thesis catalysts ──────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@ from backend.app.services.run_timestamps import (
     mark_terminal_completed_at,
     stable_completed_at_from_state,
 )
-from backend.app.services.status_board import _build_latest_runs_sql
+from backend.app.services.universe import latest_runs_sql as _build_latest_runs_sql
 
 
 class TestStatusBoardSql(unittest.TestCase):

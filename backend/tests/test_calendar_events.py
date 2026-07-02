@@ -348,11 +348,11 @@ class GetCalendarEventsTests(unittest.IsolatedAsyncioTestCase):
 
 class LatestRunsSqlContractTests(unittest.TestCase):
     def test_status_board_sql_emits_columns_and_archive_filter(self):
-        # get_universe reads r["ticker"] / r["id"] off this SQL and relies on
-        # include_archived=False excluding archived runs. Pin the contract.
-        from backend.app.services.status_board import _build_latest_runs_sql
+        # resolve_universe reads r["ticker"] / r["id"] off this SQL and relies
+        # on include_archived=False excluding archived runs. Pin the contract.
+        from backend.app.services.universe import latest_runs_sql
 
-        sql, params = _build_latest_runs_sql(theme_id=None, include_archived=False)
+        sql, params = latest_runs_sql(theme_id=None, include_archived=False)
         self.assertIn("r.id", sql)
         self.assertIn("r.ticker", sql)
         self.assertIn("archived_at IS NULL", sql)

@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
@@ -26,7 +26,6 @@ from backend.app.models.insider_transaction import InsiderTransaction
 from backend.app.models.material_event import MaterialEvent
 from backend.app.models.signal import Signal
 from backend.app.models.signal_history import SignalHistory
-from backend.app.models.theme import Theme
 from backend.app.services.congress_ingest import upsert_congress_transactions
 from backend.app.services.congress_signal import (
     WINDOW_DAYS as CONGRESS_WINDOW_DAYS,
@@ -41,6 +40,7 @@ from backend.app.services.insider_signal import (
     compute_insider_aggregate,
     signal_value,
 )
+from backend.app.services.universe import resolve_universe_by_theme
 
 logger = logging.getLogger(__name__)
 
@@ -54,21 +54,12 @@ FMP_INSIDER_LIMIT = 100
 
 
 async def _theme_universe(db: AsyncSession) -> dict[str, set[str]]:
-    """theme_id -> tickers (seeds ∪ that theme's active-thesis tickers)."""
-    # Private import is deliberate — same pattern + rationale as
-    # calendar_events.get_universe: the status board owns "active thesis".
-    from backend.app.services.status_board import _build_latest_runs_sql  # noqa: PLC0415
+    """theme_id -> tickers (seeds ∪ that theme's active-thesis tickers).
 
-    out: dict[str, set[str]] = {}
-    themes = (await db.execute(select(Theme))).scalars().all()
-    for t in themes:
-        seeds = t.seed_tickers if isinstance(t.seed_tickers, list) else []
-        out[str(t.id)] = {str(s).upper() for s in seeds}
-
-    sql, params = _build_latest_runs_sql(theme_id=None, include_archived=False)
-    for r in (await db.execute(text(sql), params)).mappings().all():
-        out.setdefault(str(r["theme_id"]), set()).add(str(r["ticker"]).upper())
-    return out
+    Thin wrapper over the Universe module — kept as a module-level name because
+    the scheduler tests patch it. The "active thesis" semantics live in
+    `services.universe`, not here."""
+    return await resolve_universe_by_theme(db)
 
 
 # ── 8-K flow ──────────────────────────────────────────────────────────────────
