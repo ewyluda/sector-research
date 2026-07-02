@@ -48,8 +48,10 @@ def _compute_surprise(estimated: float | None, actual: float | None) -> float | 
 
 async def fetch_active_board_tickers(db: AsyncSession) -> list[str]:
     """Distinct uppercased tickers from the latest non-archived completed
-    run per (ticker, theme). Mirrors the DISTINCT ON query in
-    services/status_board.py to keep the universe identical."""
+    run per (ticker, theme). Private variant of the DISTINCT ON query in
+    services/universe.py::latest_runs_sql — deliberately narrower (status
+    'completed' only, no 'watchlist'; ordered by updated_at, not
+    completed_at), so keep the divergence in mind when editing either."""
     sql = text(
         """
         SELECT DISTINCT ticker

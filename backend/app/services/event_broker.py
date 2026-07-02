@@ -116,7 +116,10 @@ class EventBroker:
                     self._queues.pop(run_id, None)
 
     async def sse(self, run_id: str) -> AsyncGenerator[str, None]:
-        """Wrap stream() in ``data: {json}\\n\\n`` SSE framing — the single
-        SSE serializer for the app."""
+        """Wrap stream() in ``data: {json}\\n\\n`` SSE framing.
+
+        Only the pipeline route consumes this today; api/workspace.py and
+        api/prospectus.py frame stream()'s raw dicts themselves (identical
+        bytes) — a documented design non-goal, migratable later."""
         async for event in self.stream(run_id):
             yield f"data: {json.dumps(event)}\n\n"

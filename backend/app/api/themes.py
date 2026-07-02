@@ -144,6 +144,9 @@ async def add_theme_ticker(
     db: AsyncSession = Depends(get_db),
 ):
     """Append a ticker to ``seed_tickers`` (idempotent on duplicate)."""
+    # Intentionally lenient (.strip().upper(), no _TICKER_RE) — theme seed
+    # routes keep their historical convention; see models/ticker.py TickerPath
+    # for the strict seam used by company/journal/discovery routes.
     norm = payload.ticker.strip().upper()
     if not norm:
         raise HTTPException(status_code=400, detail="ticker must not be empty")
