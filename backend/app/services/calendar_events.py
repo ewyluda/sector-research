@@ -17,11 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.models.citation import Citation
-from backend.app.services.universe import Universe, resolve_universe as get_universe
+from backend.app.services.universe import Universe, resolve_universe
 
 logger = logging.getLogger(__name__)
-
-__all__ = ["Universe", "get_universe"]  # re-exported for callers/tests of this module
 
 
 # ── Wire schemas ──────────────────────────────────────────────────────────────
@@ -210,7 +208,7 @@ async def get_calendar_events(
 ) -> CalendarResponse:
     """Merge the three sources. FMP failures degrade to warnings — never
     500 on a partial outage (spec error-handling section)."""
-    universe = await get_universe(db)
+    universe = await resolve_universe(db)
     events: list[CalendarEvent] = []
     warnings: list[str] = []
 

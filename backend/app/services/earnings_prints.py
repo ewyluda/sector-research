@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.models.earnings_print import EarningsPrint
+from backend.app.services.universe import latest_runs_sql
 
 logger = logging.getLogger(__name__)
 
@@ -47,24 +48,16 @@ def _compute_surprise(estimated: float | None, actual: float | None) -> float | 
 
 
 async def fetch_active_board_tickers(db: AsyncSession) -> list[str]:
-    """Distinct uppercased tickers from the latest non-archived completed
-    run per (ticker, theme). Private variant of the DISTINCT ON query in
-    services/universe.py::latest_runs_sql — deliberately narrower (status
-    'completed' only, no 'watchlist'; ordered by updated_at, not
-    completed_at), so keep the divergence in mind when editing either."""
-    sql = text(
-        """
-        SELECT DISTINCT ticker
-        FROM (
-            SELECT DISTINCT ON (ticker, theme_id) ticker
-            FROM research_runs
-            WHERE status = 'completed' AND archived_at IS NULL
-            ORDER BY ticker, theme_id, updated_at DESC
-        ) t
-        """
-    )
-    rows = (await db.execute(sql)).all()
-    return [r[0].upper() for r in rows]
+    """Distinct uppercased tickers with an active thesis — the same
+    latest-run definition the status board / calendar / material-events
+    scan use (services/universe.py::latest_runs_sql). This function's
+    original intent was "keep the universe identical" to the board; a
+    private narrower copy (completed-only, no watchlist) had drifted here
+    until the 2026-07-01 consolidation, which also means watchlist-verdict
+    theses now get earnings prints indexed."""
+    sql, params = latest_runs_sql(theme_id=None, include_archived=False)
+    rows = (await db.execute(text(sql), params)).mappings().all()
+    return sorted({str(r["ticker"]).upper() for r in rows})
 
 
 async def index_earnings_prints(
