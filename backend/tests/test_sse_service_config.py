@@ -17,6 +17,7 @@ os.environ.setdefault("X_BEARER_TOKEN", "test")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test")
 
 from backend.app.services.pipeline import PipelineService
+from backend.app.services.workspace import WorkspaceService
 
 
 def _make_pipeline() -> PipelineService:
@@ -55,6 +56,40 @@ class TestPipelineBrokerConfig(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(received[1].startswith('data: {"type": "complete"'))
         # No stray subscriber state after terminal close
         self.assertNotIn(run_id, svc._broker._queues)
+
+
+def _make_workspace() -> WorkspaceService:
+    return WorkspaceService(fmp=MagicMock(), edgar=MagicMock(), anthropic=MagicMock())
+
+
+class TestWorkspaceBrokerConfig(unittest.IsolatedAsyncioTestCase):
+    def test_broker_configuration(self):
+        svc = _make_workspace()
+        self.assertEqual(
+            svc._broker.terminal_types,
+            frozenset({"workspace_run_complete", "workspace_run_failed"}),
+        )
+        self.assertTrue(svc._broker.replay)
+        self.assertIsNone(svc._broker.heartbeat_seconds)
+        self.assertEqual(svc._broker.queue_maxsize, 500)
+
+    async def test_replay_delivers_pre_subscribe_events_to_late_subscriber(self):
+        svc = _make_workspace()
+        run_id = "ws-a"
+        # kick_off emits before the frontend connects — the load-bearing case
+        svc._emit(run_id, {"type": "workspace_run_start"})
+        svc._emit(run_id, {"type": "step_start", "step": "update_refresh"})
+        svc._emit(run_id, {"type": "workspace_run_complete", "verdict": "healthy", "version_after": 1})
+
+        collected: list[dict] = []
+        async for evt in svc.event_stream(run_id):
+            collected.append(evt)
+
+        self.assertEqual(
+            [e["type"] for e in collected],
+            ["workspace_run_start", "step_start", "workspace_run_complete"],
+        )
+        self.assertEqual(svc._broker._queues.get(run_id, []), [])
 
 
 if __name__ == "__main__":
