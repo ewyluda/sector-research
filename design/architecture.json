@@ -2,10 +2,10 @@
   "meta": {
     "project": "sector-research",
     "tagline": "Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider/congress modifiers) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.",
-    "generated_at": "2026-06-13T18:09:00-04:00",
-    "generator": "claude-opus-4-7 (original) · refreshed 2026-06-10 by claude-fable-5 · incremental refreshes 2026-06-11 by claude-fable-5 (PRs #42-48: A2 sessions/routing/SSE, C1 perf, B3 UX phase 1, C2 module splits, C3 backend types · PRs #50-53: B3 UX phases 2-4 — global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens) · PRs #54-57 refresh 2026-06-12 by claude-fable-5 (fix pack — post_pending earnings, orphan events, snoozed-question view/unsnooze; polish pack — peers api module, useWorkspaceKickoff, FMP citation persistence, correlated metric guards; citation dedupe; congress-trading signal) · PRs #58-61 refresh 2026-06-13 by claude-fable-5 (v3 graph pack — theme-wide D3 force-graph viewer, graph-centrality discovery signal, concentration-flow diagram, 13F institutional ownership)",
+    "generated_at": "2026-07-01T22:33:00-04:00",
+    "generator": "claude-opus-4-7 (original) · refreshed 2026-06-10 by claude-fable-5 · incremental refreshes 2026-06-11 by claude-fable-5 (PRs #42-48: A2 sessions/routing/SSE, C1 perf, B3 UX phase 1, C2 module splits, C3 backend types · PRs #50-53: B3 UX phases 2-4 — global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens) · PRs #54-57 refresh 2026-06-12 by claude-fable-5 (fix pack — post_pending earnings, orphan events, snoozed-question view/unsnooze; polish pack — peers api module, useWorkspaceKickoff, FMP citation persistence, correlated metric guards; citation dedupe; congress-trading signal) · PRs #58-61 refresh 2026-06-13 by claude-fable-5 (v3 graph pack — theme-wide D3 force-graph viewer, graph-centrality discovery signal, concentration-flow diagram, 13F institutional ownership) · PRs #62-63 refresh 2026-07-01 by claude-fable-5 (PR #62 — architecture-deepening low-risk batch: services/universe.py single-owner active-thesis resolution (latest_runs_sql + resolve_universe + resolve_universe_by_theme), discovery card serializer inversion (CompanySignalCard.to_dict is now canonical, api/discovery._card_to_dict a thin shim), frontend lib/modelVocab.ts parity lib, TickerPath seam consolidation on company.py/discovery.py/journal.py · PR #63 — EventBroker (services/event_broker.py) unifies pipeline/workspace/prospectus SSE fan-out + replay + heartbeat, hand-rolled per-service plumbing deleted · same-day follow-ups on this branch — earnings_prints + calendar_events consume universe.latest_runs_sql / resolve_universe directly (re-export shim retired), universe.py gained _seed_tickers_by_theme, RunIdPath 404 guard added to all 5 pipeline {run_id} routes)",
     "main_branch": "main",
-    "source_commit": "de208f7",
+    "source_commit": "00dd598",
     "source_of_truth_files": [
       "CLAUDE.md",
       "CONTEXT.md",
@@ -116,7 +116,9 @@
         "Daily per-theme graph centrality after the X pass (signal_scheduler.refresh_theme_centrality, PR #59)"
       ],
       "scoring": "40% X velocity + 40% fundamental quality + 20% discovery score when X is fresh; degrades to 80% fund + 20% disc when X is stale/missing; insider + congress + graph-centrality signals then apply bounded cached modifiers (+5 cluster / +2 net buying / −3 selling insider; +3/+1/−2 congress — half-ish, disclosures lag ≤45d; +3 hub / +2 broker centrality, larger wins, 48h staleness, PR #59; shared _apply_cached_modifier / apply_centrality_modifier, clamp [0,100]) — deliberately NOT extra weights",
-      "perf_notes": "surprise-alert lookup batched via one SurpriseAlert.ticker.in_(all_tickers) query (PR #43)"
+      "perf_notes": "surprise-alert lookup batched via one SurpriseAlert.ticker.in_(all_tickers) query (PR #43)",
+      "serialization_notes": "PR #62 inverted api/discovery.py::_card_to_dict from a manual field-by-field serializer into a thin shim over CompanySignalCard.to_dict() (services/discovery.py) — a recursive dataclasses.fields() walk via _wire_value (Citation special-cased to the 5 frontend keys). New card fields now reach the wire automatically; you opt one OUT by excluding it in _wire_value, not in by remembering to add it. Pinned by test_discovery_card_serialization.py.",
+      "ticker_path_notes": "PR #62: the theme signal-history route (GET /api/themes/{id}/signals/{ticker}/history) also validates via Depends(TickerPath) (backend/app/models/ticker.py)."
     },
     {
       "id": "pipeline",
@@ -135,8 +137,9 @@
         "POST /api/runs/{id}/abandon (mark a stuck in_progress/paused run abandoned — 409 otherwise; Library renders abandoned runs greyed, PR #52)"
       ],
       "routing_single_source": "PHASE_SEQUENCE / next_phase() in graph/pipeline.py — services/pipeline.py::_next_phase delegates; pinned by backend/tests/test_phase_routing.py (PR #42)",
-      "sse": "multi-subscriber fan-out (dict[run_id, list[asyncio.Queue]]), no replay buffer",
-      "formatters_module": "backend/app/graph/formatters.py — _fmt_fundamentals (12 per-section helpers, PR #46), _build_curated_financials, _build_technical_data; re-exported from nodes.py (C2 split, PR #45)"
+      "sse": "multi-subscriber fan-out via the shared EventBroker (services/event_broker.py, PR #63) — terminal {complete, error}, replay OFF (REST hydration covers the connect window; token chunks must not replay), 30s heartbeat",
+      "formatters_module": "backend/app/graph/formatters.py — _fmt_fundamentals (12 per-section helpers, PR #46), _build_curated_financials, _build_technical_data; re-exported from nodes.py (C2 split, PR #45)",
+      "run_id_guard": "All 5 {run_id} routes (get_run, advance_run, abandon_run, stream_run, get_report) validate via Depends(RunIdPath) in api/pipeline.py — research_runs.id is a Postgres UUID column, so a malformed id would 500 at the asyncpg parameter cast before any existence check; RunIdPath rejects it as a plain 404 instead (same hazard class as the malformed-UUID theme routes noted in CLAUDE.md). Pinned by test_pipeline_run_id_guard.py (2026-07-01 follow-up)."
     },
     {
       "id": "edgar",
@@ -199,7 +202,7 @@
       ],
       "model_state_touchpoint": "update_refresh promotes published forecast periods from ai_baseline → historical and warns when previously-edited override cells are evicted (removed_cells payload)",
       "preflight": "missing ticker_models → non-blocking no_ticker_model warning; step_update_refresh skips model work (model_skipped=true on UpdateRefreshOutput) but still surfaces new filings (PR #44). Unsaved model draft / in-flight run still block.",
-      "sse": "fan-out + per-run replay buffer — late subscribers get a full replay (PR #42)",
+      "sse": "fan-out via the shared EventBroker (services/event_broker.py, PR #63) — terminal {workspace_run_complete, workspace_run_failed}, replay ON (late subscribers get a full replay); api/workspace.py still frames the raw dicts itself (documented non-goal)",
       "context_module": "backend/app/services/workspace_context.py — WorkspaceContext with real types (PR #46)"
     },
     {
@@ -216,7 +219,8 @@
         "earnings_prints.py",
         "earnings_scheduler.py",
         "questions.py",
-        "calendar_events.py"
+        "calendar_events.py",
+        "universe.py"
       ],
       "frontend_routes": [
         "/ (Today — Briefing/Calendar tab strip; ?tab=calendar absorbed the old /catalysts page, which is now a server redirect)",
@@ -235,7 +239,8 @@
       ],
       "perf_notes": "archived_at carried on StatusBoardEntry rows; partial index eb21c3df2ad5 (latest-run composite, archived_at IS NULL); /status refetch is visibility-debounced (PR #43)",
       "b3_ux_notes": "B3 phases 2-4 (PRs #50-52): /status rows carry a ⋯ menu (Company workspace / Model / View questions) + a KC n/m KillCriteriaDrawer; /questions has URL-state priority/category filter chips and row checkboxes + a bulk bar over POST /api/questions/bulk (ids XOR filter; dismiss/resolve/snooze — snoozed_until rows drop out of open lists and by-ticker rollups until expiry via a shared predicate in services/questions.py)",
-      "fix_pack_notes": "PR #54: GET /api/earnings/board surfaces past prints with null actuals as post_pending (precedence post > post_pending > pre via _choose_print; amber pending badge, EarningsDrawer shows estimates + awaiting-actuals note); /questions gains a ?status=snoozed virtual filter, per-row Snoozed-until chip and idempotent POST /api/questions/{id}/unsnooze (409 on non-open); OrphanEventsSection on /status renders material events for seed-only tickers"
+      "fix_pack_notes": "PR #54: GET /api/earnings/board surfaces past prints with null actuals as post_pending (precedence post > post_pending > pre via _choose_print; amber pending badge, EarningsDrawer shows estimates + awaiting-actuals note); /questions gains a ?status=snoozed virtual filter, per-row Snoozed-until chip and idempotent POST /api/questions/{id}/unsnooze (409 on non-open); OrphanEventsSection on /status renders material events for seed-only tickers",
+      "universe_refresh_notes": "2026-07-01 follow-up: earnings_prints.fetch_active_board_tickers now consumes services/universe.py::latest_runs_sql directly (was a drifted private completed-only copy — watchlist theses now get earnings prints too, pinned by test_earnings_board_tickers.py); calendar_events.py's get_universe re-export shim was retired in favor of importing resolve_universe directly."
     },
     {
       "id": "financial_model",
@@ -328,7 +333,7 @@
       "synthetic_ticker": "Identifier written into filings.ticker / relationships.ticker for pre-IPO issuers. proposed_ticker if disclosed, else uppercase-alphanumeric slug of issuer_name truncated to 16 chars. Lets the existing 5-phase EDGAR pipeline work unchanged.",
       "section_routing": "S-1 section_keys: s1_business, s1_risk_factors, s1_mda, s1_use_of_proceeds, s1_capitalization, s1_dilution, s1_principal_stockholders, s1_underwriting. Defined in edgar_html.py::_SECTION_DEFS_S1 (PR #31).",
       "merged_pr": "#31 (May 20, 2026)",
-      "sse": "fan-out + per-run replay buffer, same pattern as WorkspaceService (PR #46)"
+      "sse": "fan-out via the shared EventBroker (services/event_broker.py, PR #63) — terminal {prospectus_complete, prospectus_failed}, replay ON, same pattern as WorkspaceService; api/prospectus.py still frames the raw dicts itself (documented non-goal)"
     },
     {
       "id": "company_workspace",
@@ -344,7 +349,8 @@
         "GET /api/company/{ticker}/overview",
         "GET /api/company/{ticker}/financials",
         "GET /api/company/{ticker}/transcripts"
-      ]
+      ],
+      "ticker_path_notes": "PR #62: all 6 /api/company handlers validate {ticker} via Depends(TickerPath) (backend/app/models/ticker.py) — normalize-or-400 before any DB work."
     },
     {
       "id": "material_events",
@@ -505,21 +511,21 @@
             "method": "GET",
             "path": "/api/themes/{theme_id}/discover",
             "handler": "discover_theme",
-            "line": 76,
+            "line": 43,
             "summary": "Two-pass discovery (FMP screener + cached X signals) → ranked CompanySignalCard list"
           },
           {
             "method": "POST",
             "path": "/api/themes/{theme_id}/signals/refresh",
             "handler": "refresh_theme_signals_endpoint",
-            "line": 134,
+            "line": 101,
             "summary": "Manually trigger X signal refresh (blocks until complete)"
           },
           {
             "method": "GET",
             "path": "/api/themes/{theme_id}/signals/{ticker}/history",
             "handler": "get_signal_history_endpoint",
-            "line": 163,
+            "line": 130,
             "summary": "Time-series signal history for one (ticker, theme, signal_type) — days clamped [1,365]"
           }
         ]
@@ -553,28 +559,28 @@
             "method": "GET",
             "path": "/api/runs/{run_id}",
             "handler": "get_run",
-            "line": 182,
+            "line": 196,
             "summary": "Full run state including phase outputs"
           },
           {
             "method": "POST",
             "path": "/api/runs/{run_id}/advance",
             "handler": "advance_run",
-            "line": 192,
+            "line": 206,
             "summary": "Human interrupt action (approve|flag|stop) — only post-completion (e.g. trigger position_monitor)"
           },
           {
             "method": "POST",
             "path": "/api/runs/{run_id}/abandon",
             "handler": "abandon_run",
-            "line": 243,
+            "line": 257,
             "summary": "Mark a stuck run abandoned (only in_progress/paused qualify, 409 otherwise; no row deletion — Library renders abandoned runs greyed) (PR #52)"
           },
           {
             "method": "GET",
             "path": "/api/runs/{run_id}/stream",
             "handler": "stream_run",
-            "line": 260,
+            "line": 274,
             "summary": "SSE phase output streaming",
             "streaming": true
           },
@@ -582,7 +588,7 @@
             "method": "GET",
             "path": "/api/runs/{run_id}/report",
             "handler": "get_report",
-            "line": 284,
+            "line": 298,
             "summary": "Full structured report for completed run (used by report page and Obsidian export)"
           }
         ]
@@ -1173,42 +1179,42 @@
             "method": "GET",
             "path": "/api/company/{ticker}/header",
             "handler": "get_company_header",
-            "line": 28,
+            "line": 29,
             "summary": "Identity + price pill (log-trade deep link lives on the frontend header)"
           },
           {
             "method": "GET",
             "path": "/api/company/{ticker}/overview",
             "handler": "get_company_overview",
-            "line": 33,
+            "line": 36,
             "summary": "Overview tab snapshot"
           },
           {
             "method": "GET",
             "path": "/api/company/{ticker}/financials",
             "handler": "get_company_financials",
-            "line": 38,
+            "line": 43,
             "summary": "Statement tables (annual/quarterly lens)"
           },
           {
             "method": "GET",
             "path": "/api/company/{ticker}/transcripts",
             "handler": "get_company_transcripts",
-            "line": 46,
+            "line": 51,
             "summary": "Available transcript quarters"
           },
           {
             "method": "GET",
             "path": "/api/company/{ticker}/transcripts/{year}/{quarter}",
             "handler": "get_company_transcript",
-            "line": 51,
+            "line": 58,
             "summary": "Full transcript"
           },
           {
             "method": "POST",
             "path": "/api/company/{ticker}/transcripts/{year}/{quarter}/summary",
             "handler": "post_company_transcript_summary",
-            "line": 58,
+            "line": 65,
             "summary": "On-demand transcript summary"
           }
         ]
@@ -1295,49 +1301,49 @@
             "method": "GET",
             "path": "/api/journal/summary",
             "handler": "get_summary",
-            "line": 170,
+            "line": 163,
             "summary": "Rollups incl. decision-vs-paper comparison"
           },
           {
             "method": "GET",
             "path": "/api/journal/price-preview",
             "handler": "price_preview",
-            "line": 205,
+            "line": 198,
             "summary": "FMP adjusted close on-or-before date, 7-day lookback (404 on miss, never 500)"
           },
           {
             "method": "GET",
             "path": "/api/journal/link-candidates",
             "handler": "get_link_candidates",
-            "line": 221,
+            "line": 212,
             "summary": "Non-superseded verdict_outcomes by ticker (lives here because /api/outcomes has no ticker filter)"
           },
           {
             "method": "POST",
             "path": "/api/journal/trades",
             "handler": "create_trade",
-            "line": 241,
+            "line": 231,
             "summary": "201 · FMP adjusted-close auto-fill + best-effort SPY benchmarks"
           },
           {
             "method": "PATCH",
             "path": "/api/journal/trades/{trade_id}",
             "handler": "patch_trade",
-            "line": 274,
+            "line": 264,
             "summary": "Close/edit · explicit exit_date:null reopens + clears exit fields · date move refreshes FMP-sourced fills only (manual prices sticky)"
           },
           {
             "method": "DELETE",
             "path": "/api/journal/trades/{trade_id}",
             "handler": "delete_trade",
-            "line": 304,
+            "line": 294,
             "summary": "204"
           },
           {
             "method": "GET",
             "path": "/api/journal/trades",
             "handler": "list_trades",
-            "line": 313,
+            "line": 303,
             "summary": "All trades (open + closed)"
           }
         ]
@@ -1347,7 +1353,7 @@
       {
         "name": "calendar_events",
         "file": "backend/app/services/calendar_events.py",
-        "purpose": "Unified calendar: US high-impact econ releases + universe earnings + thesis catalysts merged statelessly at request time (no tables, no scheduler; FMP failures → warnings[])"
+        "purpose": "Unified calendar: US high-impact econ releases + universe earnings + thesis catalysts merged statelessly at request time (no tables, no scheduler; FMP failures → warnings[]). Imports resolve_universe directly from services/universe.py — the get_universe re-export shim was retired 2026-07-01."
       },
       {
         "name": "catalyst_dates",
@@ -1407,7 +1413,7 @@
       {
         "name": "earnings_prints",
         "file": "backend/app/services/earnings_prints.py",
-        "purpose": "Earnings prints indexer (FMP calendar → DB)"
+        "purpose": "Earnings prints indexer (FMP calendar → DB). fetch_active_board_tickers resolves the active-thesis universe via services/universe.py::latest_runs_sql (2026-07-01 — was a drifted private completed-only copy; watchlist theses now included)."
       },
       {
         "name": "earnings_scheduler",
@@ -1448,6 +1454,11 @@
         "name": "edgar_transcripts_relationships",
         "file": "backend/app/services/edgar_transcripts_relationships.py",
         "purpose": "Extract relationships from earnings call transcripts (last 4 quarters)"
+      },
+      {
+        "name": "event_broker",
+        "file": "backend/app/services/event_broker.py",
+        "purpose": "Per-run SSE fan-out abstraction (EventBroker class: emit/stream/sse) reused by pipeline/workspace/prospectus, each configured with its own terminal_types, replay bool, heartbeat_seconds, and queue_maxsize (500 default; QueueFull drops the event for that one subscriber only). PR #63 deleted the three services' hand-rolled _streams/_replay/subscribe/unsubscribe plumbing in favor of this."
       },
       {
         "name": "event_classifier",
@@ -1527,7 +1538,7 @@
       {
         "name": "pipeline",
         "file": "backend/app/services/pipeline.py",
-        "purpose": "PipelineService — run lifecycle, state persistence, SSE plumbing (in-memory dict[run_id, asyncio.Queue]), holds _next_phase routing (parallel to graph/pipeline.py edges)"
+        "purpose": "PipelineService — run lifecycle, state persistence, SSE plumbing delegated to a shared EventBroker (services/event_broker.py, PR #63; terminal {complete,error}, replay OFF, 30s heartbeat), holds _next_phase routing (parallel to graph/pipeline.py edges)"
       },
       {
         "name": "prospectus_categories",
@@ -1547,7 +1558,7 @@
       {
         "name": "prospectus_service",
         "file": "backend/app/services/prospectus_service.py",
-        "purpose": "ProspectusService — orchestrates the 4-step prospectus pipeline (ingest → relationships → categories → thesis). Mirrors WorkspaceService — in-memory dict[report_id, asyncio.Queue] for SSE; each step runs in its own session with explicit commit."
+        "purpose": "ProspectusService — orchestrates the 4-step prospectus pipeline (ingest → relationships → categories → thesis). Mirrors WorkspaceService — SSE via shared EventBroker (replay ON, PR #63); each step runs in its own session with explicit commit."
       },
       {
         "name": "prospectus_thesis",
@@ -1625,9 +1636,14 @@
         "purpose": "Transcript delta analysis (Haiku QoQ language deltas across multiple axes)"
       },
       {
+        "name": "universe",
+        "file": "backend/app/services/universe.py",
+        "purpose": "Single owner of \"active thesis\" universe resolution — latest_runs_sql CTE (latest completed/watchlist non-archived run per (ticker, theme)) + resolve_universe (global: theme seeds ∪ active theses) + resolve_universe_by_theme + _seed_tickers_by_theme (2026-07-01 follow-up: the one place seed_tickers is read, ORM-based). Consumed by status_board.py, calendar_events.py, earnings_prints.py, and material_events_scheduler.py (which previously reached into status_board's private _build_latest_runs_sql via deferred imports — that cycle is gone)."
+      },
+      {
         "name": "workspace",
         "file": "backend/app/services/workspace.py",
-        "purpose": "WorkspaceService orchestrating 5-step workspace loop (mirrors PipelineService — in-memory SSE queues, WorkspaceRunInFlight guard per ticker)"
+        "purpose": "WorkspaceService orchestrating 5-step workspace loop (SSE via shared EventBroker — replay ON — PR #63; WorkspaceRunInFlight guard per ticker)"
       },
       {
         "name": "workspace_context",
@@ -3857,6 +3873,10 @@
       {
         "file": "frontend/lib/concentrationFlow.ts",
         "purpose": "Pure layout math for the concentration-flow diagram (PR #60): two-sided band stacking from magnitude_pct edges incl. unnamed disclosures, latest-filing dedup, sides padded to 100% with Other (node-tested)"
+      },
+      {
+        "file": "frontend/lib/modelVocab.ts",
+        "purpose": "Canonical model driver-key + line-item vocabulary for ForecastGrid/DriverPanel; regex-scrape-pinned against backend models/model_state.py (LINE_ITEMS_PNL/BS/CF + DRIVER_KEYS) via modelVocab.test.mts — drift fails CI (PR #62)"
       }
     ],
     "globals": "frontend/app/globals.css — @media print hides any element with data-print-hide='true'. Tag new sticky UI accordingly so it drops out of PDF."
@@ -4245,9 +4265,10 @@
     },
     {
       "id": "sse_replay_semantics",
-      "rule": "All three SSE services fan out to multiple subscriber queues per run. PipelineService has NO replay; WorkspaceService and ProspectusService keep a per-run replay buffer — late subscribers get a full replay on event_stream() entry.",
-      "why": "PR #42 (pipeline + workspace fan-out, workspace replay) and PR #46 (prospectus replay). Don’t assume pipeline late-joiners see early events.",
+      "rule": "All three SSE services fan out to multiple subscriber queues per run via a shared EventBroker (services/event_broker.py, PR #63). PipelineService has NO replay; WorkspaceService and ProspectusService keep a per-run replay buffer — late subscribers get a full replay on event_stream() entry.",
+      "why": "PR #63 unified the three services' previously hand-rolled fan-out/replay plumbing onto EventBroker, preserving each service's pre-existing replay policy (pipeline off since PR #42; workspace/prospectus on since PR #42/#46). Don't assume pipeline late-joiners see early events.",
       "applies_to": [
+        "backend/app/services/event_broker.py",
         "backend/app/services/pipeline.py",
         "backend/app/services/workspace.py",
         "backend/app/services/prospectus_service.py"
@@ -4303,8 +4324,28 @@
     },
     {
       "id": "discovery_card_manual_serializer",
-      "rule": "api/discovery.py::_card_to_dict is a MANUAL serializer — every new CompanySignalCard field must be added there explicitly or it silently never reaches the frontend",
-      "why": "The congress chip (PR #57) never rendered until PR #59 added its key; all three snapshot keys (insider/congress/centrality) are now pinned by test_discovery_card_serialization.py"
+      "rule": "CompanySignalCard.to_dict() (services/discovery.py) is the canonical wire serializer — a recursive dataclasses.fields() walk via _wire_value that special-cases Citation to the 5 frontend keys. api/discovery.py::_card_to_dict is now a thin shim, kept only because the regression test imports it by name.",
+      "why": "PR #62 inverted the old hand-enumerated _card_to_dict, which silently dropped any unmapped field (both the congress chip, PR #57, and the centrality chip, PR #59, shipped invisible that way). A new scalar or nested snapshot field now reaches the frontend automatically — you opt one OUT by excluding it in _wire_value, not in by remembering to add it. All three snapshot keys (insider/congress/centrality) are pinned by test_discovery_card_serialization.py."
+    },
+    {
+      "id": "event_broker_zero_config",
+      "rule": "Each SSE-emitting service's terminal_types / replay / heartbeat_seconds / queue_maxsize are fixed once at EventBroker construction: pipeline — terminal {complete, error}, replay=False, heartbeat=30s; workspace — terminal {workspace_run_complete, workspace_run_failed}, replay=True; prospectus — terminal {prospectus_complete, prospectus_failed}, replay=True; queue_maxsize=500 for all three (QueueFull drops the event for that one subscriber, never blocks the others).",
+      "why": "PR #63 consolidated three previously hand-rolled SSE implementations behind one class; these config values ARE the behavioral contract now — changing one changes replay/heartbeat/termination for that whole service. Pinned by backend/tests/test_sse_service_config.py (6 tests) and backend/tests/test_event_broker.py (14 tests, which replaced the deleted test_sse_streams.py).",
+      "applies_to": [
+        "backend/app/services/event_broker.py",
+        "backend/app/services/pipeline.py",
+        "backend/app/services/workspace.py",
+        "backend/app/services/prospectus_service.py"
+      ]
+    },
+    {
+      "id": "model_vocab_parity",
+      "rule": "frontend/lib/modelVocab.ts (PNL_LINES, BS_LINES, CF_LINES, DRIVER_KEYS) must stay identical in membership AND order to the backend registries in backend/app/models/model_state.py (LINE_ITEMS_PNL/BS/CF, DRIVER_KEYS).",
+      "why": "ForecastGrid and DriverPanel render one row per frontend entry, then look the value up in the model state by key — a key the backend doesn't emit (or a backend key missing on the frontend) silently produces an empty/absent row rather than an error. frontend/lib/modelVocab.test.mts regex-scrapes model_state.py at test time and diffs the two, so drift fails CI instead of shipping a blank column.",
+      "applies_to": [
+        "frontend/lib/modelVocab.ts",
+        "backend/app/models/model_state.py"
+      ]
     }
   ],
   "external_dependencies": {
