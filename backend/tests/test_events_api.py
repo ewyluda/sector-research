@@ -36,9 +36,15 @@ def make_app() -> tuple[TestClient, MagicMock]:
     return TestClient(app), db
 
 
+# Real UUIDs: material_events.id is a UUID column, and EventIdPath now
+# 404s synthetic ids like "ev-1" before the handler runs.
+EV_1 = "8b6d3c2e-1f4a-4b9c-9d7e-0a1b2c3d4e5f"
+EV_2 = "3f2e1d0c-9b8a-4756-8493-a2b1c0d9e8f7"
+
+
 def _event(**over):
     base = dict(
-        id="ev-1", ticker="NVDA", event_type="guidance", materiality="high",
+        id=EV_1, ticker="NVDA", event_type="guidance", materiality="high",
         headline="Guidance cut", summary="Cut FY outlook.", item_codes="2.02",
         filing_date=date(2026, 6, 8), dismissed_at=None,
     )
@@ -122,7 +128,7 @@ class DismissTests(unittest.TestCase):
         db.execute = AsyncMock(return_value=result)
         db.commit = AsyncMock()
 
-        resp = client.post("/api/events/ev-1/dismiss?group=false")
+        resp = client.post(f"/api/events/{EV_1}/dismiss?group=false")
         self.assertEqual(resp.status_code, 204)
         self.assertIsNotNone(ev.dismissed_at)
         db.commit.assert_awaited()
@@ -131,8 +137,8 @@ class DismissTests(unittest.TestCase):
         # ?group=true (the default) sets dismissed_at on every undismissed
         # member within the (ticker, event_type, ±4d-of-primary) window
         client, db = make_app()
-        primary = _event(id="ev-1")
-        member = _event(id="ev-2", filing_date=date(2026, 6, 6))
+        primary = _event(id=EV_1)
+        member = _event(id=EV_2, filing_date=date(2026, 6, 6))
 
         lookup = MagicMock()
         lookup.scalar_one_or_none.return_value = primary
@@ -141,7 +147,7 @@ class DismissTests(unittest.TestCase):
         db.execute = AsyncMock(side_effect=[lookup, members])
         db.commit = AsyncMock()
 
-        resp = client.post("/api/events/ev-1/dismiss")
+        resp = client.post(f"/api/events/{EV_1}/dismiss")
         self.assertEqual(resp.status_code, 204)
         self.assertIsNotNone(primary.dismissed_at)
         self.assertIsNotNone(member.dismissed_at)

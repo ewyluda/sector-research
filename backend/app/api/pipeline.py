@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models.research_run import ResearchRun
+from backend.app.models.uuid_path import RunIdPath
 from backend.app.models.signal import Signal
 from backend.app.graph.state import ResearchState
 from backend.app.models.theme import Theme
@@ -180,7 +181,7 @@ async def get_data_gaps(
 
 
 @router.get("/runs/{run_id}")
-async def get_run(run_id: str, db: AsyncSession = Depends(get_db)):
+async def get_run(run_id: str = Depends(RunIdPath), db: AsyncSession = Depends(get_db)):
     """Get full run state including phase outputs."""
     result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
     run = result.scalar_one_or_none()
@@ -191,9 +192,9 @@ async def get_run(run_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.post("/runs/{run_id}/advance")
 async def advance_run(
-    run_id: str,
     payload: AdvanceRunRequest,
     request: Request,
+    run_id: str = Depends(RunIdPath),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -241,7 +242,7 @@ async def advance_run(
 
 
 @router.post("/runs/{run_id}/abandon")
-async def abandon_run(run_id: str, db: AsyncSession = Depends(get_db)) -> dict:
+async def abandon_run(run_id: str = Depends(RunIdPath), db: AsyncSession = Depends(get_db)) -> dict:
     """Mark a stuck run abandoned. Only in_progress/paused runs qualify;
     no row deletion — the Library renders abandoned runs greyed."""
     result = await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))
@@ -258,7 +259,7 @@ async def abandon_run(run_id: str, db: AsyncSession = Depends(get_db)) -> dict:
 
 
 @router.get("/runs/{run_id}/stream")
-async def stream_run(run_id: str, request: Request, db: AsyncSession = Depends(get_db)):
+async def stream_run(request: Request, run_id: str = Depends(RunIdPath), db: AsyncSession = Depends(get_db)):
     """
     SSE endpoint for real-time phase output streaming.
     Connect before calling /advance to receive tokens and events.
@@ -282,7 +283,7 @@ async def stream_run(run_id: str, request: Request, db: AsyncSession = Depends(g
 
 
 @router.get("/runs/{run_id}/report")
-async def get_report(run_id: str, db: AsyncSession = Depends(get_db)):
+async def get_report(run_id: str = Depends(RunIdPath), db: AsyncSession = Depends(get_db)):
     """
     Full structured report for a completed run.
     Used by /report/[runId] page and Obsidian export.

@@ -76,13 +76,24 @@ class Universe:
     thesis_runs: dict[str, str]  # ticker -> an active run_id (first CTE row wins)
 
 
+async def _seed_tickers_by_theme(db: AsyncSession) -> dict[str, set[str]]:
+    """themes.id -> uppercased seed set. The one place seed_tickers is read
+    (tolerates legacy non-list JSONB shapes by treating them as empty)."""
+    themes = (await db.execute(select(Theme))).scalars().all()
+    return {
+        str(t.id): {
+            str(s).upper()
+            for s in (t.seed_tickers if isinstance(t.seed_tickers, list) else [])
+        }
+        for t in themes
+    }
+
+
 async def resolve_universe(db: AsyncSession) -> Universe:
     """Global universe: every theme's seeds ∪ all active-thesis tickers."""
     tickers: set[str] = set()
-
-    seed_rows = (await db.execute(text("SELECT seed_tickers FROM themes"))).scalars().all()
-    for seeds in seed_rows:
-        tickers.update(str(s).upper() for s in (seeds or []))
+    for seeds in (await _seed_tickers_by_theme(db)).values():
+        tickers.update(seeds)
 
     sql, params = latest_runs_sql(theme_id=None, include_archived=False)
     run_rows = (await db.execute(text(sql), params)).mappings().all()
@@ -96,12 +107,7 @@ async def resolve_universe(db: AsyncSession) -> Universe:
 
 async def resolve_universe_by_theme(db: AsyncSession) -> dict[str, set[str]]:
     """Per-theme universe: theme_id -> tickers (its seeds ∪ its active theses)."""
-    out: dict[str, set[str]] = {}
-
-    themes = (await db.execute(select(Theme))).scalars().all()
-    for t in themes:
-        seeds = t.seed_tickers if isinstance(t.seed_tickers, list) else []
-        out[str(t.id)] = {str(s).upper() for s in seeds}
+    out = await _seed_tickers_by_theme(db)
 
     sql, params = latest_runs_sql(theme_id=None, include_archived=False)
     for r in (await db.execute(text(sql), params)).mappings().all():

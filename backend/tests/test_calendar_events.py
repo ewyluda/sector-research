@@ -16,6 +16,8 @@ os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
 from backend.app.models.citation import Citation
 from backend.app.services import calendar_events as ce
+from backend.app.services.universe import Universe
+from backend.tests.db_mocks import FakeResult as _Result
 
 
 def _cit() -> Citation:
@@ -77,7 +79,7 @@ class EconEventsTests(unittest.TestCase):
 
 class EarningsEventsTests(unittest.TestCase):
     def _universe(self):
-        return ce.Universe(
+        return Universe(
             tickers={"NVDA", "ASML"},
             thesis_runs={"NVDA": "run-nvda-1"},
         )
@@ -109,57 +111,6 @@ class EarningsEventsTests(unittest.TestCase):
     def test_bad_date_row_is_skipped(self):
         rows = [{"symbol": "NVDA", "date": "not-a-date"}]
         self.assertEqual(ce._earnings_events(rows, self._universe(), _cit()), [])
-
-
-class _Result:
-    """Mimics the two access patterns the service uses on db.execute results."""
-
-    def __init__(self, rows):
-        self._rows = rows
-
-    def scalars(self):
-        return SimpleNamespace(all=lambda: self._rows)
-
-    def mappings(self):
-        return SimpleNamespace(all=lambda: self._rows)
-
-
-class GetUniverseTests(unittest.IsolatedAsyncioTestCase):
-    async def test_union_of_seeds_and_active_theses_uppercased(self):
-        db = AsyncMock()
-        db.execute.side_effect = [
-            # SELECT seed_tickers FROM themes → one JSONB list per theme
-            _Result([["nvda", "ASML"], ["amd"], None]),
-            # latest-runs CTE rows (status board semantics)
-            _Result([
-                {"ticker": "NVDA", "id": "run-nvda-1"},
-                {"ticker": "pltr", "id": "run-pltr-1"},
-            ]),
-        ]
-
-        universe = await ce.get_universe(db)
-
-        self.assertEqual(universe.tickers, {"NVDA", "ASML", "AMD", "PLTR"})
-        self.assertEqual(
-            universe.thesis_runs,
-            {"NVDA": "run-nvda-1", "PLTR": "run-pltr-1"},
-        )
-
-    async def test_duplicate_thesis_ticker_keeps_first_run(self):
-        # DISTINCT ON (ticker, theme_id) can emit one row per theme for the
-        # same ticker; the first row wins (setdefault).
-        db = AsyncMock()
-        db.execute.side_effect = [
-            _Result([]),
-            _Result([
-                {"ticker": "NVDA", "id": "run-a"},
-                {"ticker": "NVDA", "id": "run-b"},
-            ]),
-        ]
-
-        universe = await ce.get_universe(db)
-
-        self.assertEqual(universe.thesis_runs, {"NVDA": "run-a"})
 
 
 class CitationOutTests(unittest.TestCase):
@@ -249,7 +200,8 @@ class GetCalendarEventsTests(unittest.IsolatedAsyncioTestCase):
     def _db(self):
         db = AsyncMock()
         db.execute.side_effect = [
-            _Result([["NVDA"]]),                                  # seeds
+            # select(Theme) rows → Theme-shaped objects
+            _Result([SimpleNamespace(id="t1", seed_tickers=["NVDA"])]),
             _Result([{"ticker": "NVDA", "id": "run-1"}]),         # latest runs
             _Result([]),                                          # catalysts
         ]
@@ -317,7 +269,7 @@ class GetCalendarEventsTests(unittest.IsolatedAsyncioTestCase):
     async def test_catalyst_rows_merged_and_params_are_date_objects(self):
         db = AsyncMock()
         db.execute.side_effect = [
-            _Result([["NVDA"]]),
+            _Result([SimpleNamespace(id="t1", seed_tickers=["NVDA"])]),
             _Result([{"ticker": "NVDA", "id": "run-1"}]),
             _Result([{
                 "id": "cat-1", "run_id": "run-1", "ticker": "NVDA",

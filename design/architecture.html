@@ -391,8 +391,8 @@
     <p class="tagline">Personal stock-research app. Discovery (FMP fundamentals + X social signal + insider/congress modifiers) feeds a 6-phase LangGraph due-diligence pipeline with citations on every data point. Post-thesis surfaces (Today briefing, status board, unified calendar, material events, workspace loop, financial model, peer comp, outcome tracker, trade journal) close the feedback loop.</p>
   </div>
   <div class="meta">
-    <div>generated 2026-06-12</div>
-    <div>source 4c03582 · main</div>
+    <div>generated 2026-07-01</div>
+    <div>source 00dd598 · main</div>
     <div>local-only · no auth</div>
   </div>
 </div>
@@ -401,7 +401,7 @@
 <div class="stats">
   <div class="stat"><div class="v">13</div><div class="l">subsystems</div></div>
   <div class="stat"><div class="v">113</div><div class="l">endpoints</div></div>
-  <div class="stat"><div class="v">58</div><div class="l">services</div></div>
+  <div class="stat"><div class="v">61</div><div class="l">services</div></div>
   <div class="stat"><div class="v">34</div><div class="l">db tables</div></div>
   <div class="stat"><div class="v">28</div><div class="l">pages</div></div>
   <div class="stat"><div class="v">29</div><div class="l">migrations</div></div>
@@ -555,7 +555,7 @@
       <h4>Status board cluster</h4>
       <p class="purpose">Fleet-management surface: status board (row ⋯ menu + KC drawer), unified calendar (econ + earnings + catalysts, stateless — lives on Today's Calendar tab), questions log (filters + bulk dismiss/snooze), read-throughs, earnings briefs &amp; verdicts, Today morning briefing (pure frontend composition).</p>
       <div class="meta-row">
-        <div><strong>services</strong> status_board, catalyst_*, calendar_events, read_through, earnings_*, questions</div>
+        <div><strong>services</strong> status_board, catalyst_*, calendar_events, read_through, earnings_*, questions, universe</div>
         <div><strong>routes</strong> / (Today + ?tab=calendar) · /status · /questions</div>
       </div>
     </div>
@@ -723,7 +723,7 @@
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs</td><td class="handler">start_run</td><td class="summary-cell">Start new research run</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs</td><td class="handler">list_runs</td><td class="summary-cell">Research Library list</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/data-gaps</td><td class="handler">get_data_gaps</td><td class="summary-cell">Aggregate data gaps ranked by frequency</td></tr>
-        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span></td><td class="handler">get_run</td><td class="summary-cell">Full state + phase outputs</td></tr>
+        <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span></td><td class="handler">get_run</td><td class="summary-cell">Full state + phase outputs · ⚠ all /runs/{run_id}* routes 404 on malformed run_id (RunIdPath guard)</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/advance</td><td class="handler">advance_run</td><td class="summary-cell">approve|flag|stop · triggers position_monitor</td></tr>
         <tr><td><span class="method POST">POST</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/abandon</td><td class="handler">abandon_run</td><td class="summary-cell">Mark stuck run abandoned (in_progress/paused only, 409 otherwise; Library greys it) · PR #52</td></tr>
         <tr><td><span class="method GET">GET</span></td><td class="path">/api/runs/<span class="param">{run_id}</span>/stream<span class="stream-badge">SSE</span></td><td class="handler">stream_run</td><td class="summary-cell">Phase output streaming</td></tr>
@@ -1289,11 +1289,11 @@
 
 <!-- SERVICES -->
 <section>
-  <h2>Backend services · 59 files</h2>
+  <h2>Backend services · 61 files</h2>
   <details>
     <summary><span>Full service list</span><span class="count">backend/app/services/*.py</span></summary>
     <div class="details-body">
-      <div class="item-row"><div><div class="name">calendar_events</div><div class="file">services/calendar_events.py</div></div><div class="purpose">Unified calendar: econ + universe earnings + catalysts merged statelessly at request time (no tables, no scheduler)</div></div>
+      <div class="item-row"><div><div class="name">calendar_events</div><div class="file">services/calendar_events.py</div></div><div class="purpose">Unified calendar: econ + universe earnings + catalysts merged statelessly at request time (no tables, no scheduler). Imports resolve_universe directly from services/universe.py — the get_universe re-export shim was retired 2026-07-01.</div></div>
       <div class="item-row"><div><div class="name">catalyst_dates</div><div class="file">services/catalyst_dates.py</div></div><div class="purpose">Parse free-form catalyst timeframe strings to date windows</div></div>
       <div class="item-row"><div><div class="name">catalyst_promotion</div><div class="file">services/catalyst_promotion.py</div></div><div class="purpose">Promote parsed Catalyst objects from thesis runs to first-class DB rows</div></div>
       <div class="item-row"><div><div class="name">company_snapshot</div><div class="file">services/company_snapshot.py</div></div><div class="purpose">Company-workspace header/overview/financials payloads</div></div>
@@ -1301,9 +1301,9 @@
       <div class="item-row"><div><div class="name">counterparty_resolver</div><div class="file">services/counterparty_resolver.py</div></div><div class="purpose">RapidFuzz fuzzy matching against company_tickers.json (≥95 auto, 80-94 queue, &lt;80 queue-only)</div></div>
       <div class="item-row"><div><div class="name">data_gaps</div><div class="file">services/data_gaps.py</div></div><div class="purpose">Detect hard errors and soft data gaps in research run state</div></div>
       <div class="item-row"><div><div class="name">dcf</div><div class="file">services/dcf.py</div></div><div class="purpose">Pure DCF engine — no IO, no DB. Caller must recompute() first.</div></div>
-      <div class="item-row"><div><div class="name">discovery</div><div class="file">services/discovery.py</div></div><div class="purpose">Discovery Engine — FMP screener + cached X signal passes; applies bounded insider/congress/centrality modifiers (_apply_cached_modifier / apply_centrality_modifier)</div></div>
+      <div class="item-row"><div><div class="name">discovery</div><div class="file">services/discovery.py</div></div><div class="purpose">Discovery Engine — FMP screener + cached X signal passes; applies bounded insider/congress/centrality modifiers (_apply_cached_modifier / apply_centrality_modifier). CompanySignalCard.to_dict() is the canonical wire serializer (api/discovery._card_to_dict is a thin shim), PR #62.</div></div>
       <div class="item-row"><div><div class="name">earnings_brief</div><div class="file">services/earnings_brief.py</div></div><div class="purpose">Pre-earnings brief synthesis (3-5 bullets, Haiku)</div></div>
-      <div class="item-row"><div><div class="name">earnings_prints</div><div class="file">services/earnings_prints.py</div></div><div class="purpose">Earnings prints indexer (FMP calendar → DB)</div></div>
+      <div class="item-row"><div><div class="name">earnings_prints</div><div class="file">services/earnings_prints.py</div></div><div class="purpose">Earnings prints indexer (FMP calendar → DB). fetch_active_board_tickers resolves the active-thesis universe via services/universe.py::latest_runs_sql (2026-07-01 — watchlist theses now included)</div></div>
       <div class="item-row"><div><div class="name">earnings_scheduler</div><div class="file">services/earnings_scheduler.py</div></div><div class="purpose">Daily cron 21:00 UTC for earnings refresh</div></div>
       <div class="item-row"><div><div class="name">earnings_verdict</div><div class="file">services/earnings_verdict.py</div></div><div class="purpose">Post-print thesis verdict (Haiku)</div></div>
       <div class="item-row"><div><div class="name">edgar_competition</div><div class="file">services/edgar_competition.py</div></div><div class="purpose">Extract structured competition disclosure from 10-K Item 1</div></div>
@@ -1312,6 +1312,7 @@
       <div class="item-row"><div><div class="name">edgar_relationships</div><div class="file">services/edgar_relationships.py</div></div><div class="purpose">Phase B — extract relationships via Haiku (Pydantic structured output)</div></div>
       <div class="item-row"><div><div class="name">edgar_sections_ingest</div><div class="file">services/edgar_sections_ingest.py</div></div><div class="purpose">Phase A — ingest narrative sections (idempotent on filing_id, section_key)</div></div>
       <div class="item-row"><div><div class="name">edgar_transcripts_relationships</div><div class="file">services/edgar_transcripts_relationships.py</div></div><div class="purpose">Extract relationships from last 4Q earnings transcripts</div></div>
+      <div class="item-row"><div><div class="name">event_broker</div><div class="file">services/event_broker.py</div></div><div class="purpose">Per-run SSE fan-out abstraction (emit/stream/sse) reused by pipeline/workspace/prospectus — configurable terminal_types, replay, heartbeat_seconds, queue_maxsize (500, QueueFull drops per-subscriber). PR #63 deleted the three services' hand-rolled fan-out plumbing.</div></div>
       <div class="item-row"><div><div class="name">event_classifier</div><div class="file">services/event_classifier.py</div></div><div class="purpose">Haiku 8-K classification (event_type + materiality); errors NOT tombstoned — retry next cron</div></div>
       <div class="item-row"><div><div class="name">fanout</div><div class="file">services/fanout.py</div></div><div class="purpose">Phase E — serial ingest → extract → resolve orchestrator; in-memory status</div></div>
       <div class="item-row"><div><div class="name">graph_centrality</div><div class="file">services/graph_centrality.py</div></div><div class="purpose">Pure NetworkX (networkx==3.4.2) betweenness + eigenvector over the theme-wide graph, classified per connected component; ≥10-edge theme / ≥5-edge component gates; hub (top-20% eigenvector ∧ deg≥3, +3) / broker (top-20% betweenness, +2) → signals signal_type=centrality (PR #59)</div></div>
@@ -1330,7 +1331,7 @@
       <div class="item-row"><div><div class="name">outcome_tracker</div><div class="file">services/outcome_tracker.py</div></div><div class="purpose">Resolve entry prices, create outcomes, refresh snapshots at 1d/1w/1m/3m/6m</div></div>
       <div class="item-row"><div><div class="name">peer_comp</div><div class="file">services/peer_comp.py</div></div><div class="purpose">Single shared 16-metric comp builder (4 FMP endpoints; valuation multiples live on ratios-ttm, NOT key-metrics-ttm)</div></div>
       <div class="item-row"><div><div class="name">peer_sets</div><div class="file">services/peer_sets.py</div></div><div class="purpose">Curated peer sets — auto-seed (cap 8) / manual (cap 12); commit-free, callers own the session</div></div>
-      <div class="item-row"><div><div class="name">pipeline</div><div class="file">services/pipeline.py</div></div><div class="purpose">PipelineService — run lifecycle, state persistence, SSE plumbing</div></div>
+      <div class="item-row"><div><div class="name">pipeline</div><div class="file">services/pipeline.py</div></div><div class="purpose">PipelineService — run lifecycle, state persistence, SSE plumbing delegated to a shared EventBroker (terminal {complete,error}, replay OFF, 30s heartbeat, PR #63)</div></div>
       <div class="item-row"><div><div class="name">quant_fingerprint</div><div class="file">services/quant_fingerprint.py</div></div><div class="purpose">Pure deterministic quant layer: Piotroski F, Altman Z, Beneish M, accruals, FCF conversion, SBC dilution, margin OLS slopes (TTM vs prior-TTM)</div></div>
       <div class="item-row"><div><div class="name">question_lifecycle</div><div class="file">services/question_lifecycle.py</div></div><div class="purpose">Open-question helpers across pipeline runs — persist, fetch/render, apply resurfaced resolutions (C2, PR #45)</div></div>
       <div class="item-row"><div><div class="name">questions</div><div class="file">services/questions.py</div></div><div class="purpose">Question log query helpers + retry-auto orchestration + shared snooze-exclusion predicate (PR #51); ?status=snoozed virtual filter + unsnooze (PR #54)</div></div>
@@ -1344,10 +1345,11 @@
       <div class="item-row"><div><div class="name">supply_chain</div><div class="file">services/supply_chain.py</div></div><div class="purpose">Phase D — supply-chain graph (depth=1|2 BFS) + bilateral reconciliation; sibling build_theme_graph (PR #58 — theme-wide, ticker-first node identity, 300-node too_dense rail) for /api/relationships/theme-graph</div></div>
       <div class="item-row"><div><div class="name">transcript_analysis</div><div class="file">services/transcript_analysis.py</div></div><div class="purpose">Runs the 6 deep-dive transcript passes; typed TranscriptAnalysisResult (C2, PRs #45/#46)</div></div>
       <div class="item-row"><div><div class="name">transcript_delta</div><div class="file">services/transcript_delta.py</div></div><div class="purpose">Haiku QoQ language deltas across multiple axes</div></div>
-      <div class="item-row"><div><div class="name">workspace</div><div class="file">services/workspace.py</div></div><div class="purpose">WorkspaceService orchestrating 5-step workspace loop</div></div>
+      <div class="item-row"><div><div class="name">universe</div><div class="file">services/universe.py</div></div><div class="purpose">Single owner of "active thesis" universe resolution — latest_runs_sql CTE + resolve_universe (global: theme seeds ∪ active theses) + resolve_universe_by_theme; consumed by status_board, calendar_events, earnings_prints, material_events_scheduler (2026-07-01: the deferred-import cycle into status_board's private helper is gone)</div></div>
+      <div class="item-row"><div><div class="name">workspace</div><div class="file">services/workspace.py</div></div><div class="purpose">WorkspaceService orchestrating 5-step workspace loop (SSE via shared EventBroker, replay ON, PR #63)</div></div>
       <div class="item-row"><div><div class="name">workspace_context</div><div class="file">services/workspace_context.py</div></div><div class="purpose">WorkspaceContext dataclass — pure data carrier through steps</div></div>
       <div class="item-row"><div><div class="name">workspace_steps</div><div class="file">services/workspace_steps.py</div></div><div class="purpose">Five workspace step implementations</div></div>
-      <div class="item-row"><div><div class="name">prospectus_service</div><div class="file">services/prospectus_service.py</div></div><div class="purpose">ProspectusService — 4-step pipeline (ingest → relationships → categories → thesis) · in-memory SSE queues · per-step session+commit</div></div>
+      <div class="item-row"><div><div class="name">prospectus_service</div><div class="file">services/prospectus_service.py</div></div><div class="purpose">ProspectusService — 4-step pipeline (ingest → relationships → categories → thesis) · SSE via shared EventBroker (replay ON, PR #63) · per-step session+commit</div></div>
       <div class="item-row"><div><div class="name">prospectus_ingest</div><div class="file">services/prospectus_ingest.py</div></div><div class="purpose">Parse S-1 URL/accession, fetch + extract sections, persist Filing/FilingSection under <code>synthetic_ticker</code></div></div>
       <div class="item-row"><div><div class="name">prospectus_financials</div><div class="file">services/prospectus_financials.py</div></div><div class="purpose">Sonnet pass over MD&amp;A → ProspectusFinancials (annual + interim rows with source_snippet)</div></div>
       <div class="item-row"><div><div class="name">prospectus_categories</div><div class="file">services/prospectus_categories.py</div></div><div class="purpose">7 IPO-tuned categories (CATEGORY_SECTION_ROUTING in graph/prospectus_prompts.py); 8K chars/section</div></div>
@@ -1536,6 +1538,12 @@
   </div>
 
   <div class="invariant">
+    <div class="iname">sse_replay_semantics</div>
+    <div class="irule">All three SSE services fan out to multiple subscriber queues per run via a shared <code>EventBroker</code> (<code>services/event_broker.py</code>, PR #63). PipelineService has NO replay; WorkspaceService and ProspectusService keep a per-run replay buffer — late subscribers get a full replay on <code>event_stream()</code> entry.</div>
+    <div class="iwhy"><strong>Why:</strong> PR #63 unified the three services' previously hand-rolled fan-out/replay plumbing onto <code>EventBroker</code>, preserving each service's pre-existing replay policy (pipeline off since PR #42; workspace/prospectus on since PR #42/#46). Don't assume pipeline late-joiners see early events.</div>
+  </div>
+
+  <div class="invariant">
     <div class="iname">theme_token_classes</div>
     <div class="irule">Frontend colors use CSS-variable token classes only (<code>bg-[var(--surface)]</code>, <code>text-[var(--text-muted)]</code>, …) — no <code>slate-*</code>/<code>gray-*</code>/<code>zinc-*</code> palette classes</div>
     <div class="iwhy"><strong>Why:</strong> B3 phase 4 (PR #53) migrated all surfaces to a global token palette (tokens in <code>app/globals.css</code>); raw palette classes drift from the theme. Guard documented in <code>frontend/AGENTS.md</code>.</div>
@@ -1549,8 +1557,20 @@
 
   <div class="invariant">
     <div class="iname">discovery_card_manual_serializer</div>
-    <div class="irule"><code>api/discovery.py::_card_to_dict</code> is a MANUAL serializer — every new <code>CompanySignalCard</code> field must be added there explicitly</div>
-    <div class="iwhy"><strong>Why:</strong> the congress chip (PR #57) never rendered until PR #59 added its key. All three snapshot keys (insider/congress/centrality) are now pinned by <code>test_discovery_card_serialization.py</code>.</div>
+    <div class="irule"><code>CompanySignalCard.to_dict()</code> (<code>services/discovery.py</code>) is the canonical wire serializer — a recursive <code>dataclasses.fields()</code> walk via <code>_wire_value</code> that special-cases <code>Citation</code> to the 5 frontend keys. <code>api/discovery.py::_card_to_dict</code> is now a thin shim, kept only because the regression test imports it by name.</div>
+    <div class="iwhy"><strong>Why:</strong> PR #62 inverted the old hand-enumerated <code>_card_to_dict</code>, which silently dropped any unmapped field (both the congress chip, PR #57, and the centrality chip, PR #59, shipped invisible that way). A new scalar or nested snapshot field now reaches the frontend automatically — you opt one OUT by excluding it in <code>_wire_value</code>, not in by remembering to add it. All three snapshot keys (insider/congress/centrality) are pinned by <code>test_discovery_card_serialization.py</code>.</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">event_broker_zero_config</div>
+    <div class="irule">Each SSE-emitting service's <code>terminal_types</code> / <code>replay</code> / <code>heartbeat_seconds</code> / <code>queue_maxsize</code> are fixed once at <code>EventBroker</code> construction: pipeline — terminal {complete, error}, replay=False, heartbeat=30s; workspace — terminal {workspace_run_complete, workspace_run_failed}, replay=True; prospectus — terminal {prospectus_complete, prospectus_failed}, replay=True; queue_maxsize=500 for all three (QueueFull drops the event for that one subscriber, never blocks the others).</div>
+    <div class="iwhy"><strong>Why:</strong> PR #63 consolidated three previously hand-rolled SSE implementations behind one class; these config values ARE the behavioral contract now. Pinned by <code>backend/tests/test_sse_service_config.py</code> (6 tests) and <code>backend/tests/test_event_broker.py</code> (14 tests, replaced the deleted <code>test_sse_streams.py</code>).</div>
+  </div>
+
+  <div class="invariant">
+    <div class="iname">model_vocab_parity</div>
+    <div class="irule"><code>frontend/lib/modelVocab.ts</code> (<code>PNL_LINES</code>, <code>BS_LINES</code>, <code>CF_LINES</code>, <code>DRIVER_KEYS</code>) must stay identical in membership AND order to the backend registries in <code>backend/app/models/model_state.py</code> (<code>LINE_ITEMS_PNL/BS/CF</code>, <code>DRIVER_KEYS</code>).</div>
+    <div class="iwhy"><strong>Why:</strong> <code>ForecastGrid</code>/<code>DriverPanel</code> render one row per frontend entry, then look the value up by key — a mismatched key silently produces an empty/absent row rather than an error. <code>modelVocab.test.mts</code> regex-scrapes <code>model_state.py</code> at test time so drift fails CI instead of shipping a blank column.</div>
   </div>
 </section>
 
@@ -1585,7 +1605,7 @@
 </section>
 
 <footer>
-  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), refreshed 2026-06-11 (through PR #53 — B3 UX phases 2-4: global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens), refreshed 2026-06-12 (through PR #57 — post-campaign fix pack, polish pack, citation dedupe, congress-trading signal), refreshed 2026-06-13 (through PR #61 — v3 graph pack: theme-wide D3 force-graph viewer, graph-centrality discovery signal, concentration-flow ribbon, 13F institutional ownership) · companion JSON at <code>design/architecture.json</code>
+  sector-research · architecture map · regenerated 2026-06-10 (through PR #40 — trade journal), refreshed 2026-06-11 (through PR #53 — B3 UX phases 2-4: global ⌘K palette, 6-entry nav, Today/Catalysts merge, questions bulk/snooze, events grouping, library rebuild, theme tokens), refreshed 2026-06-12 (through PR #57 — post-campaign fix pack, polish pack, citation dedupe, congress-trading signal), refreshed 2026-06-13 (through PR #61 — v3 graph pack: theme-wide D3 force-graph viewer, graph-centrality discovery signal, concentration-flow ribbon, 13F institutional ownership), refreshed 2026-07-01 (through PRs #62-63 — services/universe.py active-thesis consolidation, discovery card serializer inversion, modelVocab parity lib, TickerPath seam; EventBroker SSE unification across pipeline/workspace/prospectus; same-day follow-ups: earnings_prints + calendar_events onto universe.py, shared models/uuid_path.py UUID-id guards on pipeline/status/journal/events routes) · companion JSON at <code>design/architecture.json</code>
 </footer>
 
 </body>

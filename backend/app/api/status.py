@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models import KillCriterionState, ResearchRun
+from backend.app.models.uuid_path import RunIdPath
 from backend.app.services.status_board import (
     NextCatalyst as ServiceNextCatalyst,
     StatusBoardEntry as ServiceEntry,
@@ -165,14 +166,14 @@ async def get_status_board(
 
 
 @router.post("/runs/{run_id}/archive", status_code=204)
-async def archive_run(run_id: str, db: AsyncSession = Depends(get_db)) -> None:
+async def archive_run(run_id: str = Depends(RunIdPath), db: AsyncSession = Depends(get_db)) -> None:
     run = await _get_run_or_404(db, run_id)
     run.archived_at = datetime.now(timezone.utc)
     await db.commit()
 
 
 @router.post("/runs/{run_id}/unarchive", status_code=204)
-async def unarchive_run(run_id: str, db: AsyncSession = Depends(get_db)) -> None:
+async def unarchive_run(run_id: str = Depends(RunIdPath), db: AsyncSession = Depends(get_db)) -> None:
     run = await _get_run_or_404(db, run_id)
     run.archived_at = None
     await db.commit()
@@ -183,7 +184,7 @@ async def unarchive_run(run_id: str, db: AsyncSession = Depends(get_db)) -> None
     response_model=list[KillCriterionStateOut],
 )
 async def list_kill_criterion_states(
-    run_id: str,
+    run_id: str = Depends(RunIdPath),
     db: AsyncSession = Depends(get_db),
 ) -> list[KillCriterionStateOut]:
     await _get_run_or_404(db, run_id)
@@ -200,9 +201,9 @@ async def list_kill_criterion_states(
     response_model=KillCriterionStateOut,
 )
 async def upsert_kill_criterion_state_endpoint(
-    run_id: str,
     ordinal: int,
     body: KillCriterionPutBody,
+    run_id: str = Depends(RunIdPath),
     db: AsyncSession = Depends(get_db),
 ) -> KillCriterionStateOut:
     await _get_run_or_404(db, run_id)
