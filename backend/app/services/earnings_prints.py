@@ -50,14 +50,13 @@ def _compute_surprise(estimated: float | None, actual: float | None) -> float | 
 async def fetch_active_board_tickers(db: AsyncSession) -> list[str]:
     """Distinct uppercased tickers with an active thesis — the same
     latest-run definition the status board / calendar / material-events
-    scan use (services/universe.py::latest_runs_sql). This function's
-    original intent was "keep the universe identical" to the board; a
-    private narrower copy (completed-only, no watchlist) had drifted here
-    until the 2026-07-01 consolidation, which also means watchlist-verdict
-    theses now get earnings prints indexed."""
+    scan use (services/universe.py::latest_runs_sql), so watchlist-verdict
+    theses are included. Projected down to `ticker` here: the shared CTE
+    selects full rows incl. the large `state` JSONB, which this caller
+    would otherwise fetch only to discard."""
     sql, params = latest_runs_sql(theme_id=None, include_archived=False)
-    rows = (await db.execute(text(sql), params)).mappings().all()
-    return sorted({str(r["ticker"]).upper() for r in rows})
+    rows = (await db.execute(text(f"SELECT ticker FROM ({sql}) active"), params)).all()
+    return sorted({str(r[0]).upper() for r in rows})
 
 
 async def index_earnings_prints(

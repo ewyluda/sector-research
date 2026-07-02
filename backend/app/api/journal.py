@@ -25,6 +25,7 @@ from backend.app.models.journal_schemas import (
 from backend.app.models.journal_trade import JournalTrade
 from backend.app.models.outcome import VerdictOutcome
 from backend.app.models.ticker import Ticker, TickerPath
+from backend.app.models.uuid_path import OutcomeIdOr404, TradeIdPath
 from backend.app.services import journal
 from backend.app.services import journal_comparison as comparison
 
@@ -234,6 +235,7 @@ async def create_trade(body: TradeCreate, request: Request) -> TradeDetail:
     focus = TickerPath(body.ticker)
     async with unit_of_work() as db:
         if body.outcome_id is not None:
+            OutcomeIdOr404(body.outcome_id)
             exists = (
                 await db.execute(
                     select(VerdictOutcome.id).where(VerdictOutcome.id == body.outcome_id)
@@ -262,7 +264,7 @@ async def create_trade(body: TradeCreate, request: Request) -> TradeDetail:
 
 
 @router.patch("/trades/{trade_id}", response_model=TradeDetail)
-async def patch_trade(trade_id: str, body: TradeUpdate, request: Request) -> TradeDetail:
+async def patch_trade(body: TradeUpdate, request: Request, trade_id: str = Depends(TradeIdPath)) -> TradeDetail:
     fmp = request.app.state.fmp
     changes = body.model_dump(exclude_unset=True)
     async with unit_of_work() as db:
@@ -270,6 +272,7 @@ async def patch_trade(trade_id: str, body: TradeUpdate, request: Request) -> Tra
         if trade is None:
             raise HTTPException(status_code=404, detail="trade not found")
         if changes.get("outcome_id") is not None:
+            OutcomeIdOr404(changes["outcome_id"])
             exists = (
                 await db.execute(
                     select(VerdictOutcome.id).where(
@@ -292,7 +295,7 @@ async def patch_trade(trade_id: str, body: TradeUpdate, request: Request) -> Tra
 
 
 @router.delete("/trades/{trade_id}", status_code=204)
-async def delete_trade(trade_id: str):
+async def delete_trade(trade_id: str = Depends(TradeIdPath)):
     async with unit_of_work() as db:
         trade = await journal.get_trade(db, trade_id)
         if trade is None:

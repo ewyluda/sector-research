@@ -17,6 +17,7 @@ os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 from backend.app.models.citation import Citation
 from backend.app.services import calendar_events as ce
 from backend.app.services.universe import Universe
+from backend.tests.db_mocks import FakeResult as _Result
 
 
 def _cit() -> Citation:
@@ -110,19 +111,6 @@ class EarningsEventsTests(unittest.TestCase):
     def test_bad_date_row_is_skipped(self):
         rows = [{"symbol": "NVDA", "date": "not-a-date"}]
         self.assertEqual(ce._earnings_events(rows, self._universe(), _cit()), [])
-
-
-class _Result:
-    """Mimics the two access patterns the service uses on db.execute results."""
-
-    def __init__(self, rows):
-        self._rows = rows
-
-    def scalars(self):
-        return SimpleNamespace(all=lambda: self._rows)
-
-    def mappings(self):
-        return SimpleNamespace(all=lambda: self._rows)
 
 
 class CitationOutTests(unittest.TestCase):

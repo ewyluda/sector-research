@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.db import get_db
 from backend.app.models.filing import Filing
 from backend.app.models.material_event import MaterialEvent
+from backend.app.models.uuid_path import EventIdPath
 from backend.app.services.material_events_grouping import (
     GROUP_WINDOW_DAYS,
     group_events,
@@ -122,7 +123,7 @@ async def trigger_scan(request: Request) -> dict:
 
 @router.post("/events/{event_id}/dismiss", status_code=204)
 async def dismiss_event(
-    event_id: str,
+    event_id: str = Depends(EventIdPath),
     group: bool = True,
     db: AsyncSession = Depends(get_db),
 ) -> None:

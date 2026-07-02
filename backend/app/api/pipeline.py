@@ -10,7 +10,6 @@ GET  /api/runs/{run_id}/report    — Full report for completed run
 
 import asyncio
 import logging
-import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -21,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
 from backend.app.models.research_run import ResearchRun
+from backend.app.models.uuid_path import RunIdPath
 from backend.app.models.signal import Signal
 from backend.app.graph.state import ResearchState
 from backend.app.models.theme import Theme
@@ -178,19 +178,6 @@ async def get_data_gaps(
     ]
 
     return aggregate_data_gaps(runs_list)
-
-
-def RunIdPath(run_id: str) -> str:
-    """Path-param guard for `{run_id}` routes. research_runs.id is a Postgres
-    UUID column, so a malformed id would 500 at the asyncpg parameter cast
-    before any existence check runs — reject it as a plain 404 here instead.
-    (Same hazard class as the malformed-UUID theme routes noted in CLAUDE.md.)
-    """
-    try:
-        uuid.UUID(run_id)
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Run not found")
-    return run_id
 
 
 @router.get("/runs/{run_id}")

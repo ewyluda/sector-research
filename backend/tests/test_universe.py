@@ -18,19 +18,7 @@ os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x/x")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
 from backend.app.services.universe import resolve_universe, resolve_universe_by_theme
-
-
-class _Result:
-    """Mimics the two access patterns the resolvers use on db.execute results."""
-
-    def __init__(self, rows):
-        self._rows = rows
-
-    def scalars(self):
-        return SimpleNamespace(all=lambda: self._rows)
-
-    def mappings(self):
-        return SimpleNamespace(all=lambda: self._rows)
+from backend.tests.db_mocks import FakeResult as _Result
 
 
 def _theme(theme_id: str, seeds) -> SimpleNamespace:
