@@ -1,7 +1,7 @@
 """ProspectusService — orchestrates the 4-step prospectus pipeline.
 
 Mirrors WorkspaceService:
-  - in-memory dict[report_id, asyncio.Queue] for SSE
+  - SSE via a replay-on EventBroker (services/event_broker.py)
   - kick_off creates the row + spawns a background task
   - each step runs in its own session with explicit commit
 """
