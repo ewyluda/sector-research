@@ -168,14 +168,13 @@ Gotchas: use `pg_dump | pg_restore`, not `CREATE DATABASE … TEMPLATE` — idle
 
 ### The pipeline (read this before touching `backend/app/graph/`)
 
-The pipeline is an explicit state machine (ADR-0004 — LangGraph was removed 2026-09-26) around a single `ResearchState` dataclass (`graph/state.py`). Flow:
+The pipeline is an explicit state machine (ADR-0004 — LangGraph was removed 2026-09-26; the targeted_followup phase was removed the same day, ADR-0005) around a single `ResearchState` dataclass (`graph/state.py`). Flow:
 
 ```
 quick_screen (FAST_MODEL)
   → deep_dive (DEEP_MODEL, 9 categories in parallel)
-  → targeted_followup (DEEP_MODEL — retries P1 auto-answerable questions)
   → thesis_construction (DEEP_MODEL)
-  → risk_stress_test (DEEP_MODEL)
+  → risk_stress_test (DEEP_MODEL; reward/risk + loop-back decided in code — graph/routing.py::should_loop)
        ├─ loop_required & loop_count ≤ 2 → back to deep_dive
        └─ else → completed
   → [optional: position_monitor (FAST_MODEL) — manually triggered]
@@ -301,7 +300,7 @@ The post-thesis fleet-management surface — aggregate views over completed rese
 - `GET /api/status/read-throughs` and `POST /api/status/read-throughs/dismiss|summary` (`api/read_through.py`) feed the `ReadThroughDrawer` on the status board.
 - `GET /api/catalysts` and `GET /api/catalysts/{id}` (`api/catalysts.py`) → the calendar view at `/catalysts`. Catalysts are promoted from research runs via `services/catalyst_promotion.py`; date resolution in `services/catalyst_dates.py`.
 - `GET /api/catalysts/calendar?start=&end=` (`services/calendar_events.py`) → unified calendar: US high-impact economic releases + universe earnings (theme seeds ∪ active theses) + thesis catalysts, merged statelessly at request time (no tables, no scheduler). Two date-range FMP methods (`get_economic_calendar`, `get_earnings_calendar_range`, `TTL_CALENDAR` 6 h). FMP failures degrade to `warnings[]`, never 500. **Route-ordering footgun:** `/catalysts/calendar` must stay declared before `/catalysts/{catalyst_id}` (pinned by test). Frontend: the calendar lives on Today's Calendar tab (`/?tab=calendar`; `/catalysts` server-redirects there) — week lanes + agenda (`components/catalysts/`), original bucket list behind the List toggle, per-ticker undated-catalyst compaction, `archived thesis` chips on catalyst rows. Earnings rows deep-link `/status?expand_earnings=<run_id>` to auto-open the EarningsDrawer (one-shot per page load); past prints awaiting actuals surface as a `post_pending` phase (estimates + pending note) instead of being dropped.
-- `GET /api/questions`, `/by-ticker`, `POST /api/questions/{id}/dismiss|resolve|retry-auto`, `POST /api/questions/{id}/unsnooze` (clears an active snooze idempotently; 409 on non-open), `POST /api/questions/bulk` (ids XOR filter; dismiss/resolve/snooze; `snoozed_until` rows are excluded from open lists and by-ticker rollups until expiry via a shared predicate in `services/questions.py`; `?status=snoozed` is a virtual filter listing actively-snoozed rows) (`api/questions.py`) → the `/questions` page (`OpenQuestionsPanel` + `QuestionTickerRollupTable` + URL-state priority/category chips including a Snoozed view with per-row "Snoozed until" chip + Unsnooze button + checkbox bulk bar). Open questions are minted by both pipeline runs and workspace steps; `retry-auto` re-runs the targeted follow-up Haiku.
+- `GET /api/questions`, `/by-ticker`, `POST /api/questions/{id}/dismiss|resolve|retry-auto`, `POST /api/questions/{id}/unsnooze` (clears an active snooze idempotently; 409 on non-open), `POST /api/questions/bulk` (ids XOR filter; dismiss/resolve/snooze; `snoozed_until` rows are excluded from open lists and by-ticker rollups until expiry via a shared predicate in `services/questions.py`; `?status=snoozed` is a virtual filter listing actively-snoozed rows) (`api/questions.py`) → the `/questions` page (`OpenQuestionsPanel` + `QuestionTickerRollupTable` + URL-state priority/category chips including a Snoozed view with per-row "Snoozed until" chip + Unsnooze button + checkbox bulk bar). Open questions are minted by both pipeline runs and workspace steps; `retry-auto` answers one question on demand with DEEP_MODEL via `complete_structured` (the automatic targeted_followup phase was removed — ADR-0005).
 
 ### Trade journal (read this before touching `backend/app/services/journal*.py` or `frontend/components/journal/`)
 

@@ -225,8 +225,6 @@ class PipelineService:
                         state = await nodes.node_quick_screen(state, self._fmp)
                     elif phase == "deep_dive":
                         state = await self._run_deep_dive_with_streaming(state, run_id, db)
-                    elif phase == "targeted_followup":
-                        state = await nodes.node_targeted_followup(state)
                     elif phase == "thesis_construction":
                         state = await nodes.node_thesis_construction(state)
                     elif phase == "risk_stress_test":

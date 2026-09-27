@@ -31,7 +31,7 @@ from datetime import date
 
 from backend.app.clients.fmp import FMPClient, recent_13f_quarters
 from backend.app.clients.fred import FREDClient
-from backend.app.db import async_session, unit_of_work
+from backend.app.db import unit_of_work
 from backend.app.logging_filters import redact_secrets
 from backend.app.graph.deep_dive_context import DeepDiveContext, build_all_contexts
 from backend.app.graph.deep_dive_helpers import (
@@ -52,14 +52,13 @@ from backend.app.graph.prompts import (
     THESIS_SYSTEM, THESIS_USER,
     RISK_SYSTEM, RISK_USER,
     POSITION_SYSTEM, POSITION_USER,
-    TARGETED_FOLLOWUP_SYSTEM,
 )
 from backend.app.graph.state import (
     ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
 from backend.app.models.phase_schemas import (
     QuickScreenOutput, ThesisLLMOutput, RiskStressTestOutput, PositionMonitorOutput,
-    DeepDiveCategoryOutput, TargetedAnswer, reward_risk,
+    DeepDiveCategoryOutput, reward_risk,
     quick_screen_recommendation, quick_screen_score,
 )
 from backend.app.services.catalyst_promotion import promote_catalysts
@@ -667,104 +666,6 @@ def _build_targeted_followup_user_msg(
     if routed_context:
         parts.append(f"Original data payload and routed context:\n{routed_context}")
     return "\n\n".join(parts)
-
-
-async def node_targeted_followup(state: ResearchState) -> ResearchState:
-    """Tier 1.2 targeted second-pass.
-
-    Picks ≤3 priority-1 + auto_answerable questions created this run,
-    runs them in parallel through focused Sonnet calls, persists answers
-    back to the questions table, and stages StateResolvedQuestion entries
-    for node_thesis_construction to see."""
-    from backend.app.models.question import Question
-    from sqlalchemy import select, update
-    from datetime import datetime, timezone
-
-    state.phase = "targeted_followup"
-
-    # 1. Pick eligible questions. All ID columns are UUID(as_uuid=False) — strings.
-    async with async_session() as db:
-        stmt = (
-            select(Question)
-            .where(Question.created_run_id == state.run_id)
-            .where(Question.priority == 1)
-            .where(Question.auto_answerable.is_(True))
-            .where(Question.status == "open")
-            .order_by(Question.category.asc(), Question.created_at.asc())
-            .limit(3)
-        )
-        eligible = (await db.execute(stmt)).scalars().all()
-        snapshots = [
-            {"id": q.id, "category": q.category, "question_text": q.question_text}
-            for q in eligible
-        ]
-
-    if not snapshots:
-        state.status = "in_progress"
-        return state
-
-    deep = state.get_deep_dive_results()
-
-    async def _answer_one(snap: dict) -> tuple[str, str | None]:
-        cat = snap["category"]
-        result = deep.get(cat)
-        content = ""
-        if result is not None and hasattr(result, "key_findings"):
-            content = (getattr(result, "content", "") or "")[:6000]
-
-        user_msg = _build_targeted_followup_user_msg(
-            question_text=snap["question_text"],
-            category=cat,
-            key_findings=list(getattr(result, "key_findings", []) or []) if result is not None else [],
-            analysis=content,
-            routed_context=(state.targeted_followup_context or {}).get(cat, ""),
-        )
-
-        try:
-            parsed = await complete_structured(
-                model=DEEP_MODEL,
-                system=TARGETED_FOLLOWUP_SYSTEM,
-                user=user_msg,
-                output_model=TargetedAnswer,
-                max_tokens=600,
-            )
-            return snap["id"], parsed.answer_text
-        except Exception:  # noqa: BLE001
-            logger.exception("targeted_followup failed for question %s — leaving open", snap["id"])
-            return snap["id"], None
-
-    answers = await asyncio.gather(*(_answer_one(s) for s in snapshots))
-
-    async with async_session() as db:
-        for qid, answer in answers:
-            if answer is None:
-                continue  # Sonnet failure — leave question open for retry
-            stmt = (
-                update(Question)
-                .where(Question.id == qid)
-                .where(Question.status == "open")
-                .values(
-                    status="resolved_auto",
-                    answer_text=answer,
-                    answer_source="targeted_followup",
-                    resolved_run_id=state.run_id,
-                    resolved_at=datetime.now(timezone.utc),
-                )
-            )
-            await db.execute(stmt)
-        await db.commit()
-
-    for snap, (_, answer) in zip(snapshots, answers):
-        if answer is None:
-            continue
-        state.questions_resolved_this_run.append(StateResolvedQuestion(
-            question_text=snap["question_text"],
-            answer_text=answer,
-            source="targeted_followup",
-        ).to_dict())
-
-    state.status = "in_progress"
-    return state
 
 
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────

@@ -38,8 +38,7 @@ class TestPhaseSequenceTable(unittest.TestCase):
     def test_linear_successors_present(self):
         expected = {
             "quick_screen": "deep_dive",
-            "deep_dive": "targeted_followup",
-            "targeted_followup": "thesis_construction",
+            "deep_dive": "thesis_construction",
             "thesis_construction": "risk_stress_test",
         }
         self.assertEqual(PHASE_SEQUENCE, expected)
