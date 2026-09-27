@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import traceback
 from typing import Any, AsyncIterator
 from uuid import uuid4
 
@@ -18,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.edgar import EdgarClient
 from backend.app.db import unit_of_work
+from backend.app.logging_filters import redact_secrets
 from backend.app.models.filing import Relationship
 from backend.app.models.prospectus_report import ProspectusReport
 from backend.app.models.prospectus_schemas import (
@@ -111,8 +111,8 @@ class ProspectusService:
             self._emit(rid, {"type": "prospectus_complete", "report_id": rid})
         except Exception as e:
             logger.exception("prospectus pipeline failed for %s", rid)
-            await self._set_status(rid, "failed", error=f"{e}\n{traceback.format_exc()}")
-            self._emit(rid, {"type": "prospectus_failed", "report_id": rid, "error": str(e)})
+            await self._set_status(rid, "failed", error=redact_secrets(str(e)))
+            self._emit(rid, {"type": "prospectus_failed", "report_id": rid, "error": redact_secrets(str(e))})
 
     async def _load_report(self, db: AsyncSession, rid: str) -> ProspectusReport:
         row = (await db.execute(

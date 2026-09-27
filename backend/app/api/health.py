@@ -5,6 +5,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.db import get_db
+from backend.app.logging_filters import redact_secrets
 
 router = APIRouter(tags=["health"])
 
@@ -37,4 +38,4 @@ async def health_fmp(request: Request):
             },
         }
     except Exception as e:
-        return {"status": "error", "fmp": str(e)}
+        return {"status": "error", "fmp": redact_secrets(str(e))}

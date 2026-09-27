@@ -2,7 +2,7 @@
 import logging
 import unittest
 
-from backend.app.logging_filters import ApiKeyRedactionFilter
+from backend.app.logging_filters import ApiKeyRedactionFilter, redact_secrets
 
 
 def _record(msg: str, args: tuple | None) -> logging.LogRecord:
@@ -53,6 +53,25 @@ class TestApiKeyRedactionFilter(unittest.TestCase):
         rec.args = {"url": "https://a.b/c?apikey=SECRET123abc"}
         self.filter.filter(rec)
         self.assertNotIn("SECRET123abc", rec.getMessage())
+
+
+class TestRedactSecrets(unittest.TestCase):
+    def test_fred_style_api_key(self):
+        # FRED spells it api_key= — the original apikey-only regex missed it.
+        out = redact_secrets("GET https://api.stlouisfed.org/fred/x?series_id=DGS10&api_key=SECRETfred9")
+        self.assertNotIn("SECRETfred9", out)
+        self.assertIn("api_key=REDACTED", out)
+        self.assertIn("series_id=DGS10", out)
+
+    def test_token_params_and_case(self):
+        out = redact_secrets("u?access_token=abc123&APIKEY=def456&token=ghi789")
+        for secret in ("abc123", "def456", "ghi789"):
+            self.assertNotIn(secret, out)
+
+    def test_filter_redacts_fred_url_in_args(self):
+        rec = _record('HTTP Request: %s %s', ("GET", "https://x.test/q?api_key=SECRETfred9"))
+        ApiKeyRedactionFilter().filter(rec)
+        self.assertNotIn("SECRETfred9", rec.getMessage())
 
 
 class TestFilterInstalled(unittest.TestCase):
