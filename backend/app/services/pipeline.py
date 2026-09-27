@@ -36,7 +36,7 @@ from backend.app.clients.edgar import EdgarClient
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
 from backend.app.graph import nodes
-from backend.app.graph.pipeline import make_graph, next_phase as _next_phase_fn
+from backend.app.graph.routing import next_phase as _next_phase_fn
 from backend.app.graph.state import ResearchState
 from backend.app.db import async_session, unit_of_work
 from backend.app.services import outcome_tracker
@@ -88,7 +88,6 @@ class PipelineService:
         self._fmp = fmp
         self._fred = fred
         self._edgar = edgar
-        self._graph = make_graph(fmp)
         # SSE fan-out. replay=False: events emitted before any subscriber are
         # dropped — acceptable because the frontend REST-hydrates
         # /pipeline/[runId] on load, so events dropped in the connect window
@@ -187,7 +186,7 @@ class PipelineService:
     def _next_phase(self, state: ResearchState) -> str:
         """Determine next phase based on current phase and state.
 
-        Delegates to the single source of routing truth in graph/pipeline.py.
+        Delegates to the single source of routing truth in graph/routing.py.
         """
         return _next_phase_fn(
             state.phase,

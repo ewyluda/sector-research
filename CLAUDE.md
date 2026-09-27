@@ -70,7 +70,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## What this is
 
-Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase LangGraph due-diligence flow with citations on every data point). No auth — local-only tool.
+Personal stock-research app. Two-pane split: **Discovery** (FMP fundamentals + X social signal merged into ranked company cards per theme) and **Pipeline** (a 6-phase due-diligence flow with citations on every data point). No auth — local-only tool.
 
 Six nav entries (see `frontend/components/Nav.tsx`) + a global ⌘K command palette (`frontend/components/GlobalCommandPalette.tsx`, mounted in the root layout: tickers from `GET /api/tickers`, 14 surfaces, recent runs, contextual `New run:`/`Log trade:` actions, report sections on `/pipeline/[runId]` pages):
 
@@ -91,7 +91,7 @@ Plus the run-creation flow (`/pipeline/new`, `/pipeline/[runId]`), the per-ticke
 
 Two deployables in a flat layout:
 
-- `backend/` — FastAPI + async SQLAlchemy + LangGraph + PostgreSQL (Python 3, venv in `backend/venv/`)
+- `backend/` — FastAPI + async SQLAlchemy + PostgreSQL + the Anthropic SDK (Python 3, venv in `backend/venv/`)
 - `frontend/` — Next.js 16 App Router + React 19 + Tailwind v4
 - `.env` at **project root** is the single source of secrets for both sides
 
@@ -168,20 +168,20 @@ Gotchas: use `pg_dump | pg_restore`, not `CREATE DATABASE … TEMPLATE` — idle
 
 ### The pipeline (read this before touching `backend/app/graph/`)
 
-`backend/app/graph/pipeline.py` compiles a LangGraph `StateGraph` around a single `ResearchState` dataclass (`graph/state.py`). Flow:
+The pipeline is an explicit state machine (ADR-0004 — LangGraph was removed 2026-09-26) around a single `ResearchState` dataclass (`graph/state.py`). Flow:
 
 ```
-quick_screen (Haiku)
-  → deep_dive (Sonnet, 9 categories in parallel)
-  → targeted_followup (Haiku — retries P1 auto-answerable questions)
-  → thesis_construction (Sonnet)
-  → risk_stress_test (Sonnet)
+quick_screen (FAST_MODEL)
+  → deep_dive (DEEP_MODEL, 9 categories in parallel)
+  → targeted_followup (DEEP_MODEL — retries P1 auto-answerable questions)
+  → thesis_construction (DEEP_MODEL)
+  → risk_stress_test (DEEP_MODEL)
        ├─ loop_required & loop_count ≤ 2 → back to deep_dive
        └─ else → completed
-  → [optional: position_monitor (Haiku) — manually triggered]
+  → [optional: position_monitor (FAST_MODEL) — manually triggered]
 ```
 
-**No interrupt gates.** Phases 1-5 run continuously after `POST /api/runs` starts a run. Each node sets `state.status = "in_progress"` to advance, or `"completed"` / `"watchlist"` to stop. The `PipelineService._run_phase()` loops while status is `in_progress`, automatically chaining through phases. Position monitor (phase 6) is manually triggered via `POST /api/runs/{run_id}/advance` with action `"approve"` on a completed run. If you add a new phase, update `PHASE_SEQUENCE` and/or `next_phase()` in `graph/pipeline.py` — that is the single source of routing truth. `services/pipeline.py::_next_phase` delegates there; `backend/tests/test_phase_routing.py` pins the contract and will fail at CI time if either side drifts.
+**No interrupt gates.** Phases 1-5 run continuously after `POST /api/runs` starts a run. Each node sets `state.status = "in_progress"` to advance, or `"completed"` / `"watchlist"` to stop. The `PipelineService._run_phase()` loops while status is `in_progress`, automatically chaining through phases. Position monitor (phase 6) is manually triggered via `POST /api/runs/{run_id}/advance` with action `"approve"` on a completed run. If you add a new phase, update `PHASE_SEQUENCE` and/or `next_phase()` in `graph/routing.py` — that is the single source of routing truth. `services/pipeline.py::_next_phase` delegates there; `backend/tests/test_phase_routing.py` pins the contract and will fail at CI time if either side drifts.
 
 **Prompt deduplication:** The thesis prompt receives quick screen context (verdict, thesis, key risk) and a concise deep dive summary (scores + top 2 findings per category) as "established findings" with instructions not to restate them. The risk prompt receives the thesis output with instructions to stress-test it, not re-derive the analysis.
 
@@ -189,7 +189,7 @@ quick_screen (Haiku)
 
 `CuratedFinancials` (in `graph/state.py`) holds a curated subset of FMP + FRED data for frontend dashboard charts. It's built once in `node_deep_dive` from the raw FMP fetch (8 quarters of income/balance/cashflow, profile, DCF, estimates, key-metrics-ttm, ratios-ttm, financial-growth, and 1-year daily OHLCV). Valuation ratios (PE, EV/EBITDA, P/B, P/FCF, P/S, PEG), dividend yield, and interest coverage come from `ratios-ttm`; return metrics (ROE, ROIC, ROA) from `key-metrics-ttm` — both via `_first_metric` fallback chains that keep the legacy key-metrics spellings working for old persisted payloads. Technical indicators (SMA 9/20/50/100/200, RSI 14) are computed in `_build_technical_data()` (now in `graph/formatters.py`) and stored in `daily_prices`. FRED macro indicators are attached after the main build. The report API returns it under `phases.deep_dive.curated_financials`. The `deep_dive_start` SSE event also carries it. Note: `phases.deep_dive` in the report API is `{ categories: Record<str, CategoryOutput>, curated_financials: CuratedFinancials | null }` — not a flat record.
 
-Model selection lives in `graph/llm.py`: `SONNET = "claude-sonnet-4-6"`, `HAIKU = "claude-haiku-4-5-20251001"`. `complete()` and `stream_complete()` auto-enable prompt caching (`cache_control: ephemeral`) when the system prompt is >500 chars — keep reused system prompts long enough to benefit.
+Model selection lives in `graph/llm.py` + settings: `DEEP_MODEL` (`LLM_MODEL_DEEP`, default `claude-opus-5-5`; thinking always on, depth set by `LLM_DEEP_EFFORT`, default `medium`) and `FAST_MODEL` (`LLM_MODEL_FAST`, Haiku 4.5). JSON-producing calls MUST use `complete_structured(system, user, output_model=...)` (native structured outputs via `messages.parse`) — assistant prefill 400s on Sonnet 4.6 and every newer model, and `test_llm_structured.py` fails if any app code passes `assistant_prefill`. Truncation/refusal raise `LLMOutputError`; never invent default values on failure. Every call logs one `llm_call` line (tokens, cache, latency, stop reason). Prompt caching currently marks only the system block when it exceeds 500 chars — below the 1,024 (Opus/Sonnet) / 4,096 (Haiku) token minimums, so it effectively never caches; restructuring is Phase 2 of the portfolio plan. After changing `llm.py` or model settings run `python -m backend.scripts.smoke_structured_outputs` (live, < $0.05).
 
 ### Discovery engine
 
@@ -206,7 +206,7 @@ Fourth bounded-modifier signal (2026-06-12): **graph centrality** — `services/
 
 ### Citations as a first-class primitive
 
-Every data-client method returns `tuple[data, Citation]`, not just data. `models/citation.py` defines two shapes: the `Citation` dataclass (in-memory / embedded in `CompanySignalCard` / etc.) and `CitationRecord` ORM (persisted rows). Inside the LangGraph state, use `StateCitation` (in `graph/state.py`) — it's the JSON-serializable form with an ISO-string timestamp. When adding a new data source, preserve this convention or the report endpoint and frontend's `Citation[]` typing break silently. As of the 2026-06-11 polish pack, `node_deep_dive` persists the Citation halves of all primary + tier-2 FMP fetches into `state.citations` (previously only transcript + FRED citations landed). `ResearchState.add_citation` dedupes on `(source_url, metric)` — a duplicate key replaces the existing entry in place (latest fetch wins), so risk-loop re-runs don't mint duplicate chips.
+Every data-client method returns `tuple[data, Citation]`, not just data. `models/citation.py` defines two shapes: the `Citation` dataclass (in-memory / embedded in `CompanySignalCard` / etc.) and `CitationRecord` ORM (persisted rows). Inside the pipeline state, use `StateCitation` (in `graph/state.py`) — it's the JSON-serializable form with an ISO-string timestamp. When adding a new data source, preserve this convention or the report endpoint and frontend's `Citation[]` typing break silently. As of the 2026-06-11 polish pack, `node_deep_dive` persists the Citation halves of all primary + tier-2 FMP fetches into `state.citations` (previously only transcript + FRED citations landed). `ResearchState.add_citation` dedupes on `(source_url, metric)` — a duplicate key replaces the existing entry in place (latest fetch wins), so risk-loop re-runs don't mint duplicate chips.
 
 ### Streaming
 
@@ -281,7 +281,7 @@ Database tables (all in `models/filing.py`):
 
 ### Workspace loop (read this before touching `backend/app/services/workspace*.py`, `backend/app/api/workspace.py`, or `frontend/components/workspace/`)
 
-Separate from the LangGraph pipeline. The **workspace loop** is a 5-step thesis-refresh orchestrator that pulls a completed research run forward in time: `update_refresh → research → validation → challenge → differentiation` (execution order pinned by `STEP_NAMES` in `services/workspace_steps.py`). Lives at `/workspace` (fleet list) and `/workspace/[runId]` (per-run report).
+Separate from the research pipeline. The **workspace loop** is a 5-step thesis-refresh orchestrator that pulls a completed research run forward in time: `update_refresh → research → validation → challenge → differentiation` (execution order pinned by `STEP_NAMES` in `services/workspace_steps.py`). Lives at `/workspace` (fleet list) and `/workspace/[runId]` (per-run report).
 
 - `WorkspaceService` (in `services/workspace.py`) wired into `main.py::lifespan` as `app.state.workspace`. SSE via a replay-on `EventBroker` (see Streaming) so events emitted before the frontend connects are delivered to every (including late) subscriber via a full replay on `event_stream()` entry, `WorkspaceRunInFlight` guard against duplicate starts per ticker.
 - Step implementations in `services/workspace_steps.py`. Output schemas in `models/workspace_schemas.py` (`UpdateRefreshOutput`, `ResearchOutput`, `ChallengeOutput`, `DifferentiationOutput`, `ValidationOutput` — each with a `WorkspaceVerdict` enum: `healthy | imminent | triggered | broken`). Run rows in `workspace_runs` (`models/workspace_run.py`) with a JSONB `step_outputs` column.
@@ -325,7 +325,7 @@ S-1 / S-1/A analysis pipeline (PR #31), parallel to research/workspace runs. `Pr
 
 ### Financial model + reverse DCF (read this before touching `backend/app/services/model_*.py`, `backend/app/api/models_api.py`, or `frontend/components/model/`)
 
-Editable 5-year financial model per ticker, AI-seeded from the latest completed `research_run`, with version history and a reverse-DCF engine. All on-demand — no automatic trigger from the LangGraph pipeline. The **`ModelState`** Pydantic model (`backend/app/models/model_state.py`) is the in-memory and JSONB-on-disk shape: `periods` (8 historical Q + 8 forecast Q + 5 forecast Y), `drivers[period][key]`, three statements (`income_statement`, `balance_sheet`, `cash_flow`) keyed `[line_item][period] -> ModelCell`, and an `assumptions` block (WACC, terminal growth, terminal multiple, share counts). Every `ModelCell` carries `value`, `source` (`historical` / `ai_baseline` / `driver` / `formula` / `override`), `formula`, `citation_id`, and edit-audit fields.
+Editable 5-year financial model per ticker, AI-seeded from the latest completed `research_run`, with version history and a reverse-DCF engine. All on-demand — no automatic trigger from the research pipeline. The **`ModelState`** Pydantic model (`backend/app/models/model_state.py`) is the in-memory and JSONB-on-disk shape: `periods` (8 historical Q + 8 forecast Q + 5 forecast Y), `drivers[period][key]`, three statements (`income_statement`, `balance_sheet`, `cash_flow`) keyed `[line_item][period] -> ModelCell`, and an `assumptions` block (WACC, terminal growth, terminal multiple, share counts). Every `ModelCell` carries `value`, `source` (`historical` / `ai_baseline` / `driver` / `formula` / `override`), `formula`, `citation_id`, and edit-audit fields.
 
 **Pipeline (services):**
 

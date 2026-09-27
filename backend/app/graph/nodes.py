@@ -1,4 +1,4 @@
-"""Phase node implementations for the LangGraph pipeline.
+"""Phase node implementations for the research pipeline (see graph/routing.py).
 
 Each node receives ResearchState, does work, mutates state, and returns it.
 Every node is a pure async function — no side effects except state mutation.

@@ -10,7 +10,7 @@ Six core workflows:
 
 **Discovery** — Open a curated investment theme (e.g., "AI Power Infrastructure") and see every company in that space ranked by signal strength. FMP screener data and X mention velocity surface unknown players alongside known ones. Combined signal score = 40% X velocity + 40% FMP fundamental quality + 20% discovery score.
 
-**Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. Phases 1-5 (quick_screen → deep_dive → thesis_construction → risk_stress_test) run continuously after `POST /api/runs`; risk_stress_test can loop back to deep_dive when `loop_required` is set (capped at 2 loops). Phase 6 (position_monitor) is the only manually-gated step — triggered via `POST /api/runs/{id}/advance` once the prior phases complete. Citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
+**Pipeline** — Push any ticker through a 6-phase due diligence framework run as an explicit state machine (see `docs/adr/0004`). Phases 1-5 (quick_screen → deep_dive → thesis_construction → risk_stress_test) run continuously after `POST /api/runs`; risk_stress_test can loop back to deep_dive when `loop_required` is set (capped at 2 loops). Phase 6 (position_monitor) is the only manually-gated step — triggered via `POST /api/runs/{id}/advance` once the prior phases complete. Citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
 
 **Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a 1-hop supply-chain card in the deep-dive dashboard, a dedicated multi-hop graph page at `/filings/graph` that BFS-walks counterparties of counterparties (optionally gated to a theme's seed tickers), a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
 
@@ -28,9 +28,9 @@ Six core workflows:
 |---|---|
 | Frontend | Next.js 16 (App Router) + React 19 + Tailwind v4 + Recharts + lightweight-charts |
 | Backend | FastAPI + async SQLAlchemy |
-| Agent orchestration | LangGraph |
+| Pipeline orchestration | Explicit state machine (`graph/routing.py`), state persisted to Postgres per phase |
 | Database | PostgreSQL |
-| LLM (heavy) | Claude Sonnet (`claude-sonnet-4-6`) |
+| LLM (deep tier) | Claude Opus 5.5 (`claude-opus-5-5`, effort `medium`) |
 | LLM (light) | Claude Haiku (`claude-haiku-4-5-20251001`) |
 | Data: fundamentals | FMP API (ultimate tier) — financials, key metrics TTM, growth rates, DCF, estimates, transcripts, analyst grades, insider trading |
 | Data: macro | FRED API — 9 economic series (fed funds, treasuries, CPI, unemployment, GDP, M2, payrolls) |
@@ -53,7 +53,7 @@ Six core workflows:
 ┌─────────────────────────────────▼────────────────────────────────┐
 │                         FastAPI Backend                          │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │Discovery │ │ LangGraph│ │ Workspace│ │ Filings  │ │ Status │ │
+│  │Discovery │ │ Research │ │ Workspace│ │ Filings  │ │ Status │ │
 │  │ Engine   │ │ Pipeline │ │   Loop   │ │ EDGAR +  │ │ Board  │ │
 │  │(FMP + X) │ │(6-phase) │ │(5-step)  │ │  graph   │ │+ kill  │ │
 │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
@@ -169,7 +169,7 @@ Beyond the card, the resolved counterparty list is routed into the Business Qual
 
 ## Financial Model + Reverse DCF
 
-Per-ticker editable 3-statement model with versioning and a reverse-DCF engine. Lives at `/model/{ticker}`. All on-demand — no automatic trigger from the LangGraph pipeline.
+Per-ticker editable 3-statement model with versioning and a reverse-DCF engine. Lives at `/model/{ticker}`. All on-demand — no automatic trigger from the research pipeline.
 
 ```
 POST /api/models/{ticker}/initialize?force=
@@ -279,7 +279,7 @@ No auth system — personal local tool.
 | `CLAUDE.md` | Claude Code guidance for this repo |
 | `backend/app/models/phase_schemas.py` | All Pydantic schemas for structured phase outputs |
 | `backend/app/models/filing.py` | Filing, FilingSection, Relationship, CounterpartyAlias ORM models |
-| `backend/app/graph/pipeline.py` | LangGraph StateGraph definition |
+| `backend/app/graph/routing.py` | Phase routing — the single source of routing truth |
 | `backend/app/graph/nodes.py` | Phase node implementations + data routing tables |
 | `backend/app/graph/prompts.py` | All LLM prompts |
 | `backend/app/clients/edgar.py` | SEC EDGAR client (CIK lookup, company facts, filing fetch) |

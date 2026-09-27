@@ -1,4 +1,4 @@
-"""ResearchState — the single source of truth flowing through the LangGraph pipeline.
+"""ResearchState — the single source of truth flowing through the research pipeline.
 
 Persisted to PostgreSQL at every interrupt via research_runs.state (JSONB).
 """
