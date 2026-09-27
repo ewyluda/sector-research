@@ -80,8 +80,8 @@ class RiskPromptTests(unittest.IsolatedAsyncioTestCase):
             curated_financials={"current_price": 50.0},
             phase_outputs={"thesis": {"content": thesis}},
         )
-        fake = AsyncMock(return_value="not json")
-        with patch.object(nodes, "complete", fake):
+        fake = AsyncMock(side_effect=RuntimeError("stop after capturing the prompt"))
+        with patch.object(nodes, "complete_structured", fake):
             await nodes.node_risk_stress_test(s)
         user = fake.call_args.kwargs["user"]
         self.assertIn("BEAR-CASE-SENTINEL", user)

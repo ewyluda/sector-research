@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
 from datetime import date
 
 from backend.app.clients.fmp import FMPClient, recent_13f_quarters
@@ -42,13 +41,11 @@ from backend.app.graph.deep_dive_helpers import (
 from backend.app.graph.formatters import (  # noqa: F401  re-exported for backwards compat
     _build_curated_financials,
     _build_technical_data,
-    _extract_key_findings,
-    _extract_score,
     _first_metric,
     _fmt_fundamentals,
 )
-from backend.app.graph.llm import complete, complete_structured, DEEP_MODEL, FAST_MODEL
-from backend.app.graph.output_parser import parse_structured_output
+from backend.app.graph.llm import complete_structured, DEEP_MODEL, FAST_MODEL
+from backend.app.graph.routing import MAX_RISK_LOOPS, should_loop
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
     DEEP_DIVE_SYSTEM, DEEP_DIVE_USER, DEEP_DIVE_CATEGORIES,
@@ -61,8 +58,8 @@ from backend.app.graph.state import (
     ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
 from backend.app.models.phase_schemas import (
-    QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput,
-    DeepDiveCategoryOutput, TargetedAnswer,
+    QuickScreenOutput, ThesisLLMOutput, RiskStressTestOutput, PositionMonitorOutput,
+    DeepDiveCategoryOutput, TargetedAnswer, reward_risk,
     quick_screen_recommendation, quick_screen_score,
 )
 from backend.app.services.catalyst_promotion import promote_catalysts
@@ -137,6 +134,21 @@ def _category_analysis_text(result: CategoryResult) -> str:
     if gaps:
         parts.append("Data gaps: " + "; ".join(gaps))
     return "\n\n".join(p for p in parts if p)
+
+
+def _reward_risk_line(thesis_struct: dict, computed_rr: float | None) -> str:
+    """The thesis's call as the risk step should see it."""
+    stance = thesis_struct.get("stance")
+    targets = thesis_struct.get("price_targets") or {}
+    if not stance:
+        return "(no directional call on this thesis)"
+    line = f"Stance: {stance}"
+    if targets:
+        line += (f"; targets ({thesis_struct.get('time_horizon') or 'horizon n/a'}): "
+                 f"bear ${targets.get('bear')}, base ${targets.get('base')}, bull ${targets.get('bull')}")
+    if computed_rr is not None:
+        line += f"; reward/risk computed from these targets: {computed_rr}:1"
+    return line
 
 
 def _as_of() -> str:
@@ -286,8 +298,8 @@ async def _run_one_category(
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
-        response = await asyncio.wait_for(
-            complete(
+        parsed = await asyncio.wait_for(
+            complete_structured(
                 system=DEEP_DIVE_SYSTEM.format(category=category),
                 user=DEEP_DIVE_USER.format(
                     ticker=ticker,
@@ -306,30 +318,18 @@ async def _run_one_category(
                     prior_questions=prior_questions_text,
                     loop_context=loop_context,
                 ),
+                output_model=DeepDiveCategoryOutput,
                 model=DEEP_MODEL,
                 max_tokens=3000,
             ),
             timeout=CATEGORY_TIMEOUT,
         )
-
-        parsed, parse_err = parse_structured_output(response, DeepDiveCategoryOutput)
-
-        if parsed is not None:
-            score = parsed.score
-            findings = [f.finding for f in parsed.key_findings]
-            structured = parsed.model_dump()
-        else:
-            # Fallback — regex extraction preserves original behavior.
-            logger.warning(
-                "[%s] Category '%s' JSON parse failed: %s", ticker, category, parse_err
-            )
-            score = _extract_score(response)
-            findings = _extract_key_findings(response)
-            structured = None
-
+        # Failures (truncation, refusal, validation) land in the except below
+        # as a CategoryError — the old regex fallback invented a score.
         return CategoryResult(
-            category=category, content=response, score=score,
-            key_findings=findings, structured=structured,
+            category=category, content=parsed.model_dump_json(), score=parsed.score,
+            key_findings=[f.finding for f in parsed.key_findings],
+            structured=parsed.model_dump(),
         )
 
     except asyncio.TimeoutError:
@@ -807,12 +807,13 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
     loop_ctx = str(state.loop_context) if state.loop_context else "None"
 
     try:
-        response = await complete(
+        parsed = await complete_structured(
             system=THESIS_SYSTEM,
             user=THESIS_USER.format(
                 ticker=state.ticker,
                 theme=_theme_context(state),
                 as_of=_as_of(),
+                market_data=_market_data_block(state),
                 quick_screen_verdict=qs_verdict,
                 quick_screen_score=qs_score,
                 quick_screen_thesis=qs_thesis,
@@ -823,28 +824,23 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
                 loop_context=loop_ctx,
                 questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
             ),
+            output_model=ThesisLLMOutput,
             model=DEEP_MODEL,
             max_tokens=6000,
         )
-
-        parsed, parse_err = parse_structured_output(response, ThesisOutput)
-
-        if parsed is not None:
-            conviction = parsed.conviction_score
-            structured = parsed.model_dump()
-        else:
-            logger.warning(
-                "[%s] thesis JSON parse failed: %s", state.ticker, parse_err
-            )
-            conviction = _extract_score(response)
-            structured = None
+        # A failed or truncated thesis raises into the except below — no
+        # regex fallback that invents a conviction score (it recorded 50 for
+        # a model-stated 68 on CORZ).
+        conviction = parsed.conviction_score
+        structured = parsed.model_dump()
 
         state.phase_outputs["thesis"] = {
             "__type__": "PhaseOutput",
-            "content": response,
+            "content": parsed.model_dump_json(),
             "structured": structured,
             "conviction_score": conviction,
-            "parse_error": parse_err,
+            "stance": parsed.stance,
+            "parse_error": None,
         }
         state.conviction_score = conviction
         state.thesis_status = "ON TRACK"
@@ -852,22 +848,21 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
 
         # Tier 1.3: promote parsed catalysts into first-class DB rows.
         # Failure here is non-fatal — JSONB still has the canonical copy.
-        if parsed is not None:
+        try:
+            fmp = FMPClient()
             try:
-                fmp = FMPClient()
-                try:
-                    async with unit_of_work() as cat_db:
-                        await promote_catalysts(state, parsed, fmp, cat_db)
-                finally:
-                    await fmp.close()
-            except Exception as cat_err:
-                logger.warning(
-                    "[%s] catalyst promotion failed: %s", state.ticker, cat_err
-                )
+                async with unit_of_work() as cat_db:
+                    await promote_catalysts(state, parsed, fmp, cat_db)
+            finally:
+                await fmp.close()
+        except Exception as cat_err:
+            logger.warning(
+                "[%s] catalyst promotion failed: %s", state.ticker, cat_err
+            )
 
         logger.info(
-            "[%s] thesis complete: conviction %d/100 (structured=%s)",
-            state.ticker, conviction, structured is not None,
+            "[%s] thesis complete: %s, conviction %d/100",
+            state.ticker, parsed.stance, conviction,
         )
         state.status = "in_progress"
 
@@ -892,7 +887,12 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
     scores_text = "\n".join(f"  {k}: {v}/100" for k, v in state.scores.items())
 
     try:
-        response = await complete(
+        thesis_struct = thesis_output.get("structured") if isinstance(thesis_output, dict) else None
+        thesis_struct = thesis_struct or {}
+        price = (state.curated_financials or {}).get("current_price")
+        computed_rr = reward_risk(thesis_struct.get("stance"), price, thesis_struct.get("price_targets"))
+
+        parsed = await complete_structured(
             system=RISK_SYSTEM,
             user=RISK_USER.format(
                 ticker=state.ticker,
@@ -900,71 +900,62 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
                 as_of=_as_of(),
                 loop_count=state.loop_count,
                 market_data=_market_data_block(state),
+                reward_risk=_reward_risk_line(thesis_struct, computed_rr),
                 # Full thesis: bear case, catalysts and kill criteria sit past
                 # the first ~2.5K chars, and the stress test must see them.
                 thesis=thesis_text,
                 scores=scores_text,
             ),
+            output_model=RiskStressTestOutput,
             model=DEEP_MODEL,
             max_tokens=3000,
         )
 
-        parsed, parse_err = parse_structured_output(response, RiskStressTestOutput)
-
-        if parsed is not None:
-            rr_ratio = parsed.rr_ratio
-            loop_required = parsed.loop_required
-            loop_cats = parsed.loop_categories
-            loop_reason = parsed.loop_reason
-            structured = parsed.model_dump()
-        else:
-            # Fallback — regex extraction preserves original behavior.
-            logger.warning(
-                "[%s] risk JSON parse failed: %s", state.ticker, parse_err
-            )
-            rr_match = re.search(r"(?:RISK_REWARD|rr_ratio)[:\s]*([\d.]+)", response)
-            loop_match = re.search(r"(?:LOOP_REQUIRED|loop_required)[:\s]*(YES|NO|true|false)", response, re.IGNORECASE)
-            cats_match = re.search(r"(?:LOOP_CATEGORIES|loop_categories)[:\s]*\[([^\]]*)\]", response)
-            reason_match = re.search(r"(?:LOOP_REASON|loop_reason)[:\s]*[\"']?(.+?)(?:[\"']?\s*[,}]|$)", response)
-
-            rr_ratio = float(rr_match.group(1)) if rr_match else 0.0
-            loop_required = loop_match.group(1).upper() in ("YES", "TRUE") if loop_match else False
-            loop_cats = [c.strip().strip('"\'') for c in cats_match.group(1).split(",") if c.strip()] if cats_match else []
-            loop_reason = reason_match.group(1).strip() if reason_match else ""
-            structured = None
+        # Reward/risk comes from the thesis's own targets when it can be
+        # computed; the model's estimate is kept for comparison only.
+        rr_ratio = computed_rr if computed_rr is not None else parsed.rr_ratio
+        loop_cats = [c for c in parsed.loop_categories if c in DEEP_DIVE_CATEGORIES]
+        loop = should_loop(
+            model_wants_loop=parsed.loop_required, categories=loop_cats,
+            loop_count=state.loop_count, rr=rr_ratio,
+        )
+        structured = parsed.model_dump()
 
         state.phase_outputs["risk"] = {
             "__type__": "PhaseOutput",
-            "content": response,
+            "content": parsed.model_dump_json(),
             "structured": structured,
             "rr_ratio": rr_ratio,
-            "loop_required": loop_required,
+            "rr_source": "thesis_targets" if computed_rr is not None else "model_estimate",
+            "model_rr_ratio": parsed.rr_ratio,
+            "loop_required": loop,
             "loop_categories": loop_cats,
-            "loop_reason": loop_reason,
-            "parse_error": parse_err,
+            "loop_reason": parsed.loop_reason,
+            "parse_error": None,
         }
 
-        # Determine loop-back
-        if loop_required and state.loop_count < 2:
+        if loop:
             state.loop_count += 1
             state.loop_context = {
                 "categories": loop_cats,
-                "reason": loop_reason,
+                "reason": parsed.loop_reason,
                 "rr_ratio": rr_ratio,
             }
             # Auto-advance back to deep_dive; _next_phase() routes
             # back when loop_context is set.
             state.status = "in_progress"
             logger.info("[%s] Loop-back triggered (count %d): %s", state.ticker, state.loop_count, loop_cats)
-        elif loop_required and state.loop_count >= 2:
+        elif parsed.loop_required and loop_cats and state.loop_count >= MAX_RISK_LOOPS:
+            # Gaps the model still wants investigated after the loop cap:
+            # finish the run, but flag it rather than calling it on track.
             state.status = "watchlist"
-            state.thesis_status = "BROKEN"
-            logger.info("[%s] Loop cap reached — forcing WATCHLIST", state.ticker)
+            state.thesis_status = "DRIFTING"
+            logger.info("[%s] Loop cap reached with open gaps — WATCHLIST", state.ticker)
         else:
             state.status = "completed"
             logger.info(
-                "[%s] risk_stress_test complete: RR %.1f:1 — approved (structured=%s)",
-                state.ticker, rr_ratio, structured is not None,
+                "[%s] risk_stress_test complete: R/R %s (%s)",
+                state.ticker, rr_ratio, state.phase_outputs["risk"]["rr_source"],
             )
 
     except Exception as e:

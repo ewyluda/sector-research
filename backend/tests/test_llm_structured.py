@@ -39,35 +39,50 @@ def _fake_client(*, parse_result=None, create_result=None) -> MagicMock:
 
 
 class CompleteStructuredTests(unittest.IsolatedAsyncioTestCase):
-    async def test_returns_parsed_output_and_sends_output_format(self):
-        answer = TargetedAnswer(answer_text="Yes — RPO grew 3x.")
-        msg = SimpleNamespace(stop_reason="end_turn", parsed_output=answer, usage=_USAGE)
-        client = _fake_client(parse_result=msg)
+    @staticmethod
+    def _msg(stop_reason: str, text: str | None) -> SimpleNamespace:
+        content = [SimpleNamespace(type="thinking", thinking="")]
+        if text is not None:
+            content.append(SimpleNamespace(type="text", text=text))
+        return SimpleNamespace(stop_reason=stop_reason, content=content, usage=_USAGE)
+
+    async def test_returns_validated_model_and_sends_schema(self):
+        client = _fake_client(create_result=self._msg("end_turn", '{"answer_text": "RPO grew 3x."}'))
         with patch.object(llm, "get_client", return_value=client):
             out = await complete_structured(system="s", user="u", output_model=TargetedAnswer)
-        self.assertIs(out, answer)
-        kwargs = client.messages.parse.call_args.kwargs
-        self.assertIs(kwargs["output_format"], TargetedAnswer)
+        self.assertEqual(out, TargetedAnswer(answer_text="RPO grew 3x."))
+        kwargs = client.messages.create.call_args.kwargs
+        self.assertEqual(kwargs["output_config"]["format"]["type"], "json_schema")
+        self.assertIn("answer_text", kwargs["output_config"]["format"]["schema"]["properties"])
         # A trailing assistant turn is a prefill — never sent.
         self.assertEqual([m["role"] for m in kwargs["messages"]], ["user"])
 
-    async def test_truncation_raises_instead_of_parse_garbage(self):
-        msg = SimpleNamespace(stop_reason="max_tokens", parsed_output=None, usage=_USAGE)
-        with patch.object(llm, "get_client", return_value=_fake_client(parse_result=msg)):
+    async def test_truncation_raises_before_json_parsing(self):
+        # Truncated JSON must surface as "truncated", not a parse error.
+        msg = self._msg("max_tokens", '{"answer_text": "RPO gr')
+        with patch.object(llm, "get_client", return_value=_fake_client(create_result=msg)):
             with self.assertRaisesRegex(LLMOutputError, "max_tokens"):
                 await complete_structured(system="s", user="u", output_model=TargetedAnswer)
 
     async def test_refusal_raises(self):
-        msg = SimpleNamespace(stop_reason="refusal", parsed_output=None, usage=_USAGE)
-        with patch.object(llm, "get_client", return_value=_fake_client(parse_result=msg)):
+        msg = self._msg("refusal", None)
+        with patch.object(llm, "get_client", return_value=_fake_client(create_result=msg)):
             with self.assertRaisesRegex(LLMOutputError, "refused"):
                 await complete_structured(system="s", user="u", output_model=TargetedAnswer)
 
-    async def test_missing_parsed_output_raises(self):
-        msg = SimpleNamespace(stop_reason="end_turn", parsed_output=None, usage=_USAGE)
-        with patch.object(llm, "get_client", return_value=_fake_client(parse_result=msg)):
+    async def test_missing_text_raises(self):
+        msg = self._msg("end_turn", None)
+        with patch.object(llm, "get_client", return_value=_fake_client(create_result=msg)):
             with self.assertRaises(LLMOutputError):
                 await complete_structured(system="s", user="u", output_model=TargetedAnswer)
+
+    async def test_thinking_tier_sends_effort_alongside_format(self):
+        client = _fake_client(create_result=self._msg("end_turn", '{"answer_text": "x"}'))
+        with patch.object(llm, "get_client", return_value=client):
+            await complete_structured(system="s", user="u", output_model=TargetedAnswer, model="claude-opus-5-5")
+        cfg = client.messages.create.call_args.kwargs["output_config"]
+        self.assertEqual(cfg["effort"], "medium")
+        self.assertIn("format", cfg)
 
     async def test_complete_joins_text_blocks_only(self):
         msg = SimpleNamespace(

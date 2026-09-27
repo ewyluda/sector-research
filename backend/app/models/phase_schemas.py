@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ── Quick Screen ──────────────────────────────────────────────────────────────
@@ -125,6 +125,23 @@ class PreMortem(BaseModel):
     failure_modes: list[FailureMode] = Field(..., min_length=3, max_length=5)
 
 
+Stance = Literal["long", "avoid", "short"]
+
+
+class PriceTargets(BaseModel):
+    """Per-share price at the thesis horizon under each scenario for the stock
+    (independent of stance: bear is the low case, bull the high case)."""
+    bear: float = Field(..., gt=0)
+    base: float = Field(..., gt=0)
+    bull: float = Field(..., gt=0)
+
+    @model_validator(mode="after")
+    def ordered(self) -> "PriceTargets":
+        if not (self.bear <= self.base <= self.bull):
+            raise ValueError("price targets must satisfy bear <= base <= bull")
+        return self
+
+
 class ThesisOutput(BaseModel):
     # Sonnet 4.6 is naturally verbose — generous limits to avoid
     # ValidationError rejections on well-formed but wordy output.
@@ -138,6 +155,38 @@ class ThesisOutput(BaseModel):
     # New (optional for backwards compatibility with old runs):
     kill_criteria: list[KillCriterion] = Field(default_factory=list, max_length=5)
     pre_mortem: PreMortem | None = None
+    # The directional call (2026-09-26). Optional here so pre-existing runs
+    # still validate; ThesisLLMOutput makes them required for new runs.
+    stance: Stance | None = None
+    time_horizon: str | None = Field(default=None, max_length=60)
+    price_targets: PriceTargets | None = None
+
+
+class ThesisLLMOutput(ThesisOutput):
+    """The schema the model is constrained to: the call is mandatory."""
+    stance: Stance
+    time_horizon: str = Field(..., min_length=1, max_length=60)
+    price_targets: PriceTargets
+
+
+def reward_risk(stance: str | None, price: float | None, targets: PriceTargets | dict | None) -> float | None:
+    """Reward/risk from the thesis's own scenario targets — computed in code,
+    because the model was inventing it (1.4 in 13 of 21 runs, with no price).
+
+    long:  (base - price) / (price - bear)
+    short: (price - base) / (bull - price)
+    avoid, missing inputs, or a target on the wrong side of price: None.
+    """
+    if stance not in ("long", "short") or not price or price <= 0 or not targets:
+        return None
+    t = targets if isinstance(targets, PriceTargets) else PriceTargets.model_validate(targets)
+    if stance == "long":
+        reward, risk = t.base - price, price - t.bear
+    else:
+        reward, risk = price - t.base, t.bull - price
+    if risk <= 0:
+        return None
+    return round(max(reward, 0.0) / risk, 2)
 
 
 # ── Risk Stress-Test ────────────────────────────────────────────────────────

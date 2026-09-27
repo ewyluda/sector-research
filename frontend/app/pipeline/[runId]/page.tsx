@@ -656,6 +656,7 @@ export default function PipelineRunnerPage() {
             <ReportHeader
               financials={curatedFinancials}
               quickScreen={quickScreenStructured}
+              thesis={thesisStructured}
               convictionScore={convictionScore}
               ticker={ticker}
               runId={runId}

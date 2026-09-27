@@ -115,6 +115,18 @@ export interface ThesisStructured {
   conviction_rationale: string;
   kill_criteria?: KillCriterion[];
   pre_mortem?: PreMortem | null;
+  // Directional call — present on runs from 2026-09-26 on; older theses lack it.
+  stance?: ThesisStance | null;
+  time_horizon?: string | null;
+  price_targets?: PriceTargets | null;
+}
+
+export type ThesisStance = "long" | "avoid" | "short";
+
+export interface PriceTargets {
+  bear: number;
+  base: number;
+  bull: number;
 }
 
 // ── Risk Stress-Test structured output ───────────────────────────────────────

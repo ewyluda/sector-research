@@ -1,4 +1,11 @@
-"""Generic LLM-output → Pydantic-model parser.
+"""Lenient JSON helpers for LLM text output.
+
+App code gets JSON through graph/llm.py::complete_structured (native
+structured outputs). parse_structured_output below is no longer called by the
+app; it remains as the harness for the schema tests (test_parser_*.py).
+extract_json_value serves outputs with no fixed schema (transcript passes).
+
+Original notes:
 
 Used by phase nodes to convert structured JSON responses into validated
 dataclass-like objects. Forgiving enough to handle common LLM quirks

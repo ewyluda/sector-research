@@ -121,21 +121,28 @@ async def complete_structured(
 
     Returns a validated instance. Raises LLMOutputError when the output was
     truncated or refused, and pydantic.ValidationError when a constraint the
-    API cannot enforce (min/max, lengths — the SDK checks those client-side)
-    fails. Never invents defaults: callers decide how to degrade.
+    API cannot enforce (min/max, lengths — stripped from the schema sent and
+    checked here) fails. Never invents defaults: callers decide how to degrade.
+
+    Uses messages.create + an explicit schema rather than messages.parse:
+    parse validates inside the SDK before stop_reason can be checked, so a
+    max_tokens truncation surfaced as an opaque "EOF while parsing" error.
     """
+    params = _request_params(model, max_tokens)
+    params["output_config"] = {
+        **params.get("output_config", {}),
+        "format": {"type": "json_schema", "schema": anthropic.transform_schema(output_model)},
+    }
     started = time.monotonic()
-    message = await get_client().messages.parse(
+    message = await get_client().messages.create(
         model=model,
         system=_system_blocks(system, use_cache),  # type: ignore[arg-type]
         messages=[{"role": "user", "content": user}],
-        output_format=output_model,
-        **_request_params(model, max_tokens),
+        **params,
     )
     _log_usage(f"structured:{output_model.__name__}", model, message, started)
     _check_stop_reason(message, model)
-    parsed = message.parsed_output
-    if parsed is None:
+    text = "".join(b.text for b in message.content if b.type == "text")
+    if not text:
         raise LLMOutputError(f"{model} returned no {output_model.__name__}")
-    return parsed
-
+    return output_model.model_validate_json(text)

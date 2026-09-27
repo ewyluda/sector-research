@@ -6,8 +6,6 @@ DB access.  Extracted from ``backend.app.graph.nodes`` as part of the M2.2
 campaign; all names and signatures are unchanged.
 
 Symbols exported:
-  _extract_score
-  _extract_key_findings
   _first_metric
   _fmt_fundamentals
   _build_curated_financials
@@ -17,7 +15,6 @@ Symbols exported:
 from __future__ import annotations
 
 import logging
-import re
 from typing import TYPE_CHECKING, Any
 
 from backend.app.services.quant_fingerprint import build_quant_fingerprint
@@ -29,35 +26,6 @@ logger = logging.getLogger(__name__)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _extract_score(text: str) -> int:
-    """Parse 'SCORE: XX/100' or 'CONVICTION: XX/100' from LLM output."""
-    for pattern in [r"(?:SCORE|CONVICTION):\s*(\d+)/100", r"(\d+)/100"]:
-        m = re.search(pattern, text, re.IGNORECASE)
-        if m:
-            return min(100, max(0, int(m.group(1))))
-    return 50  # default if not found
-
-
-def _extract_key_findings(text: str) -> list[str]:
-    """Pull bullet points from the 'Key findings' section."""
-    lines = text.split("\n")
-    findings = []
-    in_findings = False
-    for line in lines:
-        if "key finding" in line.lower():
-            in_findings = True
-            continue
-        if in_findings:
-            stripped = line.strip().lstrip("•-*123456789. ")
-            if stripped and len(stripped) > 10:
-                findings.append(stripped)
-            if len(findings) >= 5:
-                break
-            if line.strip() == "" and findings:
-                break
-    return findings
-
 
 def _first_metric(*candidates: tuple[dict | None, str]) -> float | None:
     """First non-None float across (dict, key) candidates — same contract as
