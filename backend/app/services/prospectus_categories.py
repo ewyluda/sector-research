@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from backend.app.graph.llm import SONNET, complete_structured
+from backend.app.graph.llm import DEEP_MODEL, complete_structured
 from backend.app.graph.prospectus_prompts import (
     CATEGORY_FOCUS,
     CATEGORY_SECTION_ROUTING,
@@ -79,7 +79,7 @@ async def _run_one_category(
         system=PROSPECTUS_SYSTEM.format(category=category),
         user=user,
         output_model=ProspectusCategoryResult,
-        model=SONNET,
+        model=DEEP_MODEL,
         max_tokens=3072,
     )
 

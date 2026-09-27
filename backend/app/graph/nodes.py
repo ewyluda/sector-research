@@ -47,7 +47,7 @@ from backend.app.graph.formatters import (  # noqa: F401  re-exported for backwa
     _first_metric,
     _fmt_fundamentals,
 )
-from backend.app.graph.llm import complete, complete_structured, SONNET, HAIKU
+from backend.app.graph.llm import complete, complete_structured, DEEP_MODEL, FAST_MODEL
 from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
@@ -81,7 +81,9 @@ from backend.app.services.transcript_analysis import run_transcript_analysis  # 
 
 logger = logging.getLogger(__name__)
 
-CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
+# Seconds per deep-dive category. Sized for a thinking model (Opus 5.5 at
+# medium effort); the llm_call log lines report the real latency per call.
+CATEGORY_TIMEOUT = 300
 TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
 
 
@@ -156,7 +158,7 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
                 fundamental_data=fundamentals_text,
             ),
             output_model=QuickScreenOutput,
-            model=HAIKU,
+            model=FAST_MODEL,
             max_tokens=2500,
         )
 
@@ -244,7 +246,7 @@ async def _run_one_category(
                     prior_questions=prior_questions_text,
                     loop_context=loop_context,
                 ),
-                model=SONNET,
+                model=DEEP_MODEL,
                 max_tokens=3000,
             ),
             timeout=CATEGORY_TIMEOUT,
@@ -660,7 +662,7 @@ async def node_targeted_followup(state: ResearchState) -> ResearchState:
 
         try:
             parsed = await complete_structured(
-                model=SONNET,
+                model=DEEP_MODEL,
                 system=TARGETED_FOLLOWUP_SYSTEM,
                 user=user_msg,
                 output_model=TargetedAnswer,
@@ -760,7 +762,7 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
                 loop_context=loop_ctx,
                 questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
             ),
-            model=SONNET,
+            model=DEEP_MODEL,
             max_tokens=6000,
         )
 
@@ -838,7 +840,7 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
                 thesis=thesis_text[:2000],
                 scores=scores_text,
             ),
-            model=SONNET,
+            model=DEEP_MODEL,
             max_tokens=3000,
         )
 
@@ -932,7 +934,7 @@ async def node_position_monitor(state: ResearchState) -> ResearchState:
                 risk_summary=risk_text,
             ),
             output_model=PositionMonitorOutput,
-            model=HAIKU,
+            model=FAST_MODEL,
             max_tokens=2000,
         )
 

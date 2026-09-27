@@ -11,7 +11,7 @@ import logging
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
 
-from backend.app.graph.llm import HAIKU, complete_structured
+from backend.app.graph.llm import FAST_MODEL, complete_structured
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ async def classify_8k(
             system=_SYSTEM_PROMPT,
             user=prompt,
             output_model=EventClassification,
-            model=HAIKU,
+            model=FAST_MODEL,
             max_tokens=600,
         )
     except Exception as e:

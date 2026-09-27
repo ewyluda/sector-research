@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import HAIKU, complete_structured
+from backend.app.graph.llm import FAST_MODEL, complete_structured
 from backend.app.models.filing import (
     CompetitorLandscape,
     Filing,
@@ -197,7 +197,7 @@ async def _call_haiku_on_item_1(
             system=_SYSTEM_PROMPT,
             user=prompt,
             output_model=ExtractionResult,
-            model=HAIKU,
+            model=FAST_MODEL,
             max_tokens=4000,
         )
     except Exception as e:

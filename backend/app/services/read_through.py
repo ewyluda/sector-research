@@ -19,7 +19,7 @@ from typing import Any, Literal
 from sqlalchemy import and_, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import HAIKU, complete
+from backend.app.graph.llm import FAST_MODEL, complete
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.filing import CompetitorLandscape, Relationship
 from backend.app.models.read_through_dismissal import ReadThroughDismissal
@@ -524,4 +524,4 @@ async def summarize_read_through(
         f"Relationships from filings:\n{rendered}"
     )
 
-    return await complete(system=_SUMMARY_SYSTEM, user=user, model=HAIKU, max_tokens=400)
+    return await complete(system=_SUMMARY_SYSTEM, user=user, model=FAST_MODEL, max_tokens=400)

@@ -82,6 +82,17 @@ class CompleteStructuredTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(await complete(system="s", user="u"), "Hello world")
 
 
+class RequestParamsTests(unittest.TestCase):
+    def test_fast_tier_gets_no_effort(self):
+        # Haiku 4.5 rejects output_config.effort.
+        self.assertEqual(llm._request_params("claude-haiku-4-5-20251001", 600), {"max_tokens": 600})
+
+    def test_thinking_tier_gets_effort_and_headroom(self):
+        params = llm._request_params("claude-opus-5-5", 600)
+        self.assertEqual(params["output_config"], {"effort": "medium"})
+        self.assertGreaterEqual(params["max_tokens"], llm.THINKING_MIN_MAX_TOKENS)
+
+
 class NoPrefillGuardTests(unittest.TestCase):
     """Sonnet 4.6+ rejects assistant prefill with a 400. The lesson was found on
     2026-04-11 and reintroduced at five call sites because it lived only in a

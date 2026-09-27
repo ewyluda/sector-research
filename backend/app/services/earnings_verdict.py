@@ -22,7 +22,7 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
-from backend.app.graph.llm import HAIKU, LLMOutputError, complete_structured
+from backend.app.graph.llm import FAST_MODEL, LLMOutputError, complete_structured
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.research_run import ResearchRun
@@ -110,7 +110,7 @@ async def extract_guidance_direction(
     excerpt = transcript_text[:6000]
     try:
         return await complete_structured(
-            model=HAIKU,
+            model=FAST_MODEL,
             system=GUIDANCE_EXTRACTION_SYSTEM,
             user=excerpt,
             output_model=GuidanceOutput,
@@ -184,7 +184,7 @@ async def compute_verdict(
 
     try:
         parsed = await complete_structured(
-            model=HAIKU,
+            model=FAST_MODEL,
             system=EARNINGS_VERDICT_SYSTEM,
             user=json.dumps(user_payload, indent=2),
             output_model=VerdictOutput,

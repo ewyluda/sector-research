@@ -59,7 +59,7 @@ class TestStepChallenge(unittest.IsolatedAsyncioTestCase):
             "proposed_verdict": "broken",
         })
         with patch(
-            "backend.app.services.workspace_steps.sonnet_complete",
+            "backend.app.services.workspace_steps.deep_complete",
             new=AsyncMock(return_value=sonnet_response),
         ), patch(
             "backend.app.services.workspace_steps.upsert_kill_criterion_state",
@@ -90,7 +90,7 @@ class TestStepChallenge(unittest.IsolatedAsyncioTestCase):
             "proposed_verdict": "healthy",
         })
         with patch(
-            "backend.app.services.workspace_steps.sonnet_complete",
+            "backend.app.services.workspace_steps.deep_complete",
             new=AsyncMock(return_value=sonnet_response),
         ), patch(
             "backend.app.services.workspace_steps.upsert_kill_criterion_state",
@@ -112,7 +112,7 @@ class TestStepChallenge(unittest.IsolatedAsyncioTestCase):
             "proposed_verdict": "watchlist",
         })
         with patch(
-            "backend.app.services.workspace_steps.sonnet_complete",
+            "backend.app.services.workspace_steps.deep_complete",
             new=AsyncMock(return_value=sonnet_response),
         ), patch(
             "backend.app.services.workspace_steps.upsert_kill_criterion_state",
@@ -132,7 +132,7 @@ class TestStepChallenge(unittest.IsolatedAsyncioTestCase):
             "catalyst_updates": [],
         })
         with patch(
-            "backend.app.services.workspace_steps.sonnet_complete",
+            "backend.app.services.workspace_steps.deep_complete",
             new=AsyncMock(return_value=sonnet_response),
         ):
             ctx = _make_ctx()

@@ -5,7 +5,7 @@ import json
 import logging
 from typing import Any
 
-from backend.app.graph.llm import SONNET, complete_structured
+from backend.app.graph.llm import DEEP_MODEL, complete_structured
 from backend.app.models.prospectus_schemas import (
     CategoriesStepOutput,
     ProspectusThesisOutput,
@@ -76,6 +76,6 @@ async def synthesize_thesis(
         system=THESIS_SYSTEM,
         user=user,
         output_model=ProspectusThesisOutput,
-        model=SONNET,
+        model=DEEP_MODEL,
         max_tokens=4096,
     )

@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 
 
-from backend.app.graph.llm import SONNET, complete_structured
+from backend.app.graph.llm import DEEP_MODEL, complete_structured
 from backend.app.models.prospectus_schemas import ProspectusFinancials
 
 logger = logging.getLogger(__name__)
@@ -71,7 +71,7 @@ async def extract_financials(*, mda_text: str, selected_financials_text: str) ->
             system=_SYSTEM,
             user=user,
             output_model=ProspectusFinancials,
-            model=SONNET,
+            model=DEEP_MODEL,
             max_tokens=4096,
         )
     except Exception as e:

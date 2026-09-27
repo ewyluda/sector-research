@@ -11,7 +11,7 @@ import sys
 
 from pydantic import BaseModel, Field
 
-from backend.app.graph.llm import HAIKU, SONNET, complete_structured
+from backend.app.graph.llm import FAST_MODEL, DEEP_MODEL, complete_structured
 
 
 class _Probe(BaseModel):
@@ -37,7 +37,7 @@ async def _probe(model: str) -> bool:
 
 
 async def main() -> int:
-    results = await asyncio.gather(_probe(HAIKU), _probe(SONNET))
+    results = await asyncio.gather(_probe(FAST_MODEL), _probe(DEEP_MODEL))
     return 0 if all(results) else 1
 
 

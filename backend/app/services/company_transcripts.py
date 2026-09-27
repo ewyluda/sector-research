@@ -10,7 +10,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from backend.app.graph.llm import HAIKU, complete
+from backend.app.graph.llm import FAST_MODEL, complete
 
 
 class TranscriptEvent(BaseModel):
@@ -144,6 +144,6 @@ async def summarize_transcript(fmp, ticker: str, year: int, quarter: int) -> str
     return await complete(
         system=_SUMMARY_SYSTEM,
         user=content,
-        model=HAIKU,
+        model=FAST_MODEL,
         max_tokens=1500,
     )

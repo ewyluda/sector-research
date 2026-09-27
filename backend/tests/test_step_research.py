@@ -32,7 +32,7 @@ class TestStepResearch(unittest.IsolatedAsyncioTestCase):
             "summary": "Q1 print broadly confirms thesis with one concentration concern.",
         })
         with _patch_compute_delta(side_effect=InsufficientTranscriptsError("no transcripts")):
-            with patch("backend.app.services.workspace_steps.haiku_complete",
+            with patch("backend.app.services.workspace_steps.fast_complete",
                        new=AsyncMock(return_value=haiku_response)):
                 ctx = _make_ctx()
                 out = await step_research(ctx)
@@ -44,7 +44,7 @@ class TestStepResearch(unittest.IsolatedAsyncioTestCase):
 
     async def test_haiku_failure_propagates(self):
         with _patch_compute_delta(side_effect=InsufficientTranscriptsError("no transcripts")):
-            with patch("backend.app.services.workspace_steps.haiku_complete",
+            with patch("backend.app.services.workspace_steps.fast_complete",
                        new=AsyncMock(side_effect=RuntimeError("anthropic 503"))):
                 ctx = _make_ctx()
                 with self.assertRaises(RuntimeError):
@@ -69,11 +69,11 @@ class TestStepResearch(unittest.IsolatedAsyncioTestCase):
             return haiku_response
 
         with _patch_compute_delta(return_value=delta_row):
-            with patch("backend.app.services.workspace_steps.haiku_complete", new=fake_haiku):
+            with patch("backend.app.services.workspace_steps.fast_complete", new=fake_haiku):
                 ctx = _make_ctx()
                 await step_research(ctx)
 
-        self.assertTrue(captured_user, "haiku_complete was never called")
+        self.assertTrue(captured_user, "fast_complete was never called")
         self.assertIn("transcript-language deltas", captured_user[0])
         self.assertIn("growth_earnings", captured_user[0])
         self.assertNotIn("risk_assessment", captured_user[0])  # null axis omitted
@@ -86,7 +86,7 @@ class TestStepResearch(unittest.IsolatedAsyncioTestCase):
             "summary": "fine",
         })
         with _patch_compute_delta(side_effect=RuntimeError("fmp outage")):
-            with patch("backend.app.services.workspace_steps.haiku_complete",
+            with patch("backend.app.services.workspace_steps.fast_complete",
                        new=AsyncMock(return_value=haiku_response)):
                 ctx = _make_ctx()
                 out = await step_research(ctx)

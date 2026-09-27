@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import HAIKU, LLMOutputError, complete_structured
+from backend.app.graph.llm import FAST_MODEL, LLMOutputError, complete_structured
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.research_run import ResearchRun
@@ -122,7 +122,7 @@ async def compute_brief(
 
     try:
         return await complete_structured(
-            model=HAIKU,
+            model=FAST_MODEL,
             system=EARNINGS_BRIEF_SYSTEM,
             user=json.dumps(user_payload, indent=2),
             output_model=BriefOutput,

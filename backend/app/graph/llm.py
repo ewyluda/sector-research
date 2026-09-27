@@ -1,7 +1,12 @@
-"""LLM client factory — returns the right Anthropic model for each phase.
+"""LLM client — one place that knows how to call Claude.
 
-Sonnet: deep_dive, thesis, risk
-Haiku:  quick_screen, position, transcript passes 1–2
+Two tiers, configured in settings:
+  DEEP_MODEL (LLM_MODEL_DEEP): synthesis — deep dive, thesis, risk, workspace
+      challenge, prospectus, model baseline. Claude Opus 5.5 by default; its
+      thinking is always on and `output_config.effort` (LLM_DEEP_EFFORT) sets
+      how much it thinks.
+  FAST_MODEL (LLM_MODEL_FAST): extraction and classification — quick screen,
+      relationships, 8-K classifier, transcript passes. Haiku 4.5.
 
 JSON-producing calls go through `complete_structured`, which uses the API's
 native structured outputs (constrained decoding against the Pydantic model's
@@ -25,6 +30,11 @@ _client: anthropic.AsyncAnthropic | None = None
 
 T = TypeVar("T", bound=BaseModel)
 
+# Thinking tokens count toward max_tokens, so call sites sized for a bare
+# reply (200–600 tokens) would be cut off on a thinking model. 16K keeps a
+# non-streaming request well inside the SDK's timeout budget.
+THINKING_MIN_MAX_TOKENS = 16_000
+
 
 def get_client() -> anthropic.AsyncAnthropic:
     global _client
@@ -33,8 +43,19 @@ def get_client() -> anthropic.AsyncAnthropic:
     return _client
 
 
-SONNET = get_settings().llm_model_sonnet
-HAIKU = get_settings().llm_model_haiku
+DEEP_MODEL = get_settings().llm_model_deep
+FAST_MODEL = get_settings().llm_model_fast
+
+
+def _request_params(model: str, max_tokens: int) -> dict:
+    """Per-model request knobs. Haiku 4.5 rejects `effort`; every other
+    configured model thinks, so it gets the effort setting and headroom."""
+    if model.startswith("claude-haiku"):
+        return {"max_tokens": max_tokens}
+    return {
+        "max_tokens": max(max_tokens, THINKING_MIN_MAX_TOKENS),
+        "output_config": {"effort": get_settings().llm_deep_effort},
+    }
 
 
 class LLMOutputError(Exception):
@@ -71,7 +92,7 @@ def _check_stop_reason(message, model: str) -> None:
 async def complete(
     system: str,
     user: str,
-    model: str = SONNET,
+    model: str = DEEP_MODEL,
     max_tokens: int = 4096,
     use_cache: bool = True,
 ) -> str:
@@ -79,11 +100,12 @@ async def complete(
     started = time.monotonic()
     message = await get_client().messages.create(
         model=model,
-        max_tokens=max_tokens,
         system=_system_blocks(system, use_cache),  # type: ignore[arg-type]
         messages=[{"role": "user", "content": user}],
+        **_request_params(model, max_tokens),
     )
     _log_usage("text", model, message, started)
+    _check_stop_reason(message, model)
     return "".join(b.text for b in message.content if b.type == "text")
 
 
@@ -91,7 +113,7 @@ async def complete_structured(
     system: str,
     user: str,
     output_model: type[T],
-    model: str = SONNET,
+    model: str = DEEP_MODEL,
     max_tokens: int = 4096,
     use_cache: bool = True,
 ) -> T:
@@ -105,10 +127,10 @@ async def complete_structured(
     started = time.monotonic()
     message = await get_client().messages.parse(
         model=model,
-        max_tokens=max_tokens,
         system=_system_blocks(system, use_cache),  # type: ignore[arg-type]
         messages=[{"role": "user", "content": user}],
         output_format=output_model,
+        **_request_params(model, max_tokens),
     )
     _log_usage(f"structured:{output_model.__name__}", model, message, started)
     _check_stop_reason(message, model)
@@ -117,22 +139,3 @@ async def complete_structured(
         raise LLMOutputError(f"{model} returned no {output_model.__name__}")
     return parsed
 
-
-async def stream_complete(
-    system: str,
-    user: str,
-    model: str = SONNET,
-    max_tokens: int = 4096,
-    use_cache: bool = True,
-):
-    """Async generator that yields text chunks as they stream."""
-    client = get_client()
-
-    async with client.messages.stream(
-        model=model,
-        max_tokens=max_tokens,
-        system=_system_blocks(system, use_cache),  # type: ignore[arg-type]
-        messages=[{"role": "user", "content": user}],
-    ) as stream:
-        async for text in stream.text_stream:
-            yield text

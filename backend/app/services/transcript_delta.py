@@ -42,7 +42,7 @@ from sqlalchemy.exc import IntegrityError  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from backend.app.clients.fmp import FMPClient  # noqa: E402
-from backend.app.graph.llm import HAIKU, complete_structured  # noqa: E402
+from backend.app.graph.llm import FAST_MODEL, complete_structured  # noqa: E402
 from backend.app.models.transcript_delta import TranscriptDelta  # noqa: E402
 from backend.app.models.transcript_delta_schemas import AxesDelta  # noqa: E402
 from backend.app.services.edgar_transcripts_relationships import fetch_recent_transcripts  # noqa: E402
@@ -169,7 +169,7 @@ async def compute_delta(
 
     try:
         parsed = await complete_structured(
-            model=HAIKU,
+            model=FAST_MODEL,
             system=_SYSTEM_PROMPT,
             user=_build_user_prompt(transcripts),
             output_model=_AxesEnvelope,

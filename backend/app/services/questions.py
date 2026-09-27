@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import SONNET, complete_structured
+from backend.app.graph.llm import DEEP_MODEL, complete_structured
 from backend.app.graph.nodes import _build_targeted_followup_user_msg
 from backend.app.graph.state import ResearchState
 from backend.app.models.question import Question
@@ -151,7 +151,7 @@ async def retry_auto_answer(
 
     try:
         parsed = await complete_structured(
-            model=SONNET,
+            model=DEEP_MODEL,
             system=_RETRY_SYSTEM,
             user=user_msg,
             output_model=_RetryAnswer,

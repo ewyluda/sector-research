@@ -16,7 +16,7 @@ from backend.app.models.workspace_schemas import (
     Highlight, OpenQuestionDelta,
     ImpliedDriver, SensitivityGrid as WSSensitivityGrid, ThesisVsPriced,
 )
-from backend.app.graph.llm import complete as anthropic_complete, HAIKU, SONNET
+from backend.app.graph.llm import complete as anthropic_complete, FAST_MODEL, DEEP_MODEL
 from backend.app.graph.workspace_prompts import (
     RESEARCH_SYSTEM, RESEARCH_USER_TEMPLATE,
     CHALLENGE_SYSTEM, CHALLENGE_USER_TEMPLATE,
@@ -326,18 +326,18 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
     )
 
 
-async def haiku_complete(*, system: str, user: str, anthropic) -> str:
+async def fast_complete(*, system: str, user: str, anthropic) -> str:
     """Thin wrapper around graph.llm.complete; named for easy patching in tests."""
     return await anthropic_complete(
-        system=system, user=user, model=HAIKU,
+        system=system, user=user, model=FAST_MODEL,
         max_tokens=2048,
     )
 
 
-async def sonnet_complete(*, system: str, user: str, anthropic) -> str:
+async def deep_complete(*, system: str, user: str, anthropic) -> str:
     """Thin wrapper around graph.llm.complete using Sonnet; named for easy patching in tests."""
     return await anthropic_complete(
-        system=system, user=user, model=SONNET,
+        system=system, user=user, model=DEEP_MODEL,
         max_tokens=4096,
     )
 
@@ -445,7 +445,7 @@ async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
         existing_open_questions=existing_qs_text,
     )
 
-    raw = await haiku_complete(system=RESEARCH_SYSTEM, user=user, anthropic=ctx.anthropic)
+    raw = await fast_complete(system=RESEARCH_SYSTEM, user=user, anthropic=ctx.anthropic)
     payload = _parse_json_lenient(raw)
 
     highlights = [Highlight.model_validate(h) for h in payload.get("highlights", [])]
@@ -632,7 +632,7 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
         new_sources="(no new excerpts)",
     )
 
-    raw = await sonnet_complete(system=CHALLENGE_SYSTEM, user=user, anthropic=ctx.anthropic)
+    raw = await deep_complete(system=CHALLENGE_SYSTEM, user=user, anthropic=ctx.anthropic)
     payload = _parse_json_lenient(raw)
 
     writes = [KillCriterionWrite(**w) for w in payload.get("kill_criterion_writes", [])]
