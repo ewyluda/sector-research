@@ -361,7 +361,7 @@ class PromptSlotTests(unittest.TestCase):
     def test_template_formats_with_quant_kwarg(self):
         from backend.app.graph.prompts import DEEP_DIVE_USER
         rendered = DEEP_DIVE_USER.format(
-            ticker="NVDA", theme="ai", category="Financial Health", data="d",
+            ticker="NVDA", theme="ai", as_of="2026-09-26", category="Financial Health", data="d",
             quant_data="QUANT-SENTINEL", transcript_data="", macro_data="",
             technical_data="", sentiment_data="", edgar_data="",
             filing_excerpts="", counterparty_context="", prior_questions="",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -31,3 +31,6 @@ class WorkspaceContext:
     # None when no saved model exists (model-less runs skip update_refresh's model work)
     prior_ticker_model: TickerModel | None
     emit: Callable[[dict], None]
+    # Outputs of the steps that already ran this run (step name -> JSON dict),
+    # filled in by run_steps_in_sequence so later steps can read earlier ones.
+    step_outputs: dict = field(default_factory=dict)

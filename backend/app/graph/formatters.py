@@ -89,13 +89,33 @@ def _fmt_profile_section(ticker: str, profile: dict) -> list[str]:
     """Company profile: name, sector, market cap, beta, description."""
     if not (profile and isinstance(profile, dict)):
         return []
-    return [
+    lines = [
         f"Company: {profile.get('companyName', ticker)}",
         f"Sector: {profile.get('sector')} | Industry: {profile.get('industry')}",
         f"Market Cap: ${profile.get('marketCap', 0)/1e9:.1f}B",
+    ]
+    price_line = fmt_price_line(profile)
+    if price_line:
+        lines.append(price_line)
+    lines += [
         f"Beta: {profile.get('beta', 'N/A')}",
         f"Description: {str(profile.get('description', ''))[:300]}",
     ]
+    return lines
+
+
+def fmt_price_line(profile: dict) -> str | None:
+    """Current share price (+ 52-week range) — without it the model guesses the
+    price (a VRT position plan assumed ~$100 when the stock was ~$300)."""
+    price = profile.get("price")
+    try:
+        price = float(price)
+    except (TypeError, ValueError):
+        return None
+    if price <= 0:
+        return None
+    rng = profile.get("range")
+    return f"Price: ${price:,.2f}" + (f" (52-week range ${rng})" if rng else "")
 
 
 def _fmt_valuation_section(key_metrics: dict | None, ratios: dict | None) -> list[str]:

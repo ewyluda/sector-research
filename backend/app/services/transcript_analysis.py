@@ -10,13 +10,13 @@ in tests, not this module).
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from dataclasses import dataclass
 from typing import Literal
 
 from backend.app.clients.fmp import FMPClient
 from backend.app.graph.llm import FAST_MODEL, DEEP_MODEL
+from backend.app.graph.output_parser import extract_json_value
 from backend.app.graph.prompts import (
     TRANSCRIPT_PASS1_SYSTEM,
     TRANSCRIPT_PASS2_SYSTEM,
@@ -60,14 +60,19 @@ async def run_transcript_analysis(
         return TranscriptAnalysisResult(status="no_data", value=None, error=None)
 
     def _parse_pass(raw):
-        """Parse LLM response as JSON, falling back to raw string on failure."""
+        """Parse a pass's JSON. Models wrap it in ```json fences or add a
+        preamble, and a bare json.loads left all 128 stored passes as strings
+        that build_transcript_context then skipped — so transcript analysis
+        never reached a deep-dive prompt. Keep the raw string only when no
+        JSON can be recovered."""
         if isinstance(raw, Exception):
             return str(raw)
         if isinstance(raw, str):
-            try:
-                return json.loads(raw)
-            except (json.JSONDecodeError, ValueError):
+            value = extract_json_value(raw)
+            if value is None:
+                logger.warning("transcript pass returned no JSON for %s; head: %r", ticker, raw[:200])
                 return raw
+            return value
         return raw
 
     try:

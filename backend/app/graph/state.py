@@ -328,6 +328,10 @@ class ResearchState:
     ticker: str
     theme_id: str
     run_id: str
+    # Theme name + description, resolved once at run creation so every prompt
+    # sees the investment theme itself (prompts used to receive the UUID).
+    theme_name: str = ""
+    theme_description: str = ""
 
     # Pipeline position
     phase: str = "quick_screen"

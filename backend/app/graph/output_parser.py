@@ -74,3 +74,28 @@ def parse_structured_output(
         # Pydantic v2 has a readable __str__
         logger.warning("parse_structured_output ValidationError for %s: %s", schema.__name__, e)
         return None, f"ValidationError: {e}"
+
+
+def extract_json_value(raw_text: str) -> object | None:
+    """Return the first JSON object/array embedded in free text, or None.
+
+    For outputs whose shape varies too much for a fixed schema (the transcript
+    passes). Handles markdown fences, prose before the JSON and notes after it:
+    raw_decode stops at the end of the first complete value, so trailing text
+    can't break the parse the way the greedy regex above can.
+    """
+    if not raw_text:
+        return None
+    try:
+        return json.loads(raw_text)
+    except (json.JSONDecodeError, ValueError):
+        pass
+    decoder = json.JSONDecoder()
+    for i, ch in enumerate(raw_text):
+        if ch in "{[":
+            try:
+                value, _end = decoder.raw_decode(raw_text, i)
+            except json.JSONDecodeError:
+                continue
+            return value
+    return None

@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import logging as _logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Callable
 
 from sqlalchemy.exc import IntegrityError as _IntegrityError
@@ -563,6 +563,46 @@ async def step_validation(ctx: WorkspaceContext) -> ValidationOutput:
     )
 
 
+MODEL_DELTA_MAX_CELLS = 30
+NEW_SOURCES_BUDGET_CHARS = 8000
+
+
+def _render_model_deltas(refresh: dict | None) -> str:
+    """The update_refresh step's changed cells, as the challenge prompt reads
+    them. (This slot used to receive the literal placeholder
+    "(see step_outputs.update_refresh.changed_cells)".)"""
+    if not refresh or "error" in refresh:
+        return "(model refresh unavailable this run)"
+    if refresh.get("model_skipped"):
+        return "(no saved model for this ticker — model refresh skipped)"
+    cells = refresh.get("changed_cells") or []
+    lines = [
+        f"  {c.get('cell_path')}: {c.get('prior_value')} -> {c.get('new_value')} ({c.get('source')})"
+        for c in cells[:MODEL_DELTA_MAX_CELLS]
+    ]
+    for d in refresh.get("consensus_delta") or []:
+        lines.append(
+            f"  consensus {d.get('metric')} {d.get('period')}: "
+            f"{d.get('prior_consensus')} -> {d.get('new_consensus')}"
+        )
+    return "\n".join(lines) if lines else "(no model cells changed)"
+
+
+def _render_new_sources(refresh: dict | None, research: dict | None) -> str:
+    """New filings from update_refresh plus the research step's findings.
+    (This slot used to receive the literal placeholder "(no new excerpts)".)"""
+    parts: list[str] = []
+    for f in (refresh or {}).get("new_filings") or []:
+        parts.append(f"New filing: {f.get('form')} {f.get('accession')}")
+    if research and "error" not in research:
+        for h in research.get("highlights") or []:
+            parts.append(f"[{h.get('classification')}] {h.get('text')}")
+        if research.get("summary"):
+            parts.append(f"Research summary: {research['summary']}")
+    text = "\n".join(parts)
+    return text[:NEW_SOURCES_BUDGET_CHARS] if text else "(no new filings or research findings)"
+
+
 async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
     import logging
     from sqlalchemy import select
@@ -628,8 +668,11 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
         prior_thesis=prior_thesis,
         kill_criteria=kill_text,
         catalysts=cat_text,
-        model_deltas="(see step_outputs.update_refresh.changed_cells)",
-        new_sources="(no new excerpts)",
+        model_deltas=_render_model_deltas(ctx.step_outputs.get("update_refresh")),
+        new_sources=_render_new_sources(
+            ctx.step_outputs.get("update_refresh"), ctx.step_outputs.get("research"),
+        ),
+        as_of=date.today().isoformat(),
     )
 
     raw = await deep_complete(system=CHALLENGE_SYSTEM, user=user, anthropic=ctx.anthropic)
@@ -730,6 +773,7 @@ STEP_FUNCTIONS = {
 async def run_steps_in_sequence(ctx: WorkspaceContext, emit: Callable[[dict], None]) -> dict:
     """Run all 5 steps in order. Per-step errors do NOT abort; output dict is keyed by step name."""
     outputs: dict = {}
+    ctx.step_outputs = outputs  # later steps (challenge) read earlier outputs
     for name in STEP_NAMES:
         emit({"type": "step_start", "step": name})
         try:

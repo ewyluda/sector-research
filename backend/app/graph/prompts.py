@@ -43,6 +43,7 @@ Evaluate a ticker across exactly {len(QUICK_SCREEN_DIMENSIONS)} dimensions, then
 
 QUICK_SCREEN_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
 
 Fundamental data:
 {fundamental_data}
@@ -87,6 +88,7 @@ Your output will be one section of a full institutional-grade research report.
 
 DEEP_DIVE_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
 Category: {category}
 
 Available data:
@@ -267,6 +269,7 @@ Your thesis must be:
 
 THESIS_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
 
 ## Established findings (reference these — do NOT restate)
 
@@ -332,7 +335,11 @@ Your job:
 
 RISK_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
 Loop count: {loop_count}/2
+
+## Market data
+{market_data}
 
 ## Thesis to stress-test (do NOT re-derive the underlying analysis)
 
@@ -380,6 +387,7 @@ POSITION_SYSTEM = """You are building a structured position plan for an approved
 ## Rules
 - Output ONLY the JSON object. No backticks, no commentary, no preamble.
 - Be specific with numbers. No vague ranges — use exact price levels.
+- Anchor every price level (entry, stop, add triggers) to the current price in Market data. Never assume a price; if Market data has no current price, say so in entry_rationale and express levels as % from the current price.
 - Reference the conviction score when justifying position size.
 - Entry rationale must cite both a technical level and a fundamental anchor.
 - Stop loss must be a specific price or percentage, not "below support".
@@ -387,8 +395,12 @@ POSITION_SYSTEM = """You are building a structured position plan for an approved
 - Invalidation conditions are thesis-BREAKING, not just risks — they mean full exit."""
 
 POSITION_USER = """Ticker: {ticker}
+As of: {as_of}
 Conviction score: {conviction_score}/100
 Thesis status: {thesis_status}
+
+Market data:
+{market_data}
 
 Thesis summary:
 {thesis_summary}

@@ -84,6 +84,64 @@ logger = logging.getLogger(__name__)
 # Seconds per deep-dive category. Sized for a thinking model (Opus 5.5 at
 # medium effort); the llm_call log lines report the real latency per call.
 CATEGORY_TIMEOUT = 300
+
+# Theme descriptions are free text pasted by the user and can run to several
+# thousand characters; the prompt gets the name plus a bounded excerpt.
+THEME_DESCRIPTION_BUDGET_CHARS = 1200
+
+
+def _theme_context(state: ResearchState) -> str:
+    """The investment theme as the model should see it: name + description."""
+    if not state.theme_name:
+        return "(theme not recorded for this run)"
+    desc = " ".join(state.theme_description.split())[:THEME_DESCRIPTION_BUDGET_CHARS]
+    return f"{state.theme_name} — {desc}" if desc else state.theme_name
+
+
+def _market_data_block(state: ResearchState) -> str:
+    """Price context for steps that talk about levels or reward/risk. Without
+    it the model invents a price (VRT plan assumed ~$100; actual ~$300)."""
+    cf = state.curated_financials or {}
+    price = cf.get("current_price")
+    if not isinstance(price, (int, float)) or price <= 0:
+        return "(no current price available)"
+    lines = [f"Current price: ${price:,.2f}"]
+    lo, hi = cf.get("fifty_two_week_low"), cf.get("fifty_two_week_high")
+    if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+        lines.append(f"52-week range: ${lo:,.2f} – ${hi:,.2f}")
+    last = (cf.get("daily_prices") or [{}])[-1] or {}
+    tech = [
+        f"{label} ${last[key]:,.2f}" for key, label in (("sma_50", "SMA50"), ("sma_200", "SMA200"))
+        if isinstance(last.get(key), (int, float))
+    ]
+    if isinstance(last.get("rsi"), (int, float)):
+        tech.append(f"RSI14 {last['rsi']:.0f}")
+    if tech:
+        lines.append("Technicals: " + ", ".join(tech))
+    dcf = cf.get("dcf_intrinsic_value")
+    if isinstance(dcf, (int, float)):
+        # A non-positive DCF value (negative FCF) makes a "gap" meaningless.
+        lines.append(f"FMP DCF value: ${dcf:,.2f}" if dcf > 0 else "FMP DCF value: n/m (non-positive)")
+    return "\n".join(lines)
+
+
+def _category_analysis_text(result: CategoryResult) -> str:
+    """What the thesis step reads per category: the rationale, the analysis
+    and the stated data gaps. (It used to get content[:800] — the head of the
+    raw JSON, which ends before the analysis field starts.)"""
+    st = result.structured or {}
+    if not st.get("analysis"):
+        return result.content[:3000]
+    parts = [st.get("score_rationale", ""), st["analysis"]]
+    gaps = st.get("data_gaps") or []
+    if gaps:
+        parts.append("Data gaps: " + "; ".join(gaps))
+    return "\n\n".join(p for p in parts if p)
+
+
+def _as_of() -> str:
+    """Today's date, so catalyst timing and 'within N days' rules have an anchor."""
+    return date.today().isoformat()
 TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
 
 
@@ -154,7 +212,8 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             system=QUICK_SCREEN_SYSTEM,
             user=QUICK_SCREEN_USER.format(
                 ticker=state.ticker,
-                theme=state.theme_id,
+                theme=_theme_context(state),
+                as_of=_as_of(),
                 fundamental_data=fundamentals_text,
             ),
             output_model=QuickScreenOutput,
@@ -212,7 +271,7 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
 async def _run_one_category(
     category: str,
     ticker: str,
-    theme_id: str,
+    theme: str,
     data: str,
     loop_context: str,
     transcript_context: str = "",
@@ -232,7 +291,8 @@ async def _run_one_category(
                 system=DEEP_DIVE_SYSTEM.format(category=category),
                 user=DEEP_DIVE_USER.format(
                     ticker=ticker,
-                    theme=theme_id,
+                    theme=theme,
+                    as_of=_as_of(),
                     category=category,
                     data=data,
                     transcript_data=transcript_context,
@@ -526,7 +586,7 @@ async def node_deep_dive(
     # Run all categories in parallel
     tasks = [
         _run_one_category(
-            cat, state.ticker, state.theme_id, data_text, loop_ctx_str,
+            cat, state.ticker, _theme_context(state), data_text, loop_ctx_str,
             category_contexts[cat]["transcript"], category_contexts[cat]["macro"],
             category_contexts[cat]["technical"], category_contexts[cat]["sentiment"],
             category_contexts[cat]["edgar"],
@@ -724,7 +784,7 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
         if isinstance(result, CategoryResult):
             top_findings = "; ".join(result.key_findings[:2]) if result.key_findings else "No key findings"
             summary_lines.append(f"- {cat}: {result.score}/100 — {top_findings}")
-            results_text += f"\n\n## {cat} (Score: {result.score}/100)\n{result.content[:800]}"
+            results_text += f"\n\n## {cat} (Score: {result.score}/100)\n{_category_analysis_text(result)}"
         else:
             summary_lines.append(f"- {cat}: FAILED — {result.reason}")
             results_text += f"\n\n## {cat}\n[FAILED: {result.reason}]"
@@ -751,7 +811,8 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
             system=THESIS_SYSTEM,
             user=THESIS_USER.format(
                 ticker=state.ticker,
-                theme=state.theme_id,
+                theme=_theme_context(state),
+                as_of=_as_of(),
                 quick_screen_verdict=qs_verdict,
                 quick_screen_score=qs_score,
                 quick_screen_thesis=qs_thesis,
@@ -835,9 +896,13 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
             system=RISK_SYSTEM,
             user=RISK_USER.format(
                 ticker=state.ticker,
-                theme=state.theme_id,
+                theme=_theme_context(state),
+                as_of=_as_of(),
                 loop_count=state.loop_count,
-                thesis=thesis_text[:2000],
+                market_data=_market_data_block(state),
+                # Full thesis: bear case, catalysts and kill criteria sit past
+                # the first ~2.5K chars, and the stress test must see them.
+                thesis=thesis_text,
                 scores=scores_text,
             ),
             model=DEEP_MODEL,
@@ -918,16 +983,18 @@ async def node_position_monitor(state: ResearchState) -> ResearchState:
     state.phase = "position_monitor"
 
     thesis_output = state.phase_outputs.get("thesis", {})
-    thesis_text = thesis_output.get("content", "")[:1000] if isinstance(thesis_output, dict) else ""
+    thesis_text = thesis_output.get("content", "") if isinstance(thesis_output, dict) else ""
 
     risk_output = state.phase_outputs.get("risk", {})
-    risk_text = risk_output.get("content", "")[:800] if isinstance(risk_output, dict) else ""
+    risk_text = risk_output.get("content", "") if isinstance(risk_output, dict) else ""
 
     try:
         parsed = await complete_structured(
             system=POSITION_SYSTEM,
             user=POSITION_USER.format(
                 ticker=state.ticker,
+                as_of=_as_of(),
+                market_data=_market_data_block(state),
                 conviction_score=state.conviction_score,
                 thesis_status=state.thesis_status,
                 thesis_summary=thesis_text,
