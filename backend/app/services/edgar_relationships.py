@@ -23,8 +23,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import HAIKU, complete
-from backend.app.graph.output_parser import parse_structured_output
+from backend.app.graph.llm import HAIKU, complete_structured
 from backend.app.models.filing import Filing, FilingSection, Relationship
 
 logger = logging.getLogger(__name__)
@@ -166,26 +165,17 @@ async def _call_haiku_on_section(
         text=truncated,
     )
     try:
-        raw = await complete(
+        parsed = await complete_structured(
             system=_SYSTEM_PROMPT,
             user=prompt,
+            output_model=ExtractionResult,
             model=HAIKU,
             max_tokens=3000,
-            # Prefill locks Haiku into JSON-first output.
-            assistant_prefill='{"relationships":',
         )
     except Exception as e:
         logger.warning("Haiku relationship call failed for %s %s: %s",
                        ticker, section_key, e)
         return [], f"haiku_call_failed: {e}"
-
-    parsed, err = parse_structured_output(raw, ExtractionResult)
-    if parsed is None:
-        logger.warning(
-            "relationship parse failed for %s %s: %s; raw head: %r",
-            ticker, section_key, err, raw[:400],
-        )
-        return [], err or "unknown_parse_error"
     return parsed.relationships, None
 
 

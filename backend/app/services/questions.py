@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import SONNET, complete
+from backend.app.graph.llm import SONNET, complete_structured
 from backend.app.graph.nodes import _build_targeted_followup_user_msg
 from backend.app.graph.state import ResearchState
 from backend.app.models.question import Question
@@ -150,14 +150,13 @@ async def retry_auto_answer(
     )
 
     try:
-        raw = await complete(
+        parsed = await complete_structured(
             model=SONNET,
             system=_RETRY_SYSTEM,
             user=user_msg,
+            output_model=_RetryAnswer,
             max_tokens=600,
-            assistant_prefill='{"answer_text":',
         )
-        parsed = _RetryAnswer.model_validate_json(raw)
         answer = parsed.answer_text
     except Exception as e:  # noqa: BLE001
         logger.exception("retry_auto failed for question %s", question.id)

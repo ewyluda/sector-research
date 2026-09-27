@@ -16,13 +16,13 @@ import json
 import logging
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
-from backend.app.graph.llm import HAIKU, complete
+from backend.app.graph.llm import HAIKU, LLMOutputError, complete_structured
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.research_run import ResearchRun
@@ -108,18 +108,16 @@ async def extract_guidance_direction(
         return None
 
     excerpt = transcript_text[:6000]
-    raw = await complete(
-        model=HAIKU,
-        system=GUIDANCE_EXTRACTION_SYSTEM,
-        user=excerpt,
-        assistant_prefill='{"guidance_direction":',
-        max_tokens=200,
-    )
-    full_json = raw
     try:
-        return GuidanceOutput.model_validate_json(full_json)
-    except Exception:
-        logger.exception("GuidanceOutput parse failed: raw=%s", raw[:200])
+        return await complete_structured(
+            model=HAIKU,
+            system=GUIDANCE_EXTRACTION_SYSTEM,
+            user=excerpt,
+            output_model=GuidanceOutput,
+            max_tokens=200,
+        )
+    except (LLMOutputError, ValidationError):
+        logger.exception("GuidanceOutput extraction failed")
         return None
 
 
@@ -184,18 +182,16 @@ async def compute_verdict(
         "transcript_excerpt": transcript_excerpt,
     }
 
-    raw = await complete(
-        model=HAIKU,
-        system=EARNINGS_VERDICT_SYSTEM,
-        user=json.dumps(user_payload, indent=2),
-        assistant_prefill='{"verdict":',
-        max_tokens=900,
-    )
-    full_json = raw
     try:
-        parsed = VerdictOutput.model_validate_json(full_json)
-    except Exception as e:
-        logger.exception("VerdictOutput parse failed: raw=%s", raw[:300])
+        parsed = await complete_structured(
+            model=HAIKU,
+            system=EARNINGS_VERDICT_SYSTEM,
+            user=json.dumps(user_payload, indent=2),
+            output_model=VerdictOutput,
+            max_tokens=900,
+        )
+    except (LLMOutputError, ValidationError) as e:
+        logger.exception("VerdictOutput generation failed")
         raise ValueError(f"verdict parse failed: {e}") from e
 
     stmt = pg_insert(ThesisPrintVerdict).values(

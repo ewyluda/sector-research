@@ -15,8 +15,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import HAIKU, complete
-from backend.app.graph.output_parser import parse_structured_output
+from backend.app.graph.llm import HAIKU, complete_structured
 from backend.app.models.filing import (
     CompetitorLandscape,
     Filing,
@@ -194,26 +193,18 @@ async def _call_haiku_on_item_1(
         text=truncated,
     )
     try:
-        raw = await complete(
+        parsed = await complete_structured(
             system=_SYSTEM_PROMPT,
             user=prompt,
+            output_model=ExtractionResult,
             model=HAIKU,
             max_tokens=4000,
-            assistant_prefill='{"segments":',
         )
     except Exception as e:
         logger.warning(
             "Haiku competition call failed for %s: %s", ticker, e,
         )
         return None, f"haiku_call_failed: {e}"
-
-    parsed, err = parse_structured_output(raw, ExtractionResult)
-    if parsed is None:
-        logger.warning(
-            "competition parse failed for %s: %s; raw head: %r",
-            ticker, err, raw[:400],
-        )
-        return None, err or "unknown_parse_error"
     return parsed, None
 
 

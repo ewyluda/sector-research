@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     fmp_base_url: str = "https://financialmodelingprep.com/stable"
     x_base_url: str = "https://api.twitter.com/2"
 
+    # ── LLM models ────────────────────────────────────────────────────────────
+    # Override per environment (e.g. LLM_MODEL_SONNET=claude-sonnet-5).
+    llm_model_sonnet: str = "claude-sonnet-4-6"
+    llm_model_haiku: str = "claude-haiku-4-5-20251001"
+
     # ── App ───────────────────────────────────────────────────────────────────
     log_level: str = "INFO"
     cors_origins: list[str] = [

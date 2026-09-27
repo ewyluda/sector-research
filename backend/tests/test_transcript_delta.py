@@ -5,6 +5,8 @@ import asyncio
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
+from backend.tests.llm_fakes import structured_returning
 from uuid import uuid4
 
 from sqlalchemy import text
@@ -207,8 +209,8 @@ class TestComputeDeltaPersistsAndTrims(unittest.TestCase):
         async def go():
             async with Session() as db:
                 with patch(
-                    "backend.app.services.transcript_delta.complete",
-                    new=AsyncMock(return_value=llm_payload),
+                    "backend.app.services.transcript_delta.complete_structured",
+                    new=structured_returning(llm_payload),
                 ):
                     row = await compute_delta(
                         ticker="NVDA", db=db, fmp=fmp, force=False,
@@ -277,8 +279,8 @@ class TestComputeDeltaPersistsAndTrims(unittest.TestCase):
                 fmp = MagicMock()
                 fmp.get_earnings_transcript = AsyncMock(side_effect=side_effects)
                 with patch(
-                    "backend.app.services.transcript_delta.complete",
-                    new=AsyncMock(return_value=llm_payload),
+                    "backend.app.services.transcript_delta.complete_structured",
+                    new=structured_returning(llm_payload),
                 ):
                     await compute_delta(ticker="NVDA", db=db, fmp=fmp, force=False)
 
@@ -358,8 +360,8 @@ class TestComputeDeltaPersistsAndTrims(unittest.TestCase):
                 await db.commit()
 
                 with patch(
-                    "backend.app.services.transcript_delta.complete",
-                    new=AsyncMock(return_value=updated_llm_payload),
+                    "backend.app.services.transcript_delta.complete_structured",
+                    new=structured_returning(updated_llm_payload),
                 ):
                     result = await compute_delta(
                         ticker="NVDA", db=db, fmp=fmp, force=True,

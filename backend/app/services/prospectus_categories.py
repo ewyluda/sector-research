@@ -7,10 +7,9 @@ prompt assembled from the S-1 sections it cares about.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 
-from backend.app.graph.llm import SONNET, complete
+from backend.app.graph.llm import SONNET, complete_structured
 from backend.app.graph.prospectus_prompts import (
     CATEGORY_FOCUS,
     CATEGORY_SECTION_ROUTING,
@@ -76,16 +75,13 @@ async def _run_one_category(
     if focus:
         user = user + "\n\n## Per-category focus\n\n" + focus
 
-    raw = await complete(
+    return await complete_structured(
         system=PROSPECTUS_SYSTEM.format(category=category),
         user=user,
+        output_model=ProspectusCategoryResult,
         model=SONNET,
         max_tokens=3072,
-        assistant_prefill='{"category":',
     )
-    candidate = raw if raw.lstrip().startswith("{") else '{"category":' + raw
-    payload = json.loads(candidate)
-    return ProspectusCategoryResult.model_validate(payload)
 
 
 async def run_categories(

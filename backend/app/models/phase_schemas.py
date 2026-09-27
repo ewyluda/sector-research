@@ -65,6 +65,22 @@ class QuickScreenOutput(BaseModel):
         return v
 
 
+def quick_screen_score(dimensions: list[QuickScreenDimension]) -> int:
+    """Overall score is the sum of the five 0–20 dimension scores — computed in
+    code, because the model's own `overall_score` disagreed with its dimensions
+    in 10 of 22 runs (snapping to 72/42/28)."""
+    return sum(d.score for d in dimensions)
+
+
+def quick_screen_recommendation(score: int) -> Literal["GO", "WATCHLIST", "PASS"]:
+    """The ladder the prompt describes, enforced in code."""
+    if score >= 60:
+        return "GO"
+    if score >= 35:
+        return "WATCHLIST"
+    return "PASS"
+
+
 # ── Thesis Construction ──────────────────────────────────────────────────────
 
 class ThesisPoint(BaseModel):

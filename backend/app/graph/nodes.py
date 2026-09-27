@@ -28,12 +28,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-import traceback
 from datetime import date
 
 from backend.app.clients.fmp import FMPClient, recent_13f_quarters
 from backend.app.clients.fred import FREDClient
 from backend.app.db import async_session, unit_of_work
+from backend.app.logging_filters import redact_secrets
 from backend.app.graph.deep_dive_context import DeepDiveContext, build_all_contexts
 from backend.app.graph.deep_dive_helpers import (
     unwrap_gather_citation,
@@ -47,7 +47,7 @@ from backend.app.graph.formatters import (  # noqa: F401  re-exported for backwa
     _first_metric,
     _fmt_fundamentals,
 )
-from backend.app.graph.llm import complete, SONNET, HAIKU
+from backend.app.graph.llm import complete, complete_structured, SONNET, HAIKU
 from backend.app.graph.output_parser import parse_structured_output
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
@@ -60,7 +60,11 @@ from backend.app.graph.prompts import (
 from backend.app.graph.state import (
     ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
-from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput, TargetedAnswer
+from backend.app.models.phase_schemas import (
+    QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput,
+    DeepDiveCategoryOutput, TargetedAnswer,
+    quick_screen_recommendation, quick_screen_score,
+)
 from backend.app.services.catalyst_promotion import promote_catalysts
 from backend.app.services.edgar_transcripts_relationships import (
     TRANSCRIPT_QUARTER_LIMIT,
@@ -144,45 +148,41 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             profile[0] if isinstance(profile, list) and profile else profile or {},
         )
 
-        response = await complete(
+        parsed = await complete_structured(
             system=QUICK_SCREEN_SYSTEM,
             user=QUICK_SCREEN_USER.format(
                 ticker=state.ticker,
                 theme=state.theme_id,
                 fundamental_data=fundamentals_text,
             ),
+            output_model=QuickScreenOutput,
             model=HAIKU,
             max_tokens=2500,
-            assistant_prefill="{",
         )
 
-        parsed, parse_err = parse_structured_output(response, QuickScreenOutput)
-
-        if parsed is not None:
-            score = parsed.overall_score
-            recommendation = parsed.recommendation
-            structured = parsed.model_dump()
-        else:
-            # Fallback — preserves original behavior so runs still complete.
-            logger.warning(
-                "[%s] quick_screen JSON parse failed: %s", state.ticker, parse_err
+        # Score and verdict are derived in code from the dimension scores;
+        # the model's own totals are kept only for auditing disagreement.
+        score = quick_screen_score(parsed.dimensions)
+        recommendation = quick_screen_recommendation(score)
+        if (score, recommendation) != (parsed.overall_score, parsed.recommendation):
+            logger.info(
+                "[%s] quick_screen model said %d/%s; dimensions sum to %d/%s",
+                state.ticker, parsed.overall_score, parsed.recommendation,
+                score, recommendation,
             )
-            score = _extract_score(response)
-            if score >= 60:
-                recommendation = "GO"
-            elif score >= 35:
-                recommendation = "WATCHLIST"
-            else:
-                recommendation = "PASS"
-            structured = None
+        structured = parsed.model_copy(
+            update={"overall_score": score, "recommendation": recommendation}
+        ).model_dump()
 
         state.phase_outputs["quick_screen"] = {
             "__type__": "PhaseOutput",
-            "content": response,
+            "content": parsed.model_dump_json(),
             "structured": structured,
             "score": score,
             "recommendation": recommendation,
-            "parse_error": parse_err,
+            "model_overall_score": parsed.overall_score,
+            "model_recommendation": parsed.recommendation,
+            "parse_error": None,
         }
         state.scores["quick_screen"] = score
 
@@ -193,11 +193,12 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
         state.status = "in_progress"
 
     except Exception as e:
-        logger.error("[%s] quick_screen failed: %s", state.ticker, e)
+        logger.exception("[%s] quick_screen failed", state.ticker)
+        # Stored state is served by /api/runs — redacted message only; the
+        # traceback stays in the server log.
         state.phase_outputs["quick_screen"] = {
             "__type__": "PhaseError",
-            "reason": str(e),
-            "traceback": traceback.format_exc(),
+            "reason": redact_secrets(str(e)),
         }
         state.status = "error"
 
@@ -273,8 +274,8 @@ async def _run_one_category(
         logger.warning("[%s] Category '%s' timed out after %ds", ticker, category, CATEGORY_TIMEOUT)
         return CategoryError(category=category, reason=f"Timeout after {CATEGORY_TIMEOUT}s")
     except Exception as e:
-        logger.error("[%s] Category '%s' failed: %s", ticker, category, e)
-        return CategoryError(category=category, reason=str(e), traceback=traceback.format_exc())
+        logger.exception("[%s] Category '%s' failed", ticker, category)
+        return CategoryError(category=category, reason=redact_secrets(str(e)))
 
 
 async def node_deep_dive(
@@ -658,14 +659,13 @@ async def node_targeted_followup(state: ResearchState) -> ResearchState:
         )
 
         try:
-            raw = await complete(
+            parsed = await complete_structured(
                 model=SONNET,
                 system=TARGETED_FOLLOWUP_SYSTEM,
                 user=user_msg,
+                output_model=TargetedAnswer,
                 max_tokens=600,
-                assistant_prefill='{"answer_text":',
             )
-            parsed = TargetedAnswer.model_validate_json(raw)
             return snap["id"], parsed.answer_text
         except Exception:  # noqa: BLE001
             logger.exception("targeted_followup failed for question %s — leaving open", snap["id"])
@@ -922,7 +922,7 @@ async def node_position_monitor(state: ResearchState) -> ResearchState:
     risk_text = risk_output.get("content", "")[:800] if isinstance(risk_output, dict) else ""
 
     try:
-        response = await complete(
+        parsed = await complete_structured(
             system=POSITION_SYSTEM,
             user=POSITION_USER.format(
                 ticker=state.ticker,
@@ -931,37 +931,24 @@ async def node_position_monitor(state: ResearchState) -> ResearchState:
                 thesis_summary=thesis_text,
                 risk_summary=risk_text,
             ),
+            output_model=PositionMonitorOutput,
             model=HAIKU,
             max_tokens=2000,
-            assistant_prefill="{",
         )
-
-        parsed, parse_err = parse_structured_output(response, PositionMonitorOutput)
-
-        if parsed is not None:
-            structured = parsed.model_dump()
-        else:
-            logger.warning(
-                "[%s] position JSON parse failed: %s", state.ticker, parse_err
-            )
-            structured = None
 
         state.phase_outputs["position"] = {
             "__type__": "PhaseOutput",
-            "content": response,
-            "structured": structured,
-            "parse_error": parse_err,
+            "content": parsed.model_dump_json(),
+            "structured": parsed.model_dump(),
+            "parse_error": None,
         }
         state.status = "completed"
         state.phase = "completed"
-        logger.info(
-            "[%s] position_monitor complete — run finished (structured=%s)",
-            state.ticker, structured is not None,
-        )
+        logger.info("[%s] position_monitor complete — run finished", state.ticker)
 
     except Exception as e:
-        logger.error("[%s] position_monitor failed: %s", state.ticker, e)
-        state.phase_outputs["position"] = {"__type__": "PhaseError", "reason": str(e)}
+        logger.exception("[%s] position_monitor failed", state.ticker)
+        state.phase_outputs["position"] = {"__type__": "PhaseError", "reason": redact_secrets(str(e))}
         state.status = "completed"
         state.phase = "completed"
 

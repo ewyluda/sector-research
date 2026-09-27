@@ -5,7 +5,7 @@ import json
 import logging
 from typing import Any
 
-from backend.app.graph.llm import SONNET, complete
+from backend.app.graph.llm import SONNET, complete_structured
 from backend.app.models.prospectus_schemas import (
     CategoriesStepOutput,
     ProspectusThesisOutput,
@@ -72,13 +72,10 @@ async def synthesize_thesis(
         f"## Per-Category Analyses\n\n{_categories_to_prompt_block(categories)}\n\n"
         f"Produce the JSON thesis now."
     )
-    raw = await complete(
+    return await complete_structured(
         system=THESIS_SYSTEM,
         user=user,
+        output_model=ProspectusThesisOutput,
         model=SONNET,
         max_tokens=4096,
-        assistant_prefill='{"thesis_statement":',
     )
-    candidate = raw if raw.lstrip().startswith("{") else '{"thesis_statement":' + raw
-    payload = json.loads(candidate)
-    return ProspectusThesisOutput.model_validate(payload)

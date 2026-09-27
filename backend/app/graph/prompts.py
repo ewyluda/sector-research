@@ -38,7 +38,7 @@ Evaluate a ticker across exactly {len(QUICK_SCREEN_DIMENSIONS)} dimensions, then
 - Every dimension must appear exactly once, with the name spelled exactly as listed above, in that order.
 - Be calibrated. A score of 14/20 is "solid", 18 is "exceptional". Most companies fall 10-14.
 - If data is unavailable for a dimension, still produce a rationale that calls it out explicitly and score conservatively.
-- Recommendation ladder: overall_score >= 60 => GO, 35-59 => WATCHLIST, < 35 => PASS.
+- overall_score is the sum of the five dimension scores. Recommendation ladder: overall_score >= 60 => GO, 35-59 => WATCHLIST, < 35 => PASS.
 """
 
 QUICK_SCREEN_USER = """Ticker: {ticker}

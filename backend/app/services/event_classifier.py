@@ -1,7 +1,7 @@
 """8-K event classifier — item-code prefilter + one Haiku call per filing.
 
-Same structured-output pattern as edgar_relationships.py: `complete()` with
-an assistant prefill, parsed via parse_structured_output. Never raises —
+Same pattern as edgar_relationships.py: native structured outputs via
+`complete_structured`. Never raises —
 all error paths return (None, error_string).
 """
 from __future__ import annotations
@@ -11,8 +11,7 @@ import logging
 from bs4 import BeautifulSoup
 from pydantic import BaseModel, Field
 
-from backend.app.graph.llm import HAIKU, complete
-from backend.app.graph.output_parser import parse_structured_output
+from backend.app.graph.llm import HAIKU, complete_structured
 
 logger = logging.getLogger(__name__)
 
@@ -107,22 +106,16 @@ async def classify_8k(
         text=plain,
     )
     try:
-        raw = await complete(
+        parsed = await complete_structured(
             system=_SYSTEM_PROMPT,
             user=prompt,
+            output_model=EventClassification,
             model=HAIKU,
             max_tokens=600,
-            assistant_prefill='{"event_type":',
         )
     except Exception as e:
         logger.warning("8-K classify call failed for %s: %s", ticker, e)
         return None, f"haiku_call_failed: {e}"
-
-    parsed, err = parse_structured_output(raw, EventClassification)
-    if parsed is None:
-        logger.warning("8-K classify parse failed for %s: %s; raw head: %r",
-                       ticker, err, raw[:300])
-        return None, err or "unknown_parse_error"
 
     event_type = parsed.event_type.strip().lower()
     if event_type not in ALLOWED_EVENT_TYPES:

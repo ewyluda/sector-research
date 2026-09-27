@@ -1,10 +1,11 @@
 """Tests for prospectus_categories.run_categories."""
 import json
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from backend.app.services.prospectus_categories import run_categories
 from backend.app.models.prospectus_schemas import CategoriesStepOutput
+from backend.tests.llm_fakes import structured_from
 
 
 def _category_payload(name: str, score: int = 65) -> str:
@@ -29,8 +30,8 @@ class TestRunCategories(unittest.IsolatedAsyncioTestCase):
                     return _category_payload(cat)
             return _category_payload("UNKNOWN")
 
-        with patch("backend.app.services.prospectus_categories.complete",
-                   new=AsyncMock(side_effect=fake_complete)):
+        with patch("backend.app.services.prospectus_categories.complete_structured",
+                   new=structured_from(fake_complete)):
             out = await run_categories(
                 issuer_name="ACME Rockets",
                 filing_date="2026-05-20",
@@ -70,8 +71,8 @@ class TestRunCategories(unittest.IsolatedAsyncioTestCase):
                     return _category_payload(cat)
             return _category_payload("?")
 
-        with patch("backend.app.services.prospectus_categories.complete",
-                   new=AsyncMock(side_effect=fake_complete)):
+        with patch("backend.app.services.prospectus_categories.complete_structured",
+                   new=structured_from(fake_complete)):
             out = await run_categories(
                 issuer_name="X", filing_date="2026-05-20", form_type="S-1",
                 sections_text={k: "x" for k in (
