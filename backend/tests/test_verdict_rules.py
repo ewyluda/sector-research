@@ -121,3 +121,29 @@ class ThesisNodeTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThesisSchemaOrderTests(unittest.TestCase):
+    """Structured output is generated in schema order. With conviction first the
+    model committed to a middle score before deciding the call (29 of 30 eval
+    theses: avoid at 55-58). The order must stay valuation → targets → stance →
+    conviction."""
+
+    def test_the_call_is_reasoned_before_conviction(self):
+        from backend.app.models.phase_schemas import ThesisLLMOutput
+        order = list(ThesisLLMOutput.model_fields)
+        self.assertLess(order.index("valuation_basis"), order.index("price_targets"))
+        self.assertLess(order.index("price_targets"), order.index("stance"))
+        self.assertLess(order.index("stance"), order.index("conviction_score"))
+
+    def test_prompt_no_longer_anchors_targets_on_the_price(self):
+        from backend.app.graph.prompts import THESIS_SYSTEM
+        self.assertNotIn("anchored to the current price", THESIS_SYSTEM)
+        self.assertNotIn("no edge either way", THESIS_SYSTEM)
+        # The example JSON lists fields in the same order the schema generates them.
+        self.assertLess(THESIS_SYSTEM.index('"valuation_basis"'), THESIS_SYSTEM.index('"stance"'))
+        self.assertLess(THESIS_SYSTEM.index('"stance"'), THESIS_SYSTEM.index('"conviction_score"'))
+
+    def test_thesis_prompt_date_can_be_pinned(self):
+        state = ResearchState(ticker="NVDA", theme_id="t", run_id="r")
+        self.assertIn("As of: 2026-05-04", nodes.build_thesis_user_message(state, as_of="2026-05-04"))

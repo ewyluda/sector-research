@@ -105,6 +105,11 @@ CANNED: dict[str, dict] = {
         "catalysts": [{"timeframe": "Q4 2026", "description": f"Catalyst {i}", "type": "earnings"} for i in range(3)],
         "conviction_score": 58, "conviction_rationale": "Fixture rationale.",
         "stance": "long", "time_horizon": "12 months",
+        "valuation_basis": "Fixture: 20x forward EBITDA.",
+        "kill_criteria": [{"condition": "Margin falls", "threshold": "GM < 30% two quarters", "monitoring_source": "10-Q"}],
+        "pre_mortem": {"framing": "Imagine it's 18 months from now and this thesis is dead. What killed it?",
+                       "failure_modes": [{"mode": f"Mode {i}", "leading_indicator": "Signal", "probability": "Low"}
+                                         for i in range(3)]},
         # Targets are relative to the recorded price at request time; see FakeAnthropic.
         "price_targets": {"bear": 1.0, "base": 1.0, "bull": 1.0},
     },

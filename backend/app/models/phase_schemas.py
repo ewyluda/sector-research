@@ -152,13 +152,31 @@ class ThesisOutput(BaseModel):
     stance: Stance | None = None
     time_horizon: str | None = Field(default=None, max_length=60)
     price_targets: PriceTargets | None = None
+    # How the base target was derived (2026-09-28); absent on older runs.
+    valuation_basis: str | None = Field(default=None, max_length=2000)
 
 
-class ThesisLLMOutput(ThesisOutput):
-    """The schema the model is constrained to: the call is mandatory."""
+class ThesisLLMOutput(BaseModel):
+    """The schema the model is constrained to. The call is mandatory, and the
+    field ORDER is deliberate: structured output is generated in schema order,
+    so the model states its valuation, then targets, then the stance they imply,
+    and only then its conviction. With conviction first (the ThesisOutput order)
+    it committed to a middle score before deciding anything, and 29 of 30 eval
+    theses came out 'avoid' at conviction 55-58 (backend/evals/README.md).
+    Convert with ThesisOutput.model_validate(out.model_dump()) for storage."""
+    core_thesis: str = Field(..., min_length=1, max_length=4000)
+    bull_case: list[ThesisPoint] = Field(..., min_length=2, max_length=5)
+    bear_case: list[ThesisPoint] = Field(..., min_length=2, max_length=5)
+    variant_perception: str = Field(..., min_length=1, max_length=2000)
+    valuation_basis: str = Field(..., min_length=1, max_length=2000)
+    price_targets: PriceTargets
     stance: Stance
     time_horizon: str = Field(..., min_length=1, max_length=60)
-    price_targets: PriceTargets
+    conviction_score: int = Field(..., ge=0, le=100)
+    conviction_rationale: str = Field(..., min_length=1, max_length=2000)
+    catalysts: list[Catalyst] = Field(..., min_length=3, max_length=5)
+    kill_criteria: list[KillCriterion] = Field(..., min_length=1, max_length=5)
+    pre_mortem: PreMortem
 
 
 def reward_risk(stance: str | None, price: float | None, targets: PriceTargets | dict | None) -> float | None:
