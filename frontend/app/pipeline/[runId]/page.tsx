@@ -183,6 +183,8 @@ export default function PipelineRunnerPage() {
   // opened an SSE stream and a 5s poll for every finished report.
   const [isLive, setIsLive] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [streamError, setStreamError] = useState<string | null>(null);
 
   // Phase data
   const [quickScreenStructured, setQuickScreenStructured] = useState<QuickScreenStructured | null>(null);
@@ -308,6 +310,10 @@ export default function PipelineRunnerPage() {
         // Seed structured data from phase_outputs if available
         seedFromRunDetail(r);
       }
+    }).catch((e) => {
+      // A 404 is "not found"; anything else (network, 5xx) says so instead.
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.startsWith("API 404")) setLoadError(msg);
     }).finally(() => setLoading(false));
   }, [runId, loadReportData]);
 
@@ -519,7 +525,11 @@ export default function PipelineRunnerPage() {
         break;
 
       case "error":
-        // Keep isLive true so user sees something went wrong
+        // The run failed mid-phase: stop the live view and show why; the
+        // report data that did persist still loads.
+        setStreamError(`${event.phase.replace(/_/g, " ")}: ${event.message}`);
+        setIsLive(false);
+        loadReportData(runId);
         break;
 
       case "token":
@@ -581,20 +591,20 @@ export default function PipelineRunnerPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 rounded-full border-2 border-[var(--color-primary)] border-t-transparent animate-spin" />
           <span className="text-sm text-[var(--color-text-muted)]">Loading research run...</span>
         </div>
-      </main>
+      </div>
     );
   }
 
   if (!run) {
     return (
-      <main className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
-        <p className="text-[var(--color-text-muted)]">Run not found.</p>
-      </main>
+      <div className="min-h-screen bg-[var(--color-bg)] flex items-center justify-center">
+        <p className="text-[var(--color-text-muted)]">{loadError ? `Couldn't load this run: ${loadError}` : "Run not found."}</p>
+      </div>
     );
   }
 
@@ -603,7 +613,7 @@ export default function PipelineRunnerPage() {
   const loopCount = run.loop_count ?? report?.loop_count ?? 0;
 
   return (
-    <main className="min-h-screen bg-[var(--color-bg)] p-6">
+    <div className="min-h-screen bg-[var(--color-bg)] p-6">
       <div className="max-w-7xl mx-auto space-y-6">
           {run && (
             <div className="flex items-center justify-between gap-3">
@@ -645,6 +655,13 @@ export default function PipelineRunnerPage() {
 
           {/* Progress indicator for live runs */}
           {isLive && <LiveProgressBar currentPhase={currentPhase} startedAt={run?.created_at} />}
+
+          {streamError && run.status !== "error" && (
+            <div className="rounded-lg border border-[var(--error-border)] bg-[var(--error-bg)] p-4">
+              <p className="text-sm font-semibold text-[var(--error-text)]">Pipeline error</p>
+              <p className="text-xs text-[var(--error-text)]/70 mt-1">{streamError}</p>
+            </div>
+          )}
 
           {/* Error banner for failed runs */}
           {!isLive && run.status === "error" && (
@@ -810,6 +827,6 @@ export default function PipelineRunnerPage() {
             </div>
           )}
       </div>
-    </main>
+    </div>
   );
 }

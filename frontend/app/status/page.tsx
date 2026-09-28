@@ -532,7 +532,7 @@ export default function StatusPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-5">
+    <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-5">
       <header>
         <h1 className="text-xl font-semibold text-[var(--text)] tracking-wide">
           Status Board
@@ -793,6 +793,6 @@ export default function StatusPage() {
         autoExpandTicker={orphanAutoExpand}
         onDismissed={handleEventDismissed}
       />
-    </main>
+    </div>
   );
 }

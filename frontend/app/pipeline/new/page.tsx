@@ -68,7 +68,7 @@ function NewPipelineForm() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="mb-8">
@@ -211,7 +211,7 @@ function NewPipelineForm() {
           </button>
         </form>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -222,9 +222,9 @@ export default function NewPipelinePage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+        <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
           <div className="w-6 h-6 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        </main>
+        </div>
       }
     >
       <NewPipelineForm />

@@ -82,7 +82,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
   const outcomes = await outcomesPromise;
 
   return (
-    <main id="main-content" className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
       <header className="px-4 py-3 border-b border-[var(--border)]">
         <h1 className="text-lg font-semibold">Performance</h1>
       </header>
@@ -93,6 +93,6 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       <BySignalBucketPanel summary={summary} />
       <OutcomeList outcomes={outcomes} />
       <TradeJournalSection />
-    </main>
+    </div>
   );
 }

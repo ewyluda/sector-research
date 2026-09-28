@@ -436,7 +436,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--color-bg)] py-10 px-6">
+    <div className="min-h-screen bg-[var(--color-bg)] py-10 px-6">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
@@ -570,6 +570,6 @@ export default function LibraryPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
