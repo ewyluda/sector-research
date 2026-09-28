@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -278,7 +278,7 @@ async def extract_ticker_competition(
 
     # Step 5: stamp tombstone only after a successful parse. Successful
     # zero-segment results are still terminal/idempotent; failures retry.
-    section.competition_extracted_at = datetime.utcnow()
+    section.competition_extracted_at = datetime.now(timezone.utc)
 
     # Step 5a: persist segments + landscape rows. force=True wipes prior rows
     # so we don't accumulate stale segments from earlier extraction runs.

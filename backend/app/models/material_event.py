@@ -1,6 +1,6 @@
 """MaterialEvent — one classified 8-K per row, surfaced on the status board."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Date, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
@@ -34,7 +34,7 @@ class MaterialEvent(Base):
     summary: Mapped[str] = mapped_column(Text, nullable=False)
     filing_date: Mapped[date] = mapped_column(Date, nullable=False)
     classified_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     # Mirrors read-through dismissal: hidden from badge + Today when set.
     dismissed_at: Mapped[datetime | None] = mapped_column(

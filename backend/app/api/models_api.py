@@ -83,7 +83,7 @@ async def initialize(ticker: Ticker = Depends(TickerPath), force: bool = False) 
 # Task 19: PUT /draft (cell edit + recompute)
 # ---------------------------------------------------------------------------
 
-from datetime import datetime  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 from pydantic import BaseModel as _BM  # noqa: E402
 
 
@@ -99,7 +99,7 @@ def _apply_edit(state_dict: dict, edit: DraftEditRequest) -> dict:
     Raises ValueError on unknown cell_path shapes or registry keys.
     """
     path = parse_cell_path(edit.cell_path)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     if isinstance(path, DriverPath):
         state_dict["drivers"][path.period][path.key] = {
             "value": edit.value,

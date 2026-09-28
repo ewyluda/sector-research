@@ -7,7 +7,7 @@ guessing FMP's uniqueness semantics — the insider_transactions convention.
 Amounts are disclosed ranges; `amount_mid` is the parsed midpoint (lower
 bound for open-ended ranges), `amount_range` keeps the raw string."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Date, DateTime, Index, Numeric, String, UniqueConstraint
@@ -40,7 +40,7 @@ class CongressTransaction(Base):
     disclosure_link: Mapped[str | None] = mapped_column(String(512), nullable=True)
     natural_key: Mapped[str] = mapped_column(String(64), nullable=False)
     ingested_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     __table_args__ = (

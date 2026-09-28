@@ -1,7 +1,7 @@
 # backend/app/services/model_baseline.py
 """Orchestrate AI baseline seeding into a ModelState."""
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from backend.app.graph.model_baseline_node import generate_baseline_drivers, BaselineDriversResponse
@@ -42,7 +42,7 @@ async def _get_risk_free_rate() -> float:
 
 def _build_periods() -> list[Period]:
     """8 historical Q + 8 forecast Q + 5 forecast Y."""
-    today = datetime.utcnow()
+    today = datetime.now(timezone.utc)
     year, q = today.year, (today.month - 1) // 3 + 1
     periods: list[Period] = []
     # 8 historical quarters
@@ -141,7 +141,7 @@ def _apply_baseline_drivers(state: ModelState, response: BaselineDriversResponse
     prevents recompute() from failing with "no prior revenue" on the first
     unspecified period.
     """
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     for period_label, period_drivers in response.drivers.items():
         if period_label not in state.drivers:
             state.drivers[period_label] = {}

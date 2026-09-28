@@ -16,7 +16,7 @@ Item 1, 1A, 7 / Item 2) burns ~12K input tokens at Haiku pricing.
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
 
 from pydantic import BaseModel, Field
@@ -272,7 +272,7 @@ async def extract_ticker_relationships(
                 ).limit(1)
             )
             if existing_row.first() is not None:
-                section.relationships_extracted_at = datetime.utcnow()
+                section.relationships_extracted_at = datetime.now(timezone.utc)
                 already_attempted = True
 
         if already_attempted and not force:
@@ -303,7 +303,7 @@ async def extract_ticker_relationships(
 
         # Mark the section as attempted regardless of whether relationships
         # were found. Zero-relationship sections are still "done".
-        section.relationships_extracted_at = datetime.utcnow()
+        section.relationships_extracted_at = datetime.now(timezone.utc)
 
         # Insert extractions, deduplicating per (counterparty, rel_type)
         # because the LLM sometimes reports the same relationship twice.

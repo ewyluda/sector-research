@@ -25,7 +25,7 @@ entries or we've tried 8 quarters. The API response also returns
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
@@ -65,7 +65,7 @@ async def fetch_recent_transcripts(
     """
     out: list[dict] = []
     citation: Citation | None = None
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     y, q = now.year, ((now.month - 1) // 3) + 1
     tried = 0
     while len(out) < limit and tried < TRANSCRIPT_LOOKBACK_CAP:
@@ -247,7 +247,7 @@ async def extract_ticker_transcript_relationships(
             ticker=ticker,
             year=year,
             quarter=quarter,
-            extracted_at=datetime.utcnow(),
+            extracted_at=datetime.now(timezone.utc),
             relationships_added=added_for_transcript,
         ))
 
