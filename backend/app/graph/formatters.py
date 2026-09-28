@@ -53,6 +53,36 @@ def _fv(val: Any, divisor: float = 1e9, suffix: str = "B") -> str:
     return f"${val / divisor:.2f}{suffix}"
 
 
+# Growth beyond this is a tiny-base artifact, not a signal (same threshold as
+# peer_comp.NM_GROWTH_THRESHOLD and the frontend's formatStat).
+GROWTH_NM_THRESHOLD_PCT = 1000.0
+
+
+def _growth_pct(current: float, prior: float | None) -> float | None:
+    """Percent growth, or None ("n/m") when the base is zero or negative or the
+    result is a tiny-base artifact (FCF once showed -14,740% "YoY")."""
+    if prior is None:
+        return None
+    prior = float(prior)
+    if prior <= 0:
+        return None
+    g = (current - prior) / prior * 100
+    return None if abs(g) > GROWTH_NM_THRESHOLD_PCT else g
+
+
+def _quarter_label(stmt: dict) -> str:
+    """'Q3 FY26' from FMP's period + fiscalYear. The /stable/ API returns
+    fiscalYear and no calendarYear, so labels used to lose their year."""
+    q = stmt.get("period", "") or ""
+    fy = stmt.get("fiscalYear")
+    if q and fy:
+        return f"{q} FY{str(fy)[-2:]}"
+    cy = stmt.get("calendarYear")
+    if q and cy:
+        return f"{q} {cy}"
+    return q or (stmt.get("date", "") or "")[:7]
+
+
 def _fmt_profile_section(ticker: str, profile: dict) -> list[str]:
     """Company profile: name, sector, market cap, beta, description."""
     if not (profile and isinstance(profile, dict)):
@@ -555,11 +585,12 @@ def _build_curated_financials(
         metrics = []
         for i, stmt in enumerate(statements):
             val = stmt.get(field_name, 0) or 0
-            q = stmt.get("period", "")
-            cy = stmt.get("calendarYear", "")
-            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
-            prev_val = statements[i + 1].get(field_name, 0) if i + 1 < len(statements) else None
-            yoy = pct(val, prev_val) if prev_val else None
+            period = _quarter_label(stmt)
+            # Same quarter one year earlier (statements are newest-first).
+            # This compared against the previous quarter (i + 1) while the UI
+            # labelled it "YoY" — SMCI showed -19.2% "YoY" for a +122.7% year.
+            prev_val = statements[i + 4].get(field_name, 0) if i + 4 < len(statements) else None
+            yoy = _growth_pct(float(val), prev_val)
             metrics.append(QuarterlyMetric(period=period, value=float(val), yoy_growth=yoy))
         return metrics
 
@@ -570,9 +601,7 @@ def _build_curated_financials(
             rev = stmt.get(denominator, 0) or 0
             num = stmt.get(numerator, 0) or 0
             margin = (num / rev * 100) if rev else 0
-            q = stmt.get("period", "")
-            cy = stmt.get("calendarYear", "")
-            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
+            period = _quarter_label(stmt)
             metrics.append(QuarterlyMetric(period=period, value=round(margin, 2), yoy_growth=None))
         return metrics
 
@@ -604,7 +633,9 @@ def _build_curated_financials(
         dcf_value = dcf.get("dcf")
         dcf_value = float(dcf_value) if dcf_value is not None else None
         stock_price = dcf.get("Stock Price") or dcf.get("stockPrice") or current_price
-        if dcf_value and stock_price:
+        # A non-positive DCF value (negative FCF) makes the gap meaningless —
+        # it rendered as "-303% Overvalued" for SMCI.
+        if dcf_value and dcf_value > 0 and stock_price:
             dcf_gap = round((dcf_value - float(stock_price)) / float(stock_price) * 100, 2)
 
     # Balance sheet ratios
@@ -621,9 +652,7 @@ def _build_curated_financials(
             ca = float(stmt.get("totalCurrentAssets", 0) or 0)
             cl = float(stmt.get("totalCurrentLiabilities", 0) or 0)
             cr = round(ca / cl, 2) if cl else 0
-            q = stmt.get("period", "")
-            cy = stmt.get("calendarYear", "")
-            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
+            period = _quarter_label(stmt)
             metrics.append(QuarterlyMetric(period=period, value=cr, yoy_growth=None))
         return metrics
 

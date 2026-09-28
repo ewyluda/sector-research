@@ -26,6 +26,7 @@ import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
+import { normalizeCuratedFinancials } from "@/lib/curatedFinancials";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
 import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
 import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
@@ -233,7 +234,7 @@ export default function PipelineRunnerPage() {
       setQuickScreenStructured((qsOutput?.structured as QuickScreenStructured) ?? null);
 
       // Curated financials + EDGAR XBRL facts
-      setCuratedFinancials(r.phases.deep_dive?.curated_financials ?? null);
+      setCuratedFinancials(normalizeCuratedFinancials(r.phases.deep_dive?.curated_financials ?? null));
       setTranscriptAnalysis(r.phases.deep_dive?.transcript_analysis ?? null);
       setEdgarFacts(r.phases.deep_dive?.edgar_facts ?? {});
 
@@ -385,7 +386,7 @@ export default function PipelineRunnerPage() {
         break;
 
       case "deep_dive_start":
-        setCuratedFinancials(event.curated_financials ?? null);
+        setCuratedFinancials(normalizeCuratedFinancials(event.curated_financials ?? null));
         setTranscriptAnalysis(event.transcript_analysis ?? null);
         setEdgarFacts(event.edgar_facts ?? {});
         // Mark all categories as running

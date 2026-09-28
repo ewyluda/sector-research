@@ -9,6 +9,7 @@ import type {
   QuickScreenStructured,
   ThesisStructured,
 } from "./api";
+import { normalizeCuratedFinancials } from "./curatedFinancials";
 
 export interface DashboardProps {
   financials: CuratedFinancials | null;
@@ -43,7 +44,7 @@ export function reportToDashboardProps(report: ReportResponse): DashboardProps {
   }
 
   return {
-    financials: deep?.curated_financials ?? null,
+    financials: normalizeCuratedFinancials(deep?.curated_financials ?? null),
     categories,
     scores: report.scores ?? {},
     transcriptAnalysis: deep?.transcript_analysis ?? null,
