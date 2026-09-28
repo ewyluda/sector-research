@@ -124,11 +124,16 @@ The thesis step is evaluated on frozen inputs so a prompt change can be compared
 
 | Check | Result |
 |---|---|
-| Numbers in a thesis found in the raw FMP/FRED data | **67%** median (21 stored theses). Measured against the prompt instead it's 98% — inflated, because the prompt is mostly the model's own deep-dive text |
-| Stance vs targets vs price; kill criteria and pre-mortem present | new-format theses pass; 9 of 21 older ones lacked kill criteria |
-| Thesis evidence carrying a source tag | 0% — the next prompt target |
-| Stability across reruns (pilot, NVDA + ORCL) | same stance every time; conviction ±2; base target within 1.2% |
-| Rubric judge (Claude Sonnet 5, a different model from the writer) | 4.5 / 5.0 / 4.5 / 3.5–4.0 / 4.5 — lenient on evidence, so it needs calibrating before it picks between prompts |
+| **Calls across 10 tickers × 3 reruns** | **29 avoid, 1 short, 0 long; conviction took three values (55 ×21) — the step doesn't discriminate** |
+| Numbers in a thesis found in the raw FMP/FRED data | **68%** median. Measured against the prompt it's 100% — inflated, because the prompt is mostly the model's own deep-dive text |
+| Stance vs targets vs price; kill criteria and pre-mortem present | all 30 pass (9 of 21 older stored theses lacked kill criteria) |
+| Thesis evidence carrying a source tag | 0% |
+| Rubric judge (Claude Sonnet 5, a different model from the writer) | 4.7 / 4.9 / 4.4 / 3.7 / 4.4 — it doesn't catch the collapse either, so it needs calibrating |
+
+The full run cost $5.08. Its main finding is a real product weakness, not a pass: the prompt defines
+*avoid* as "no edge either way", and the model takes that exit for almost every company, reasoning
+"the evidence is balanced". The fix and the rerun are the next step
+([details](backend/evals/README.md#results-so-far)).
 
 ### Cost and latency (from the `llm_calls` table)
 

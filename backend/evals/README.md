@@ -41,8 +41,26 @@ the weakest point.
 |---|---|---|---|---|---|---|---|
 | 2026-09-28 | stored runs (pre-stance) | 21 theses, offline | 67% median | 100% | — | — | $0 |
 | 2026-09-28 | `9522a1a5e3de` | NVDA, ORCL × 2 (pilot) | 56–70% | 100% | 100% | 4.5 / 5.0 / 4.5 / 3.5–4.0 / 4.5 | $0.70 |
+| 2026-09-28 | `9522a1a5e3de` | 10 tickers × 3 (full) | 68% median | 100% | 9 of 10 at 100% | 4.7 / 4.9 / 4.4 / 3.7 / 4.4 | $5.08 |
 
-Readings: reruns are stable (conviction ±2, base target within 1.2%); no
-evidence item carries a source tag; the judge rates evidence 5/5 on those same
-theses, so it is lenient on sourcing and needs calibrating before its scores
-are used to pick between prompts.
+(The full run's JSON replaced the pilot's, which had the same date and prompt version.)
+
+**What the full run found: the thesis step doesn't discriminate.** 29 of 30 theses
+say *avoid*, one says *short*, none says *long* — across NVDA, Oracle, a nuclear
+supplier and two telecoms. Conviction took three values in 30 runs (55 ×21,
+58 ×8, 62 ×1). The rationales share one shape: "the evidence is balanced, so
+avoid, with moderate conviction". The prompt defines avoid as "no edge either
+way", which gives the model a safe exit; the near-zero dispersion that looked
+like stability in the pilot is the same default, repeated.
+
+Checked and ruled out: the frozen inputs date from April–June while the prompt's
+"As of" is today, but only 3 of 30 theses mention the data's age.
+
+The judge scored these theses 4.4–4.9 on everything but variant view (3.7), so
+it doesn't catch the collapse either — confirming it needs calibrating before
+its scores choose between prompts.
+
+**Next:** a prompt change that makes avoid a positive call with its own bar
+(e.g. require the case for long and for short to be stated and scored first),
+pin the eval's "As of" to each input's source date, add stance and conviction
+spread as tracked metrics, and rerun ($5).
