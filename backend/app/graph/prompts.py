@@ -53,9 +53,12 @@ Run the rapid 5-dimension screen. Output the JSON verdict described above."""
 
 # ── Deep Dive categories (Sonnet) ─────────────────────────────────────────────
 
+# The system prompt and DEEP_DIVE_SHARED are identical for all nine categories
+# of a run, so the first category's call caches them and the other eight read
+# the cache (nodes.node_deep_dive warms one call, then fans out). Anything that
+# varies by category belongs in DEEP_DIVE_USER, after the cache breakpoint.
 DEEP_DIVE_SYSTEM = """You are a senior equity analyst conducting a rigorous single-category deep dive.
-
-Category: {category}
+The category is named at the start of the category brief that follows the shared data.
 
 You have access to fundamental data, financials, and market data for the ticker.
 Your output will be one section of a full institutional-grade research report.
@@ -86,13 +89,14 @@ Your output will be one section of a full institutional-grade research report.
 - Be direct and specific in the analysis. No boilerplate. Write as if for a portfolio manager.
 - Emit up to 3 unresolved questions whose answers would materially change your analysis as "questions[]". Mark "auto_answerable": true only if the answer can be derived from the data payload above (financials, transcripts, filing excerpts, EDGAR facts, counterparty context) without external research. Priority 1 = thesis-load-bearing; 2 = important context; 3 = nice-to-have. Empty list is fine if nothing is unresolved."""
 
-DEEP_DIVE_USER = """Ticker: {ticker}
+DEEP_DIVE_SHARED = """Ticker: {ticker}
 Theme: {theme}
 As of: {as_of}
-Category: {category}
 
 Available data:
-{data}
+{data}"""
+
+DEEP_DIVE_USER = """Category brief — {category}
 
 {quant_data}
 

@@ -15,6 +15,7 @@ every newer model reject it with a 400 (found 2026-04-11, commit 68f99af, then
 reintroduced at five call sites before this guard existed).
 """
 
+import asyncio
 import json
 import logging
 import time
@@ -133,8 +134,17 @@ async def complete_structured(
     model: str = DEEP_MODEL,
     max_tokens: int = 4096,
     use_cache: bool = True,
+    shared_prefix: str | None = None,
+    first_event: asyncio.Event | None = None,
 ) -> T:
     """Single-turn completion constrained to `output_model`'s JSON schema.
+
+    `shared_prefix` is user content identical across a batch of calls; it is
+    sent ahead of `user` with its own cache breakpoint so the batch can share
+    it. Passing `first_event` streams the call and sets the event as soon as
+    the response starts — the moment its cache entry becomes readable — so a
+    caller can hold back the rest of a parallel batch until then. The event is
+    set even if the call fails, so waiters never hang.
 
     Returns a validated instance. Raises LLMOutputError when the output was
     truncated or refused, and pydantic.ValidationError when a constraint the
@@ -152,13 +162,29 @@ async def complete_structured(
         **params.get("output_config", {}),
         "format": {"type": "json_schema", "schema": anthropic.transform_schema(output_model)},
     }
-    started = time.monotonic()
-    message = await get_client().messages.create(
+    content: str | list[dict] = user
+    if shared_prefix is not None:
+        prefix_block: dict = {"type": "text", "text": shared_prefix}
+        if use_cache:
+            prefix_block["cache_control"] = {"type": "ephemeral"}
+        content = [prefix_block, {"type": "text", "text": user}]
+    request = dict(
         model=model,
-        system=_system_blocks(system, use_cache),  # type: ignore[arg-type]
-        messages=[{"role": "user", "content": user}],
+        system=_system_blocks(system, use_cache),
+        messages=[{"role": "user", "content": content}],
         **params,
     )
+    started = time.monotonic()
+    if first_event is None:
+        message = await get_client().messages.create(**request)  # type: ignore[arg-type]
+    else:
+        try:
+            async with get_client().messages.stream(**request) as stream:  # type: ignore[arg-type]
+                async for _ in stream:
+                    first_event.set()
+                message = await stream.get_final_message()
+        finally:
+            first_event.set()
     await _report_usage(f"structured:{output_model.__name__}", model, system, message, started)
     _check_stop_reason(message, model)
     text = "".join(b.text for b in message.content if b.type == "text")

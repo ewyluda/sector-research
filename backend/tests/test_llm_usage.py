@@ -95,3 +95,61 @@ class SummarizeTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CachingShapeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_shared_prefix_is_its_own_cached_block_ahead_of_the_brief(self):
+        from backend.app.models.phase_schemas import TargetedAnswer
+        usage = SimpleNamespace(input_tokens=1, output_tokens=1, cache_read_input_tokens=0,
+                                cache_creation_input_tokens=0)
+        msg = SimpleNamespace(stop_reason="end_turn", usage=usage,
+                              content=[SimpleNamespace(type="text", text='{"answer_text": "x"}')])
+        client = MagicMock()
+        client.messages.create = AsyncMock(return_value=msg)
+        with patch.object(llm, "get_client", return_value=client):
+            await llm.complete_structured("s" * 600, "brief", TargetedAnswer, shared_prefix="DATA")
+        content = client.messages.create.call_args.kwargs["messages"][0]["content"]
+        self.assertEqual(content[0], {"type": "text", "text": "DATA", "cache_control": {"type": "ephemeral"}})
+        self.assertEqual(content[1], {"type": "text", "text": "brief"})
+
+    async def test_first_event_is_set_even_when_the_call_fails(self):
+        client = MagicMock()
+        client.messages.stream.side_effect = RuntimeError("connection reset")
+        event = asyncio.Event()
+        from backend.app.models.phase_schemas import TargetedAnswer
+        with patch.object(llm, "get_client", return_value=client), self.assertRaises(RuntimeError):
+            await llm.complete_structured("s", "u", TargetedAnswer, first_event=event)
+        self.assertTrue(event.is_set())
+
+
+class WarmThenFanOutTests(unittest.IsolatedAsyncioTestCase):
+    async def test_rest_start_only_after_the_first_response_begins(self):
+        from backend.app.graph.nodes import warm_then_fan_out
+        log: list[str] = []
+        release = asyncio.Event()
+
+        async def run(item, first_event=None):
+            log.append(f"start {item}")
+            if first_event is not None:
+                await asyncio.sleep(0.01)
+                log.append("first streaming")
+                first_event.set()
+                await release.wait()
+            else:
+                release.set()
+            return item
+
+        out = await warm_then_fan_out(run, ["a", "b", "c"])
+        self.assertEqual(out, ["a", "b", "c"])
+        self.assertEqual(log[:2], ["start a", "first streaming"])
+        self.assertEqual(sorted(log[2:]), ["start b", "start c"])
+
+    async def test_a_first_call_that_fails_before_streaming_does_not_block_the_rest(self):
+        from backend.app.graph.nodes import warm_then_fan_out
+
+        async def run(item, first_event=None):
+            if first_event is not None:
+                return "error"  # returned without ever setting the event
+            return item
+
+        self.assertEqual(await warm_then_fan_out(run, ["a", "b"]), ["error", "b"])
