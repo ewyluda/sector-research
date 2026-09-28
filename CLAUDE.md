@@ -121,6 +121,15 @@ Backend tests live in `backend/tests/` and run via Python's stdlib `unittest`. I
 python -m unittest $(ls backend/tests/test_*.py | sed 's|/|.|g; s|\.py$||' | tr '\n' ' ')
 ```
 
+End-to-end research run (real Postgres, recorded FMP responses, fake LLM — no network; CI runs it after `alembic upgrade head && alembic check` against a fresh database). It needs its own process so `DATABASE_URL` is set before app modules import:
+
+```bash
+PIPELINE_E2E=1 DATABASE_URL=postgresql+asyncpg://…/<migrated db> python -m unittest backend.tests.test_pipeline_e2e
+DATABASE_URL=… python -m backend.scripts.record_pipeline_fixture VRT   # re-record backend/tests/fixtures/fmp_VRT.json
+```
+
+Harness: `backend/tests/pipeline_harness.py` (`ReplayFMP` — unrecorded calls raise `FMPClientError`, like an outage; `FakeAnthropic` — canned JSON per schema title). Models declare every index the migrations create, so `alembic check` is a real gate — keep them in sync.
+
 Backend lint is ruff (config in root `ruff.toml`, pinned in `backend/requirements-dev.txt`): `ruff check backend` from project root. Shared `ModelState` test fixtures live in `backend/tests/model_fixtures.py` (no `test_` prefix so the enumeration glob skips it).
 
 **Frontend:**

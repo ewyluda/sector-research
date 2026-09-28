@@ -11,7 +11,7 @@ bloating run state.
 from datetime import date, datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -194,6 +194,12 @@ class Relationship(Base):
     __table_args__ = (
         Index("ix_relationships_ticker_type", "ticker", "relationship_type"),
         Index("ix_relationships_counterparty_name", "counterparty_name"),
+        # Partial unique indexes from migration ecaf04c60243 (one per source type).
+        Index("uq_relationships_filing", "filing_id", "section_key", "counterparty_name", "relationship_type",
+              unique=True, postgresql_where=text("filing_id IS NOT NULL")),
+        Index("uq_relationships_transcript", "ticker", "transcript_year", "transcript_quarter",
+              "counterparty_name", "relationship_type",
+              unique=True, postgresql_where=text("filing_id IS NULL")),
     )
 
 

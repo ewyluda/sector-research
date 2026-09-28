@@ -688,7 +688,7 @@ def _build_targeted_followup_user_msg(
 
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────
 
-async def node_thesis_construction(state: ResearchState) -> ResearchState:
+async def node_thesis_construction(state: ResearchState, fmp: FMPClient | None = None) -> ResearchState:
     """Phase 4: synthesise all Phase 3 outputs into a structured thesis."""
     logger.info("[%s] thesis_construction starting", state.ticker)
     state.phase = "thesis_construction"
@@ -768,12 +768,13 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
         # Tier 1.3: promote parsed catalysts into first-class DB rows.
         # Failure here is non-fatal — JSONB still has the canonical copy.
         try:
-            fmp = FMPClient()
+            client = fmp or FMPClient()  # the pipeline passes its shared client
             try:
                 async with unit_of_work() as cat_db:
-                    await promote_catalysts(state, parsed, fmp, cat_db)
+                    await promote_catalysts(state, parsed, client, cat_db)
             finally:
-                await fmp.close()
+                if fmp is None:
+                    await client.close()
         except Exception as cat_err:
             logger.warning(
                 "[%s] catalyst promotion failed: %s", state.ticker, cat_err

@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,6 +12,11 @@ from backend.app.models.base import Base, TimestampMixin
 
 class ResearchRun(Base, TimestampMixin):
     __tablename__ = "research_runs"
+    __table_args__ = (
+        Index("ix_research_runs_ticker_created_at", "ticker", "created_at"),
+        Index("ix_research_runs_status_board_latest", "ticker", "theme_id", text("created_at DESC"),
+              postgresql_where=text("status IN ('completed', 'watchlist') AND theme_id IS NOT NULL")),
+    )
 
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())

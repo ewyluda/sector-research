@@ -8,7 +8,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, Index, UniqueConstraint, func, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -27,6 +27,11 @@ class VerdictOutcome(Base):
     __tablename__ = "verdict_outcomes"
     __table_args__ = (
         UniqueConstraint("source_type", "source_id", name="uq_verdict_outcomes_source"),
+        Index("ix_outcomes_ticker_emitted", "ticker", text("verdict_emitted_at DESC")),
+        Index("ix_outcomes_theme_emitted", "theme_id", text("verdict_emitted_at DESC")),
+        Index("ix_outcomes_open", "closed_at", postgresql_where=text("closed_at IS NULL")),
+        Index("ix_outcomes_open_per_position", "ticker", "theme_id", "source_type", "superseded_at",
+              postgresql_where=text("superseded_at IS NULL")),
     )
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
@@ -82,6 +87,7 @@ class VerdictReturnSnapshot(Base):
     __tablename__ = "verdict_return_snapshots"
     __table_args__ = (
         UniqueConstraint("outcome_id", "snapshot_offset", name="uq_snapshot_outcome_offset"),
+        Index("ix_snapshots_outcome", "outcome_id"),
     )
 
     id: Mapped[str] = mapped_column(UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4()))
