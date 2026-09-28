@@ -162,7 +162,8 @@ class BuildSentimentContextTests(unittest.TestCase):
     def test_routed_renders_all_three_signal_types(self):
         ctx = _ctx(
             signals={
-                "velocity": {"ratio": 1.5, "direction": "up", "count_7d": 50, "count_30d_approx": 30},
+                "velocity": {"ratio": 1.5, "direction": "accelerating", "count_7d": 50,
+                             "recent_daily_avg": 9.0, "baseline_daily_avg": 6.0},
                 "narrative": {"post_count": 75, "summary": "bullish on AI"},
                 "discovery": {"score": 0.8, "co_mentions_7d": 10, "total_theme_mentions_7d": 100},
             }
@@ -172,6 +173,14 @@ class BuildSentimentContextTests(unittest.TestCase):
         self.assertIn("Velocity: ratio=1.5", out)
         self.assertIn("Narrative: post_count=75 summary=bullish on AI", out)
         self.assertIn("Discovery: score=0.8", out)
+
+    def test_legacy_velocity_is_not_presented_as_a_trend(self):
+        # Pre-2026-09-27 signals always carried ratio 1.0 by construction.
+        ctx = _ctx(signals={"velocity": {"ratio": 1.0, "direction": "stable", "count_7d": 99,
+                                         "count_30d_approx": 396}})
+        out = build_sentiment_context(ctx, "Sentiment & Narrative")
+        self.assertIn("legacy signal; no trend computed", out)
+        self.assertNotIn("ratio=1.0", out)
 
 
 # ── edgar ───────────────────────────────────────────────────────────────────

@@ -121,10 +121,16 @@ def build_sentiment_context(ctx: DeepDiveContext, category: str) -> str:
     parts = ["X social signal (Tier 2, directional only):"]
     vel = ctx.signals.get("velocity")
     if isinstance(vel, dict):
-        parts.append(
-            f"Velocity: ratio={vel.get('ratio')} direction={vel.get('direction')} "
-            f"count_7d={vel.get('count_7d')} count_30d_approx={vel.get('count_30d_approx')}"
-        )
+        if "recent_daily_avg" in vel:
+            parts.append(
+                f"Velocity: ratio={vel.get('ratio')} direction={vel.get('direction')} "
+                f"posts_7d={vel.get('count_7d')} last-3-day avg={vel.get('recent_daily_avg')}/day "
+                f"vs prior-4-day avg={vel.get('baseline_daily_avg')}/day"
+            )
+        else:
+            # Signals stored before 2026-09-27 came from a computation that
+            # always returned ratio 1.0 — don't present it as a trend.
+            parts.append(f"Velocity: posts_7d={vel.get('count_7d')} (legacy signal; no trend computed)")
     narr = ctx.signals.get("narrative")
     if isinstance(narr, dict):
         parts.append(f"Narrative: post_count={narr.get('post_count')} summary={narr.get('summary') or 'N/A'}")
