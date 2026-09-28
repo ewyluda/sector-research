@@ -8,12 +8,15 @@ from backend.app.models.model_state import ModelState
 
 @dataclass
 class DcfResult:
-    intrinsic_value: float
-    intrinsic_per_share: float
-    fcf_schedule: list[tuple[str, float]]    # [(period_label, fcf)]
+    intrinsic_value: float                   # equity value = enterprise value - net debt
+    intrinsic_per_share: float               # equity value / current diluted shares
+    fcf_schedule: list[tuple[str, float]]    # [(period_label, unlevered fcf)]
     pv_schedule: list[tuple[str, float]]     # [(period_label, pv_of_fcf)]
     terminal_value: float
     terminal_pv: float
+    enterprise_value: float = 0.0
+    net_debt: float = 0.0
+    shares: float = 0.0
 
 
 def _forecast_periods(state: ModelState) -> list:
@@ -49,26 +52,26 @@ def dcf(
     method = terminal_method or state.assumptions.terminal_method
     overrides = _resolve_overrides(state, overrides)
 
-    # FCF schedule
+    # Unlevered FCF: add back after-tax net interest, since the discount rate
+    # is a WACC and debt holders are netted out below via net debt.
+    tax = state.assumptions.tax_rate.value or 0.0
     fcfs: list[tuple[str, float]] = []
     for p in forecast:
         cell = state.cash_flow.get("free_cash_flow", {}).get(p.label)
         if cell is None or cell.value is None:
             raise ValueError(f"dcf(): missing FCF for forecast period {p.label}")
-        fcfs.append((p.label, float(cell.value)))
+        net_interest = (_is_value(state, "interest_expense", p.label) - _is_value(state, "interest_income", p.label))
+        fcfs.append((p.label, float(cell.value) + net_interest * (1.0 - tax)))
 
-    # PV of FCFs (discount each by year-fraction; quarters fractional)
+    # Mid-period convention: cash arrives on average halfway through a period.
     pvs: list[tuple[str, float]] = []
-    cumulative_year = 0.0
-    for label, fcf in fcfs:
-        # Q periods get 0.25 year increments; Y periods 1.0
-        period = next(p for p in forecast if p.label == label)
-        delta = 0.25 if period.kind == "Q" else 1.0
-        cumulative_year += delta
-        pv = fcf / ((1.0 + r) ** cumulative_year)
-        pvs.append((label, pv))
+    elapsed = 0.0
+    for p, (label, fcf) in zip(forecast, fcfs):
+        length = 0.25 if p.kind == "Q" else 1.0
+        pvs.append((label, fcf / ((1.0 + r) ** (elapsed + length / 2))))
+        elapsed += length
 
-    # Terminal value at end of last forecast period
+    # Terminal value at the end of the last forecast period
     last = forecast[-1]
     if method == "exit_multiple":
         ebitda_cell = state.income_statement.get("ebitda", {}).get(last.label)
@@ -82,20 +85,46 @@ def dcf(
         tv = fcfs[-1][1] * (1.0 + g) / (r - g)
     else:
         raise ValueError(f"dcf(): unknown terminal_method {method!r}")
+    tv_pv = tv / ((1.0 + r) ** elapsed)
 
-    tv_pv = tv / ((1.0 + r) ** cumulative_year)
+    enterprise_value = sum(pv for _, pv in pvs) + tv_pv
 
-    intrinsic = sum(pv for _, pv in pvs) + tv_pv
-
-    # Per-share: divide by diluted shares from last forecast period
-    shares_cell = state.income_statement.get("shares_diluted", {}).get(last.label)
-    shares = float(shares_cell.value) if shares_cell and shares_cell.value else 1.0
+    # Bridge to equity at today's balance sheet: EV - (debt - cash), divided
+    # by today's diluted shares. (Previously EV was divided by terminal-year
+    # shares with no net-debt adjustment, and a missing share count became 1.)
+    anchor = _valuation_anchor(state)
+    net_debt = (_bs_value(state, "short_term_debt", anchor) + _bs_value(state, "long_term_debt", anchor)
+                - _bs_value(state, "cash_and_equivalents", anchor))
+    shares = _is_value(state, "shares_diluted", anchor)
+    if shares <= 0:
+        raise ValueError(f"dcf(): no diluted share count for {anchor} — cannot value per share")
+    equity_value = enterprise_value - net_debt
 
     return DcfResult(
-        intrinsic_value=intrinsic,
-        intrinsic_per_share=intrinsic / shares,
+        intrinsic_value=equity_value,
+        intrinsic_per_share=equity_value / shares,
         fcf_schedule=fcfs,
         pv_schedule=pvs,
         terminal_value=tv,
         terminal_pv=tv_pv,
+        enterprise_value=enterprise_value,
+        net_debt=net_debt,
+        shares=shares,
     )
+
+
+def _is_value(state: ModelState, line: str, label: str) -> float:
+    cell = state.income_statement.get(line, {}).get(label)
+    return float(cell.value) if cell is not None and cell.value is not None else 0.0
+
+
+def _bs_value(state: ModelState, line: str, label: str) -> float:
+    cell = state.balance_sheet.get(line, {}).get(label)
+    return float(cell.value) if cell is not None and cell.value is not None else 0.0
+
+
+def _valuation_anchor(state: ModelState) -> str:
+    """The latest reported period (today's balance sheet and share count);
+    the first forecast period for states with no history (test fixtures)."""
+    hist = [p for p in state.periods if p.is_historical]
+    return hist[-1].label if hist else _forecast_periods(state)[0].label

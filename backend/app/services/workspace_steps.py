@@ -29,22 +29,17 @@ from backend.app.services.reverse_dcf import (
 )
 from backend.app.services.peer_comp import build_peer_comp_table
 from backend.app.services.peer_sets import peers_for_ticker
+from backend.app.services.model_history import map_fmp_quarter, rows_by_quarter
+from backend.app.services.model_periods import calendar_quarter_label
 
 
 def _fmp_period_label(row: dict) -> str | None:
-    """Combine FMP 'period' (e.g. 'Q1') + 'calendarYear' (e.g. '2026') → '2026Q1'.
-
-    Annual rows use 'FY' or similar; we skip those (historical patching is
-    quarterly-only in this step).
-    """
-    period = row.get("period", "")
-    year = str(row.get("calendarYear", ""))
-    if not period or not year:
-        return None
-    # Quarterly: period like "Q1", "Q2", "Q3", "Q4"
-    if period.startswith("Q") and period[1:].isdigit():
-        return f"{year}{period}"
-    return None
+    """Calendar-quarter model label ('2026Q2') for an FMP quarterly row, from
+    its period-end date. FMP /stable/ returns fiscalYear and no calendarYear,
+    so the old calendarYear-based label matched nothing and this refresh never
+    promoted a reported quarter. Shares model_periods' calendarization."""
+    d = row.get("date")
+    return calendar_quarter_label(d) if d else None
 
 
 def _make_cell(value: float, source: str, citation_id: str | None):
@@ -55,39 +50,29 @@ def _make_cell(value: float, source: str, citation_id: str | None):
 
 def _patch_statement(
     statement: dict,
-    rows: list[dict],
-    field_map: dict[str, str],
+    values_by_label: dict[str, dict[str, float]],
     citation_id: str | None,
     historical_labels: set[str],
     promoted_labels: set[str] | None = None,
 ) -> None:
-    """Patch historical cells in a statement dict from FMP rows.
+    """Patch historical cells in a statement dict with reported values.
 
-    A period is patched when it's in `historical_labels` (cell already
-    historical) or in `promoted_labels` (a forecast period that just got
-    actuals reported and is being aged into historical in this refresh).
+    `values_by_label` is {period_label: {line_item: value}} (see
+    model_history.map_fmp_quarter). A period is patched when it's in
+    `historical_labels` (cell already historical) or in `promoted_labels` (a
+    forecast period that just got actuals and is being aged into historical).
 
-    For non-promoted historical periods, existing user overrides /
-    formula / driver cells are preserved (only refreshes prior historical
-    values). For promoted periods, the FMP-reported value overwrites
-    whatever was there — that's the whole point of promotion.
+    For non-promoted historical periods, existing user overrides / formula /
+    driver cells are preserved (only refreshes prior historical values). For
+    promoted periods, the reported value overwrites whatever was there — that's
+    the whole point of promotion.
     """
     promoted_labels = promoted_labels or set()
-    for row in rows:
-        period = _fmp_period_label(row)
-        if not period:
-            continue
+    for period, lines in values_by_label.items():
         is_promoted = period in promoted_labels
         if not is_promoted and period not in historical_labels:
             continue
-        for fmp_key, line_item in field_map.items():
-            raw = row.get(fmp_key)
-            if raw is None:
-                continue
-            try:
-                value = float(raw)
-            except (TypeError, ValueError):
-                continue
+        for line_item, value in lines.items():
             line_dict = statement.setdefault(line_item, {})
             existing = line_dict.get(period)
             if existing is None or existing.source == "historical" or is_promoted:
@@ -108,32 +93,6 @@ def _promote_forecast_periods(state, fmp_period_labels: set[str]) -> set[str]:
     for label in promoted:
         state.drivers.pop(label, None)
     return promoted
-
-
-# FMP income statement field → ModelState line_item
-_INCOME_FIELD_MAP: dict[str, str] = {
-    "revenue": "revenue",
-    "grossProfit": "gross_profit",
-    "operatingIncome": "ebit",
-    "netIncome": "net_income",
-    "eps": "eps_diluted",
-    "weightedAverageShsOutDil": "shares_diluted",
-}
-
-# FMP balance sheet field → ModelState line_item
-_BALANCE_FIELD_MAP: dict[str, str] = {
-    "cashAndCashEquivalents": "cash_and_equivalents",
-    "totalDebt": "long_term_debt",   # best available single-field proxy
-    "totalAssets": "total_assets",
-    "totalEquity": "total_equity",
-}
-
-# FMP cash flow field → ModelState line_item
-_CF_FIELD_MAP: dict[str, str] = {
-    "operatingCashFlow": "operating_cash_flow",
-    "capitalExpenditure": "capex",
-    "freeCashFlow": "free_cash_flow",
-}
 
 
 async def _fetch_live_price(fmp, ticker: str) -> float:
@@ -240,18 +199,20 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
 
     # Identify FMP-reported periods so any that are still in our forecast set
     # can be promoted to historical (the "newly reported quarter" case).
-    fmp_period_labels: set[str] = set()
-    for rows in (income_rows, balance_rows, cf_rows):
-        for row in rows:
-            label = _fmp_period_label(row)
-            if label:
-                fmp_period_labels.add(label)
-    promoted_labels = _promote_forecast_periods(new_state, fmp_period_labels)
+    # One mapping shared with baseline seeding (model_history), so a refreshed
+    # quarter carries the same full statements the model was built from.
+    quarters = rows_by_quarter(income_rows, balance_rows, cf_rows)
+    mapped = {label: map_fmp_quarter(*rows) for label, rows in quarters.items()}
+    promoted_labels = _promote_forecast_periods(new_state, set(quarters))
     historical_labels: set[str] = {p.label for p in new_state.periods if p.is_historical}
 
-    _patch_statement(new_state.income_statement, income_rows, _INCOME_FIELD_MAP, income_cit_id, historical_labels, promoted_labels)
-    _patch_statement(new_state.balance_sheet, balance_rows, _BALANCE_FIELD_MAP, balance_cit_id, historical_labels, promoted_labels)
-    _patch_statement(new_state.cash_flow, cf_rows, _CF_FIELD_MAP, cf_cit_id, historical_labels, promoted_labels)
+    for stmt_name, cit_id in (("income_statement", income_cit_id), ("balance_sheet", balance_cit_id),
+                              ("cash_flow", cf_cit_id)):
+        _patch_statement(
+            getattr(new_state, stmt_name),
+            {label: m[stmt_name] for label, m in mapped.items()},
+            cit_id, historical_labels, promoted_labels,
+        )
 
     # ── 4. Recompute derived cells on both states so that computed-only cells
     #       cancel out in the diff; only genuinely new/changed actuals remain. ──
