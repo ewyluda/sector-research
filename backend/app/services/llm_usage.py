@@ -24,6 +24,7 @@ PRICES_PER_MTOK: dict[str, tuple[float, float, float, float]] = {
     "claude-opus-5-5": (4.00, 5.00, 0.20, 20.00),
     "claude-haiku-4-5-20251001": (1.00, 1.25, 0.10, 5.00),
     "claude-sonnet-4-6": (3.00, 3.75, 0.30, 15.00),
+    "claude-sonnet-5": (2.00, 2.50, 0.20, 10.00),  # the eval judge
 }
 
 _scope: ContextVar[dict | None] = ContextVar("llm_scope", default=None)
