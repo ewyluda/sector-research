@@ -169,11 +169,11 @@ from here on every call is recorded automatically before its outcome is known.
 
 ## How it was built
 
-I directed the work and Claude Code wrote most of it: specs and plans first, ADRs for the decisions
-that matter, a cross-model review before merging, and periodic audits of my own AI-written code. The
-biggest lesson came from one of those audits: a fix that lived only in a commit message (assistant
-prefill breaks on newer Claude models) came back at five call sites. It's now a guard
-test and a nightly live smoke. [PROCESS.md](PROCESS.md) is the longer account.
+I directed the work and Claude Code wrote most of it: written specs and implementation plans before
+building (34 and 39 so far), ADRs for the decisions that matter, a review pass before merging, and
+periodic audits of my own AI-written code. The biggest lesson came from one of those audits: a fix
+that lived only in a commit message (assistant prefill breaks on newer Claude models) came back at
+five call sites. It's now a guard test and a nightly live smoke. [PROCESS.md](PROCESS.md) is the longer account.
 
 ---
 
