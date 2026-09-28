@@ -53,6 +53,11 @@ async def lifespan(app: FastAPI):
     """Startup / shutdown lifecycle."""
     logger.info("Starting Sector Research App...")
 
+    # Persist one llm_calls row per model call (cost + latency accounting).
+    from backend.app.graph import llm
+    from backend.app.services import llm_usage
+    llm.usage_sink = llm_usage.record
+
     # Shared API clients
     app.state.fmp = FMPClient()
     app.state.x_client = XClient()

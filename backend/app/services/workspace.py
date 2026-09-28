@@ -26,6 +26,7 @@ from backend.app.services import outcome_tracker
 from backend.app.services.event_broker import EventBroker
 from backend.app.services.workspace_context import WorkspaceContext
 from backend.app.services.workspace_steps import run_steps_in_sequence
+from backend.app.services import llm_usage
 
 logger = logging.getLogger(__name__)
 
@@ -406,6 +407,7 @@ class WorkspaceService:
         research_run_id: str | None = None,
     ) -> None:
         emit = lambda evt: self._emit(run_id, evt)  # noqa: E731
+        llm_usage.set_scope("workspace", run_id)
         emit({"type": "workspace_run_start", "run_id": run_id, "ticker": ticker})
         try:
             async with db_factory() as db:

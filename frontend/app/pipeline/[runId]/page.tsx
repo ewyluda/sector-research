@@ -28,6 +28,7 @@ import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
 import { normalizeCuratedFinancials } from "@/lib/curatedFinancials";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
+import { RunUsageLine } from "@/components/RunUsageLine";
 import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
 import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
 import { PHASE_ETA_SECONDS, PHASE_LABELS, PHASE_ORDER } from "@/lib/pipeline-progress";
@@ -612,6 +613,7 @@ export default function PipelineRunnerPage() {
                 <span>Deep Dive</span>
               </nav>
               <div data-print-hide="true" className="flex items-center gap-1">
+                {!isLive && <RunUsageLine runId={runId} />}
                 <button
                   onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-alt)] transition-colors cursor-pointer"

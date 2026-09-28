@@ -50,6 +50,7 @@ from backend.app.services.relationship_context import (
 )
 from backend.app.services.run_timestamps import mark_terminal_completed_at
 from backend.app.services.event_broker import EventBroker
+from backend.app.services import llm_usage
 from backend.app.graph.deep_dive_routing import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
@@ -217,6 +218,7 @@ class PipelineService:
         async with async_session() as db:
             while state.status == "in_progress":
                 phase = state.phase
+                llm_usage.set_scope("research", run_id, phase)
                 self._emit(run_id, {"type": "phase_start", "phase": phase,
                                      "label": PHASE_META.get(phase, {}).get("label", phase)})
 

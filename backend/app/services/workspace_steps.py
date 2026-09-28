@@ -31,6 +31,7 @@ from backend.app.services.peer_comp import build_peer_comp_table
 from backend.app.services.peer_sets import peers_for_ticker
 from backend.app.services.model_history import map_fmp_quarter, rows_by_quarter
 from backend.app.services.model_periods import calendar_quarter_label
+from backend.app.services import llm_usage
 
 
 def _fmp_period_label(row: dict) -> str | None:
@@ -736,6 +737,7 @@ async def run_steps_in_sequence(ctx: WorkspaceContext, emit: Callable[[dict], No
     outputs: dict = {}
     ctx.step_outputs = outputs  # later steps (challenge) read earlier outputs
     for name in STEP_NAMES:
+        llm_usage.set_phase(name)
         emit({"type": "step_start", "step": name})
         try:
             result = await STEP_FUNCTIONS[name](ctx)

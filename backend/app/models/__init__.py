@@ -7,6 +7,7 @@ from backend.app.models.filing import CounterpartyAlias, Filing, FilingSection, 
 from backend.app.models.insider_transaction import InsiderTransaction  # noqa: F401
 from backend.app.models.journal_trade import JournalTrade  # noqa: F401
 from backend.app.models.kill_criterion_state import KillCriterionState
+from backend.app.models.llm_call import LLMCall  # noqa: F401
 from backend.app.models.material_event import MaterialEvent  # noqa: F401
 from backend.app.models.peer_set import PeerSet  # noqa: F401
 from backend.app.models.prospectus_report import ProspectusReport  # noqa: F401

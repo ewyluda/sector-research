@@ -41,6 +41,7 @@ from backend.app.services.relationship_context import (
     CounterpartyContext,
     get_counterparty_context,
 )
+from backend.app.services import llm_usage
 
 logger = logging.getLogger(__name__)
 
@@ -102,10 +103,14 @@ class ProspectusService:
     # ── Pipeline ─────────────────────────────────────────────────────────────
 
     async def _run_pipeline(self, rid: str, source: SourceInput) -> None:
+        llm_usage.set_scope("prospectus", rid, "ingest")
         try:
             await self._step_ingest(rid, source)
+            llm_usage.set_phase("relationships")
             await self._step_relationships(rid)
+            llm_usage.set_phase("categories")
             await self._step_categories(rid)
+            llm_usage.set_phase("thesis")
             await self._step_thesis(rid)
             await self._set_status(rid, "completed")
             self._emit(rid, {"type": "prospectus_complete", "report_id": rid})

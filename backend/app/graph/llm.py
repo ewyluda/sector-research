@@ -18,12 +18,13 @@ reintroduced at five call sites before this guard existed).
 import json
 import logging
 import time
-from typing import TypeVar
+from typing import Awaitable, Callable, TypeVar
 
 import anthropic
 from pydantic import BaseModel, ValidationError
 
 from backend.app.config import get_settings
+from backend.app.services.llm_usage import CallUsage, prompt_version
 
 logger = logging.getLogger(__name__)
 
@@ -70,17 +71,32 @@ def _system_blocks(system: str, use_cache: bool) -> list[dict]:
     return system_content
 
 
-def _log_usage(kind: str, model: str, message, started: float) -> None:
-    """One structured log line per call — tokens, cache, latency, stop reason."""
+# Set by main.py's lifespan to llm_usage.record; None in tests and scripts.
+usage_sink: Callable[[CallUsage], Awaitable[None]] | None = None
+
+
+async def _report_usage(kind: str, model: str, system: str, message, started: float) -> None:
+    """One structured log line per call — tokens, cache, latency, stop reason,
+    cost — and one llm_calls row when a sink is registered."""
     usage = getattr(message, "usage", None)
-    logger.info(
-        "llm_call kind=%s model=%s stop=%s in=%s out=%s cache_read=%s cache_write=%s latency_ms=%d",
-        kind, model, getattr(message, "stop_reason", None),
-        getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None),
-        getattr(usage, "cache_read_input_tokens", None),
-        getattr(usage, "cache_creation_input_tokens", None),
-        int((time.monotonic() - started) * 1000),
+    call = CallUsage(
+        kind=kind, model=model, prompt_version=prompt_version(system),
+        stop_reason=getattr(message, "stop_reason", None),
+        input_tokens=getattr(usage, "input_tokens", None) or 0,
+        output_tokens=getattr(usage, "output_tokens", None) or 0,
+        cache_read_tokens=getattr(usage, "cache_read_input_tokens", None) or 0,
+        cache_write_tokens=getattr(usage, "cache_creation_input_tokens", None) or 0,
+        latency_ms=int((time.monotonic() - started) * 1000),
     )
+    cost = call.cost_usd
+    logger.info(
+        "llm_call kind=%s model=%s stop=%s in=%s out=%s cache_read=%s cache_write=%s latency_ms=%d cost_usd=%s",
+        kind, model, call.stop_reason, call.input_tokens, call.output_tokens,
+        call.cache_read_tokens, call.cache_write_tokens, call.latency_ms,
+        f"{cost:.4f}" if cost is not None else "n/a",
+    )
+    if usage_sink is not None:
+        await usage_sink(call)
 
 
 def _check_stop_reason(message, model: str) -> None:
@@ -105,7 +121,7 @@ async def complete(
         messages=[{"role": "user", "content": user}],
         **_request_params(model, max_tokens),
     )
-    _log_usage("text", model, message, started)
+    await _report_usage("text", model, system, message, started)
     _check_stop_reason(message, model)
     return "".join(b.text for b in message.content if b.type == "text")
 
@@ -143,7 +159,7 @@ async def complete_structured(
         messages=[{"role": "user", "content": user}],
         **params,
     )
-    _log_usage(f"structured:{output_model.__name__}", model, message, started)
+    await _report_usage(f"structured:{output_model.__name__}", model, system, message, started)
     _check_stop_reason(message, model)
     text = "".join(b.text for b in message.content if b.type == "text")
     if not text:

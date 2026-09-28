@@ -30,6 +30,7 @@ from backend.app.services.model_history import (
     annual_to_quarterly, historical_driver_defaults, rows_by_quarter, seed_history, summarize_history,
 )
 from backend.app.services.model_periods import build_periods, calendar_quarter_label, period_year
+from backend.app.services import llm_usage
 
 EQUITY_RISK_PREMIUM = 0.055
 DEFAULT_RISK_FREE = 0.045
@@ -324,6 +325,7 @@ async def initialize_or_get_model(ticker: str, *, force: bool = False):
         if latest is not None and not force:
             return latest
         next_version = 1 if latest is None else latest.version + 1
+        llm_usage.set_scope("model", ticker, "baseline_drivers")
         state = await build_baseline_state(ticker=ticker)
         row = TickerModel(
             ticker=ticker, version=next_version,
