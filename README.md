@@ -1,312 +1,203 @@
 # Sector Research
 
-A personal stock research application combining structured equity data with social signal to surface investment ideas and run them through a structured due diligence pipeline.
+**An AI equity-research analyst that turns SEC filings, fundamentals and earnings calls into cited
+theses with falsifiable kill criteria — then monitors them, and keeps score.**
 
----
+Built solo with Claude Code (Opus + Haiku in the product; agents under my direction for most of the
+code). What I'd point to is not the volume but the boundary: deterministic finance math and routing
+in code, judgment in the model, and an eval harness and CI gates that check the model's work.
 
-## What It Does
+> Personal research tool, not investment advice. It has no track record worth claiming yet — see
+> [Keeping score](#keeping-score).
 
-Six core workflows:
+![A deep-dive section: charts from FMP data beside the model's key findings, each with its source](docs/images/deep-dive-financial-health.png)
 
-**Discovery** — Open a curated investment theme (e.g., "AI Power Infrastructure") and see every company in that space ranked by signal strength. FMP screener data and X mention velocity surface unknown players alongside known ones. Combined signal score = 40% X velocity + 40% FMP fundamental quality + 20% discovery score.
+<sub>One of nine deep-dive categories for Vertiv (VRT). Every finding carries a `[Source: …]` tag —
+an FMP endpoint, an SEC XBRL fact, or the deterministic quant layer.</sub>
 
-**Pipeline** — Push any ticker through a 6-phase due diligence framework run as an explicit state machine (see `docs/adr/0004`). Phases 1-5 (quick_screen → deep_dive → thesis_construction → risk_stress_test) run continuously after `POST /api/runs`; risk_stress_test can loop back to deep_dive when `loop_required` is set (capped at 2 loops). Phase 6 (position_monitor) is the only manually-gated step — triggered via `POST /api/runs/{id}/advance` once the prior phases complete. Citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
-
-**Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a 1-hop supply-chain card in the deep-dive dashboard, a dedicated multi-hop graph page at `/filings/graph` that BFS-walks counterparties of counterparties (optionally gated to a theme's seed tickers), a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
-
-**Model** — Editable 5-year financial model per ticker, AI-seeded from the latest completed research run. Opus emits forecast drivers over a history seeded from FMP; the engine recomputes the full 3-statement P&L / BS / CF per period on every cell edit and balances without a plug, versions persist to `ticker_models` with a single working draft per ticker. The reverse-DCF tab solves implied revenue growth / EBIT margin / terminal multiple from the live FMP quote, computes the implied IRR, and renders three 21×21 sensitivity heatmaps plus a thesis-vs-priced-in summary. Cell edits, history diff (cell-path-keyed), and a what-if scratch panel (illustrative sliders).
-
-**Workspace Loop** — Five-step thesis refresh that pulls a completed research run forward in time: `update_refresh → research → challenge → differentiate → validate`. Re-pulls FMP financials and promotes newly-published forecast periods from `ai_baseline` → `historical` (warning when previously-edited override cells are evicted), then runs Opus/Haiku passes to surface what's changed in the thesis. Produces a fresh `WorkspaceVerdict` (`healthy | imminent | triggered | broken`). Streams via SSE; runs persist to `workspace_runs` with a JSONB `step_outputs` column. Index at `/workspace`, per-run report at `/workspace/[runId]`.
-
-**Status Board** — Live tracker of every active thesis across all themes. Aggregates the latest completed run per `(ticker, theme)` with health badges (Healthy / Imminent / Stale / Triggered / Broken), nearest-catalyst proximity, and a kill-criteria summary you can toggle armed/triggered inline. Polls every 60s while the tab is visible. The post-thesis fleet-management view — what to pay attention to and what's quietly aging out. Companion `/catalysts` and `/questions` pages surface the calendar and open-question log feeding the same data.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
+| | |
 |---|---|
-| Frontend | Next.js 16 (App Router) + React 19 + Tailwind v4 + Recharts + lightweight-charts |
-| Backend | FastAPI + async SQLAlchemy |
-| Pipeline orchestration | Explicit state machine (`graph/routing.py`), state persisted to Postgres per phase |
-| Database | PostgreSQL |
-| LLM (deep tier) | Claude Opus 5.5 (`claude-opus-5-5`, effort `medium`) |
-| LLM (light) | Claude Haiku (`claude-haiku-4-5-20251001`) |
-| Data: fundamentals | FMP API (ultimate tier) — financials, key metrics TTM, growth rates, DCF, estimates, transcripts, analyst grades, insider trading |
-| Data: macro | FRED API — 9 economic series (fed funds, treasuries, CPI, unemployment, GDP, M2, payrolls) |
-| Data: SEC filings | SEC EDGAR — 10-K / 10-Q / DEF 14A narrative sections, XBRL company facts |
-| Data: social signal | X API v2 |
-| Fuzzy matching | RapidFuzz — counterparty name → ticker resolution |
-| HTML parsing | BeautifulSoup + lxml — inline XBRL stripping + section extraction |
+| Research run | ~$2 and ~7 minutes (VRT, two risk loops: $2.07, 6.6 min, 25 model calls) |
+| Stack | FastAPI · async SQLAlchemy · Postgres · Next.js 16 · Claude Opus 5.5 + Haiku 4.5 |
+| Tests | 1,100 backend tests, an end-to-end research run on a real Postgres, Playwright + axe on every page, a live smoke of all 19 model call paths |
+| Evals | thesis grounding, citation and consistency checks; rerun dispersion; a cross-model rubric judge |
+| History | 657 commits since April 2026, 82% co-authored with Claude; 5 ADRs |
+
+---
+
+## What it does
+
+**1. Cited research → thesis → kill criteria → monitoring.** Push a ticker through a four-phase
+pipeline. A fast screen, then nine deep-dive categories in parallel, each fed FMP statements,
+transcripts, SEC filing excerpts, FRED macro data and a deterministic quant layer (Piotroski,
+Altman, Beneish, accruals). A thesis step turns them into a stance (long / avoid / short), 12-month
+price targets, catalysts and kill criteria. A risk step stress-tests it. The status board then tracks
+every live thesis — health, the next catalyst, which kill criteria have tripped — and the performance
+page scores each call against SPY, a beta-adjusted SPY, the sector ETF and the theme.
+
+![Report header: stance, conviction, price targets and the thesis](docs/images/report-header.png)
+
+**2. SEC filings → supply-chain graph.** Filings are pulled from EDGAR and split into sections; a
+Haiku pass extracts customers, suppliers, partners and competitors with verbatim quotes; names are
+resolved to tickers by fuzzy match against EDGAR's company list, with a curation queue for the rest.
+The graph feeds the deep-dive prompts ("use these as anchors, don't re-quote") and a two-hop explorer,
+so a question like "what does my universe say about CoreWeave's suppliers?" has an answer.
+
+![Two-hop supply-chain graph for CoreWeave, with the filing quote behind each edge](docs/images/supply-chain-graph.png)
+
+**3. Measuring the model.** Every model call is recorded with its tokens, latency and cost; theses
+are checked against the data they were written from; repeated runs measure how stable the output is;
+a second model grades quality. See [Evidence](#evidence).
+
+Also: an editable three-statement model per ticker, AI-seeded, with a reverse DCF that solves what
+the market price implies; a thesis-refresh loop after earnings; an 8-K and insider/congress-trade
+scanner; a trade journal. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) is the full reference.
 
 ---
 
 ## Architecture
 
+```mermaid
+flowchart LR
+  subgraph sources[Data]
+    FMP[FMP: statements, estimates,<br/>transcripts, 13F, insiders]
+    SEC[SEC EDGAR: filings, XBRL]
+    FRED[FRED: macro series]
+  end
+  subgraph api[FastAPI]
+    P[Research pipeline<br/>explicit state machine]
+    F[Filings: extract → resolve → graph]
+    M[3-statement model + reverse DCF]
+    W[Monitoring: status board, catalysts,<br/>8-K scan, outcome tracking]
+    L[llm.py: structured outputs,<br/>caching, telemetry]
+  end
+  DB[(Postgres:<br/>runs, relationships,<br/>outcomes, llm_calls)]
+  UI[Next.js 16 app] <-->|REST + SSE| api
+  sources --> api
+  api <--> DB
+  L --> C[Claude API]
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                      Next.js 16 Frontend                         │
-│  Themes │ Filings │ Catalysts │ Status │ Workspace │ Questions │ │
-│                                                Library │ + New  │
-└─────────────────────────────────┬────────────────────────────────┘
-                                  │ HTTP / SSE streaming
-┌─────────────────────────────────▼────────────────────────────────┐
-│                         FastAPI Backend                          │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │Discovery │ │ Research │ │ Workspace│ │ Filings  │ │ Status │ │
-│  │ Engine   │ │ Pipeline │ │   Loop   │ │ EDGAR +  │ │ Board  │ │
-│  │(FMP + X) │ │(6-phase) │ │(5-step)  │ │  graph   │ │+ kill  │ │
-│  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
-│       └────────────┴────────────┴────────────┴───────────┘      │
-│                           ┌───────▼───────┐                      │
-│                           │  Data Clients │                      │
-│                           │FMP·X·FRED·EDGAR│                     │
-│                           └───────┬───────┘                      │
-└───────────────────────────────────┼──────────────────────────────┘
-                                    │
-┌───────────────────────────────────▼──────────────────────────────┐
-│                            PostgreSQL                            │
-│  themes · research_runs · workspace_runs · citations · signals   │
-│  signal_history · watchlist · kill_criterion_state · catalysts   │
-│  filings · xbrl_facts · filing_sections · relationships          │
-│  counterparty_aliases · ticker_models · ticker_model_drafts      │
-└──────────────────────────────────────────────────────────────────┘
+
+```mermaid
+flowchart LR
+  QS[quick_screen<br/>Haiku] --> DD[deep_dive<br/>9 categories · Opus]
+  DD --> TH[thesis<br/>stance · targets · kill criteria]
+  TH --> RK[risk stress test]
+  RK -->|model asks, R/R < 2,<br/>loops < 2 — decided in code| DD
+  RK --> DONE[completed] --> OUT[outcome tracking<br/>next trading day's close]
 ```
 
 ---
 
-## The Pipeline
+## AI design decisions
 
-```
-START (POST /api/runs)
-  │
-  ▼
-[quick_screen]          ← Phase 1: FMP data pull + scoring (Haiku 4.5)
-  │
-  ▼
-[deep_dive]             ← Phase 2: 9 categories in parallel (Opus 5.5)
-  │
-  ▼
-[thesis_construction]   ← Phase 3: stance, targets, horizon (Opus 5.5)
-  │
-  ▼
-[risk_stress_test]      ← Phase 4: R/R computed in code (Opus 5.5)
-  │
-  ├──(model asks & R/R < 2 & loops < 2)──► [deep_dive] ← re-runs named categories
-  │
-  ▼
-COMPLETED  ← phases 1-4 run continuously, no interrupts
-  │
-  ▼
-⚡ MANUAL ADVANCE       ← POST /api/runs/{id}/advance (action="approve")
-  │
-  ▼
-[position_monitor]      ← Phase 6: entry zones, sizing, stops (Haiku)
-  │
-  ▼
-END
-```
-
-Every data point carries a `Citation` — source name, URL, tier (1 = authoritative, 2 = qualitative), and retrieval timestamp.
+- **The model judges; code decides.** Reward/risk is computed from the price and the model's targets,
+  not taken from the model; whether the risk step loops back is a rule in `graph/routing.py`
+  (before, the prompt asked the model to apply the rules itself, and 18 of 22 runs looped). The quick
+  screen's verdict is the sum of its dimension scores, not the model's own total.
+- **Deterministic finance stays deterministic.** The three-statement model, DCF, reverse DCF, quant
+  fingerprint and outcome maths are plain Python with tests. The model proposes forecast drivers; the
+  engine balances the statements (no plug) and values them.
+- **Structured outputs everywhere, and no invented defaults.** Every JSON-producing call goes through
+  one function using the API's native structured outputs. Truncation and refusals raise instead of
+  being parsed around; an over-long list is clamped to its bound because the API treats length limits
+  as hints; nothing is filled in when output is missing.
+- **An explicit state machine, not a framework.** LangGraph was compiled but never invoked; I removed
+  it ([ADR-0004](docs/adr/0004-explicit-state-machine-over-langgraph.md)), and a follow-up phase that
+  ran every time but never acted — 0 of 273 priority-1 questions ever qualified
+  ([ADR-0005](docs/adr/0005-remove-targeted-followup-phase.md)).
+- **Model tiers by job.** Opus 5.5 at medium effort for synthesis; Haiku 4.5 for screening,
+  classification and extraction.
+- **Caching designed for fan-out.** The nine deep-dive calls share one cached prefix (system prompt +
+  data). Parallel requests can't read an entry still being written, so the first category starts
+  alone and the other eight launch when its response begins streaming.
+- **Citations as a data type.** Every data-client method returns `(data, Citation)`; the report
+  renders them next to the claims they support.
 
 ---
 
-## SEC EDGAR Filings Pipeline
+## Evidence
 
-Separate on-demand pipeline for extracting business intelligence from SEC filings. All endpoints manual-trigger, no automatic inline execution during pipeline runs.
+### Evals ([backend/evals](backend/evals/README.md))
 
-```
-POST /api/filings/ingest/{ticker}
-  ↓  Fetches latest 10-K, 10-Q, DEF 14A from EDGAR
-  ↓  Extracts narrative sections (Item 1, 1A, 7, DEF 14A governance)
-  ↓  Strips inline XBRL, persists to filing_sections
+The thesis step is evaluated on frozen inputs so a prompt change can be compared like for like.
 
-POST /api/filings/extract-relationships/{ticker}
-  ↓  One Haiku call per section (~15K chars each)
-  ↓  Extracts: counterparty_name, relationship_type, magnitude_pct, verbatim_quote
-  ↓  Persists to relationships table (idempotent per section)
-
-POST /api/relationships/resolve/{ticker}
-  ↓  Normalizes names (strips Inc/Corp/LLC/Holdings etc.)
-  ↓  Exact match → auto-resolve
-  ↓  RapidFuzz ≥ 95 → auto-resolve
-  ↓  80-94 → curation queue
-  ↓  Persists to counterparty_aliases, backfills relationships
-
-GET /api/relationships/graph/{ticker}?direction=both&depth=1|2&theme_id=...
-  ↓  Returns {root_ticker, nodes, edges, summary}.
-  ↓  Depth defaults to 1. At depth=2 BFS expands hop-1 counterparties
-  ↓    into hop-2 edges; optional theme_id gates which counterparties
-  ↓    are expanded (only tickers in that theme's seed_tickers).
-  ↓  Each node carries hop + in_selected_theme; each edge carries hop
-  ↓    + source_ticker (the filer at that hop). `summary` is always
-  ↓    the hop-1-only bucketed view the deep-dive card consumes.
-  ↓  Frontend has two consumers: the SupplyChainEcosystem card
-  ↓    (depth=1) and /filings/graph (depth=2 with theme gating).
-
-POST /api/relationships/reconcile
-  ↓  Finds reciprocal pairs (customer↔supplier, etc.)
-  ↓  Flips confirmed_bilateral on both sides
-
-POST /api/themes/{id}/relationships/fanout
-POST /api/tickers/{ticker}/relationships/fanout
-  ↓  Kicks off a background FanoutService task that chains
-  ↓    ingest → extract → resolve over every seed ticker
-  ↓    (serial, one EdgarClient reused, per-stage DB commit)
-  ↓  Returns { fanout_id, status, total_tickers, ... } immediately.
-
-GET /api/fanouts/{fanout_id}
-  ↓  Poll for progress: { status, current_ticker, current_stage,
-  ↓    completed_tickers, errors[] }. Frontend polls at 3s intervals
-  ↓    from the "Fan out" buttons on /filings.
-```
-
-The Supply Chain & Ecosystem card in the deep-dive dashboard renders the graph data — counterparties grouped by type with verbatim SEC quotes, bilateral confirmation badges, and tracker-links for companies in your discovery universe.
-
-Beyond the card, the resolved counterparty list is routed into the Business Quality, Risk Assessment, and Future Durability deep-dive prompts via `RELATIONSHIP_ROUTING` in `graph/nodes.py`. The prompt slot lists outbound relationships grouped by type (plus inbound mentions from other tickers that named this one in their own filings), and the framing tells the LLM to cite entities by name and NOT to re-quote filing excerpts for them — making the supply-chain data an authoritative index rather than material to restate.
-
----
-
-## Financial Model + Reverse DCF
-
-Per-ticker editable 3-statement model with versioning and a reverse-DCF engine. Lives at `/model/{ticker}`. All on-demand — no automatic trigger from the research pipeline.
-
-```
-POST /api/models/{ticker}/initialize?force=
-  ↓  Seeds 8 calendar quarters of history from FMP statements (balances, reproduces reported EBIT)
-  ↓  WACC from beta + FRED DGS10; exit multiple from TTM EV/EBITDA, bounded [6, 30]
-  ↓  Default drivers: TTM ratios, consensus-then-fade growth; Opus drivers from the latest research run override
-  ↓  recompute() per period (IS → CF → BS), no balancing plug
-  ↓  Persists v1 to ticker_models (idempotent unless force=true)
-
-GET /api/models/{ticker}
-  ↓  Returns latest_version + draft (or both null)
-
-PUT /api/models/{ticker}/draft
-  ↓  Apply one cell edit (cell_path = drivers.<period>.<key>
-  ↓    | <stmt>.<line>.<period> | assumptions.<key>)
-  ↓  Recompute: P&L → CF → BS rollforward (plug into retained_earnings)
-  ↓  Persist into ticker_model_drafts (one row per ticker)
-  ↓  422 on bad cell_path, 409 on imbalance > tolerance
-
-POST /api/models/{ticker}/save
-  ↓  Promote draft → next ticker_models version, delete draft
-
-GET /api/models/{ticker}/reverse-dcf?price=&from_draft=
-  ↓  Single payload with four blocks:
-  ↓    implied_drivers (3 scalar bisection solves: revenue_growth_pct,
-  ↓      ebit_margin_pct, terminal_multiple)
-  ↓    implied_irr (solve discount rate that produces target_per_share)
-  ↓    sensitivity_grids (3 × 21×21 grids for each driver pair)
-  ↓    thesis_vs_priced_in (delta between user-saved drivers and implieds)
-  ↓  price defaults to live FMP /quote via shared singleton
-
-GET /api/models/{ticker}/versions
-GET /api/models/{ticker}/versions/{version}/diff?against=
-  ↓  Cell-path-keyed JSON diff for the history viewer
-```
-
-Frontend has three hash-routed tabs: `#forecast` (the spreadsheet + driver panel + formula bar), `#reverse-dcf` (IRR + thesis-vs-priced + heatmaps + what-if sliders), `#history` (version list + diff viewer). The deep-dive `ReportHeader` carries a small Model badge that links into `/model/{ticker}`.
-
----
-
-### Structured Phase Outputs
-
-Every pipeline phase produces JSON through the API's native structured outputs (`complete_structured`: schema from the Pydantic model, stop_reason checked before parsing, over-length fields clamped, too-short output rejected rather than defaulted). Each phase has a dedicated React dashboard component with prose fallback for old runs or parse failures.
-
-| Phase | Schema | Dashboard |
-|---|---|---|
-| Quick Screen | `QuickScreenOutput` | Score ring, dimension table, thesis/risk callouts |
-| Deep Dive (×9) | `DeepDiveCategoryOutput` | Scrollable financial dashboard: radar chart, headline metrics, score bar, per-category charts (Recharts bar/line/trend), 1Y candlestick chart with SMA/RSI (lightweight-charts), AI companion panels, sticky sidebar nav |
-| Thesis | `ThesisOutput` | Conviction ring, bull/bear columns, catalyst timeline |
-| Risk Stress-Test | `RiskStressTestOutput` | R/R ratio ring, risk register cards, loop-back footer |
-| Position Monitor | `PositionMonitorOutput` | Entry zone, sizing, stop loss, monitoring schedule, exit conditions |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 24+
-- PostgreSQL
-
-### Backend
-
-```bash
-# From project root
-cd backend && python -m venv venv
-source backend/venv/bin/activate
-pip install -r backend/requirements.txt
-
-# Run migrations
-cd backend && alembic upgrade head
-
-# Dev server (run from project root for absolute imports)
-cd ..
-uvicorn backend.app.main:app --reload
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev        # Dev server on :3000
-```
-
-### Environment Variables
-
-Single `.env` at project root:
-
-```
-FMP_API_KEY=
-X_BEARER_TOKEN=
-ANTHROPIC_API_KEY=
-DATABASE_URL=postgresql+asyncpg://...
-DATABASE_URL_SYNC=postgresql://...
-FRED_API_KEY=              # optional — macro data skipped if empty
-```
-
-No auth system — personal local tool.
-
----
-
-## Key Files
-
-| File | Purpose |
+| Check | Result |
 |---|---|
-| `CLAUDE.md` | Claude Code guidance for this repo |
-| `backend/app/models/phase_schemas.py` | All Pydantic schemas for structured phase outputs |
-| `backend/app/models/filing.py` | Filing, FilingSection, Relationship, CounterpartyAlias ORM models |
-| `backend/app/graph/routing.py` | Phase routing — the single source of routing truth |
-| `backend/app/graph/nodes.py` | Phase node implementations + data routing tables |
-| `backend/app/graph/prompts.py` | All LLM prompts |
-| `backend/app/clients/edgar.py` | SEC EDGAR client (CIK lookup, company facts, filing fetch) |
-| `backend/app/services/edgar_html.py` | BS4 section extractor (heading regex, XBRL stripping) |
-| `backend/app/services/edgar_relationships.py` | Haiku relationship extraction service |
-| `backend/app/services/counterparty_resolver.py` | Normalizer + RapidFuzz matcher + alias management |
-| `backend/app/services/supply_chain.py` | Graph traversal + bilateral reconciliation |
-| `backend/app/services/fanout.py` | FanoutService — orchestrates ingest → extract → resolve across a theme or a single ticker; in-memory status tracker wired through `app.state.fanout` |
-| `backend/app/services/relationship_context.py` | Read-path query layer: builds the `CounterpartyContext` (outbound + inbound, grouped by type) consumed by the deep-dive prompt routing |
-| `backend/app/api/fanouts.py` | Fan-out endpoints (theme, ticker, status polling) |
-| `backend/app/services/workspace.py` | `WorkspaceService` — orchestrates 5-step workspace-loop runs with SSE streaming |
-| `backend/app/services/workspace_steps.py` | Step functions (`step_update_refresh`, `step_research`, `step_challenge`, `step_differentiation`, `step_validation`) |
-| `backend/app/models/workspace_schemas.py` | Output schemas per step + `WorkspaceVerdict` enum |
-| `backend/app/api/workspace.py` | Workspace API surface (kick-off, status, SSE, recent list) |
-| `backend/app/services/status_board.py` | Fleet aggregator powering `GET /api/status/board` |
-| `backend/app/api/status.py` | Status board, archive/unarchive, kill-criteria toggles |
-| `backend/app/api/catalysts.py` | Catalyst calendar |
-| `backend/app/api/questions.py` | Open-question log (dismiss / resolve / retry-auto) |
-| `backend/app/models/model_state.py` | `ModelState` Pydantic + `ModelCell` (drivers/statements/assumptions) |
-| `backend/app/services/model_baseline.py` | AI-seeded baseline orchestrator (`build_baseline_state`, `initialize_or_get_model`) |
-| `backend/app/services/model_balancing.py` | Pure recompute pipeline: P&L → CF → BS plug into `retained_earnings` |
-| `backend/app/services/dcf.py` | DCF over forecast FCF + terminal value (Gordon growth or EV/EBITDA multiple) |
-| `backend/app/services/reverse_dcf.py` | Bisection solvers + 21×21 sensitivity grids + thesis-vs-priced-in |
-| `backend/app/services/model_diff.py` | Cell-path-keyed JSON diff between two `ModelState`s |
-| `backend/app/api/models_api.py` | Model REST surface (`/api/models/{ticker}/...`) |
-| `frontend/lib/api.ts` | Typed API client + all TypeScript interfaces |
-| `frontend/components/deep-dive/` | 30+ component financial dashboard (charts, sections, panels, skeletons) |
-| `frontend/components/filings/` | Filing ingest, section reader, curation panel |
-| `frontend/components/model/` | Forecast grid, driver panel, formula bar, reverse-DCF panel, heatmaps, history diff |
+| Numbers in a thesis found in the raw FMP/FRED data | **67%** median (21 stored theses). Measured against the prompt instead it's 98% — inflated, because the prompt is mostly the model's own deep-dive text |
+| Stance vs targets vs price; kill criteria and pre-mortem present | new-format theses pass; 9 of 21 older ones lacked kill criteria |
+| Thesis evidence carrying a source tag | 0% — the next prompt target |
+| Stability across reruns (pilot, NVDA + ORCL) | same stance every time; conviction ±2; base target within 1.2% |
+| Rubric judge (Claude Sonnet 5, a different model from the writer) | 4.5 / 5.0 / 4.5 / 3.5–4.0 / 4.5 — lenient on evidence, so it needs calibrating before it picks between prompts |
+
+### Cost and latency (from the `llm_calls` table)
+
+| Phase | Calls | Cost |
+|---|---|---|
+| Quick screen (Haiku) | 1 | $0.01 |
+| Deep dive incl. transcript analysis (two loop-backs) | 18 | $1.41 |
+| Thesis (×3) | 3 | $0.47 |
+| Risk stress test (×3) | 3 | $0.17 |
+| **One VRT run** | **25** | **$2.07 · 6.6 min** |
+
+Restructuring the prompts for caching and reusing transcript analysis across loops took the same run
+from $2.92 and 38 calls to $2.07 and 25 (cache hits 6.6% → 28.5% of prompt tokens). About 70% of what
+remains is output (thinking included), so effort level is the next lever, not caching.
+
+### CI gates
+
+- Backend: ruff and 1,100 unit tests; migrations must apply to an empty Postgres and match the models.
+- An end-to-end research run on that database, with recorded FMP responses and a fake model — every
+  phase, a loop-back, the cache fan-out and the telemetry — with live HTTP blocked (1 second).
+- Every model call site must have a probe in the live smoke test, which runs nightly (19 paths, $0.08).
+- Frontend: types, lint, 72 unit tests, and Playwright on every page plus a finished report: no
+  console errors, no serious or critical axe findings, no exceptions list.
+
+---
+
+## Keeping score
+
+Each finished call is recorded at the next trading day's close and snapshotted at 1 day to 6 months,
+scored in the direction of the call against four benchmarks. With ten live calls so far, the honest
+reading is that there's no detectable edge — the early outperformance is mostly theme beta, and the
+three-month numbers are worse than the one-month ones. The point is the harness, not the returns:
+from here on every call is recorded automatically before its outcome is known.
+
+![Performance page: outcomes by verdict and by theme](docs/images/performance.png)
+
+---
+
+## How it was built
+
+I directed the work and Claude Code wrote most of it: specs and plans first, ADRs for the decisions
+that matter, a cross-model review before merging, and periodic audits of my own AI-written code. The
+biggest lesson came from one of those audits: a fix that lived only in a commit message (assistant
+prefill breaks on newer Claude models) came back at five call sites. It's now a guard
+test and a nightly live smoke. [PROCESS.md](PROCESS.md) is the longer account.
+
+---
+
+## Running it
+
+Needs Python 3.12, Node 24, Postgres, and API keys for Anthropic and FMP (FRED optional).
+
+```bash
+# .env at the repo root: ANTHROPIC_API_KEY, FMP_API_KEY, X_BEARER_TOKEN, DATABASE_URL, DATABASE_URL_SYNC
+python -m venv backend/venv && source backend/venv/bin/activate
+pip install -r backend/requirements.txt
+(cd backend && alembic upgrade head)
+uvicorn backend.app.main:app --reload          # from the repo root
+
+cd frontend && npm install && npm run dev       # http://localhost:3000
+```
+
+Desktop-first, single user, no auth — a local tool. Tests: see [CLAUDE.md](CLAUDE.md#common-commands).
+
+| Where | What |
+|---|---|
+| `backend/app/graph/` | pipeline phases, prompts, routing, `llm.py` |
+| `backend/app/services/` | filings, model engine, outcomes, telemetry, schedulers |
+| `backend/evals/` | eval harness |
+| `frontend/app/`, `frontend/components/` | Next.js pages and components |
+| `docs/adr/` | architecture decisions |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | full reference |
