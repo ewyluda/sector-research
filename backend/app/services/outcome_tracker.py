@@ -15,11 +15,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.clients.fmp import FMPClient
+from backend.app.graph.state import ResearchState
 from backend.app.models.outcome import (
     SectorEtfMapping,
     VerdictOutcome,
     VerdictReturnSnapshot,
 )
+from backend.app.services.metric_guards import adjusted_beta
 from backend.app.models.outcome_schemas import (
     BackfillSummary,
     EntryConstituent,
@@ -113,6 +115,8 @@ async def _resolve_entry_prices(
     constituents: list[EntryConstituent] = []
     if theme_seed_tickers:
         for t in theme_seed_tickers:
+            if t.upper() == ticker.upper():
+                continue  # a benchmark that contains the stock partly measures it against itself
             px = await _close_on(t, entry_day)
             if px is not None:
                 constituents.append(EntryConstituent(ticker=t, entry_price=px))
@@ -152,11 +156,20 @@ def compute_basket_value(
     return Decimal(str(statistics.fmean(ratios) * 100))
 
 
+def research_verdict(state: Any) -> str:
+    """The call a research run made: the thesis stance (long / avoid / short)
+    when it has one, else the run status (runs before 2026-09-26 had no stance)."""
+    thesis = (getattr(state, "phase_outputs", None) or {}).get("thesis") or {}
+    stance = (thesis.get("structured") or {}).get("stance") if isinstance(thesis, dict) else None
+    return stance or state.status
+
+
 def build_research_run_signal_snapshot(
     *,
     state: Any,
     signals_row: dict | None,
     kill_states: list[dict] | None,
+    beta_raw: float | None = None,
 ) -> dict:
     """Assemble signal_snapshot JSONB for a research-run verdict.
 
@@ -170,22 +183,22 @@ def build_research_run_signal_snapshot(
 
     incomplete = False
     deep_dive_scores: dict[str, float | None] = {}
-    raw_results = getattr(state, "deep_dive_results", None)
-    results = raw_results if isinstance(raw_results, dict) else {}
+    # (Read state.deep_dive_results until 2026-09-28 — an attribute ResearchState
+    # never had, so every snapshot was marked incomplete with no scores.)
+    results = state.get_deep_dive_results() if hasattr(state, "get_deep_dive_results") else {}
     if not results:
-        logger.warning("build_research_run_signal_snapshot: deep_dive_results missing or empty (%s)", ctx)
+        logger.warning("build_research_run_signal_snapshot: no deep-dive results (%s)", ctx)
         incomplete = True
     else:
         for category, payload in results.items():
-            score = getattr(payload, "score", None)
-            if score is None and isinstance(payload, dict):
-                score = payload.get("score")
-            deep_dive_scores[category] = score
+            deep_dive_scores[category] = getattr(payload, "score", None)
 
     snapshot: dict = {
         "signals_row": signals_row or {},
         "deep_dive_scores": deep_dive_scores,
         "kill_criterion_state": kill_states or [],
+        # Beta at the call, for beta-adjusted excess (benchmark "spy_beta").
+        "beta": adjusted_beta(beta_raw) if beta_raw is not None else None,
     }
     if incomplete:
         snapshot["incomplete"] = True
@@ -501,13 +514,10 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
                 errors.append({"source_id": run.id, "error": "no completed_at/created_at"})
                 continue
 
-            dd = state_dict.get("deep_dive_results") or {}
-            scores = {k: (v.get("score") if isinstance(v, dict) else None) for k, v in dd.items()}
-            snapshot = {
-                "signals_row": signals_row or {},
-                "deep_dive_scores": scores,
-                "kill_criterion_state": [],
-            }
+            state = ResearchState.from_dict(state_dict)
+            snapshot = build_research_run_signal_snapshot(
+                state=state, signals_row=signals_row, kill_states=[], beta_raw=(profile or {}).get("beta"),
+            )
 
             await record_verdict(
                 source_type="research_run",
@@ -516,7 +526,7 @@ async def backfill_from_history(*, fmp: FMPClient, db: AsyncSession) -> Backfill
                 theme_id=run.theme_id,
                 theme_seed_tickers=theme_seed_tickers,
                 sector=sector,
-                verdict=run.status,
+                verdict=research_verdict(state),
                 verdict_emitted_at=emitted_at,
                 signal_snapshot=snapshot,
                 fmp=fmp,

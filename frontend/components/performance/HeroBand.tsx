@@ -3,7 +3,8 @@ import { RateCell, ReturnCell } from "./ReturnCell";
 
 export function HeroBand({ summary }: { summary: OutcomeSummary }) {
   const { overall, benchmark } = summary;
-  const benchLabel = benchmark === "spy" ? "SPY" : benchmark === "sector" ? "Sector ETF" : "Theme basket";
+  const benchLabel = benchmark === "spy" ? "SPY" : benchmark === "spy_beta" ? "SPY, beta-adjusted"
+    : benchmark === "sector" ? "Sector ETF" : "Theme basket";
   const offsetPopulated = summary.populated_offsets.includes(summary.snapshot_offset);
 
   return (
@@ -25,6 +26,10 @@ export function HeroBand({ summary }: { summary: OutcomeSummary }) {
           <div className="mt-3 text-sm text-[var(--text-muted)]">
             N = {overall.n} · Median excess: <ReturnCell value={overall.median_excess_pct} />
           </div>
+          <p className="mt-2 text-xs text-[var(--text-faint)]">
+            Excess and win rate are scored in each call&apos;s direction: an avoid or short call wins when the stock
+            lags the benchmark; watchlist calls aren&apos;t scored. Each position counts once (its latest call).
+          </p>
         </>
       )}
     </section>

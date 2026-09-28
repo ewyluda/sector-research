@@ -200,9 +200,35 @@ async def get_outcome_by_source(source_type: str, source_id: str) -> OutcomeDeta
 def _excess_attr(benchmark: Benchmark) -> str:
     return {
         "spy": "spy_excess_pct",
+        "spy_beta": "spy_excess_pct",  # adjusted in _excess using the outcome's beta
         "sector": "sector_excess_pct",
         "theme_basket": "theme_basket_excess_pct",
     }[benchmark]
+
+
+# The direction each verdict calls. Excess and win rate are scored in that
+# direction: an avoid or short call wins when the stock lags the benchmark.
+# watchlist makes no call and is left out of excess and win rate.
+_DIRECTION: dict[str, int] = {
+    "long": 1, "completed": 1, "healthy": 1, "imminent": 1,
+    "short": -1, "avoid": -1, "pass": -1, "triggered": -1, "broken": -1,
+}
+
+
+def _excess(outcome, snap, benchmark: Benchmark) -> float | None:
+    """Benchmark excess for one snapshot, before applying the call's direction.
+    spy_beta: r - β·r_SPY, with r_SPY = r - (SPY excess) and β recorded at the
+    call (outcomes recorded before 2026-09-28 have no β and return None)."""
+    raw = getattr(snap, _excess_attr(benchmark))
+    if raw is None:
+        return None
+    if benchmark != "spy_beta":
+        return float(raw)
+    beta = (outcome.signal_snapshot or {}).get("beta")
+    if beta is None:
+        return None
+    r = float(snap.ticker_return_pct)
+    return r - float(beta) * (r - float(raw))
 
 
 def _window_cutoff(window: Window) -> datetime | None:
@@ -281,13 +307,13 @@ async def _compute_summary(
     benchmark: Benchmark,
     source_type: str,
     db,
+    include_superseded: bool = False,
 ) -> dict:
     from sqlalchemy import distinct
     from backend.app.models.outcome import VerdictReturnSnapshot
     from backend.app.models.theme import Theme
 
     cutoff = _window_cutoff(window)
-    excess_attr = _excess_attr(benchmark)
 
     # Build the base outcome scope filter (reused for both queries).
     def _scope_filters(q):
@@ -295,6 +321,9 @@ async def _compute_summary(
             q = q.where(VerdictOutcome.verdict_emitted_at >= cutoff)
         if theme_id is not None:
             q = q.where(VerdictOutcome.theme_id == theme_id)
+        if not include_superseded:
+            # A re-researched position counts once — its latest call.
+            q = q.where(VerdictOutcome.superseded_at.is_(None))
         if source_type != "all":
             q = q.where(VerdictOutcome.source_type == source_type)
         return q
@@ -330,8 +359,9 @@ async def _compute_summary(
             t_ret, x = None, None
         else:
             t_ret = float(snap.ticker_return_pct) if snap.ticker_return_pct is not None else None
-            x_val = getattr(snap, excess_attr)
-            x = float(x_val) if x_val is not None else None
+            x = _excess(outcome, snap, benchmark)
+            direction = _DIRECTION.get(outcome.verdict)
+            x = x * direction if (x is not None and direction is not None) else None
 
         overall_pairs.append((t_ret, x))
         by_verdict[outcome.verdict].append((t_ret, x))
@@ -390,8 +420,10 @@ async def get_summary(
     snapshot_offset: SnapshotOffset = "3m",
     benchmark: Benchmark = "spy",
     source_type: Literal["research_run", "workspace_run", "all"] = "all",
+    include_superseded: bool = False,
 ) -> dict:
-    """Aggregate verdict/theme/signal-bucket rollups over the outcome set."""
+    """Aggregate verdict/theme/signal-bucket rollups over the outcome set.
+    Excess and win rate are measured in each verdict's called direction."""
     async with async_session() as db:
         return await _compute_summary(
             theme_id=theme_id,
@@ -400,4 +432,5 @@ async def get_summary(
             benchmark=benchmark,
             source_type=source_type,
             db=db,
+            include_superseded=include_superseded,
         )

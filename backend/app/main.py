@@ -110,16 +110,21 @@ async def lifespan(app: FastAPI):
         name="Daily Earnings Prints Refresh",
         replace_existing=True,
     )
-    # Daily verdict-outcome snapshot refresh — 03:00 UTC
+    # Daily verdict outcomes — 03:00 UTC. Records outcomes for runs whose entry
+    # day (the next trading day's close) now exists, then fills due snapshots.
+    # Until 2026-09-28 this only refreshed existing outcomes, and recording at
+    # run completion always fails (no next-day price yet), so no run after the
+    # May 11 manual backfill ever got an outcome.
     async def _run_daily_outcome_refresh() -> None:
-        from backend.app.services.outcome_tracker import refresh_snapshots
+        from backend.app.services.outcome_tracker import backfill_from_history
         try:
             fmp = app.state.fmp
             async with unit_of_work() as db:
-                summary = await refresh_snapshots(fmp=fmp, db=db)
+                summary = await backfill_from_history(fmp=fmp, db=db)
             logger.info(
-                "outcome refresh: processed=%d snapshotted=%d closed=%d errors=%d",
-                summary.processed, summary.snapshotted, summary.closed, len(summary.errors),
+                "outcomes: created=%d existed=%d snapshots=%d errors=%d",
+                summary.outcomes_created, summary.outcomes_existed,
+                summary.snapshots_inserted, len(summary.errors),
             )
         except Exception:
             logger.exception("Daily outcome refresh crashed")

@@ -48,6 +48,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       snapshotOffset,
       benchmark,
       sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+      includeSuperseded: showSuperseded,
     });
   } else {
     // No URL offset: fetch summary with "1m" placeholder to learn populated offsets,
@@ -59,6 +60,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       snapshotOffset: "1m",
       benchmark,
       sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+      includeSuperseded: showSuperseded,
     });
     snapshotOffset =
       OFFSET_PRIORITY.find((o) => discoverySummary.populated_offsets.includes(o)) ?? "1m";
@@ -72,6 +74,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
         snapshotOffset,
         benchmark,
         sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+        includeSuperseded: showSuperseded,
       });
     }
   }

@@ -27,6 +27,7 @@ from backend.app.models.model_state import (
 )
 from backend.app.services.model_balancing import recompute
 from backend.app.services.dcf import unlevered_fcf
+from backend.app.services.metric_guards import BETA_CAP, adjusted_beta
 from backend.app.services.model_history import (
     annual_to_quarterly, historical_driver_defaults, rows_by_quarter, seed_history, summarize_history,
 )
@@ -34,9 +35,6 @@ from backend.app.services.model_periods import build_periods, calendar_quarter_l
 from backend.app.services import llm_usage
 
 EQUITY_RISK_PREMIUM = 0.055
-# Raw FMP betas are noisy for short histories (CRWV 7.4, CORZ 5.5 gave 46% and
-# 35% costs of equity). Blume-adjust toward 1, then cap.
-BETA_CAP = 2.0
 DEFAULT_RISK_FREE = 0.045
 EXIT_MULTIPLE_BOUNDS = (6.0, 30.0)
 DEFAULT_EXIT_MULTIPLE = 12.0
@@ -131,7 +129,7 @@ def assemble_historical_state(fmp_inputs: dict[str, Any], rf: float) -> tuple[Mo
     profile = fmp_inputs["profile"]
     mcap = float(profile.get("marketCap") or 0.0)
     raw_beta = float(profile.get("beta") or 1.0)
-    beta = min(0.67 * raw_beta + 0.33, BETA_CAP)
+    beta = adjusted_beta(raw_beta)  # raw FMP betas gave CRWV a 46% cost of equity
     tax = defaults.get("effective_tax_rate", (0.21, ""))[0]
     ke = rf + beta * EQUITY_RISK_PREMIUM
     kd = max(defaults.get("interest_expense_rate", (0.0, ""))[0], rf)

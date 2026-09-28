@@ -5,7 +5,7 @@ import type { Benchmark, SnapshotOffset, SourceType, Window } from "@/lib/api";
 
 const WINDOWS: Window[] = ["30d", "90d", "1y", "all"];
 const OFFSETS: SnapshotOffset[] = ["1d", "1w", "1m", "3m", "6m"];
-const BENCHMARKS: Benchmark[] = ["spy", "sector", "theme_basket"];
+const BENCHMARKS: Benchmark[] = ["spy", "spy_beta", "sector", "theme_basket"];
 const SOURCES: ("all" | SourceType)[] = ["all", "research_run", "workspace_run"];
 
 export function PerformanceFilters({
@@ -63,7 +63,7 @@ export function PerformanceFilters({
 }
 
 function fmtBenchmark(v: string) {
-  return v === "spy" ? "SPY" : v === "sector" ? "Sector ETF" : "Theme basket";
+  return v === "spy" ? "SPY" : v === "spy_beta" ? "SPY β-adj" : v === "sector" ? "Sector ETF" : "Theme basket";
 }
 function fmtSource(v: string) {
   return v === "all" ? "All" : v === "research_run" ? "Research" : "Workspace";

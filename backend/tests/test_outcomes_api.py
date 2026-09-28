@@ -239,10 +239,11 @@ class TestSummary(unittest.TestCase):
 
         captured = {}
 
-        async def _stub(*, theme_id, window, snapshot_offset, benchmark, source_type, db):
+        async def _stub(*, theme_id, window, snapshot_offset, benchmark, source_type, db, include_superseded):
             captured.update({
                 "theme_id": theme_id, "window": window, "snapshot_offset": snapshot_offset,
                 "benchmark": benchmark, "source_type": source_type,
+                "include_superseded": include_superseded,
             })
             return {
                 "window": window, "snapshot_offset": snapshot_offset, "benchmark": benchmark,
@@ -260,6 +261,7 @@ class TestSummary(unittest.TestCase):
             self.assertEqual(captured["window"], "30d")
             self.assertEqual(captured["benchmark"], "sector")
             self.assertEqual(captured["source_type"], "workspace_run")
+            self.assertFalse(captured["include_superseded"])  # a re-researched position counts once
 
     def test_populated_offsets_present_in_response(self):
         """populated_offsets is serialized in the summary response."""
@@ -382,3 +384,61 @@ class TestQuartileBuckets(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDirectionalSummary(unittest.TestCase):
+    """Excess and win rate are scored in each call's direction; β-adjusted SPY
+    excess uses the beta recorded with the call; superseded calls drop out."""
+
+    @staticmethod
+    def _summary(rows, *, benchmark="spy", include_superseded=False):
+        import asyncio
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, MagicMock
+
+        from backend.app.api.outcomes import _compute_summary
+
+        pop = MagicMock()
+        pop.scalars.return_value.all.return_value = ["1m"]
+        main = MagicMock()
+        main.all.return_value = [
+            (SimpleNamespace(verdict=v, theme_id=None, signal_snapshot=snap_meta),
+             SimpleNamespace(ticker_return_pct=r, spy_excess_pct=x, sector_excess_pct=None,
+                             theme_basket_excess_pct=None))
+            for v, r, x, snap_meta in rows
+        ]
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[pop, main])
+        result = asyncio.run(_compute_summary(
+            theme_id=None, window="all", snapshot_offset="1m", benchmark=benchmark,
+            source_type="all", db=db, include_superseded=include_superseded,
+        ))
+        return result, db
+
+    def test_short_and_avoid_calls_win_when_the_stock_lags(self):
+        result, _ = self._summary([
+            ("long", 0.10, 0.05, {}),     # long, beat SPY by 5% → +5%, win
+            ("short", -0.08, -0.12, {}),  # short, lagged SPY by 12% → +12%, win
+            ("avoid", 0.20, 0.15, {}),    # avoid, beat SPY by 15% → −15%, loss
+            ("watchlist", 0.30, 0.25, {}),  # no call → not scored
+        ])
+        overall = result["overall"]
+        self.assertEqual(overall["n"], 4)
+        self.assertAlmostEqual(overall["mean_excess_pct"], (0.05 + 0.12 - 0.15) / 3)
+        self.assertAlmostEqual(overall["win_rate"], 2 / 3)
+        self.assertAlmostEqual(result["by_verdict"]["short"]["mean_excess_pct"], 0.12)
+
+    def test_beta_adjusted_excess_uses_the_beta_recorded_with_the_call(self):
+        # r = 20%, SPY excess 10% → SPY returned 10%; β 1.5 → 20% − 1.5 × 10% = 5%
+        result, _ = self._summary([("long", 0.20, 0.10, {"beta": 1.5}),
+                                   ("long", 0.20, 0.10, {})],  # recorded before β was kept
+                                  benchmark="spy_beta")
+        self.assertAlmostEqual(result["overall"]["mean_excess_pct"], 0.05)
+        self.assertAlmostEqual(result["overall"]["win_rate"], 1.0)
+
+    def test_superseded_calls_are_excluded_unless_asked_for(self):
+        _, db = self._summary([])
+        sql = str(db.execute.call_args_list[1].args[0])
+        self.assertIn("superseded_at IS NULL", sql)
+        _, db = self._summary([], include_superseded=True)
+        self.assertNotIn("superseded_at IS NULL", str(db.execute.call_args_list[1].args[0]))

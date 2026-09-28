@@ -1,7 +1,8 @@
 import type { OutcomeSummary, StatGroup } from "@/lib/api";
 import { RateCell, ReturnCell } from "./ReturnCell";
 
-const RUN_VERDICT_ORDER = ["completed", "watchlist", "passed"] as const;
+// Research calls: the thesis stance since 2026-09-26; run status before that.
+const RUN_VERDICT_ORDER = ["long", "avoid", "short", "completed", "watchlist", "passed"] as const;
 // "stale" is included to match status-board vocabulary; the backend VerdictStats model
 // does not yet emit this field, so it will never appear until the backend is extended.
 const WORKSPACE_HEALTH_ORDER = ["healthy", "imminent", "stale", "triggered", "broken"] as const;

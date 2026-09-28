@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 SnapshotOffset = Literal["1d", "1w", "1m", "3m", "6m"]
 SourceType = Literal["research_run", "workspace_run"]
-Benchmark = Literal["spy", "sector", "theme_basket"]
+Benchmark = Literal["spy", "spy_beta", "sector", "theme_basket"]
 Window = Literal["30d", "90d", "1y", "all"]
 
 
@@ -93,8 +93,12 @@ class StatGroup(BaseModel):
 
 class VerdictStats(BaseModel):
     """Per-verdict-band stats. Field set is the known verdict space:
-    workspace emits healthy|imminent|triggered|broken; research emits completed|watchlist|pass.
+    workspace emits healthy|imminent|triggered|broken; research emits the thesis
+    stance long|avoid|short (runs before 2026-09-26: completed|watchlist|pass).
     'passed' aliases 'pass' (Python keyword collision)."""
+    long: StatGroup | None = None
+    avoid: StatGroup | None = None
+    short: StatGroup | None = None
     healthy: StatGroup | None = None
     imminent: StatGroup | None = None
     triggered: StatGroup | None = None

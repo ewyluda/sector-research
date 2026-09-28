@@ -90,3 +90,13 @@ def guard_margin(value: Optional[float], *, metric: str, ticker: str) -> Optiona
             hi,
         )
     return value
+
+
+BETA_CAP = 2.0
+
+
+def adjusted_beta(raw: float | None) -> float:
+    """Blume-adjusted beta (0.67·raw + 0.33), capped at BETA_CAP. Raw FMP
+    betas are noisy for short histories (CRWV 7.4, CORZ 5.5); a missing beta
+    is treated as market (1.0)."""
+    return min(0.67 * float(raw if raw is not None else 1.0) + 0.33, BETA_CAP)

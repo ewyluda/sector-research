@@ -343,6 +343,7 @@ class PipelineService:
 
                 snapshot = outcome_tracker.build_research_run_signal_snapshot(
                     state=state, signals_row=signals_row, kill_states=[],
+                    beta_raw=(profile or {}).get("beta"),
                 )
 
                 await outcome_tracker.record_verdict(
@@ -352,12 +353,16 @@ class PipelineService:
                     theme_id=state.theme_id,
                     theme_seed_tickers=theme_seed_tickers,
                     sector=sector,
-                    verdict=state.status,
+                    verdict=outcome_tracker.research_verdict(state),
                     verdict_emitted_at=_coerce_to_datetime(state.completed_at) or datetime.now(timezone.utc),
                     signal_snapshot=snapshot,
                     fmp=self._fmp,
                     db=db,
                 )
+        except LookupError as exc:
+            # Entry is the next trading day's close, which doesn't exist yet at
+            # completion; the daily 03:00 UTC outcome job records it then.
+            logger.info("outcome for run %s pending: %s", run_id, exc)
         except Exception:
             logger.exception("record_verdict failed for run %s", run_id)
 
