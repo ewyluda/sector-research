@@ -85,10 +85,11 @@ async def run_transcript_analysis(
 
         results = {}
 
-        # Passes 1–2: Haiku
+        # Passes 1–2: Haiku. Their JSON runs past 1,000 tokens on a full
+        # call; the old 800/1,000 caps truncated every one (live, 2026-09-27).
         pass1, pass2 = await asyncio.gather(
-            complete(TRANSCRIPT_PASS1_SYSTEM, transcript_text, model=FAST_MODEL, max_tokens=1000),
-            complete(TRANSCRIPT_PASS2_SYSTEM, transcript_text, model=FAST_MODEL, max_tokens=800),
+            complete(TRANSCRIPT_PASS1_SYSTEM, transcript_text, model=FAST_MODEL, max_tokens=4000),
+            complete(TRANSCRIPT_PASS2_SYSTEM, transcript_text, model=FAST_MODEL, max_tokens=4000),
             return_exceptions=True,
         )
         results["pass1_claims"] = _parse_pass(pass1)

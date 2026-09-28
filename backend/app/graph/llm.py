@@ -15,12 +15,13 @@ every newer model reject it with a 400 (found 2026-04-11, commit 68f99af, then
 reintroduced at five call sites before this guard existed).
 """
 
+import json
 import logging
 import time
 from typing import TypeVar
 
 import anthropic
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from backend.app.config import get_settings
 
@@ -121,8 +122,10 @@ async def complete_structured(
 
     Returns a validated instance. Raises LLMOutputError when the output was
     truncated or refused, and pydantic.ValidationError when a constraint the
-    API cannot enforce (min/max, lengths — stripped from the schema sent and
-    checked here) fails. Never invents defaults: callers decide how to degrade.
+    API cannot enforce (min/max, lengths — sent to the model only as hints and
+    checked here) fails. Over-length lists and strings are clamped to their
+    bound (see clamp_too_long); nothing is ever invented — callers decide how
+    to degrade.
 
     Uses messages.create + an explicit schema rather than messages.parse:
     parse validates inside the SDK before stop_reason can be checked, so a
@@ -145,4 +148,52 @@ async def complete_structured(
     text = "".join(b.text for b in message.content if b.type == "text")
     if not text:
         raise LLMOutputError(f"{model} returned no {output_model.__name__}")
-    return output_model.model_validate_json(text)
+    try:
+        return output_model.model_validate_json(text)
+    except ValidationError as e:
+        failure = e
+    data = json.loads(text)  # the API guarantees schema-shaped JSON
+    clamped: list[str] = []
+    # Pydantic stops at a too-long list without validating its items, so a
+    # string inside it only surfaces on the next round.
+    for _ in range(3):
+        errors = failure.errors()
+        if not clamp_too_long(data, errors):
+            raise failure
+        clamped += [".".join(map(str, err["loc"])) for err in errors]
+        try:
+            result = output_model.model_validate(data)
+        except ValidationError as e:
+            failure = e
+            continue
+        logger.warning("%s: clamped over-length fields in %s: %s", model, output_model.__name__, clamped)
+        return result
+    raise failure
+
+
+_TOO_LONG = {"too_long", "string_too_long"}
+
+
+def clamp_too_long(data: object, errors: list) -> bool:
+    """Trim lists and strings that exceed their declared max_length, in place.
+
+    Structured outputs pass maxItems/maxLength to the model as hints only, so a
+    sixth item in a five-item list (seen live: a quick screen with an extra,
+    empty dimension) would otherwise fail the whole phase. Over-length output
+    has the required content plus extra, so keeping the first N is safe.
+    Returns False — clamp nothing — if any error is of another kind: too-short
+    or wrong content can't be repaired without inventing it.
+    """
+    if not errors or any(err["type"] not in _TOO_LONG for err in errors):
+        return False
+    # Deepest paths first, so trimming a list can't invalidate a string path inside it.
+    for err in sorted(errors, key=lambda err: len(err["loc"]), reverse=True):
+        *parents, key = err["loc"]
+        node = data
+        try:
+            for part in parents:
+                node = node[part]  # type: ignore[index]
+            node[key] = node[key][: err["ctx"]["max_length"]]  # type: ignore[index]
+        except (KeyError, IndexError, TypeError):
+            return False
+    return True

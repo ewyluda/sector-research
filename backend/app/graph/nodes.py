@@ -497,8 +497,11 @@ async def node_deep_dive(
         )
         state.curated_financials = curated.to_dict()
 
-        # Run transcript analysis (6 passes)
-        if transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
+        # Run transcript analysis (6 passes). A loop-back re-runs a few
+        # categories against the same transcripts, so reuse the first result.
+        if state.loop_count > 0 and state.transcript_analysis is not None:
+            logger.info("[%s] Reusing transcript analysis from the first pass", state.ticker)
+        elif transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
             logger.info("[%s] Running transcript analysis (%d transcripts)", state.ticker, len(transcripts))
             ta_result = await run_transcript_analysis(state.ticker, transcripts, fmp)
             if ta_result.status == "ok":

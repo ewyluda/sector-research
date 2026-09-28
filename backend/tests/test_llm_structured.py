@@ -1,5 +1,6 @@
 """The LLM call layer: native structured outputs, stop_reason handling, the
 no-prefill guard, and quick-screen verdicts derived in code."""
+import json
 import os
 import pathlib
 import unittest
@@ -13,6 +14,9 @@ os.environ.setdefault("SEC_USER_AGENT", "test")
 os.environ.setdefault("FRED_API_KEY", "test")
 os.environ.setdefault("DATABASE_URL", "postgresql+asyncpg://x/x")
 os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
+
+import anthropic  # noqa: E402
+from pydantic import ValidationError  # noqa: E402
 
 from backend.app.graph import llm  # noqa: E402
 from backend.app.graph.llm import LLMOutputError, complete, complete_structured  # noqa: E402
@@ -56,6 +60,31 @@ class CompleteStructuredTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("answer_text", kwargs["output_config"]["format"]["schema"]["properties"])
         # A trailing assistant turn is a prefill — never sent.
         self.assertEqual([m["role"] for m in kwargs["messages"]], ["user"])
+
+    async def test_over_length_output_is_clamped_not_failed(self):
+        # Live 2026-09-27 (VRT): maxItems is only a hint, and Haiku appended a
+        # sixth, empty dimension, which failed the whole quick screen.
+        dims = [{"name": n, "score": 12, "rationale": "r" * 450} for n in QUICK_SCREEN_DIMENSIONS]
+        dims.append({"name": "Valuation", "score": 20, "rationale": ""})
+        raw = json.dumps({"overall_score": 60, "recommendation": "GO", "dimensions": dims,
+                          "thesis": "t", "key_risk": "k"})
+        client = _fake_client(create_result=self._msg("end_turn", raw))
+        with patch.object(llm, "get_client", return_value=client):
+            out = await complete_structured(system="s", user="u", output_model=QuickScreenOutput)
+        self.assertEqual([d.name for d in out.dimensions], list(QUICK_SCREEN_DIMENSIONS))
+        self.assertEqual(len(out.dimensions[0].rationale), 400)
+
+    async def test_too_short_output_still_fails(self):
+        raw = json.dumps({"overall_score": 60, "recommendation": "GO", "dimensions": [],
+                          "thesis": "t", "key_risk": "k"})
+        client = _fake_client(create_result=self._msg("end_turn", raw))
+        with patch.object(llm, "get_client", return_value=client), self.assertRaises(ValidationError):
+            await complete_structured(system="s", user="u", output_model=QuickScreenOutput)
+
+    def test_dimension_names_are_a_schema_enum(self):
+        schema = anthropic.transform_schema(QuickScreenOutput)
+        name = schema["$defs"]["QuickScreenDimension"]["properties"]["name"]
+        self.assertEqual(name["enum"], list(QUICK_SCREEN_DIMENSIONS))
 
     async def test_truncation_raises_before_json_parsing(self):
         # Truncated JSON must surface as "truncated", not a parse error.

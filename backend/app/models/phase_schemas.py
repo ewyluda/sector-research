@@ -31,19 +31,11 @@ QUICK_SCREEN_DIMENSIONS: tuple[str, ...] = (
 
 
 class QuickScreenDimension(BaseModel):
-    name: str = Field(..., description="Must match one of QUICK_SCREEN_DIMENSIONS exactly")
+    # A Literal becomes a schema enum, which structured outputs enforce.
+    name: Literal[*QUICK_SCREEN_DIMENSIONS]  # type: ignore[valid-type]
     score: int = Field(..., ge=0, le=20)
     max_score: int = Field(20, ge=1)
     rationale: str = Field(..., min_length=1, max_length=400)
-
-    @field_validator("name")
-    @classmethod
-    def name_must_be_known(cls, v: str) -> str:
-        if v not in QUICK_SCREEN_DIMENSIONS:
-            raise ValueError(
-                f"Dimension name {v!r} is not one of {QUICK_SCREEN_DIMENSIONS}"
-            )
-        return v
 
 
 class QuickScreenOutput(BaseModel):
