@@ -56,7 +56,7 @@ export function UpdateRefreshCard({ output, ticker }: { output: UpdateRefreshOut
                 key={sec}
                 className="rounded border border-[var(--border)] bg-[var(--surface)] p-2"
               >
-                <summary className="cursor-pointer text-sm font-medium text-[var(--text)] hover:text-[var(--primary)]">
+                <summary className="cursor-pointer text-sm font-medium text-[var(--text)] hover:text-[var(--primary-dk)]">
                   {sec} ({rows.length})
                 </summary>
                 <table className="mt-2 w-full text-xs text-[var(--text)]">

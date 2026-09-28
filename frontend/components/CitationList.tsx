@@ -44,7 +44,7 @@ export function CitationList({ citations }: { citations: Citation[] }) {
               rel="noopener noreferrer"
               className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs border transition-colors hover:opacity-80 ${
                 citation.tier === 1
-                  ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20"
+                  ? "bg-[var(--color-accent)]/10 text-[var(--primary-dk)] border-[var(--color-accent)]/20"
                   : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)]"
               }`}
             >

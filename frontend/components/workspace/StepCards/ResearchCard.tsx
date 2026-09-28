@@ -28,7 +28,7 @@ export function ResearchCard({ output }: { output: ResearchOutput }) {
 
       {output.new_open_questions.length > 0 && (
         <details className="rounded border border-[var(--border)] bg-[var(--surface)] p-2">
-          <summary className="text-sm font-medium text-[var(--text)] hover:text-[var(--primary)] cursor-pointer">
+          <summary className="text-sm font-medium text-[var(--text)] hover:text-[var(--primary-dk)] cursor-pointer">
             New open questions ({output.new_open_questions.length})
           </summary>
           <ul className="mt-2 space-y-1">

@@ -154,7 +154,7 @@ function LiveProgressBar({ currentPhase, startedAt }: { currentPhase: string; st
               key={p}
               className={`text-[10px] font-medium ${
                 isActive
-                  ? "text-[var(--color-primary)]"
+                  ? "text-[var(--primary-dk)]"
                   : isDone
                   ? "text-emerald-400"
                   : "text-[var(--color-text-faint)]"
@@ -179,7 +179,9 @@ export default function PipelineRunnerPage() {
   const [run, setRun] = useState<RunDetail | null>(null);
   const [report, setReport] = useState<ReportResponse | null>(null);
   const [currentPhase, setCurrentPhase] = useState("quick_screen");
-  const [isLive, setIsLive] = useState(true);
+  // False until the first fetch shows the run is still going — starting true
+  // opened an SSE stream and a 5s poll for every finished report.
+  const [isLive, setIsLive] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Phase data

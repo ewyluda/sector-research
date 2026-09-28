@@ -11,7 +11,7 @@ import { useState } from "react";
 import type { CatalystRow as CatalystRowT, CatalystType } from "@/lib/api";
 
 const TYPE_COLORS: Record<CatalystType, string> = {
-  earnings:   "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30",
+  earnings:   "bg-[var(--primary)]/10 text-[var(--primary-dk)] border-[var(--primary)]/30",
   product:    "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30",
   regulatory: "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30",
   m_and_a:    "bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30",
@@ -47,7 +47,7 @@ export function CatalystRow({ row }: { row: CatalystRowT }) {
     <div className="grid grid-cols-[64px_72px_1fr_72px] gap-3 items-baseline py-2 border-b border-[var(--border)]/40">
       <Link
         href={`/pipeline/${row.run_id}`}
-        className="font-mono font-bold text-[var(--text)] hover:text-[var(--primary)]"
+        className="font-mono font-bold text-[var(--text)] hover:text-[var(--primary-dk)]"
       >
         {row.ticker}
       </Link>
@@ -74,7 +74,7 @@ export function CatalystRow({ row }: { row: CatalystRowT }) {
               aria-expanded={open}
               aria-controls={`catalyst-row-signposts-${row.id}`}
               onClick={() => setOpen(!open)}
-              className="text-[9px] font-mono text-[var(--color-text-faint)] hover:text-[var(--primary)] underline-offset-2"
+              className="text-[9px] font-mono text-[var(--color-text-faint)] hover:text-[var(--primary-dk)] underline-offset-2"
             >
               {open ? "− signposts" : `+ ${row.signposts.length} signpost${row.signposts.length === 1 ? "" : "s"}`}
             </button>
@@ -87,7 +87,7 @@ export function CatalystRow({ row }: { row: CatalystRowT }) {
         )}
       </div>
       <div className="text-right">
-        <span className={`text-[11px] font-mono ${isFmp ? "text-[var(--primary)]" : "text-[var(--text-muted)]"}`}>
+        <span className={`text-[11px] font-mono ${isFmp ? "text-[var(--primary-dk)]" : "text-[var(--text-muted)]"}`}>
           {formatDate(row.expected_date)}
         </span>
         {row.expected_date && (

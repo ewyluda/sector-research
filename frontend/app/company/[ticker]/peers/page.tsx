@@ -84,7 +84,7 @@ export default function PeersPage() {
         {peers != null && peers.length > 0 && (
           <Link
             href={`/compare?tickers=${encodeURIComponent([ticker, ...peers].join(","))}&focus=${ticker}`}
-            className="text-xs text-[var(--primary)] hover:underline"
+            className="text-xs text-[var(--primary-dk)] hover:underline"
           >
             Open in compare →
           </Link>

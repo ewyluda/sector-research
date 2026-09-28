@@ -24,7 +24,7 @@ export function FormulaBar({ state, focused }: { state: ModelState; focused: str
       <span className="text-[var(--text-muted)]">{cell?.source ?? "—"}</span>
       <span>{cell?.value === null || cell?.value === undefined ? "—" : cell.value.toLocaleString()}</span>
       {cell?.formula && <span className="text-[var(--text-muted)]">· {cell.formula}</span>}
-      {cell?.citation_id && <a href={`#citation-${cell.citation_id}`} className="text-[var(--primary)] hover:underline">citation</a>}
+      {cell?.citation_id && <a href={`#citation-${cell.citation_id}`} className="text-[var(--primary-dk)] hover:underline">citation</a>}
     </div>
   );
 }

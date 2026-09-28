@@ -292,7 +292,7 @@ const TickerFilingsCard = forwardRef<TickerFilingsCardHandle, TickerFilingsCardP
                     href={f.primary_document_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[10px] text-[var(--primary)] hover:underline"
+                    className="text-[10px] text-[var(--primary-dk)] hover:underline"
                   >
                     SEC filing ↗
                   </a>

@@ -41,7 +41,7 @@ export function OrphanEventsSection({ groups, autoExpandTicker, onDismissed }: P
           <div className="flex items-center gap-3 px-3 py-2">
             <Link
               href={`/company/${g.ticker}`}
-              className="font-mono font-bold text-sm text-[var(--text)] hover:text-[var(--primary)]"
+              className="font-mono font-bold text-sm text-[var(--text)] hover:text-[var(--primary-dk)]"
             >
               {g.ticker}
             </Link>

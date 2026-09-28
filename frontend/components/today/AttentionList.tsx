@@ -41,7 +41,7 @@ export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: st
         !error && (
           <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-muted)]">
             All clear ✓{" "}
-            <Link href="/status" className="text-[var(--primary)] hover:underline">
+            <Link href="/status" className="text-[var(--primary-dk)] hover:underline">
               View status board →
             </Link>
           </div>
@@ -95,7 +95,7 @@ export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: st
                   )}{" "}
                   — {row.headline}
                 </span>
-                <span className="text-[11px] text-[var(--primary)] shrink-0">View →</span>
+                <span className="text-[11px] text-[var(--primary-dk)] shrink-0">View →</span>
               </Link>
             ) : (
               <Link
@@ -110,7 +110,7 @@ export function AttentionList({ rows, error }: { rows: AttentionRow[]; error: st
                   {row.p1Count} open P1 question{row.p1Count === 1 ? "" : "s"}
                   {row.openCount > row.p1Count && ` (${row.openCount} open total)`}
                 </span>
-                <span className="text-[11px] text-[var(--primary)] shrink-0">View →</span>
+                <span className="text-[11px] text-[var(--primary-dk)] shrink-0">View →</span>
               </Link>
             ),
           )}

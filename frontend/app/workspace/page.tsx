@@ -105,7 +105,7 @@ export default async function WorkspaceIndex() {
                       <td className="px-6 py-4">
                         <Link
                           href={`/workspace/${run.id}`}
-                          className="font-semibold text-[var(--primary)] hover:text-[var(--primary-lt)] transition-colors"
+                          className="font-semibold text-[var(--primary-dk)] hover:text-[var(--primary-lt)] transition-colors"
                         >
                           {run.ticker}
                         </Link>

@@ -65,7 +65,7 @@ function CompanyRow({
               <Link
                 href={`/pipeline/${researchedRunId}`}
                 onClick={(e) => e.stopPropagation()}
-                className="text-[10px] text-[var(--primary)] bg-[var(--accent-bg)] border border-[var(--primary)]/30 rounded-full px-1.5 py-0.5 hover:underline"
+                className="text-[10px] text-[var(--primary-dk)] bg-[var(--accent-bg)] border border-[var(--primary)]/30 rounded-full px-1.5 py-0.5 hover:underline"
                 title="View latest completed research run"
               >
                 Researched
@@ -121,7 +121,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
             <h2 className="text-lg font-semibold text-[var(--text)]">{card.company_name}</h2>
             <Link
               href={`/company/${card.ticker}`}
-              className="text-sm text-[var(--text-muted)] font-mono hover:text-[var(--primary)] hover:underline"
+              className="text-sm text-[var(--text-muted)] font-mono hover:text-[var(--primary-dk)] hover:underline"
               title="Open company workspace"
             >
               ${card.ticker}
@@ -241,7 +241,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
             </div>
             <Link
               href={`/pipeline/${card.last_run_id}`}
-              className="text-xs text-[var(--primary)] hover:underline"
+              className="text-xs text-[var(--primary-dk)] hover:underline"
             >
               View report →
             </Link>
@@ -274,7 +274,7 @@ function CompanyDetail({ card, themeId }: { card: CompanySignalCard; themeId: st
                     href={c.source_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[var(--primary)] hover:underline"
+                    className="text-[var(--primary-dk)] hover:underline"
                   >
                     {c.source_name}
                   </a>

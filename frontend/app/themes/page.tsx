@@ -72,7 +72,7 @@ function ThemeCard({ theme }: { theme: Theme }) {
             <span className="text-[11px] text-[var(--text-muted)]">
               {seedCount} tracked ticker{seedCount !== 1 ? "s" : ""}
             </span>
-            <span className="text-[11px] text-[var(--primary)] group-hover:underline font-medium">
+            <span className="text-[11px] text-[var(--primary-dk)] group-hover:underline font-medium">
               Open →
             </span>
           </div>

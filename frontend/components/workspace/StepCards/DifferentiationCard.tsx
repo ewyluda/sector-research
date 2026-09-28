@@ -53,7 +53,7 @@ export function DifferentiationCard({ output }: { output: DifferentiationOutput 
       {/* Per-peer errors */}
       {per_peer_errors.length > 0 && (
         <details className="rounded border border-[var(--border)] bg-[var(--surface)] p-2">
-          <summary className="text-sm font-medium text-[var(--text)] hover:text-[var(--primary)] cursor-pointer">
+          <summary className="text-sm font-medium text-[var(--text)] hover:text-[var(--primary-dk)] cursor-pointer">
             Per-peer errors ({per_peer_errors.length})
           </summary>
           <ul className="mt-2 space-y-1">

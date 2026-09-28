@@ -134,7 +134,7 @@ function EmptyNeverExtracted() {
       No competition extracted yet.{" "}
       <Link
         href="/filings"
-        className="text-[var(--color-primary)] hover:underline font-medium"
+        className="text-[var(--primary-dk)] hover:underline font-medium"
       >
         Open the Filings page
       </Link>
@@ -239,7 +239,7 @@ function Chip({ chip }: { chip: CompetitorChip }) {
       <Link
         href={`/pipeline/new?ticker=${encodeURIComponent(chip.ticker)}`}
         title={tooltip}
-        className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-0.5 text-[11px] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)] transition"
+        className="inline-flex items-center gap-1 rounded border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-0.5 text-[11px] hover:border-[var(--color-accent)] hover:text-[var(--primary-dk)] transition"
       >
         <span>{chip.name}</span>
         <span className="font-mono text-[10px] text-[var(--color-text-muted)]">

@@ -28,7 +28,7 @@ export function TodayLanes({
         <h2 className="text-sm font-medium text-[var(--text-muted)] uppercase tracking-wide">
           Today + next 3 days
         </h2>
-        <Link href="/catalysts" className="text-xs text-[var(--primary)] hover:underline">
+        <Link href="/catalysts" className="text-xs text-[var(--primary-dk)] hover:underline">
           Full calendar →
         </Link>
       </div>

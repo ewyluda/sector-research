@@ -142,7 +142,10 @@ npm run build
 npm run lint       # eslint (flat config in eslint.config.mjs)
 npm run typecheck  # tsc --noEmit (tsconfig has allowImportingTsExtensions for the .mts tests)
 npm test           # node --test lib/*.test.mts (6 logic suites)
+NEXT_PUBLIC_API_URL=http://127.0.0.1:8010 npm run build && npm run test:e2e   # Playwright smoke + axe
 ```
+
+`test:e2e` serves a production build against `e2e/mock-api.mjs`, which replays `e2e/fixtures/api.json` (re-record with `MOCK_API_RECORD=http://127.0.0.1:8000 npx playwright test` against a running backend). Each nav page and a finished report must render with no console errors and no serious/critical axe violations — `KNOWN_A11Y_EXCEPTIONS` in `e2e/smoke.spec.ts` is empty; keep it that way. Colour tokens: text on dark uses `--primary-dk` (not `--primary`, which is the fill behind white text) and `--text-faint` is the dimmest text that clears 4.5:1.
 
 **CI:** `.github/workflows/ci.yml` runs on every push — backend job (ruff + full unittest suite, dummy env vars for the required keys) and frontend job (tsc / eslint / node --test). Keep it green; it's the only regression gate.
 

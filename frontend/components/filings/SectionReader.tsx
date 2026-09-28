@@ -159,7 +159,7 @@ export default function SectionReader({
                 href={edgarUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] px-2 py-1 rounded border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors"
+                className="text-[11px] px-2 py-1 rounded border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--primary-dk)] hover:border-[var(--primary)] transition-colors"
                 title="Open on SEC.gov"
               >
                 EDGAR ↗
@@ -223,7 +223,7 @@ export default function SectionReader({
                         h.level === 3 ? "pl-4 text-[var(--text-muted)]" : "text-[var(--text)]"
                       } ${
                         activeId === h.id
-                          ? "bg-[var(--accent-bg)] text-[var(--primary)] font-medium"
+                          ? "bg-[var(--accent-bg)] text-[var(--primary-dk)] font-medium"
                           : ""
                       }`}
                     >
@@ -419,7 +419,7 @@ function CounterpartyChip({ rec }: { rec: RelationshipRecord }) {
       <span className="font-medium">{rec.counterparty_name}</span>
       {rec.resolved_to_ticker && (
         <span
-          className="font-mono text-[10px] px-1 rounded bg-[var(--accent-bg)] text-[var(--primary)]"
+          className="font-mono text-[10px] px-1 rounded bg-[var(--accent-bg)] text-[var(--primary-dk)]"
           title="Resolved to a tracked ticker"
         >
           ${rec.resolved_to_ticker}
