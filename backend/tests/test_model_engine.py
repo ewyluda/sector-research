@@ -18,10 +18,10 @@ os.environ.setdefault("DATABASE_URL_SYNC", "postgresql://x/x")
 
 from backend.app.graph.model_baseline_node import BaselineDriversResponse, DriverProposal, PeriodDrivers  # noqa: E402
 from backend.app.models.model_state import ModelCell  # noqa: E402
-from backend.app.services.dcf import dcf  # noqa: E402
+from backend.app.services.dcf import dcf, unlevered_fcf  # noqa: E402
 from backend.app.services.model_balancing import ModelBalanceError, recompute  # noqa: E402
 from backend.app.services.model_baseline import (  # noqa: E402
-    apply_drivers, assemble_historical_state, default_paths, revenue_growth_path,
+    apply_drivers, assemble_historical_state, cap_exit_multiple, default_paths, revenue_growth_path,
 )
 from backend.app.services.model_history import annual_to_quarterly, map_fmp_quarter  # noqa: E402
 from backend.app.services.model_periods import build_periods, calendar_quarter_label  # noqa: E402
@@ -99,10 +99,14 @@ class SeedingTests(unittest.TestCase):
                                inc["operatingIncome"])
         self.assertAlmostEqual(m["ebitda"], inc["operatingIncome"] + cf["depreciationAndAmortization"])
 
-    def test_wacc_uses_real_beta_and_exit_multiple_is_bounded(self):
+    def test_wacc_uses_adjusted_real_beta_and_exit_multiple_is_bounded(self):
         state, _ = assemble_historical_state(_inputs(beta=2.0), rf=0.04)
-        self.assertIn("β 2.00", state.assumptions.discount_rate.formula)
+        self.assertIn("β 1.67", state.assumptions.discount_rate.formula)  # 0.67 × 2.0 + 0.33
         self.assertEqual(state.assumptions.terminal_multiple.value, 30.0)  # 45x bounded to 30x
+
+    def test_noisy_beta_is_capped(self):
+        state, _ = assemble_historical_state(_inputs(beta=7.41), rf=0.04)  # CRWV's raw FMP beta
+        self.assertIn("β 2.00", state.assumptions.discount_rate.formula)
 
 
 class RecomputeTests(unittest.TestCase):
@@ -147,6 +151,28 @@ class RecomputeTests(unittest.TestCase):
         s2.balance_sheet["goodwill"]["2026Q2"].value += 500.0  # corrupt the opening balance
         with self.assertRaises(ModelBalanceError):
             recompute(s2)
+
+
+class ExitMultipleCapTests(unittest.TestCase):
+    def test_seeded_multiple_is_capped_at_what_the_terminal_year_supports(self):
+        s, _ = _built()
+        s.assumptions.terminal_multiple = ModelCell(value=30.0, source="driver", formula="seeded")
+        cap_exit_multiple(s)
+        m = s.assumptions.terminal_multiple
+        self.assertLess(m.value, 30.0)
+        self.assertIn("capped at", m.formula)
+        if m.value > 6.0:  # not floored: TV equals the 4%-growth Gordon value of steady-state FCF
+            last = [p for p in s.periods if not p.is_historical][-1].label
+            r = s.assumptions.discount_rate.value
+            steady = (unlevered_fcf(s, last) - s.cash_flow["capex"][last].value
+                      - 1.1 * s.income_statement["depreciation_amortization"][last].value)
+            self.assertAlmostEqual(dcf(s).terminal_value, steady * 1.04 / (r - 0.04), delta=1e-6 * dcf(s).terminal_value)
+
+    def test_a_multiple_already_below_the_ceiling_is_left_alone(self):
+        s, _ = _built()
+        s.assumptions.terminal_multiple = ModelCell(value=6.0, source="driver", formula="seeded")
+        cap_exit_multiple(s)
+        self.assertEqual(s.assumptions.terminal_multiple.formula, "seeded")
 
 
 class DcfBridgeTests(unittest.TestCase):

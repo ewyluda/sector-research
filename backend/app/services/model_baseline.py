@@ -26,6 +26,7 @@ from backend.app.models.model_state import (
     ModelAssumptions, ModelCell, ModelState,
 )
 from backend.app.services.model_balancing import recompute
+from backend.app.services.dcf import unlevered_fcf
 from backend.app.services.model_history import (
     annual_to_quarterly, historical_driver_defaults, rows_by_quarter, seed_history, summarize_history,
 )
@@ -33,6 +34,9 @@ from backend.app.services.model_periods import build_periods, calendar_quarter_l
 from backend.app.services import llm_usage
 
 EQUITY_RISK_PREMIUM = 0.055
+# Raw FMP betas are noisy for short histories (CRWV 7.4, CORZ 5.5 gave 46% and
+# 35% costs of equity). Blume-adjust toward 1, then cap.
+BETA_CAP = 2.0
 DEFAULT_RISK_FREE = 0.045
 EXIT_MULTIPLE_BOUNDS = (6.0, 30.0)
 DEFAULT_EXIT_MULTIPLE = 12.0
@@ -126,7 +130,8 @@ def assemble_historical_state(fmp_inputs: dict[str, Any], rf: float) -> tuple[Mo
     debt = bs("short_term_debt") + bs("long_term_debt")
     profile = fmp_inputs["profile"]
     mcap = float(profile.get("marketCap") or 0.0)
-    beta = float(profile.get("beta") or 1.0)
+    raw_beta = float(profile.get("beta") or 1.0)
+    beta = min(0.67 * raw_beta + 0.33, BETA_CAP)
     tax = defaults.get("effective_tax_rate", (0.21, ""))[0]
     ke = rf + beta * EQUITY_RISK_PREMIUM
     kd = max(defaults.get("interest_expense_rate", (0.0, ""))[0], rf)
@@ -134,6 +139,7 @@ def assemble_historical_state(fmp_inputs: dict[str, Any], rf: float) -> tuple[Mo
     state.assumptions.discount_rate = ModelCell(
         value=wacc, source="driver",
         formula=(f"WACC = E/V·Ke + D/V·Kd·(1−t); Ke = rf {rf:.4f} + β {beta:.2f} × ERP {EQUITY_RISK_PREMIUM}"
+                 f" (β = 0.67 × raw {raw_beta:.2f} + 0.33, capped at {BETA_CAP:g})"
                  f" = {ke:.4f}; Kd = {kd:.4f}; E = ${mcap / 1e9:,.1f}B, D = ${debt / 1e9:,.1f}B, t = {tax:.2f}"),
     )
     state.assumptions.tax_rate = ModelCell(value=tax, source="driver", formula="TTM effective tax rate")
@@ -310,7 +316,45 @@ async def build_baseline_state(*, ticker: str) -> ModelState:
         ttm_defaults="\n".join(f"- {k}: {v:.4g} ({note})" for k, (v, note) in defaults.items()),
     )
     apply_drivers(state, ai, defaults, default_paths(state, fmp_inputs["estimates"], defaults))
-    return recompute(state)
+    state = recompute(state)
+    cap_exit_multiple(state)
+    return state
+
+
+TERMINAL_GROWTH_CEILING = 0.04
+
+
+def cap_exit_multiple(state: ModelState) -> None:
+    """Cap the seeded exit multiple at what the terminal year can support.
+
+    A market multiple applied to a year still growing fast implies that growth
+    continues forever: with CRWV's seeded 30x at its WACC, the implied perpetual
+    growth was 27%. The ceiling is the EV/EBITDA a Gordon model gives the
+    terminal year's unlevered FCF, with capex normalised to maintenance
+    (MAINTENANCE_CAPEX_TO_DA x D&A), growing at TERMINAL_GROWTH_CEILING forever.
+    The EXIT_MULTIPLE_BOUNDS floor still applies. Only the seeded value is
+    capped; a multiple the user types in is used as given.
+    """
+    last = [p for p in state.periods if not p.is_historical][-1].label
+    r = state.assumptions.discount_rate.value or 0.0
+    g = TERMINAL_GROWTH_CEILING
+    cell = lambda stmt, line: (stmt.get(line, {}).get(last) or ModelCell()).value or 0.0  # noqa: E731
+    ebitda = cell(state.income_statement, "ebitda")
+    if ebitda <= 0 or r <= g:
+        return
+    capex = cell(state.cash_flow, "capex")  # negative = cash out
+    da = cell(state.income_statement, "depreciation_amortization")
+    steady_fcf = unlevered_fcf(state, last) - capex - MAINTENANCE_CAPEX_TO_DA * da
+    ceiling = steady_fcf * (1 + g) / (r - g) / ebitda
+    current = state.assumptions.terminal_multiple
+    if current.value is None or current.value <= ceiling:
+        return
+    capped = max(EXIT_MULTIPLE_BOUNDS[0], ceiling)
+    state.assumptions.terminal_multiple = ModelCell(
+        value=capped, source="driver",
+        formula=(f"{current.formula}; capped at {ceiling:.1f}x — the {last} steady-state FCF growing "
+                 f"{g:.0%} a year forever at WACC {r:.1%} (floor {EXIT_MULTIPLE_BOUNDS[0]:g}x)"),
+    )
 
 
 async def initialize_or_get_model(ticker: str, *, force: bool = False):
