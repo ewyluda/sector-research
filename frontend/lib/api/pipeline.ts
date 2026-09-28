@@ -14,6 +14,13 @@ export type PhaseStatus =
   | "pass"
   | "abandoned"
   | "error";
+/** Statuses after which a run will not advance on its own (no SSE, stop polling). */
+const TERMINAL_STATUSES: ReadonlySet<PhaseStatus> = new Set(["completed", "watchlist", "pass", "abandoned", "error"]);
+
+export function isTerminalStatus(status: PhaseStatus): boolean {
+  return TERMINAL_STATUSES.has(status);
+}
+
 export type ThesisStatus = "STRONG_BUY" | "BUY" | "WATCHLIST" | "PASS" | "BROKEN" | "PENDING";
 export type AdvanceAction = "approve" | "flag" | "stop";
 
@@ -437,7 +444,7 @@ export interface ReportResponse {
   ticker: string;
   theme_id: string | null;
   status: PhaseStatus;
-  conviction_score: number;
+  conviction_score: number | null;
   thesis_status: ThesisStatus;
   loop_count: number;
   x_signal_velocity?: XSignalVelocity | null;
@@ -457,7 +464,7 @@ export interface ReportResponse {
   obsidian: {
     ticker: string;
     theme_id: string | null;
-    conviction_score: number;
+    conviction_score: number | null;
     thesis_status: string;
     phase_reached: string;
     date_researched: string;
@@ -476,9 +483,9 @@ export type SSEEvent =
   | { type: "category_complete"; category: string; score: number; key_findings: string[]; structured?: DeepDiveCategoryStructured | null }
   | { type: "category_error"; category: string; reason: string }
   | { type: "token"; text: string }
-  | { type: "phase_complete"; phase: string; output: Record<string, unknown>; conviction_score: number }
-  | { type: "interrupt"; phase: string; output: unknown; failed_categories: string[]; loop_count: number; loop_context: unknown; conviction_score: number }
-  | { type: "complete"; status: string; conviction_score: number; thesis_status: string }
+  | { type: "phase_complete"; phase: string; output: Record<string, unknown>; conviction_score: number | null }
+  | { type: "interrupt"; phase: string; output: unknown; failed_categories: string[]; loop_count: number; loop_context: unknown; conviction_score: number | null }
+  | { type: "complete"; status: string; conviction_score: number | null; thesis_status: string }
   | { type: "error"; phase: string; message: string }
   | { type: "heartbeat" };
 

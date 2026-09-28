@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { pipeline as api, getCatalystsForRun } from "@/lib/api";
+import { pipeline as api, getCatalystsForRun, isTerminalStatus } from "@/lib/api";
 import type {
   RunDetail,
   ReportResponse,
@@ -294,7 +294,7 @@ export default function PipelineRunnerPage() {
       setCurrentPhase(r.phase);
       setConvictionScore(r.conviction_score);
 
-      const isCompleted = r.status === "completed" || r.status === "watchlist" || r.status === "error";
+      const isCompleted = isTerminalStatus(r.status);
 
       if (isCompleted) {
         setIsLive(false);
@@ -535,7 +535,7 @@ export default function PipelineRunnerPage() {
         setCurrentPhase(r.phase);
         setConvictionScore(r.conviction_score);
 
-        if (r.status === "completed" || r.status === "watchlist" || r.status === "error") {
+        if (isTerminalStatus(r.status)) {
           setIsLive(false);
           setGeneratingPosition(false);
           loadReportData(runId);
@@ -648,6 +648,15 @@ export default function PipelineRunnerPage() {
               <p className="text-sm font-semibold text-[var(--error-text)]">Pipeline Error</p>
               <p className="text-xs text-[var(--error-text)]/70 mt-1">
                 The pipeline encountered an error during the {currentPhase.replace(/_/g, " ")} phase. Partial results are shown below.
+              </p>
+            </div>
+          )}
+
+          {!isLive && run.status === "abandoned" && (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+              <p className="text-sm font-semibold text-[var(--text-muted)]">Run abandoned</p>
+              <p className="text-xs text-[var(--text-faint)] mt-1">
+                This run stopped during the {currentPhase.replace(/_/g, " ")} phase and was marked abandoned. Partial results are shown below.
               </p>
             </div>
           )}

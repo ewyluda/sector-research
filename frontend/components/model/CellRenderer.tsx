@@ -1,5 +1,6 @@
 "use client";
 import type { ModelCell } from "@/lib/api";
+import { formatModelValue, isRateKey } from "@/lib/modelFormat";
 
 const CLS: Record<string, string> = {
   historical:  "bg-[var(--surface-alt)] text-[var(--text-muted)]",
@@ -10,10 +11,12 @@ const CLS: Record<string, string> = {
 };
 
 export function CellRenderer({
-  cell, cellPath, onFocus, onCommitEdit, focused, editable = true,
+  cell, cellPath, valueKey, onFocus, onCommitEdit, focused, editable = true,
 }: {
   cell: ModelCell | undefined;
   cellPath: string;
+  /** Driver or line-item key; picks the display format. */
+  valueKey: string;
   onFocus: (path: string) => void;
   onCommitEdit?: (path: string, value: number | null) => Promise<void>;
   focused: boolean;
@@ -27,7 +30,8 @@ export function CellRenderer({
       onClick={() => onFocus(cellPath)}
       onDoubleClick={() => {
         if (!editable || !onCommitEdit) return;
-        const v = prompt(`Override value for ${cellPath}`, value === null ? "" : String(value));
+        const unit = isRateKey(valueKey) ? "as a fraction, e.g. 0.25 for 25%" : "in raw units, e.g. dollars";
+        const v = prompt(`Override value for ${cellPath} (${unit})`, value === null ? "" : String(value));
         if (v === null) return;
         const num = v === "" ? null : Number(v);
         if (v !== "" && Number.isNaN(num)) return;
@@ -35,7 +39,7 @@ export function CellRenderer({
       }}
       className={`px-2 py-1 text-right text-sm cursor-pointer ${CLS[source] ?? CLS.computed} ${ringCls}`}
     >
-      {value === null ? "—" : value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+      {formatModelValue(valueKey, value)}
     </td>
   );
 }

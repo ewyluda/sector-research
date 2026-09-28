@@ -71,6 +71,13 @@
   --color-error-bg:      var(--error-bg);
   --color-error-border:  var(--error-border);
   --color-error-text:    var(--error-text);
+
+  /* Aliases for names components use that were never defined (they rendered
+   * as transparent/inherited). */
+  --surface-2:             var(--surface-alt);
+  --primary-lt:            var(--primary-dk);
+  --color-warning:         var(--warning);
+  --color-text-secondary:  #cbd5e1;   /* slate-300 — between --text and --text-muted */
 }
 
 body {

@@ -116,7 +116,7 @@ class ThesisNodeTests(unittest.IsolatedAsyncioTestCase):
             s = await nodes.node_thesis_construction(s)
         self.assertEqual(s.status, "error")
         self.assertEqual(s.phase_outputs["thesis"]["__type__"], "PhaseError")
-        self.assertEqual(s.conviction_score, 0)
+        self.assertIsNone(s.conviction_score)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { prospectusApi, type ProspectusReport } from "@/lib/api";
 import { IngestSummaryCard } from "./StepCards/IngestSummaryCard";
 import { RelationshipsCard } from "./StepCards/RelationshipsCard";
@@ -54,7 +55,7 @@ export function ProspectusReportView({ reportId }: { reportId: string }) {
   const categoryNames = s.categories ? Object.keys(s.categories.results) : [];
 
   const promoteHref = report.proposed_ticker
-    ? `/pipeline/new?ticker=${encodeURIComponent(report.proposed_ticker)}${report.theme_id ? `&theme_id=${encodeURIComponent(report.theme_id)}` : ""}`
+    ? `/pipeline/new?ticker=${encodeURIComponent(report.proposed_ticker)}${report.theme_id ? `&theme=${encodeURIComponent(report.theme_id)}` : ""}`
     : null;
 
   return (
@@ -68,12 +69,12 @@ export function ProspectusReportView({ reportId }: { reportId: string }) {
             </p>
           </div>
           {promoteHref && status === "completed" && (
-            <a
+            <Link
               href={promoteHref}
               className="text-sm px-3 py-1.5 rounded-md border border-[var(--border)] hover:bg-[var(--surface)] whitespace-nowrap"
             >
               Promote to research run →
-            </a>
+            </Link>
           )}
         </header>
 

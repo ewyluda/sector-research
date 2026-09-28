@@ -103,7 +103,7 @@ export function PriceChart({ prices }: { prices: PricePoint[] }) {
               contentStyle={{ fontSize: 12, background: "var(--surface)", border: "1px solid var(--border)" }}
               formatter={(value) => [`$${(value as number).toFixed(2)}`, "Close"]}
             />
-            <Line type="monotone" dataKey="close" stroke={stroke} dot={false} strokeWidth={1.5} />
+            <Line type="monotone" dataKey="close" stroke={stroke} dot={false} strokeWidth={1.5} isAnimationActive={false} />
           </LineChart>
         </ResponsiveContainer>
       )}

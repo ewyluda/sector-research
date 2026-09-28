@@ -13,3 +13,9 @@ export function ReturnCell({ value, asPercent = true }: { value: string | number
   const sign = num > 0.0001 ? "+" : "";
   return <span className={color}>{sign}{display}</span>;
 }
+
+/** A 0–1 share shown as a plain percentage — not a return, so no sign or color. */
+export function RateCell({ value }: { value: number | null }) {
+  if (value == null || Number.isNaN(value)) return <span className="text-[var(--text-muted)]">—</span>;
+  return <span>{(value * 100).toFixed(0)}%</span>;
+}

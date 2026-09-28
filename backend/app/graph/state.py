@@ -345,7 +345,7 @@ class ResearchState:
     scores: dict[str, int] = field(default_factory=dict)
 
     # Overall conviction (0–100), computed after Phase 4
-    conviction_score: int = 0
+    conviction_score: int | None = None  # set by thesis_construction
 
     # Thesis status
     thesis_status: str = "PENDING"  # PENDING | ON TRACK | DRIFTING | BROKEN
