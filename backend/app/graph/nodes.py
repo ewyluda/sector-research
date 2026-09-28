@@ -688,11 +688,10 @@ def _build_targeted_followup_user_msg(
 
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────
 
-async def node_thesis_construction(state: ResearchState, fmp: FMPClient | None = None) -> ResearchState:
-    """Phase 4: synthesise all Phase 3 outputs into a structured thesis."""
-    logger.info("[%s] thesis_construction starting", state.ticker)
-    state.phase = "thesis_construction"
-
+def build_thesis_user_message(state: ResearchState) -> str:
+    """The thesis prompt's user message for a state that has finished its deep
+    dive. Shared with the eval harness, which checks that numbers in a thesis
+    trace back to this text."""
     # Format category results
     results = state.get_deep_dive_results()
 
@@ -725,24 +724,32 @@ async def node_thesis_construction(state: ResearchState, fmp: FMPClient | None =
     failed = state.failed_categories()
     loop_ctx = str(state.loop_context) if state.loop_context else "None"
 
+    return THESIS_USER.format(
+        ticker=state.ticker,
+        theme=_theme_context(state),
+        as_of=_as_of(),
+        market_data=_market_data_block(state),
+        quick_screen_verdict=qs_verdict,
+        quick_screen_score=qs_score,
+        quick_screen_thesis=qs_thesis,
+        quick_screen_risk=qs_risk,
+        category_summary=category_summary,
+        category_results=results_text,
+        failed_categories=", ".join(failed) if failed else "None",
+        loop_context=loop_ctx,
+        questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
+    )
+
+
+async def node_thesis_construction(state: ResearchState, fmp: FMPClient | None = None) -> ResearchState:
+    """Phase 4: synthesise all Phase 3 outputs into a structured thesis."""
+    logger.info("[%s] thesis_construction starting", state.ticker)
+    state.phase = "thesis_construction"
+
     try:
         parsed = await complete_structured(
             system=THESIS_SYSTEM,
-            user=THESIS_USER.format(
-                ticker=state.ticker,
-                theme=_theme_context(state),
-                as_of=_as_of(),
-                market_data=_market_data_block(state),
-                quick_screen_verdict=qs_verdict,
-                quick_screen_score=qs_score,
-                quick_screen_thesis=qs_thesis,
-                quick_screen_risk=qs_risk,
-                category_summary=category_summary,
-                category_results=results_text,
-                failed_categories=", ".join(failed) if failed else "None",
-                loop_context=loop_ctx,
-                questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
-            ),
+            user=build_thesis_user_message(state),
             output_model=ThesisLLMOutput,
             model=DEEP_MODEL,
             max_tokens=6000,
