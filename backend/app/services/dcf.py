@@ -54,14 +54,7 @@ def dcf(
 
     # Unlevered FCF: add back after-tax net interest, since the discount rate
     # is a WACC and debt holders are netted out below via net debt.
-    tax = state.assumptions.tax_rate.value or 0.0
-    fcfs: list[tuple[str, float]] = []
-    for p in forecast:
-        cell = state.cash_flow.get("free_cash_flow", {}).get(p.label)
-        if cell is None or cell.value is None:
-            raise ValueError(f"dcf(): missing FCF for forecast period {p.label}")
-        net_interest = (_is_value(state, "interest_expense", p.label) - _is_value(state, "interest_income", p.label))
-        fcfs.append((p.label, float(cell.value) + net_interest * (1.0 - tax)))
+    fcfs = [(p.label, unlevered_fcf(state, p.label)) for p in forecast]
 
     # Mid-period convention: cash arrives on average halfway through a period.
     pvs: list[tuple[str, float]] = []
@@ -111,6 +104,17 @@ def dcf(
         net_debt=net_debt,
         shares=shares,
     )
+
+
+def unlevered_fcf(state: ModelState, label: str) -> float:
+    """Free cash flow plus after-tax net interest — the cash available to all
+    capital providers, matching a WACC discount rate."""
+    cell = state.cash_flow.get("free_cash_flow", {}).get(label)
+    if cell is None or cell.value is None:
+        raise ValueError(f"dcf(): missing FCF for forecast period {label}")
+    tax = state.assumptions.tax_rate.value or 0.0
+    net_interest = _is_value(state, "interest_expense", label) - _is_value(state, "interest_income", label)
+    return float(cell.value) + net_interest * (1.0 - tax)
 
 
 def _is_value(state: ModelState, line: str, label: str) -> float:

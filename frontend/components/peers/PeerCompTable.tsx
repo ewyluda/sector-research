@@ -157,7 +157,7 @@ export function PeerCompTable({ table }: { table: PeerCompTableData }) {
                 <td
                   className={`sticky left-0 z-10 text-left py-1.5 px-2 ${
                     isFocus
-                      ? "bg-[var(--accent-bg)] text-[var(--primary)]"
+                      ? "bg-[var(--accent-bg)] text-[var(--primary-dk)]"
                       : "bg-[var(--surface)] text-[var(--text)]"
                   }`}
                 >

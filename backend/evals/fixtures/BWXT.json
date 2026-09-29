@@ -1,0 +1,3089 @@
+{
+ "source_run_id": "3061a616-ea0a-44ff-a6d5-453687de0a9b",
+ "state": {
+  "flags": [],
+  "phase": "thesis_construction",
+  "run_id": "3061a616-ea0a-44ff-a6d5-453687de0a9b",
+  "scores": {
+   "thesis": 62,
+   "quick_screen": 72,
+   "Macro & Regime": 78,
+   "Risk Assessment": 48,
+   "Business Quality": 82,
+   "Financial Health": 62,
+   "Future Durability": 82,
+   "Growth & Earnings": 72,
+   "Sentiment & Narrative": 62,
+   "Management & Governance": 74,
+   "Technical & Market Structure": 62
+  },
+  "status": "in_progress",
+  "ticker": "BWXT",
+  "theme_id": "2fa4ee2a-b652-47d9-8a29-9ec0a4a767d1",
+  "citations": [
+   {
+    "tier": 1,
+    "value": "BWXT",
+    "metric": "Income Statement",
+    "source_url": "https://financialmodelingprep.com/stable/income-statement?apikey=***&symbol=BWXT&period=annual&limit=4",
+    "source_name": "FMP /income-statement",
+    "retrieved_at": "2026-04-27T19:29:32.803305+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "BWXT",
+    "metric": "Balance Sheet",
+    "source_url": "https://financialmodelingprep.com/stable/balance-sheet-statement?apikey=***&symbol=BWXT&period=annual&limit=2",
+    "source_name": "FMP /balance-sheet-statement",
+    "retrieved_at": "2026-04-27T19:29:32.808032+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "BWXT",
+    "metric": "Cash Flow Statement",
+    "source_url": "https://financialmodelingprep.com/stable/cash-flow-statement?apikey=***&symbol=BWXT&period=annual&limit=2",
+    "source_name": "FMP /cash-flow-statement",
+    "retrieved_at": "2026-04-27T19:29:32.809307+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "BWXT",
+    "metric": "Company Profile",
+    "source_url": "https://financialmodelingprep.com/stable/profile?apikey=***&symbol=BWXT",
+    "source_name": "FMP /profile",
+    "retrieved_at": "2026-04-27T19:29:32.800303+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "BWX TECHNOLOGIES, INC.",
+    "metric": "XBRL filings",
+    "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001486957.json",
+    "source_name": "SEC EDGAR",
+    "retrieved_at": "2026-04-27T19:29:40.410821+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "BWXT",
+    "metric": "Earnings Transcript",
+    "source_url": "https://financialmodelingprep.com/stable/earning-call-transcript-latest?apikey=***&symbol=BWXT",
+    "source_name": "FMP /earning-call-transcript-latest",
+    "retrieved_at": "2026-04-27T19:29:40.594447+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "FEDFUNDS",
+    "metric": "fed_funds_rate",
+    "source_url": "https://fred.stlouisfed.org/series/FEDFUNDS",
+    "source_name": "FRED /FEDFUNDS",
+    "retrieved_at": "2026-04-27T19:29:46.016780+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS10",
+    "metric": "treasury_10y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS10",
+    "source_name": "FRED /DGS10",
+    "retrieved_at": "2026-04-27T19:29:46.032945+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS2",
+    "metric": "treasury_2y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS2",
+    "source_name": "FRED /DGS2",
+    "retrieved_at": "2026-04-27T19:29:46.022511+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "T10Y2Y",
+    "metric": "yield_curve_spread",
+    "source_url": "https://fred.stlouisfed.org/series/T10Y2Y",
+    "source_name": "FRED /T10Y2Y",
+    "retrieved_at": "2026-04-27T19:29:46.041533+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "CPIAUCSL",
+    "metric": "cpi",
+    "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+    "source_name": "FRED /CPIAUCSL",
+    "retrieved_at": "2026-04-27T19:29:46.029511+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "UNRATE",
+    "metric": "unemployment",
+    "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+    "source_name": "FRED /UNRATE",
+    "retrieved_at": "2026-04-27T19:29:46.043981+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "A191RL1Q225SBEA",
+    "metric": "gdp_growth",
+    "source_url": "https://fred.stlouisfed.org/series/A191RL1Q225SBEA",
+    "source_name": "FRED /A191RL1Q225SBEA",
+    "retrieved_at": "2026-04-27T19:29:45.995146+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "M2SL",
+    "metric": "m2_money_supply",
+    "source_url": "https://fred.stlouisfed.org/series/M2SL",
+    "source_name": "FRED /M2SL",
+    "retrieved_at": "2026-04-27T19:29:46.055901+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "PAYEMS",
+    "metric": "nonfarm_payrolls",
+    "source_url": "https://fred.stlouisfed.org/series/PAYEMS",
+    "source_name": "FRED /PAYEMS",
+    "retrieved_at": "2026-04-27T19:29:46.042237+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "BWX TECHNOLOGIES, INC.",
+    "metric": "XBRL filings",
+    "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001486957.json",
+    "source_name": "SEC EDGAR",
+    "retrieved_at": "2026-04-27T19:31:37.185934+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "BWXT",
+    "metric": "Earnings Transcript",
+    "source_url": "https://financialmodelingprep.com/stable/earning-call-transcript-latest?apikey=***&symbol=BWXT",
+    "source_name": "FMP /earning-call-transcript-latest",
+    "retrieved_at": "2026-04-27T19:31:37.199735+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "FEDFUNDS",
+    "metric": "fed_funds_rate",
+    "source_url": "https://fred.stlouisfed.org/series/FEDFUNDS",
+    "source_name": "FRED /FEDFUNDS",
+    "retrieved_at": "2026-04-27T19:31:45.144471+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS10",
+    "metric": "treasury_10y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS10",
+    "source_name": "FRED /DGS10",
+    "retrieved_at": "2026-04-27T19:31:45.145575+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS2",
+    "metric": "treasury_2y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS2",
+    "source_name": "FRED /DGS2",
+    "retrieved_at": "2026-04-27T19:31:45.146553+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "T10Y2Y",
+    "metric": "yield_curve_spread",
+    "source_url": "https://fred.stlouisfed.org/series/T10Y2Y",
+    "source_name": "FRED /T10Y2Y",
+    "retrieved_at": "2026-04-27T19:31:45.147417+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "CPIAUCSL",
+    "metric": "cpi",
+    "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+    "source_name": "FRED /CPIAUCSL",
+    "retrieved_at": "2026-04-27T19:31:45.147509+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "UNRATE",
+    "metric": "unemployment",
+    "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+    "source_name": "FRED /UNRATE",
+    "retrieved_at": "2026-04-27T19:31:45.147556+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "A191RL1Q225SBEA",
+    "metric": "gdp_growth",
+    "source_url": "https://fred.stlouisfed.org/series/A191RL1Q225SBEA",
+    "source_name": "FRED /A191RL1Q225SBEA",
+    "retrieved_at": "2026-04-27T19:31:45.147585+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "M2SL",
+    "metric": "m2_money_supply",
+    "source_url": "https://fred.stlouisfed.org/series/M2SL",
+    "source_name": "FRED /M2SL",
+    "retrieved_at": "2026-04-27T19:31:45.147618+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "PAYEMS",
+    "metric": "nonfarm_payrolls",
+    "source_url": "https://fred.stlouisfed.org/series/PAYEMS",
+    "source_name": "FRED /PAYEMS",
+    "retrieved_at": "2026-04-27T19:31:45.147657+00:00"
+   }
+  ],
+  "created_at": "2026-04-27T19:29:32.568150+00:00",
+  "loop_count": 1,
+  "updated_at": "2026-04-27T19:29:32.568169+00:00",
+  "loop_context": null,
+  "phase_outputs": {
+   "quick_screen": {
+    "score": 72,
+    "content": "{\n  \"overall_score\": 72,\n  \"recommendation\": \"GO\",\n  \"dimensions\": [\n    {\n      \"name\": \"Business Quality\",\n      \"score\": 17,\n      \"max_score\": 20,\n      \"rationale\": \"BWXT operates in defensible, mission-critical nuclear defense and power segments with strong gross margins (22\u201325%) and recurring government contracts, though operating margins have compressed slightly in latest quarter.\"\n    },\n    {\n      \"name\": \"Financial Health\",\n      \"score\": 15,\n      \"max_score\": 20,\n      \"rationale\": \"Solid liquidity (2.32 current ratio, $0.50B cash) and healthy free cash flow generation ($0.30B), but leverage has increased sharply (D/E 1.63 vs. 0.98 prior quarter, LT debt doubled), warranting monitoring.\"\n    },\n    {\n      \"name\": \"Growth Trajectory\",\n      \"score\": 16,\n      \"max_score\": 20,\n      \"rationale\": \"Sequential revenue growth strong at +18% YoY (annualized from quarterly trend), but EPS growth of 39% is partially offset by margin compression and rising debt; nuclear demand tailwinds support medium-term outlook.\"\n    },\n    {\n      \"name\": \"Valuation\",\n      \"score\": 14,\n      \"max_score\": 20,\n      \"rationale\": \"At $20.4B market cap with annualized revenue ~$12.8B and EPS ~$14.4, implied P/E ~1.4x and P/S ~1.6x appear reasonable for a quality defense contractor, though market sentiment on rates and nuclear policy affects multiple.\"\n    },\n    {\n      \"name\": \"Momentum\",\n      \"score\": 10,\n      \"max_score\": 20,\n      \"rationale\": \"Revenue momentum is strong, but deteriorating margins (OM down to 10.1% from 15.6% in four quarters) and recent debt expansion signal operational or strategic headwinds that dampen near-term positive sentiment.\"\n    }\n  ],\n  \"thesis\": \"BWXT is a high-quality industrial with durable government contracts, strong FCF generation, and exposure to secular nuclear demand tailwinds, supporting a GO recommendation. However, margin compression over the past year and a sudden 65% debt increase in the latest quarter raise questions about capital allocation discipline and operational efficiency that merit close monitoring before commitment.\",\n  \"key_risk\": \"The sharp deterioration in operating margins (15.6% \u2192 10.1%) combined with aggressive debt accumulation (D/E 1.63) suggests either operational challenges, acquisition integration issues, or strategic overreach that could erode shareholder returns if not addressed quickly.\"\n}",
+    "__type__": "PhaseOutput",
+    "structured": {
+     "thesis": "BWXT is a high-quality industrial with durable government contracts, strong FCF generation, and exposure to secular nuclear demand tailwinds, supporting a GO recommendation. However, margin compression over the past year and a sudden 65% debt increase in the latest quarter raise questions about capital allocation discipline and operational efficiency that merit close monitoring before commitment.",
+     "key_risk": "The sharp deterioration in operating margins (15.6% \u2192 10.1%) combined with aggressive debt accumulation (D/E 1.63) suggests either operational challenges, acquisition integration issues, or strategic overreach that could erode shareholder returns if not addressed quickly.",
+     "dimensions": [
+      {
+       "name": "Business Quality",
+       "score": 17,
+       "max_score": 20,
+       "rationale": "BWXT operates in defensible, mission-critical nuclear defense and power segments with strong gross margins (22\u201325%) and recurring government contracts, though operating margins have compressed slightly in latest quarter."
+      },
+      {
+       "name": "Financial Health",
+       "score": 15,
+       "max_score": 20,
+       "rationale": "Solid liquidity (2.32 current ratio, $0.50B cash) and healthy free cash flow generation ($0.30B), but leverage has increased sharply (D/E 1.63 vs. 0.98 prior quarter, LT debt doubled), warranting monitoring."
+      },
+      {
+       "name": "Growth Trajectory",
+       "score": 16,
+       "max_score": 20,
+       "rationale": "Sequential revenue growth strong at +18% YoY (annualized from quarterly trend), but EPS growth of 39% is partially offset by margin compression and rising debt; nuclear demand tailwinds support medium-term outlook."
+      },
+      {
+       "name": "Valuation",
+       "score": 14,
+       "max_score": 20,
+       "rationale": "At $20.4B market cap with annualized revenue ~$12.8B and EPS ~$14.4, implied P/E ~1.4x and P/S ~1.6x appear reasonable for a quality defense contractor, though market sentiment on rates and nuclear policy affects multiple."
+      },
+      {
+       "name": "Momentum",
+       "score": 10,
+       "max_score": 20,
+       "rationale": "Revenue momentum is strong, but deteriorating margins (OM down to 10.1% from 15.6% in four quarters) and recent debt expansion signal operational or strategic headwinds that dampen near-term positive sentiment."
+      }
+     ],
+     "overall_score": 72,
+     "recommendation": "GO"
+    },
+    "parse_error": null,
+    "recommendation": "GO"
+   },
+   "Macro & Regime": {
+    "score": 78,
+    "content": "{\n  \"score\": 78,\n  \"score_rationale\": \"BWXT operates in a structurally favorable macro regime characterized by bipartisan nuclear energy tailwinds, elevated defense budgets, and a moderately restrictive but easing rate environment; however, slowing GDP, a mildly stretched valuation relative to DCF, and margin compression temper an otherwise strong setup.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Defense budget expansion and nuclear renaissance policy provide durable revenue visibility for BWXT's naval nuclear and commercial nuclear segments.\",\n      \"evidence\": \"U.S. defense spending has remained elevated through FY2025-2026 appropriations cycles; BWXT's Nuclear Operations Group (naval reactors) is a sole-source supplier to the U.S. Navy \u2014 company description and segment structure [Source: FMP /profile].\"\n    },\n    {\n      \"finding\": \"Revenue acceleration from $0.60B (Q1 prior year) to $0.89B (Q4 latest) represents ~48% cumulative quarterly growth, demonstrating that macro-level nuclear policy tailwinds are translating into realized contract execution.\",\n      \"evidence\": \"YoY revenue growth of +18.7% in Q4 and +28.9% in Q3 [Source: FMP /income-statement].\"\n    },\n    {\n      \"finding\": \"The yield curve has normalized modestly (10Y-2Y spread ~+53bps) and the Fed funds rate has declined from 4.09% to 3.64%, reducing financing costs on BWXT's $2.02B long-term debt load and improving the capital allocation environment.\",\n      \"evidence\": \"[Source: FRED treasury_10y, treasury_2y, fed_funds_rate] \u2014 LT Debt $2.02B [Source: FMP /balance-sheet].\"\n    },\n    {\n      \"finding\": \"GDP deceleration to +0.5% annualized in Q4 2025 after a strong +4.4% in Q3 2025 signals potential macro softness, but BWXT's government-contracted revenue base insulates it from cyclical demand shocks.\",\n      \"evidence\": \"[Source: FRED gdp_growth] \u2014 government-directed nuclear programs are largely non-discretionary and multi-year contracted.\"\n    },\n    {\n      \"finding\": \"Gross margin compression from ~24-25% range to 21% in the two most recent quarters signals cost inflation absorption and/or contract mix shift, occurring against a backdrop of still-elevated CPI (330.3, up from 324.2 six months prior).\",\n      \"evidence\": \"GM deteriorated from 24.6% (Q1 prior year) to 21.0% (Q4 latest) [Source: FMP /income-statement]; CPI trend [Source: FRED cpi].\"\n    }\n  ],\n  \"analysis\": \"BWXT operates in one of the most macro-insulated pockets of the industrial sector \u2014 government-contracted nuclear components manufacturing \u2014 yet the current macro regime offers both meaningful tailwinds and some underappreciated headwinds worth examining carefully.\\n\\nOn the structural macro side, the policy environment for nuclear energy is the strongest in decades. Bipartisan Congressional support for domestic nuclear manufacturing capacity, SMR (small modular reactor) development funding, and the Navy's Columbia-class submarine program provide BWXT with a multi-decade backlog of demand that is largely indifferent to economic cycles. This is reinforced by a low beta of 0.794 [Source: FMP /profile], reflecting the market's recognition that BWXT's revenue is policy-driven rather than cycle-driven.\\n\\nThe interest rate regime has shifted constructively. The Fed funds rate has declined from 4.09% in October 2025 to 3.64% by March 2026 [Source: FRED fed_funds_rate], while the 10-year Treasury sits at 4.34% [Source: FRED treasury_10y]. With $2.02B in long-term debt and interest expense of only ~$0.01B/quarter [Source: FMP /balance-sheet, /cash-flow], BWXT appears to carry well-managed debt service \u2014 though the sharp Q4 balance sheet jump to $2.02B LT debt from $1.19B in Q1 warrants monitoring for refinancing risk if rates reverse. A modestly positive yield curve (+53bps) removes the recessionary signal that an inverted curve would have implied.\\n\\nInflationary pressures remain a genuine macro headwind. CPI has risen from 324.2 to 330.3 over six months [Source: FRED cpi], and this appears to be flowing directly into BWXT's cost structure. Gross margins have compressed ~400bps from the 24-25% band to 21% in the two most recent quarters [Source: FMP /income-statement]. For a government contractor operating under fixed-price or cost-plus contracts, inflation timing lags can temporarily squeeze margins before escalation clauses catch up. This is a known regime risk that portfolio managers should track closely.\\n\\nThe GDP deceleration to +0.5% annualized in Q4 2025 [Source: FRED gdp_growth] \u2014 after a strong mid-2025 \u2014 introduces some risk to discretionary government spending reviews, though historically nuclear naval programs have proven recession-proof. Unemployment remains stable at 4.3% [Source: FRED unemployment], and M2 growth continues expanding ($22.67T) [Source: FRED m2_money_supply], suggesting the economy is not in contraction.\\n\\nFor BWXT specifically, the macro regime is best described as: highly favorable on the structural/policy axis (nuclear renaissance, defense spending), moderately favorable on the rates axis (easing but not aggressively), and mildly challenging on the inflation/margin axis. The company's revenue growth trajectory is genuinely impressive, but the margin compression coinciding with debt accumulation creates a macro sensitivity scenario if either inflation reaccelerates or the defense budget faces sequestration-type pressure. The DCF implied value of ~$52 versus current price of $222 [Source: FMP /dcf] is a valuation concern, though DCF models for government contractors with long-duration contracts are notoriously unreliable without backlog-specific discount rate calibration.\",\n  \"data_gaps\": [\n    \"Contract backlog data and funded vs. unfunded backlog breakdown unavailable \u2014 critical for assessing true revenue visibility duration under current budget resolutions\",\n    \"Specific inflation escalation clause terms in government contracts not disclosed \u2014 needed to assess margin recovery timeline under current CPI regime\",\n    \"Q4 LT debt jump from $1.19B to $2.02B lacks acquisition or refinancing context in available data \u2014 purpose and terms of incremental debt unclear\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Macro & Regime",
+    "structured": {
+     "score": 78,
+     "analysis": "BWXT operates in one of the most macro-insulated pockets of the industrial sector \u2014 government-contracted nuclear components manufacturing \u2014 yet the current macro regime offers both meaningful tailwinds and some underappreciated headwinds worth examining carefully.\n\nOn the structural macro side, the policy environment for nuclear energy is the strongest in decades. Bipartisan Congressional support for domestic nuclear manufacturing capacity, SMR (small modular reactor) development funding, and the Navy's Columbia-class submarine program provide BWXT with a multi-decade backlog of demand that is largely indifferent to economic cycles. This is reinforced by a low beta of 0.794 [Source: FMP /profile], reflecting the market's recognition that BWXT's revenue is policy-driven rather than cycle-driven.\n\nThe interest rate regime has shifted constructively. The Fed funds rate has declined from 4.09% in October 2025 to 3.64% by March 2026 [Source: FRED fed_funds_rate], while the 10-year Treasury sits at 4.34% [Source: FRED treasury_10y]. With $2.02B in long-term debt and interest expense of only ~$0.01B/quarter [Source: FMP /balance-sheet, /cash-flow], BWXT appears to carry well-managed debt service \u2014 though the sharp Q4 balance sheet jump to $2.02B LT debt from $1.19B in Q1 warrants monitoring for refinancing risk if rates reverse. A modestly positive yield curve (+53bps) removes the recessionary signal that an inverted curve would have implied.\n\nInflationary pressures remain a genuine macro headwind. CPI has risen from 324.2 to 330.3 over six months [Source: FRED cpi], and this appears to be flowing directly into BWXT's cost structure. Gross margins have compressed ~400bps from the 24-25% band to 21% in the two most recent quarters [Source: FMP /income-statement]. For a government contractor operating under fixed-price or cost-plus contracts, inflation timing lags can temporarily squeeze margins before escalation clauses catch up. This is a known regime risk that portfolio managers should track closely.\n\nThe GDP deceleration to +0.5% annualized in Q4 2025 [Source: FRED gdp_growth] \u2014 after a strong mid-2025 \u2014 introduces some risk to discretionary government spending reviews, though historically nuclear naval programs have proven recession-proof. Unemployment remains stable at 4.3% [Source: FRED unemployment], and M2 growth continues expanding ($22.67T) [Source: FRED m2_money_supply], suggesting the economy is not in contraction.\n\nFor BWXT specifically, the macro regime is best described as: highly favorable on the structural/policy axis (nuclear renaissance, defense spending), moderately favorable on the rates axis (easing but not aggressively), and mildly challenging on the inflation/margin axis. The company's revenue growth trajectory is genuinely impressive, but the margin compression coinciding with debt accumulation creates a macro sensitivity scenario if either inflation reaccelerates or the defense budget faces sequestration-type pressure. The DCF implied value of ~$52 versus current price of $222 [Source: FMP /dcf] is a valuation concern, though DCF models for government contractors with long-duration contracts are notoriously unreliable without backlog-specific discount rate calibration.",
+     "data_gaps": [
+      "Contract backlog data and funded vs. unfunded backlog breakdown unavailable \u2014 critical for assessing true revenue visibility duration under current budget resolutions",
+      "Specific inflation escalation clause terms in government contracts not disclosed \u2014 needed to assess margin recovery timeline under current CPI regime",
+      "Q4 LT debt jump from $1.19B to $2.02B lacks acquisition or refinancing context in available data \u2014 purpose and terms of incremental debt unclear"
+     ],
+     "key_findings": [
+      {
+       "finding": "Defense budget expansion and nuclear renaissance policy provide durable revenue visibility for BWXT's naval nuclear and commercial nuclear segments.",
+       "evidence": "U.S. defense spending has remained elevated through FY2025-2026 appropriations cycles; BWXT's Nuclear Operations Group (naval reactors) is a sole-source supplier to the U.S. Navy \u2014 company description and segment structure [Source: FMP /profile]."
+      },
+      {
+       "finding": "Revenue acceleration from $0.60B (Q1 prior year) to $0.89B (Q4 latest) represents ~48% cumulative quarterly growth, demonstrating that macro-level nuclear policy tailwinds are translating into realized contract execution.",
+       "evidence": "YoY revenue growth of +18.7% in Q4 and +28.9% in Q3 [Source: FMP /income-statement]."
+      },
+      {
+       "finding": "The yield curve has normalized modestly (10Y-2Y spread ~+53bps) and the Fed funds rate has declined from 4.09% to 3.64%, reducing financing costs on BWXT's $2.02B long-term debt load and improving the capital allocation environment.",
+       "evidence": "[Source: FRED treasury_10y, treasury_2y, fed_funds_rate] \u2014 LT Debt $2.02B [Source: FMP /balance-sheet]."
+      },
+      {
+       "finding": "GDP deceleration to +0.5% annualized in Q4 2025 after a strong +4.4% in Q3 2025 signals potential macro softness, but BWXT's government-contracted revenue base insulates it from cyclical demand shocks.",
+       "evidence": "[Source: FRED gdp_growth] \u2014 government-directed nuclear programs are largely non-discretionary and multi-year contracted."
+      },
+      {
+       "finding": "Gross margin compression from ~24-25% range to 21% in the two most recent quarters signals cost inflation absorption and/or contract mix shift, occurring against a backdrop of still-elevated CPI (330.3, up from 324.2 six months prior).",
+       "evidence": "GM deteriorated from 24.6% (Q1 prior year) to 21.0% (Q4 latest) [Source: FMP /income-statement]; CPI trend [Source: FRED cpi]."
+      }
+     ],
+     "score_rationale": "BWXT operates in a structurally favorable macro regime characterized by bipartisan nuclear energy tailwinds, elevated defense budgets, and a moderately restrictive but easing rate environment; however, slowing GDP, a mildly stretched valuation relative to DCF, and margin compression temper an otherwise strong setup."
+    },
+    "key_findings": [
+     "Defense budget expansion and nuclear renaissance policy provide durable revenue visibility for BWXT's naval nuclear and commercial nuclear segments.",
+     "Revenue acceleration from $0.60B (Q1 prior year) to $0.89B (Q4 latest) represents ~48% cumulative quarterly growth, demonstrating that macro-level nuclear policy tailwinds are translating into realized contract execution.",
+     "The yield curve has normalized modestly (10Y-2Y spread ~+53bps) and the Fed funds rate has declined from 4.09% to 3.64%, reducing financing costs on BWXT's $2.02B long-term debt load and improving the capital allocation environment.",
+     "GDP deceleration to +0.5% annualized in Q4 2025 after a strong +4.4% in Q3 2025 signals potential macro softness, but BWXT's government-contracted revenue base insulates it from cyclical demand shocks.",
+     "Gross margin compression from ~24-25% range to 21% in the two most recent quarters signals cost inflation absorption and/or contract mix shift, occurring against a backdrop of still-elevated CPI (330.3, up from 324.2 six months prior)."
+    ]
+   },
+   "Risk Assessment": {
+    "score": 48,
+    "content": "{\n  \"score\": 48,\n  \"score_rationale\": \"BWXT presents a concentrated risk profile with 68% government revenue dependency, a materially elevated D/E of 1.63x with a $1.25B debt maturity cliff in 2030 against weak FCF conversion (~6-7% of revenue), and a significant operating margin compression trend (from ~15% to ~8-10% range) that reduces financial buffer in adverse scenarios.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"U.S. Government contracts represent 68% of total consolidated revenues, creating acute concentration risk tied to DOE and defense appropriations cycles that are currently under political pressure.\",\n      \"evidence\": \"[Source: SEC 10-K 2026-02-23, Item 1A Risk Factors] \u2014 explicitly disclosed 68% government revenue dependency for FY2025\"\n    },\n    {\n      \"finding\": \"A $1.25B debt maturity falls due in Year Five (2030) from the 2025 filing date, representing ~62% of current LT debt balance against TTM FCF of approximately $300M annualized \u2014 a coverage ratio that leaves limited margin for error.\",\n      \"evidence\": \"[Source: SEC EDGAR XBRL, LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFive 2025 FY = $1.25B]; [Source: FMP /cash-flow-statement quarterly data aggregated]\"\n    },\n    {\n      \"finding\": \"Operating margin has compressed severely from 15.4% (Q1 prior year) to 8.1% (Q4 most recent), a 730bp deterioration over four quarters that substantially narrows debt service headroom and FCF generation capacity.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly \u2014 Q1 prior year OM 15.4% vs Q4 most recent OM 8.1%]\"\n    },\n    {\n      \"finding\": \"FCF conversion is structurally weak, with trailing four quarters producing aggregate FCF of approximately $300M against net income significantly higher, and one quarter showing FCF of only $20M; FCF growth rates show -40.1%, -24.9%, and -92.3% in recent forward estimates.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement quarterly \u2014 Q1 FCF $0.02B, Q4 FCF $0.06B]; [Source: FMP Growth Rates \u2014 2025-12 FCF Growth -40.1%, 2025-03 FCF Growth -92.3%]\"\n    },\n    {\n      \"finding\": \"Analyst price targets imply -5.7% downside from current price with a Seaport Global downgrade to Neutral in January 2026 and multiple Hold ratings (6 of 16), while the DCF model signals -76.7% intrinsic value gap, suggesting the market is pricing in a significant optionality premium that magnifies downside risk if growth narratives disappoint.\",\n      \"evidence\": \"[Source: FMP /analyst-estimates \u2014 avg target $210 vs current $222.77]; [Source: FMP /analyst-ratings \u2014 Seaport downgrade 2026-01-20]; [Source: FMP DCF intrinsic value $51.70]\"\n    }\n  ],\n  \"analysis\": \"BWX Technologies carries a risk profile that is meaningfully more complex than its low beta (0.794) implies. The beta understates true risk because BWXT's revenues are quasi-monopolistic within U.S. naval nuclear propulsion and DOE site operations \u2014 low correlation to equity markets masks binary political/budgetary risk. The core risk vector is government dependency: 68% of revenue is directly or indirectly tied to U.S. Government contracts, predominantly the DOE and U.S. Navy [Source: SEC 10-K 2026-02-23]. Under the current federal fiscal environment, with continuing resolution risks and DOGE-driven budget debates, any compression in DOE appropriations or delays in nuclear shipbuilding authorizations could materially impair BWXT's revenue base with limited ability to substitute commercial work quickly.\\n\\nThe balance sheet risk is real and time-bound. The debt maturity schedule from XBRL filings shows zero near-term principal repayments (Years 1-2), then $400M in Year Three (2028), $400M in Year Four (2029), and a concentrated $1.25B maturity in Year Five (2030) [Source: SEC EDGAR XBRL LongTermDebtMaturities]. Against TTM FCF of approximately $300-310M (Q1+Q2+Q3+Q4 = $0.02B+$0.13B+$0.09B+$0.06B = ~$300M), the 2030 maturity requires either substantial FCF improvement, refinancing, or equity issuance. The D/E of 1.63x as of Q4 [Source: FMP /balance-sheet-statement] is elevated for a defense industrial company, and the recent LT debt jump from $1.19B (Q1) to $2.02B (Q4) \u2014 an $830M increase in three quarters \u2014 warrants scrutiny regarding acquisition financing or revolver drawdowns that have not yet been fully explained in available data. Interest expense of only $0.01B quarterly [Source: FMP /income-statement] appears anomalously low given the debt quantum, suggesting possible capitalized interest or hedging arrangements obscuring true cost of carry \u2014 this is a data gap.\\n\\nOperating margin compression from 15.4% to 8.1% over four quarters [Source: FMP /income-statement quarterly] is the most concerning near-term risk. This trajectory, if structural rather than cyclical (mix shift toward lower-margin government cost-plus work, or fixed-price contract losses), would substantially impair the FCF trajectory needed to service the 2030 maturity. The revenue growth acceleration (Q3 +28.9% YoY) driven by contract ramp-ups creates apparent earnings momentum, but gross margins have simultaneously compressed from 24-25% to 21%, indicating pricing or cost pressures are not being absorbed \u2014 likely fixed-price contract execution risk on new programs. Forward FCF growth estimates of -40.1% for FY2025 [Source: FMP Growth Rates] confirm the market expects near-term FCF deterioration even as revenue grows, which is an unusual and concerning divergence.\\n\\nOn the downside scenario: if operating margin stabilizes at 9% (vs. the 13-15% prior baseline), annual EBITDA would approximate $450-480M on ~$3.2B revenue. After ~$80M interest expense (implied at market rates on $2B debt), $150M+ CapEx, and taxes, FCF might be $200-250M annually through 2029, leaving a cumulative ~$1B against $2.05B in maturities ($400M+$400M+$1.25B) from 2028-2030. This scenario mandates refinancing and creates material execution risk. The base case requires margin recovery to 12-13% \u2014 plausible given naval nuclear demand, but not guaranteed given recent trajectory. Covenant structure is not disclosed in available XBRL data, creating a secondary risk if leverage covenants constrain operational flexibility. The SBC figure of -$39.46B in Q4 [Source: FMP /cash-flow-statement] appears to be a data error and is flagged accordingly.\",\n  \"data_gaps\": [\n    \"Weighted average interest rate and covenant structure on BWXT's credit facilities are not disclosed in XBRL or available filing excerpts \u2014 critical for assessing refinancing risk and operational constraints on the $2.02B LT debt position\",\n    \"The Q4 cash flow statement shows SBC of -$39.46B which is clearly a data error (likely -$39.46M or similar); actual SBC quantum and true FCF reconciliation cannot be confirmed without corrected filing data\",\n    \"Breakdown of the $830M LT debt increase from Q1 to Q4 (from $1.19B to $2.02B) \u2014 whether acquisition-related, revolver drawdown, or new term issuance \u2014 is not available, preventing accurate covenant and maturity profile analysis\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Risk Assessment",
+    "structured": {
+     "score": 48,
+     "analysis": "BWX Technologies carries a risk profile that is meaningfully more complex than its low beta (0.794) implies. The beta understates true risk because BWXT's revenues are quasi-monopolistic within U.S. naval nuclear propulsion and DOE site operations \u2014 low correlation to equity markets masks binary political/budgetary risk. The core risk vector is government dependency: 68% of revenue is directly or indirectly tied to U.S. Government contracts, predominantly the DOE and U.S. Navy [Source: SEC 10-K 2026-02-23]. Under the current federal fiscal environment, with continuing resolution risks and DOGE-driven budget debates, any compression in DOE appropriations or delays in nuclear shipbuilding authorizations could materially impair BWXT's revenue base with limited ability to substitute commercial work quickly.\n\nThe balance sheet risk is real and time-bound. The debt maturity schedule from XBRL filings shows zero near-term principal repayments (Years 1-2), then $400M in Year Three (2028), $400M in Year Four (2029), and a concentrated $1.25B maturity in Year Five (2030) [Source: SEC EDGAR XBRL LongTermDebtMaturities]. Against TTM FCF of approximately $300-310M (Q1+Q2+Q3+Q4 = $0.02B+$0.13B+$0.09B+$0.06B = ~$300M), the 2030 maturity requires either substantial FCF improvement, refinancing, or equity issuance. The D/E of 1.63x as of Q4 [Source: FMP /balance-sheet-statement] is elevated for a defense industrial company, and the recent LT debt jump from $1.19B (Q1) to $2.02B (Q4) \u2014 an $830M increase in three quarters \u2014 warrants scrutiny regarding acquisition financing or revolver drawdowns that have not yet been fully explained in available data. Interest expense of only $0.01B quarterly [Source: FMP /income-statement] appears anomalously low given the debt quantum, suggesting possible capitalized interest or hedging arrangements obscuring true cost of carry \u2014 this is a data gap.\n\nOperating margin compression from 15.4% to 8.1% over four quarters [Source: FMP /income-statement quarterly] is the most concerning near-term risk. This trajectory, if structural rather than cyclical (mix shift toward lower-margin government cost-plus work, or fixed-price contract losses), would substantially impair the FCF trajectory needed to service the 2030 maturity. The revenue growth acceleration (Q3 +28.9% YoY) driven by contract ramp-ups creates apparent earnings momentum, but gross margins have simultaneously compressed from 24-25% to 21%, indicating pricing or cost pressures are not being absorbed \u2014 likely fixed-price contract execution risk on new programs. Forward FCF growth estimates of -40.1% for FY2025 [Source: FMP Growth Rates] confirm the market expects near-term FCF deterioration even as revenue grows, which is an unusual and concerning divergence.\n\nOn the downside scenario: if operating margin stabilizes at 9% (vs. the 13-15% prior baseline), annual EBITDA would approximate $450-480M on ~$3.2B revenue. After ~$80M interest expense (implied at market rates on $2B debt), $150M+ CapEx, and taxes, FCF might be $200-250M annually through 2029, leaving a cumulative ~$1B against $2.05B in maturities ($400M+$400M+$1.25B) from 2028-2030. This scenario mandates refinancing and creates material execution risk. The base case requires margin recovery to 12-13% \u2014 plausible given naval nuclear demand, but not guaranteed given recent trajectory. Covenant structure is not disclosed in available XBRL data, creating a secondary risk if leverage covenants constrain operational flexibility. The SBC figure of -$39.46B in Q4 [Source: FMP /cash-flow-statement] appears to be a data error and is flagged accordingly.",
+     "data_gaps": [
+      "Weighted average interest rate and covenant structure on BWXT's credit facilities are not disclosed in XBRL or available filing excerpts \u2014 critical for assessing refinancing risk and operational constraints on the $2.02B LT debt position",
+      "The Q4 cash flow statement shows SBC of -$39.46B which is clearly a data error (likely -$39.46M or similar); actual SBC quantum and true FCF reconciliation cannot be confirmed without corrected filing data",
+      "Breakdown of the $830M LT debt increase from Q1 to Q4 (from $1.19B to $2.02B) \u2014 whether acquisition-related, revolver drawdown, or new term issuance \u2014 is not available, preventing accurate covenant and maturity profile analysis"
+     ],
+     "key_findings": [
+      {
+       "finding": "U.S. Government contracts represent 68% of total consolidated revenues, creating acute concentration risk tied to DOE and defense appropriations cycles that are currently under political pressure.",
+       "evidence": "[Source: SEC 10-K 2026-02-23, Item 1A Risk Factors] \u2014 explicitly disclosed 68% government revenue dependency for FY2025"
+      },
+      {
+       "finding": "A $1.25B debt maturity falls due in Year Five (2030) from the 2025 filing date, representing ~62% of current LT debt balance against TTM FCF of approximately $300M annualized \u2014 a coverage ratio that leaves limited margin for error.",
+       "evidence": "[Source: SEC EDGAR XBRL, LongTermDebtMaturitiesRepaymentsOfPrincipalInYearFive 2025 FY = $1.25B]; [Source: FMP /cash-flow-statement quarterly data aggregated]"
+      },
+      {
+       "finding": "Operating margin has compressed severely from 15.4% (Q1 prior year) to 8.1% (Q4 most recent), a 730bp deterioration over four quarters that substantially narrows debt service headroom and FCF generation capacity.",
+       "evidence": "[Source: FMP /income-statement quarterly \u2014 Q1 prior year OM 15.4% vs Q4 most recent OM 8.1%]"
+      },
+      {
+       "finding": "FCF conversion is structurally weak, with trailing four quarters producing aggregate FCF of approximately $300M against net income significantly higher, and one quarter showing FCF of only $20M; FCF growth rates show -40.1%, -24.9%, and -92.3% in recent forward estimates.",
+       "evidence": "[Source: FMP /cash-flow-statement quarterly \u2014 Q1 FCF $0.02B, Q4 FCF $0.06B]; [Source: FMP Growth Rates \u2014 2025-12 FCF Growth -40.1%, 2025-03 FCF Growth -92.3%]"
+      },
+      {
+       "finding": "Analyst price targets imply -5.7% downside from current price with a Seaport Global downgrade to Neutral in January 2026 and multiple Hold ratings (6 of 16), while the DCF model signals -76.7% intrinsic value gap, suggesting the market is pricing in a significant optionality premium that magnifies downside risk if growth narratives disappoint.",
+       "evidence": "[Source: FMP /analyst-estimates \u2014 avg target $210 vs current $222.77]; [Source: FMP /analyst-ratings \u2014 Seaport downgrade 2026-01-20]; [Source: FMP DCF intrinsic value $51.70]"
+      }
+     ],
+     "score_rationale": "BWXT presents a concentrated risk profile with 68% government revenue dependency, a materially elevated D/E of 1.63x with a $1.25B debt maturity cliff in 2030 against weak FCF conversion (~6-7% of revenue), and a significant operating margin compression trend (from ~15% to ~8-10% range) that reduces financial buffer in adverse scenarios."
+    },
+    "key_findings": [
+     "U.S. Government contracts represent 68% of total consolidated revenues, creating acute concentration risk tied to DOE and defense appropriations cycles that are currently under political pressure.",
+     "A $1.25B debt maturity falls due in Year Five (2030) from the 2025 filing date, representing ~62% of current LT debt balance against TTM FCF of approximately $300M annualized \u2014 a coverage ratio that leaves limited margin for error.",
+     "Operating margin has compressed severely from 15.4% (Q1 prior year) to 8.1% (Q4 most recent), a 730bp deterioration over four quarters that substantially narrows debt service headroom and FCF generation capacity.",
+     "FCF conversion is structurally weak, with trailing four quarters producing aggregate FCF of approximately $300M against net income significantly higher, and one quarter showing FCF of only $20M; FCF growth rates show -40.1%, -24.9%, and -92.3% in recent forward estimates.",
+     "Analyst price targets imply -5.7% downside from current price with a Seaport Global downgrade to Neutral in January 2026 and multiple Hold ratings (6 of 16), while the DCF model signals -76.7% intrinsic value gap, suggesting the market is pricing in a significant optionality premium that magnifies downside risk if growth narratives disappoint."
+    ]
+   },
+   "Business Quality": {
+    "score": 82,
+    "content": "{\n  \"score\": 82,\n  \"score_rationale\": \"BWXT earns a high-quality score due to its essentially unassailable competitive moat as the sole-source supplier of naval nuclear components and fuel to the U.S. Government, reinforced by 100+ years of operating history and classified technical barriers; however, margin compression over recent quarters, meaningful leverage, and customer concentration in a single government program temper the score from exceptional levels.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"BWXT operates as the dominant sole-source provider of precision naval nuclear components and fuel to the U.S. Navy/NNSA, creating a near-irreplaceable competitive position with no credible domestic substitute.\",\n      \"evidence\": \"[Source: SEC 10-K 2026-02-23, Item 1 Business] \u2014 described as having 'over 100 years of experience' supplying naval nuclear components with 'proprietary and sole-source' products; U.S. Navy 30-year shipbuilding plan explicitly calls for sustained/increased nuclear submarine and carrier procurement.\"\n    },\n    {\n      \"finding\": \"Operating margins have deteriorated materially over the past year, compressing from ~15% in the year-ago period to 8-10% in the most recent two quarters, suggesting mix shift, cost escalation, or contract repricing headwinds.\",\n      \"evidence\": \"[Source: FMP Quarterly Income Statement] \u2014 OM was 15.4%/14.5%/14.4% in Q1-Q3 of the prior year, declining to 14.2%/13.4%/10.6%/8.1% in the four most recent quarters.\"\n    },\n    {\n      \"finding\": \"Revenue growth has been robust and accelerating, with YoY growth of 13%, 12%, 29%, and 19% in the most recent four quarters respectively, driven by expanding naval nuclear demand.\",\n      \"evidence\": \"[Source: FMP Quarterly Income Statement] \u2014 Q1 +13.0%, Q2 +12.1%, Q3 +28.9%, Q4 +18.7% YoY revenue growth in the most recently reported fiscal year.\"\n    },\n    {\n      \"finding\": \"Balance sheet leverage has risen meaningfully, with LT debt increasing from $1.19B to $2.02B over four quarters and D/E expanding from 1.09x to 1.63x, though near-term interest expense remains modest at $0.01B quarterly suggesting favorable fixed-rate debt structure.\",\n      \"evidence\": \"[Source: FMP Balance Sheet] \u2014 LT Debt Q1: $1.19B vs. Q4: $2.02B; D/E Q1: 1.09x vs. Q4: 1.63x; Interest expense $0.01B latest quarter.\"\n    },\n    {\n      \"finding\": \"Customer concentration is extreme \u2014 the U.S. Government (primarily DOE/NNSA Naval Nuclear Propulsion Program) represents the overwhelming majority of revenues, creating binary dependency on a single contracting relationship though offset by multi-decade program continuity.\",\n      \"evidence\": \"[Source: SEC 10-K 2026-02-23, Item 1 Business] \u2014 'The demand for nuclear components by the U.S. Government determines a substantial portion of this segment's backlog'; XBRL: ConcentrationRiskPercentage1 not disclosed in filings.\"\n    }\n  ],\n  \"analysis\": \"BWX Technologies represents one of the highest-quality franchise businesses in the defense-industrial complex, anchored by a structural monopoly in U.S. naval nuclear component manufacturing. As the sole domestic manufacturer of nuclear propulsion components, reactor assemblies, and naval nuclear fuel for the DOE/NNSA Naval Nuclear Propulsion Program, BWXT benefits from barriers to entry that are effectively permanent: classified technical knowledge accumulated over seven decades, specialized manufacturing facilities with government-owned tooling, and regulatory/clearance requirements that preclude new entrants on any realistic timeline. The U.S. Navy's 30-year shipbuilding plan \u2014 all three scenarios of which call for sustained or growing nuclear-powered submarine and carrier procurement \u2014 provides extraordinary long-cycle revenue visibility that few industrials can match. [Source: SEC 10-K 2026-02-23]\\n\\nThe top-line picture is unambiguously strong. Revenue has compounded at double-digit YoY rates across the most recent four quarters, with particularly striking acceleration in Q3 (+28.9%) and Q4 (+18.7%). [Source: FMP Quarterly Income Statement] Analyst consensus projects continued mid-teens revenue growth, with quarterly estimates reaching $1.2B+ by late 2030. [Source: FMP Analyst Estimates] This is consistent with a structural upcycle in naval nuclear demand, not a cyclical bounce.\\n\\nHowever, a significant quality concern is the pronounced margin compression visible in the income statement. Operating margins have declined roughly 600-700 basis points from trough to recent quarters \u2014 from ~15% to ~8% \u2014 even as revenues accelerate. This counterintuitive pattern suggests either contract repricing at lower margins on new backlog, cost escalation on fixed-price contracts, or capacity investment drag as BWXT expands to meet Navy demand. The company explicitly flagged plans for 'additional capital expenditures and investments in personnel.' [Source: SEC 10-K 2026-02-23] Gross margins tell a similar story, declining from ~24-25% to ~21%. FCF generation has been erratic, with large swings quarter to quarter, and the $39.46B SBC figure in Q4 appears to be a data anomaly requiring verification. [Source: FMP Cash Flow]\\n\\nThe balance sheet transformation over the past year warrants scrutiny. Long-term debt nearly doubled from $1.19B to $2.02B, with D/E rising to 1.63x. [Source: FMP Balance Sheet] The stated quarterly interest expense of only $0.01B seems inconsistent with $2B+ in debt and may reflect hedging, favorable legacy rates, or timing, but this should be verified against SEC disclosures. ROA of 9.6% remains respectable for a capital-intensive manufacturer. [Source: FMP Return Metrics]\\n\\nInsider activity shows net selling, though the MacQuarrie transactions appear to involve equity award exercises and partial retention, which is less bearish than outright market sales. Analyst sentiment is broadly constructive (9 Buy, 6 Hold, 1 Sell) but price targets imply modest downside from current levels, suggesting the market has adequately priced the franchise quality. The Seaport Global downgrade to Neutral in January 2026 may reflect valuation concerns rather than business quality deterioration. [Source: FMP Analyst Ratings]\\n\\nOverall, BWXT's business quality is genuinely exceptional on structural/competitive dimensions but is being tested operationally by the cost of growth. The margin trajectory is the key variable to monitor \u2014 if compression reflects investment spend that will reverse as new capacity fills, the franchise thesis is intact; if it reflects structural mix shift to lower-margin contracts, the quality rating warrants reassessment.\",\n  \"data_gaps\": [\n    \"Customer concentration percentage (ConcentrationRiskPercentage1) was explicitly not disclosed in XBRL filings, preventing precise quantification of U.S. Government revenue dependency.\",\n    \"Debt maturity schedule and interest rate structure not available in provided data \u2014 the extremely low quarterly interest expense ($0.01B) on $2B+ LT debt requires reconciliation against SEC debt footnotes.\",\n    \"Backlog quantum and burn rate not provided \u2014 critical for assessing revenue visibility and quality given the company's own disclosure that 'a relatively small number of projects can represent a significant part of operations.'\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Business Quality",
+    "structured": {
+     "score": 82,
+     "analysis": "BWX Technologies represents one of the highest-quality franchise businesses in the defense-industrial complex, anchored by a structural monopoly in U.S. naval nuclear component manufacturing. As the sole domestic manufacturer of nuclear propulsion components, reactor assemblies, and naval nuclear fuel for the DOE/NNSA Naval Nuclear Propulsion Program, BWXT benefits from barriers to entry that are effectively permanent: classified technical knowledge accumulated over seven decades, specialized manufacturing facilities with government-owned tooling, and regulatory/clearance requirements that preclude new entrants on any realistic timeline. The U.S. Navy's 30-year shipbuilding plan \u2014 all three scenarios of which call for sustained or growing nuclear-powered submarine and carrier procurement \u2014 provides extraordinary long-cycle revenue visibility that few industrials can match. [Source: SEC 10-K 2026-02-23]\n\nThe top-line picture is unambiguously strong. Revenue has compounded at double-digit YoY rates across the most recent four quarters, with particularly striking acceleration in Q3 (+28.9%) and Q4 (+18.7%). [Source: FMP Quarterly Income Statement] Analyst consensus projects continued mid-teens revenue growth, with quarterly estimates reaching $1.2B+ by late 2030. [Source: FMP Analyst Estimates] This is consistent with a structural upcycle in naval nuclear demand, not a cyclical bounce.\n\nHowever, a significant quality concern is the pronounced margin compression visible in the income statement. Operating margins have declined roughly 600-700 basis points from trough to recent quarters \u2014 from ~15% to ~8% \u2014 even as revenues accelerate. This counterintuitive pattern suggests either contract repricing at lower margins on new backlog, cost escalation on fixed-price contracts, or capacity investment drag as BWXT expands to meet Navy demand. The company explicitly flagged plans for 'additional capital expenditures and investments in personnel.' [Source: SEC 10-K 2026-02-23] Gross margins tell a similar story, declining from ~24-25% to ~21%. FCF generation has been erratic, with large swings quarter to quarter, and the $39.46B SBC figure in Q4 appears to be a data anomaly requiring verification. [Source: FMP Cash Flow]\n\nThe balance sheet transformation over the past year warrants scrutiny. Long-term debt nearly doubled from $1.19B to $2.02B, with D/E rising to 1.63x. [Source: FMP Balance Sheet] The stated quarterly interest expense of only $0.01B seems inconsistent with $2B+ in debt and may reflect hedging, favorable legacy rates, or timing, but this should be verified against SEC disclosures. ROA of 9.6% remains respectable for a capital-intensive manufacturer. [Source: FMP Return Metrics]\n\nInsider activity shows net selling, though the MacQuarrie transactions appear to involve equity award exercises and partial retention, which is less bearish than outright market sales. Analyst sentiment is broadly constructive (9 Buy, 6 Hold, 1 Sell) but price targets imply modest downside from current levels, suggesting the market has adequately priced the franchise quality. The Seaport Global downgrade to Neutral in January 2026 may reflect valuation concerns rather than business quality deterioration. [Source: FMP Analyst Ratings]\n\nOverall, BWXT's business quality is genuinely exceptional on structural/competitive dimensions but is being tested operationally by the cost of growth. The margin trajectory is the key variable to monitor \u2014 if compression reflects investment spend that will reverse as new capacity fills, the franchise thesis is intact; if it reflects structural mix shift to lower-margin contracts, the quality rating warrants reassessment.",
+     "data_gaps": [
+      "Customer concentration percentage (ConcentrationRiskPercentage1) was explicitly not disclosed in XBRL filings, preventing precise quantification of U.S. Government revenue dependency.",
+      "Debt maturity schedule and interest rate structure not available in provided data \u2014 the extremely low quarterly interest expense ($0.01B) on $2B+ LT debt requires reconciliation against SEC debt footnotes.",
+      "Backlog quantum and burn rate not provided \u2014 critical for assessing revenue visibility and quality given the company's own disclosure that 'a relatively small number of projects can represent a significant part of operations.'"
+     ],
+     "key_findings": [
+      {
+       "finding": "BWXT operates as the dominant sole-source provider of precision naval nuclear components and fuel to the U.S. Navy/NNSA, creating a near-irreplaceable competitive position with no credible domestic substitute.",
+       "evidence": "[Source: SEC 10-K 2026-02-23, Item 1 Business] \u2014 described as having 'over 100 years of experience' supplying naval nuclear components with 'proprietary and sole-source' products; U.S. Navy 30-year shipbuilding plan explicitly calls for sustained/increased nuclear submarine and carrier procurement."
+      },
+      {
+       "finding": "Operating margins have deteriorated materially over the past year, compressing from ~15% in the year-ago period to 8-10% in the most recent two quarters, suggesting mix shift, cost escalation, or contract repricing headwinds.",
+       "evidence": "[Source: FMP Quarterly Income Statement] \u2014 OM was 15.4%/14.5%/14.4% in Q1-Q3 of the prior year, declining to 14.2%/13.4%/10.6%/8.1% in the four most recent quarters."
+      },
+      {
+       "finding": "Revenue growth has been robust and accelerating, with YoY growth of 13%, 12%, 29%, and 19% in the most recent four quarters respectively, driven by expanding naval nuclear demand.",
+       "evidence": "[Source: FMP Quarterly Income Statement] \u2014 Q1 +13.0%, Q2 +12.1%, Q3 +28.9%, Q4 +18.7% YoY revenue growth in the most recently reported fiscal year."
+      },
+      {
+       "finding": "Balance sheet leverage has risen meaningfully, with LT debt increasing from $1.19B to $2.02B over four quarters and D/E expanding from 1.09x to 1.63x, though near-term interest expense remains modest at $0.01B quarterly suggesting favorable fixed-rate debt structure.",
+       "evidence": "[Source: FMP Balance Sheet] \u2014 LT Debt Q1: $1.19B vs. Q4: $2.02B; D/E Q1: 1.09x vs. Q4: 1.63x; Interest expense $0.01B latest quarter."
+      },
+      {
+       "finding": "Customer concentration is extreme \u2014 the U.S. Government (primarily DOE/NNSA Naval Nuclear Propulsion Program) represents the overwhelming majority of revenues, creating binary dependency on a single contracting relationship though offset by multi-decade program continuity.",
+       "evidence": "[Source: SEC 10-K 2026-02-23, Item 1 Business] \u2014 'The demand for nuclear components by the U.S. Government determines a substantial portion of this segment's backlog'; XBRL: ConcentrationRiskPercentage1 not disclosed in filings."
+      }
+     ],
+     "score_rationale": "BWXT earns a high-quality score due to its essentially unassailable competitive moat as the sole-source supplier of naval nuclear components and fuel to the U.S. Government, reinforced by 100+ years of operating history and classified technical barriers; however, margin compression over recent quarters, meaningful leverage, and customer concentration in a single government program temper the score from exceptional levels."
+    },
+    "key_findings": [
+     "BWXT operates as the dominant sole-source provider of precision naval nuclear components and fuel to the U.S. Navy/NNSA, creating a near-irreplaceable competitive position with no credible domestic substitute.",
+     "Operating margins have deteriorated materially over the past year, compressing from ~15% in the year-ago period to 8-10% in the most recent two quarters, suggesting mix shift, cost escalation, or contract repricing headwinds.",
+     "Revenue growth has been robust and accelerating, with YoY growth of 13%, 12%, 29%, and 19% in the most recent four quarters respectively, driven by expanding naval nuclear demand.",
+     "Balance sheet leverage has risen meaningfully, with LT debt increasing from $1.19B to $2.02B over four quarters and D/E expanding from 1.09x to 1.63x, though near-term interest expense remains modest at $0.01B quarterly suggesting favorable fixed-rate debt structure.",
+     "Customer concentration is extreme \u2014 the U.S. Government (primarily DOE/NNSA Naval Nuclear Propulsion Program) represents the overwhelming majority of revenues, creating binary dependency on a single contracting relationship though offset by multi-decade program continuity."
+    ]
+   },
+   "Financial Health": {
+    "score": 62,
+    "content": "{\n  \"score\": 62,\n  \"score_rationale\": \"BWXT carries a D/E of 1.63x with a material $2.05B debt wall concentrated in 2028-2030 against FCF generation that is inconsistent and declining YoY in recent quarters; partially offset by strong revenue growth trajectory, adequate near-term liquidity, and negligible near-term maturities through 2027.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Debt maturity profile is backend-loaded and concentrated: $400M due in Year 3 (2028), $400M in Year 4 (2029), and $1.25B in Year 5 (2030), creating a significant refinancing wall that dwarfs current annual FCF of ~$0.30B.\",\n      \"evidence\": \"[Source: SEC EDGAR XBRL facts, LongTermDebtMaturitiesRepayments 2025 FY filing]\"\n    },\n    {\n      \"finding\": \"Gross margins have compressed materially in the most recent two quarters \u2014 from 24-25% range to 21-22% \u2014 suggesting cost pressures or contract mix shifts are eroding profitability even as revenue accelerates.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly; Q1-Q2 2024 GM ~24.4-25.1% vs Q3-Q4 2024 GM 21.0-21.8%]\"\n    },\n    {\n      \"finding\": \"FCF generation is weak and declining: TTM FCF of ~$0.30B represents only ~9.3% of revenue, and YoY FCF growth is deeply negative (-40.1% in Q4, -24.9% in Q3), driven by rising CapEx and working capital consumption.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement quarterly; Growth Rates data]\"\n    },\n    {\n      \"finding\": \"Interest expense is remarkably low at ~$0.01B quarterly despite $2.02B in LT debt, which implies an unusually low effective interest rate or interest capitalization \u2014 the weighted average interest rate is not disclosed in XBRL, creating opacity around true debt service burden.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement, /cash-flow-statement; SEC EDGAR XBRL \u2014 WeightedAverageInterestRate not disclosed]\"\n    },\n    {\n      \"finding\": \"Liquidity improved sharply in Q4 with cash rising to $0.50B (from $0.08B in Q3), current ratio expanding to 2.32x, and near-term debt maturities are essentially zero through 2027, providing a meaningful buffer before the 2028-2030 wall.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement quarterly; SEC EDGAR XBRL LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths 2025 FY = $0, YearTwo = $0]\"\n    }\n  ],\n  \"analysis\": \"BWXT's financial health presents as a mixed picture: strong top-line momentum and near-term liquidity coexist with meaningful leverage, compressing margins, and a back-loaded debt maturity structure that will require either robust FCF growth or active capital market refinancing over the 2028-2030 horizon.\\n\\n**Leverage and Debt Structure:** The Q4 2024 balance sheet shows $2.02B in LT debt against a D/E of 1.63x, up from 1.09x just three quarters earlier, indicating rapid debt accumulation \u2014 likely acquisition or investment-driven [Source: FMP /balance-sheet-statement]. The maturity schedule from SEC EDGAR filings is stark: zero principal due in 2026-2027, $400M due in 2028, $400M in 2029, and $1.25B in 2030. The 2030 tranche alone is approximately 4x TTM FCF. This is not an immediate crisis but requires BWXT to either significantly scale FCF or refinance into a potentially higher rate environment. With 10-year Treasury yields at 4.34% [Source: FRED treasury_10y] and the fed funds rate stabilized at 3.64% [Source: FRED fed_funds_rate], refinancing conditions are materially less favorable than when much of this debt was likely originated. The absence of disclosed weighted average interest rate in XBRL is a genuine data gap \u2014 if the current coupon stack is sub-4%, the refinancing cost step-up could materially impact interest coverage ratios.\\n\\n**Interest Coverage and Debt Service:** Reported quarterly interest expense of ~$0.01B is anomalously low against $2.02B in debt. This likely reflects interest capitalization for CapEx-heavy programs, but cannot be confirmed without full footnote disclosure. At face value, coverage ratios appear extremely comfortable; in substance, they may be partially illusory. Operating income on a TTM basis approximates $0.39B ($0.89B + $0.87B + $0.76B + $0.68B revenue \u00d7 blended ~12% OM), implying a nominal EBIT/interest ratio well above 10x \u2014 but if capitalized interest is unwound, this ratio deteriorates.\\n\\n**Margin Trajectory:** The 300-400 bps gross margin compression in Q3-Q4 2024 versus the prior year is the most concerning near-term financial health signal. Operating margins fell from 14-15% to 8-11% range [Source: FMP /income-statement quarterly]. The acceleration in revenue (Q4 +18.7%, Q3 +28.9% YoY) is not translating to earnings leverage, suggesting higher-cost contract mix, labor inflation, or increased SG&A/R&D spend associated with new program ramp. If margins do not recover toward the 13-15% range, the FCF trajectory for servicing the 2028-2030 debt wall becomes more constrained.\\n\\n**FCF Conversion:** TTM FCF of approximately $0.30B against ~$3.2B in revenue represents a ~9% FCF margin \u2014 adequate but not exceptional for an industrial defense company with BWXT's backlog visibility. The negative YoY FCF growth in three of four recent quarters reflects CapEx scaling (from ~$0.03B to $0.07B quarterly) consistent with capacity investment for nuclear naval programs, which is strategically sound but temporarily burdens near-term cash generation. Analyst estimates project revenue reaching $4.6-4.9B annually by 2030 [Source: FMP analyst estimates], which, if FCF margins recover to 12-13%, would produce $550-640M in annual FCF \u2014 sufficient to address the 2030 maturity organically, but with limited margin for error.\\n\\n**Near-Term Liquidity:** The Q4 cash position of $0.50B combined with a 2.32x current ratio and zero near-term maturities provides genuine near-term safety [Source: FMP /balance-sheet-statement; SEC EDGAR XBRL]. The yield curve spread of +53bps [Source: FRED yield_curve_spread] signals a normalizing economic backdrop, reducing systemic refinancing risk. ROA of 9.6% [Source: FMP return metrics] is respectable and confirms productive asset deployment.\\n\\n**Conclusion:** BWXT's financial health score of 62 reflects a company with solid fundamentals being managed through an investment cycle that has temporarily elevated leverage and suppressed FCF conversion, against a debt wall that is manageable but not trivial. The margin compression trend and FCF deceleration are the key variables to monitor \u2014 deterioration from current levels would shift this assessment meaningfully negative.\",\n  \"data_gaps\": [\n    \"Weighted average interest rate on debt stack not disclosed in XBRL \u2014 critical for assessing true debt service cost and refinancing risk magnitude at the 2028-2030 maturity wall\",\n    \"Revolving credit facility terms, covenants (leverage ratio limits, coverage ratio thresholds), and available undrawn capacity not available in provided data \u2014 material to liquidity assessment\",\n    \"Q4 SBC figure of -$39.46B appears to be a data error (likely -$39.46M); confirmed SBC run-rate and non-cash charge normalization unavailable, affecting true FCF conversion analysis\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Financial Health",
+    "structured": {
+     "score": 62,
+     "analysis": "BWXT's financial health presents as a mixed picture: strong top-line momentum and near-term liquidity coexist with meaningful leverage, compressing margins, and a back-loaded debt maturity structure that will require either robust FCF growth or active capital market refinancing over the 2028-2030 horizon.\n\n**Leverage and Debt Structure:** The Q4 2024 balance sheet shows $2.02B in LT debt against a D/E of 1.63x, up from 1.09x just three quarters earlier, indicating rapid debt accumulation \u2014 likely acquisition or investment-driven [Source: FMP /balance-sheet-statement]. The maturity schedule from SEC EDGAR filings is stark: zero principal due in 2026-2027, $400M due in 2028, $400M in 2029, and $1.25B in 2030. The 2030 tranche alone is approximately 4x TTM FCF. This is not an immediate crisis but requires BWXT to either significantly scale FCF or refinance into a potentially higher rate environment. With 10-year Treasury yields at 4.34% [Source: FRED treasury_10y] and the fed funds rate stabilized at 3.64% [Source: FRED fed_funds_rate], refinancing conditions are materially less favorable than when much of this debt was likely originated. The absence of disclosed weighted average interest rate in XBRL is a genuine data gap \u2014 if the current coupon stack is sub-4%, the refinancing cost step-up could materially impact interest coverage ratios.\n\n**Interest Coverage and Debt Service:** Reported quarterly interest expense of ~$0.01B is anomalously low against $2.02B in debt. This likely reflects interest capitalization for CapEx-heavy programs, but cannot be confirmed without full footnote disclosure. At face value, coverage ratios appear extremely comfortable; in substance, they may be partially illusory. Operating income on a TTM basis approximates $0.39B ($0.89B + $0.87B + $0.76B + $0.68B revenue \u00d7 blended ~12% OM), implying a nominal EBIT/interest ratio well above 10x \u2014 but if capitalized interest is unwound, this ratio deteriorates.\n\n**Margin Trajectory:** The 300-400 bps gross margin compression in Q3-Q4 2024 versus the prior year is the most concerning near-term financial health signal. Operating margins fell from 14-15% to 8-11% range [Source: FMP /income-statement quarterly]. The acceleration in revenue (Q4 +18.7%, Q3 +28.9% YoY) is not translating to earnings leverage, suggesting higher-cost contract mix, labor inflation, or increased SG&A/R&D spend associated with new program ramp. If margins do not recover toward the 13-15% range, the FCF trajectory for servicing the 2028-2030 debt wall becomes more constrained.\n\n**FCF Conversion:** TTM FCF of approximately $0.30B against ~$3.2B in revenue represents a ~9% FCF margin \u2014 adequate but not exceptional for an industrial defense company with BWXT's backlog visibility. The negative YoY FCF growth in three of four recent quarters reflects CapEx scaling (from ~$0.03B to $0.07B quarterly) consistent with capacity investment for nuclear naval programs, which is strategically sound but temporarily burdens near-term cash generation. Analyst estimates project revenue reaching $4.6-4.9B annually by 2030 [Source: FMP analyst estimates], which, if FCF margins recover to 12-13%, would produce $550-640M in annual FCF \u2014 sufficient to address the 2030 maturity organically, but with limited margin for error.\n\n**Near-Term Liquidity:** The Q4 cash position of $0.50B combined with a 2.32x current ratio and zero near-term maturities provides genuine near-term safety [Source: FMP /balance-sheet-statement; SEC EDGAR XBRL]. The yield curve spread of +53bps [Source: FRED yield_curve_spread] signals a normalizing economic backdrop, reducing systemic refinancing risk. ROA of 9.6% [Source: FMP return metrics] is respectable and confirms productive asset deployment.\n\n**Conclusion:** BWXT's financial health score of 62 reflects a company with solid fundamentals being managed through an investment cycle that has temporarily elevated leverage and suppressed FCF conversion, against a debt wall that is manageable but not trivial. The margin compression trend and FCF deceleration are the key variables to monitor \u2014 deterioration from current levels would shift this assessment meaningfully negative.",
+     "data_gaps": [
+      "Weighted average interest rate on debt stack not disclosed in XBRL \u2014 critical for assessing true debt service cost and refinancing risk magnitude at the 2028-2030 maturity wall",
+      "Revolving credit facility terms, covenants (leverage ratio limits, coverage ratio thresholds), and available undrawn capacity not available in provided data \u2014 material to liquidity assessment",
+      "Q4 SBC figure of -$39.46B appears to be a data error (likely -$39.46M); confirmed SBC run-rate and non-cash charge normalization unavailable, affecting true FCF conversion analysis"
+     ],
+     "key_findings": [
+      {
+       "finding": "Debt maturity profile is backend-loaded and concentrated: $400M due in Year 3 (2028), $400M in Year 4 (2029), and $1.25B in Year 5 (2030), creating a significant refinancing wall that dwarfs current annual FCF of ~$0.30B.",
+       "evidence": "[Source: SEC EDGAR XBRL facts, LongTermDebtMaturitiesRepayments 2025 FY filing]"
+      },
+      {
+       "finding": "Gross margins have compressed materially in the most recent two quarters \u2014 from 24-25% range to 21-22% \u2014 suggesting cost pressures or contract mix shifts are eroding profitability even as revenue accelerates.",
+       "evidence": "[Source: FMP /income-statement quarterly; Q1-Q2 2024 GM ~24.4-25.1% vs Q3-Q4 2024 GM 21.0-21.8%]"
+      },
+      {
+       "finding": "FCF generation is weak and declining: TTM FCF of ~$0.30B represents only ~9.3% of revenue, and YoY FCF growth is deeply negative (-40.1% in Q4, -24.9% in Q3), driven by rising CapEx and working capital consumption.",
+       "evidence": "[Source: FMP /cash-flow-statement quarterly; Growth Rates data]"
+      },
+      {
+       "finding": "Interest expense is remarkably low at ~$0.01B quarterly despite $2.02B in LT debt, which implies an unusually low effective interest rate or interest capitalization \u2014 the weighted average interest rate is not disclosed in XBRL, creating opacity around true debt service burden.",
+       "evidence": "[Source: FMP /balance-sheet-statement, /cash-flow-statement; SEC EDGAR XBRL \u2014 WeightedAverageInterestRate not disclosed]"
+      },
+      {
+       "finding": "Liquidity improved sharply in Q4 with cash rising to $0.50B (from $0.08B in Q3), current ratio expanding to 2.32x, and near-term debt maturities are essentially zero through 2027, providing a meaningful buffer before the 2028-2030 wall.",
+       "evidence": "[Source: FMP /balance-sheet-statement quarterly; SEC EDGAR XBRL LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths 2025 FY = $0, YearTwo = $0]"
+      }
+     ],
+     "score_rationale": "BWXT carries a D/E of 1.63x with a material $2.05B debt wall concentrated in 2028-2030 against FCF generation that is inconsistent and declining YoY in recent quarters; partially offset by strong revenue growth trajectory, adequate near-term liquidity, and negligible near-term maturities through 2027."
+    },
+    "key_findings": [
+     "Debt maturity profile is backend-loaded and concentrated: $400M due in Year 3 (2028), $400M in Year 4 (2029), and $1.25B in Year 5 (2030), creating a significant refinancing wall that dwarfs current annual FCF of ~$0.30B.",
+     "Gross margins have compressed materially in the most recent two quarters \u2014 from 24-25% range to 21-22% \u2014 suggesting cost pressures or contract mix shifts are eroding profitability even as revenue accelerates.",
+     "FCF generation is weak and declining: TTM FCF of ~$0.30B represents only ~9.3% of revenue, and YoY FCF growth is deeply negative (-40.1% in Q4, -24.9% in Q3), driven by rising CapEx and working capital consumption.",
+     "Interest expense is remarkably low at ~$0.01B quarterly despite $2.02B in LT debt, which implies an unusually low effective interest rate or interest capitalization \u2014 the weighted average interest rate is not disclosed in XBRL, creating opacity around true debt service burden.",
+     "Liquidity improved sharply in Q4 with cash rising to $0.50B (from $0.08B in Q3), current ratio expanding to 2.32x, and near-term debt maturities are essentially zero through 2027, providing a meaningful buffer before the 2028-2030 wall."
+    ]
+   },
+   "Future Durability": {
+    "score": 82,
+    "content": "{\n  \"score\": 82,\n  \"score_rationale\": \"BWXT earns a high durability score due to its entrenched sole-source position in U.S. naval nuclear propulsion, a rapidly expanding $7.26B backlog providing multi-year revenue visibility, and secular tailwinds across defense, commercial nuclear, and medical isotopes; score is capped by margin compression in recent quarters, elevated leverage, a valuation that already prices in much of the upside, and federal budget uncertainty under DOGE-era fiscal scrutiny.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Backlog has expanded sharply to $7.26B as of FY2025, up 49% from $4.88B just three quarters earlier, providing roughly 2x trailing annual revenue in contracted work.\",\n      \"evidence\": \"[Source: FMP SEC EDGAR XBRL facts \u2014 RevenueRemainingPerformanceObligation: Q1 2025 $4.88B \u2192 Q2 $6.02B \u2192 Q3 $7.39B \u2192 FY2025 $7.26B]\"\n    },\n    {\n      \"finding\": \"BWXT is a sole-source supplier of naval nuclear components to the U.S. Navy and DOE/NNSA with over 100 years of operating history, creating near-irreplaceable switching costs and regulatory/security barriers to entry.\",\n      \"evidence\": \"[Source: FMP SEC 10-K 2026-02-23, Item 1 \u2014 'proprietary and sole-source valves... design and manufacture of close-tolerance and high-quality equipment for nuclear applications... supplied nuclear components for DOE programs since the 1950s']\"\n    },\n    {\n      \"finding\": \"Gross margin has compressed materially from 24-25% range in prior-year quarters to 21-22% in the most recent two quarters, suggesting mix shift toward lower-margin government cost-plus work or cost inflation on fixed-price contracts.\",\n      \"evidence\": \"[Source: FMP Quarterly Income Statement \u2014 GM declined from 24.6%-24.7% in prior-year Q1/Q2 to 21.0%-21.8% in current-year Q3/Q4]\"\n    },\n    {\n      \"finding\": \"The U.S. Navy's 30-year shipbuilding plan released March 2024 projects growth in nuclear-powered submarines and aircraft carriers across all three funding scenarios, directly underpinning BWXT's long-term demand outlook.\",\n      \"evidence\": \"[Source: FMP SEC 10-K 2026-02-23, Item 1 \u2014 'All three indicate growth in the total number of ships and a sustained, or increased, procurement profile for nuclear-powered submarines and aircraft carriers']\"\n    },\n    {\n      \"finding\": \"Long-term debt rose from $1.19B in Q1 2025 to $2.02B in Q4 2025 (D/E of 1.63), suggesting acquisition or investment financing that raises financial leverage risk if government budget sequestration were to occur.\",\n      \"evidence\": \"[Source: FMP Balance Sheet \u2014 LT Debt Q1 2025: $1.19B; Q4 2025: $2.02B; D/E ratio 1.63]\"\n    }\n  ],\n  \"analysis\": \"BWXT Technologies presents one of the more structurally durable business models in the Industrials/Defense universe, anchored by a combination of factors that are exceptionally difficult to replicate. The company's sole-source status as manufacturer of naval nuclear propulsion components for the U.S. Navy \u2014 a relationship dating to the 1950s \u2014 is protected by decades of classified technical know-how, specialized manufacturing infrastructure, extensive security clearances, and the DOE/NNSA regulatory environment. No credible near-term competitor exists for this work, making revenue disruption from competitive displacement essentially negligible over a 5-10 year horizon [Source: FMP SEC 10-K 2026-02-23, Item 1].\\n\\nThe most compelling near-term durability signal is the backlog surge: Remaining Performance Obligations jumped from $4.88B in Q1 2025 to $7.26B by year-end FY2025 \u2014 a 49% increase in nine months [Source: FMP SEC EDGAR XBRL facts]. Management guides that approximately 40% of this backlog will be recognized by end of 2026 [Source: FMP SEC 10-K 2026-02-23, Item 7], implying roughly $2.9B in near-term contracted revenue against a trailing twelve-month revenue run rate of approximately $3.2B. This level of backlog coverage is exceptional and insulates the company from cyclical demand shocks.\\n\\nBeyond the core naval business, BWXT is developing optionality across three secular growth vectors: (1) advanced nuclear reactor development including microreactors for defense and space applications; (2) commercial nuclear services benefiting from the global nuclear renaissance as governments seek low-carbon baseload power; and (3) medical radioisotopes and radiopharmaceuticals, including a Molybdenum-99 product line, which represents a nascent but high-margin diversification into healthcare [Source: FMP SEC 10-K 2026-02-23, Item 1]. These segments remain early-stage contributors but could become meaningful revenue streams over a 5+ year horizon.\\n\\nThe primary durability concerns center on margin trajectory and leverage. Gross margins contracted roughly 300-350 basis points year-over-year in the most recent two quarters, falling to 21.0%-21.8% from the 24-25% range seen in the prior year [Source: FMP Quarterly Income Statement]. This compression likely reflects mix shift as large government cost-plus contracts ramp faster than higher-margin commercial work, or inflation on fixed-price contracts \u2014 both of which can persist. Operating margins have similarly compressed from the 14-15% range to 8-10% in recent quarters, which warrants monitoring.\\n\\nThe LT debt increase from $1.19B to $2.02B over four quarters [Source: FMP Balance Sheet] has lifted D/E to 1.63, and while interest coverage remains manageable given the latest quarterly interest expense of ~$10M, any continued debt-financed M&A or capital investment in a rising rate environment merits scrutiny. That said, the company's government-contracted cash flow profile \u2014 predictable, long-duration, inflation-indexed in many cases \u2014 provides a natural hedge against leverage risk.\\n\\nFederal budget uncertainty under current fiscal austerity measures (DOGE-era spending reviews) represents a non-trivial tail risk. However, submarine and carrier programs are among the most politically protected line items in the defense budget, and BWXT has historically been insulated from broader DoD cuts [Source: FMP SEC 10-K 2026-02-23, Item 7 \u2014 'have not been negatively impacted by federal budget reductions to date']. The macroeconomic backdrop \u2014 with GDP growth volatile and inflation still elevated [Source: FRED CPI 330.293 as of March 2026] \u2014 adds modest uncertainty but is unlikely to alter the long-cycle defense procurement trajectory.\\n\\nOverall, BWXT's competitive moat is deep, demand visibility is exceptional, and the multi-decade nuclear tailwind (defense, commercial, medical) is structurally intact. The durability score reflects these strengths tempered by real near-term margin headwinds and rising balance sheet leverage.\",\n  \"data_gaps\": [\n    \"Backlog timing disclosure is incomplete \u2014 XBRL does not include RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage beyond management's 40% by end-2026 comment, making multi-year revenue modeling imprecise.\",\n    \"Segment-level margin breakdown between Government Operations and Commercial Operations is not available in the provided data, preventing attribution of the gross margin compression to specific business units.\",\n    \"No contract renewal rates or re-compete win rates are disclosed, leaving uncertainty about the durability of specific program contracts beyond current backlog coverage.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Future Durability",
+    "structured": {
+     "score": 82,
+     "analysis": "BWXT Technologies presents one of the more structurally durable business models in the Industrials/Defense universe, anchored by a combination of factors that are exceptionally difficult to replicate. The company's sole-source status as manufacturer of naval nuclear propulsion components for the U.S. Navy \u2014 a relationship dating to the 1950s \u2014 is protected by decades of classified technical know-how, specialized manufacturing infrastructure, extensive security clearances, and the DOE/NNSA regulatory environment. No credible near-term competitor exists for this work, making revenue disruption from competitive displacement essentially negligible over a 5-10 year horizon [Source: FMP SEC 10-K 2026-02-23, Item 1].\n\nThe most compelling near-term durability signal is the backlog surge: Remaining Performance Obligations jumped from $4.88B in Q1 2025 to $7.26B by year-end FY2025 \u2014 a 49% increase in nine months [Source: FMP SEC EDGAR XBRL facts]. Management guides that approximately 40% of this backlog will be recognized by end of 2026 [Source: FMP SEC 10-K 2026-02-23, Item 7], implying roughly $2.9B in near-term contracted revenue against a trailing twelve-month revenue run rate of approximately $3.2B. This level of backlog coverage is exceptional and insulates the company from cyclical demand shocks.\n\nBeyond the core naval business, BWXT is developing optionality across three secular growth vectors: (1) advanced nuclear reactor development including microreactors for defense and space applications; (2) commercial nuclear services benefiting from the global nuclear renaissance as governments seek low-carbon baseload power; and (3) medical radioisotopes and radiopharmaceuticals, including a Molybdenum-99 product line, which represents a nascent but high-margin diversification into healthcare [Source: FMP SEC 10-K 2026-02-23, Item 1]. These segments remain early-stage contributors but could become meaningful revenue streams over a 5+ year horizon.\n\nThe primary durability concerns center on margin trajectory and leverage. Gross margins contracted roughly 300-350 basis points year-over-year in the most recent two quarters, falling to 21.0%-21.8% from the 24-25% range seen in the prior year [Source: FMP Quarterly Income Statement]. This compression likely reflects mix shift as large government cost-plus contracts ramp faster than higher-margin commercial work, or inflation on fixed-price contracts \u2014 both of which can persist. Operating margins have similarly compressed from the 14-15% range to 8-10% in recent quarters, which warrants monitoring.\n\nThe LT debt increase from $1.19B to $2.02B over four quarters [Source: FMP Balance Sheet] has lifted D/E to 1.63, and while interest coverage remains manageable given the latest quarterly interest expense of ~$10M, any continued debt-financed M&A or capital investment in a rising rate environment merits scrutiny. That said, the company's government-contracted cash flow profile \u2014 predictable, long-duration, inflation-indexed in many cases \u2014 provides a natural hedge against leverage risk.\n\nFederal budget uncertainty under current fiscal austerity measures (DOGE-era spending reviews) represents a non-trivial tail risk. However, submarine and carrier programs are among the most politically protected line items in the defense budget, and BWXT has historically been insulated from broader DoD cuts [Source: FMP SEC 10-K 2026-02-23, Item 7 \u2014 'have not been negatively impacted by federal budget reductions to date']. The macroeconomic backdrop \u2014 with GDP growth volatile and inflation still elevated [Source: FRED CPI 330.293 as of March 2026] \u2014 adds modest uncertainty but is unlikely to alter the long-cycle defense procurement trajectory.\n\nOverall, BWXT's competitive moat is deep, demand visibility is exceptional, and the multi-decade nuclear tailwind (defense, commercial, medical) is structurally intact. The durability score reflects these strengths tempered by real near-term margin headwinds and rising balance sheet leverage.",
+     "data_gaps": [
+      "Backlog timing disclosure is incomplete \u2014 XBRL does not include RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage beyond management's 40% by end-2026 comment, making multi-year revenue modeling imprecise.",
+      "Segment-level margin breakdown between Government Operations and Commercial Operations is not available in the provided data, preventing attribution of the gross margin compression to specific business units.",
+      "No contract renewal rates or re-compete win rates are disclosed, leaving uncertainty about the durability of specific program contracts beyond current backlog coverage."
+     ],
+     "key_findings": [
+      {
+       "finding": "Backlog has expanded sharply to $7.26B as of FY2025, up 49% from $4.88B just three quarters earlier, providing roughly 2x trailing annual revenue in contracted work.",
+       "evidence": "[Source: FMP SEC EDGAR XBRL facts \u2014 RevenueRemainingPerformanceObligation: Q1 2025 $4.88B \u2192 Q2 $6.02B \u2192 Q3 $7.39B \u2192 FY2025 $7.26B]"
+      },
+      {
+       "finding": "BWXT is a sole-source supplier of naval nuclear components to the U.S. Navy and DOE/NNSA with over 100 years of operating history, creating near-irreplaceable switching costs and regulatory/security barriers to entry.",
+       "evidence": "[Source: FMP SEC 10-K 2026-02-23, Item 1 \u2014 'proprietary and sole-source valves... design and manufacture of close-tolerance and high-quality equipment for nuclear applications... supplied nuclear components for DOE programs since the 1950s']"
+      },
+      {
+       "finding": "Gross margin has compressed materially from 24-25% range in prior-year quarters to 21-22% in the most recent two quarters, suggesting mix shift toward lower-margin government cost-plus work or cost inflation on fixed-price contracts.",
+       "evidence": "[Source: FMP Quarterly Income Statement \u2014 GM declined from 24.6%-24.7% in prior-year Q1/Q2 to 21.0%-21.8% in current-year Q3/Q4]"
+      },
+      {
+       "finding": "The U.S. Navy's 30-year shipbuilding plan released March 2024 projects growth in nuclear-powered submarines and aircraft carriers across all three funding scenarios, directly underpinning BWXT's long-term demand outlook.",
+       "evidence": "[Source: FMP SEC 10-K 2026-02-23, Item 1 \u2014 'All three indicate growth in the total number of ships and a sustained, or increased, procurement profile for nuclear-powered submarines and aircraft carriers']"
+      },
+      {
+       "finding": "Long-term debt rose from $1.19B in Q1 2025 to $2.02B in Q4 2025 (D/E of 1.63), suggesting acquisition or investment financing that raises financial leverage risk if government budget sequestration were to occur.",
+       "evidence": "[Source: FMP Balance Sheet \u2014 LT Debt Q1 2025: $1.19B; Q4 2025: $2.02B; D/E ratio 1.63]"
+      }
+     ],
+     "score_rationale": "BWXT earns a high durability score due to its entrenched sole-source position in U.S. naval nuclear propulsion, a rapidly expanding $7.26B backlog providing multi-year revenue visibility, and secular tailwinds across defense, commercial nuclear, and medical isotopes; score is capped by margin compression in recent quarters, elevated leverage, a valuation that already prices in much of the upside, and federal budget uncertainty under DOGE-era fiscal scrutiny."
+    },
+    "key_findings": [
+     "Backlog has expanded sharply to $7.26B as of FY2025, up 49% from $4.88B just three quarters earlier, providing roughly 2x trailing annual revenue in contracted work.",
+     "BWXT is a sole-source supplier of naval nuclear components to the U.S. Navy and DOE/NNSA with over 100 years of operating history, creating near-irreplaceable switching costs and regulatory/security barriers to entry.",
+     "Gross margin has compressed materially from 24-25% range in prior-year quarters to 21-22% in the most recent two quarters, suggesting mix shift toward lower-margin government cost-plus work or cost inflation on fixed-price contracts.",
+     "The U.S. Navy's 30-year shipbuilding plan released March 2024 projects growth in nuclear-powered submarines and aircraft carriers across all three funding scenarios, directly underpinning BWXT's long-term demand outlook.",
+     "Long-term debt rose from $1.19B in Q1 2025 to $2.02B in Q4 2025 (D/E of 1.63), suggesting acquisition or investment financing that raises financial leverage risk if government budget sequestration were to occur."
+    ]
+   },
+   "Growth & Earnings": {
+    "score": 72,
+    "content": "{\n  \"score\": 72,\n  \"score_rationale\": \"BWXT demonstrates strong near-term revenue acceleration (18-29% YoY growth in recent quarters) and a massive $7.26B backlog providing multi-year visibility, but margin compression, inconsistent FCF conversion, and a DCF valuation implying significant overvaluation temper the score.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Revenue growth has accelerated sharply, with Q3 and Q4 2025 posting 28.9% and 18.7% YoY growth respectively, well above the prior-year mid-teens pace.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly \u2014 Q3 rev $0.87B +28.9%, Q4 rev $0.89B +18.7% YoY]\"\n    },\n    {\n      \"finding\": \"Backlog surged to $7.26B at FY2025 year-end from $4.88B at Q1 2025, a ~49% increase in nine months, providing strong multi-year revenue visibility with ~40% expected to recognize by end of 2026.\",\n      \"evidence\": \"[Source: SEC EDGAR XBRL RevenueRemainingPerformanceObligation FY2025: $7.26B vs Q1 2025: $4.88B; 10-K 2026-02-23 Outlook section]\"\n    },\n    {\n      \"finding\": \"Operating margins have deteriorated materially, declining from 14-15% range in the year-ago period to 8-11% in the most recent four quarters, suggesting mix shift toward lower-margin contracts or cost inflation pressures.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly \u2014 Q4 OM 8.1%, Q3 OM 10.6% vs year-ago Q4 OM 12.4%, Q1 OM 15.4%]\"\n    },\n    {\n      \"finding\": \"EPS growth has been modest and decelerating relative to revenue growth\u2014ranging 4.7%-13.3% in forward estimates\u2014indicating the revenue acceleration is not fully flowing through to per-share earnings.\",\n      \"evidence\": \"[Source: FMP /analyst-estimates growth rates 2025-06 through 2025-12: EPS growth 4.7%-13.3%; FMP /income-statement quarterly EPS $0.82-$1.02 vs prior year $0.75-$0.80]\"\n    },\n    {\n      \"finding\": \"Free cash flow conversion is weak and volatile\u2014FCF was only $0.06B in Q4 against net income of ~$0.09B, with a Q4 SBC figure of -$39.46B flagged as a likely data anomaly\u2014and Q1 2026 FCF growth est. of -92.3% raises near-term cash generation concerns.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement quarterly Q4 FCF $0.06B; FMP growth rates 2025-03 FCF growth -92.3%; SBC anomaly in Q4 data noted]\"\n    }\n  ],\n  \"analysis\": \"BWX Technologies presents a compelling top-line growth story underpinned by secular tailwinds in naval nuclear propulsion and expanding commercial nuclear demand, but the earnings quality and margin trajectory introduce meaningful caveats for growth investors.\\n\\nRevenue growth has shifted into a higher gear. After growing at 13-15% in the first two quarters of 2025, BWXT accelerated to 28.9% in Q3 and 18.7% in Q4 [Source: FMP /income-statement quarterly], reflecting both organic contract ramp and likely contributions from new awards in the Government Operations segment. The backlog trajectory powerfully confirms this momentum: the remaining performance obligation jumped from $4.88B in Q1 2025 to $7.39B in Q3 and settled at $7.26B at year-end FY2025 [Source: SEC EDGAR XBRL], representing roughly 2x annualized revenue. Management's disclosure that ~40% of backlog is expected to convert by end of 2026 provides a credible near-term revenue floor [Source: 10-K 2026-02-23].\\n\\nHowever, the margin story is concerning. Operating margins compressed from a range of 14-15% a year ago to 8-11% in the most recent four quarters [Source: FMP /income-statement quarterly], a 400-600 bps deterioration. Gross margins similarly weakened from ~24-25% to ~21-22% in Q3-Q4. This compression is occurring alongside strong volume growth, which typically should provide operating leverage\u2014suggesting either an unfavorable contract mix shift (e.g., more cost-type government contracts), higher input costs in the capital-intensive manufacturing base, or startup costs related to new programs. Without segment-level margin disclosure in the available data, the precise driver is uncertain.\\n\\nEPS growth has been positive but muted relative to revenue. The most recent four quarters show EPS of $0.82-$1.02 vs. $0.75-$0.80 a year prior\u2014roughly 5-20% growth [Source: FMP /income-statement quarterly]. Forward estimates suggest EPS growth of 4.7-13.3% through 2025, well below the revenue growth rate, which is consistent with the margin compression narrative. Analyst consensus remains constructive at 9 Buys and 6 Holds, but the average price target of $210 implies -5.7% downside from the current $222.77, indicating the market may already be pricing in a premium [Source: FMP /analyst-consensus].\\n\\nFCF generation is a watch item. Operating cash flows have been modest relative to stated earnings, and FCF has been compressed by rising CapEx ($0.07B in Q4 vs. $0.03B earlier quarters), consistent with capacity investment to support backlog execution. The FMP DCF model implies intrinsic value of ~$52, a -77% discount to market\u2014though this likely reflects over-conservative terminal assumptions given BWXT's contracted revenue base and defense-essential status.\\n\\nLT debt increased to $2.02B in Q4 from $1.19B in Q1 2025 [Source: FMP /balance-sheet quarterly], a meaningful step-up likely funding strategic investments or M&A, per management's stated strategy [Source: 10-K 2026-02-23]. At D/E of 1.63, leverage is elevated but manageable given the stable government contract base. Insider activity shows modest net selling with no alarming concentration [Source: FMP /insider-transactions].\\n\\nIn aggregate, BWXT earns a good-not-great growth score. The backlog and revenue acceleration are genuine positives; margin compression and FCF volatility are real headwinds that need resolution for the investment case to fully mature.\",\n  \"data_gaps\": [\n    \"Segment-level revenue and margin breakdown (Government Operations vs. Commercial Operations) not available in provided data, preventing attribution of margin compression\",\n    \"Q4 SBC figure of -$39.46B is clearly a data error and distorts FCF/SBC analysis for that period\",\n    \"No forward EPS estimates provided for 2030 quarterly periods (all showing $0.00), limiting long-term earnings growth rate assessment\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Growth & Earnings",
+    "structured": {
+     "score": 72,
+     "analysis": "BWX Technologies presents a compelling top-line growth story underpinned by secular tailwinds in naval nuclear propulsion and expanding commercial nuclear demand, but the earnings quality and margin trajectory introduce meaningful caveats for growth investors.\n\nRevenue growth has shifted into a higher gear. After growing at 13-15% in the first two quarters of 2025, BWXT accelerated to 28.9% in Q3 and 18.7% in Q4 [Source: FMP /income-statement quarterly], reflecting both organic contract ramp and likely contributions from new awards in the Government Operations segment. The backlog trajectory powerfully confirms this momentum: the remaining performance obligation jumped from $4.88B in Q1 2025 to $7.39B in Q3 and settled at $7.26B at year-end FY2025 [Source: SEC EDGAR XBRL], representing roughly 2x annualized revenue. Management's disclosure that ~40% of backlog is expected to convert by end of 2026 provides a credible near-term revenue floor [Source: 10-K 2026-02-23].\n\nHowever, the margin story is concerning. Operating margins compressed from a range of 14-15% a year ago to 8-11% in the most recent four quarters [Source: FMP /income-statement quarterly], a 400-600 bps deterioration. Gross margins similarly weakened from ~24-25% to ~21-22% in Q3-Q4. This compression is occurring alongside strong volume growth, which typically should provide operating leverage\u2014suggesting either an unfavorable contract mix shift (e.g., more cost-type government contracts), higher input costs in the capital-intensive manufacturing base, or startup costs related to new programs. Without segment-level margin disclosure in the available data, the precise driver is uncertain.\n\nEPS growth has been positive but muted relative to revenue. The most recent four quarters show EPS of $0.82-$1.02 vs. $0.75-$0.80 a year prior\u2014roughly 5-20% growth [Source: FMP /income-statement quarterly]. Forward estimates suggest EPS growth of 4.7-13.3% through 2025, well below the revenue growth rate, which is consistent with the margin compression narrative. Analyst consensus remains constructive at 9 Buys and 6 Holds, but the average price target of $210 implies -5.7% downside from the current $222.77, indicating the market may already be pricing in a premium [Source: FMP /analyst-consensus].\n\nFCF generation is a watch item. Operating cash flows have been modest relative to stated earnings, and FCF has been compressed by rising CapEx ($0.07B in Q4 vs. $0.03B earlier quarters), consistent with capacity investment to support backlog execution. The FMP DCF model implies intrinsic value of ~$52, a -77% discount to market\u2014though this likely reflects over-conservative terminal assumptions given BWXT's contracted revenue base and defense-essential status.\n\nLT debt increased to $2.02B in Q4 from $1.19B in Q1 2025 [Source: FMP /balance-sheet quarterly], a meaningful step-up likely funding strategic investments or M&A, per management's stated strategy [Source: 10-K 2026-02-23]. At D/E of 1.63, leverage is elevated but manageable given the stable government contract base. Insider activity shows modest net selling with no alarming concentration [Source: FMP /insider-transactions].\n\nIn aggregate, BWXT earns a good-not-great growth score. The backlog and revenue acceleration are genuine positives; margin compression and FCF volatility are real headwinds that need resolution for the investment case to fully mature.",
+     "data_gaps": [
+      "Segment-level revenue and margin breakdown (Government Operations vs. Commercial Operations) not available in provided data, preventing attribution of margin compression",
+      "Q4 SBC figure of -$39.46B is clearly a data error and distorts FCF/SBC analysis for that period",
+      "No forward EPS estimates provided for 2030 quarterly periods (all showing $0.00), limiting long-term earnings growth rate assessment"
+     ],
+     "key_findings": [
+      {
+       "finding": "Revenue growth has accelerated sharply, with Q3 and Q4 2025 posting 28.9% and 18.7% YoY growth respectively, well above the prior-year mid-teens pace.",
+       "evidence": "[Source: FMP /income-statement quarterly \u2014 Q3 rev $0.87B +28.9%, Q4 rev $0.89B +18.7% YoY]"
+      },
+      {
+       "finding": "Backlog surged to $7.26B at FY2025 year-end from $4.88B at Q1 2025, a ~49% increase in nine months, providing strong multi-year revenue visibility with ~40% expected to recognize by end of 2026.",
+       "evidence": "[Source: SEC EDGAR XBRL RevenueRemainingPerformanceObligation FY2025: $7.26B vs Q1 2025: $4.88B; 10-K 2026-02-23 Outlook section]"
+      },
+      {
+       "finding": "Operating margins have deteriorated materially, declining from 14-15% range in the year-ago period to 8-11% in the most recent four quarters, suggesting mix shift toward lower-margin contracts or cost inflation pressures.",
+       "evidence": "[Source: FMP /income-statement quarterly \u2014 Q4 OM 8.1%, Q3 OM 10.6% vs year-ago Q4 OM 12.4%, Q1 OM 15.4%]"
+      },
+      {
+       "finding": "EPS growth has been modest and decelerating relative to revenue growth\u2014ranging 4.7%-13.3% in forward estimates\u2014indicating the revenue acceleration is not fully flowing through to per-share earnings.",
+       "evidence": "[Source: FMP /analyst-estimates growth rates 2025-06 through 2025-12: EPS growth 4.7%-13.3%; FMP /income-statement quarterly EPS $0.82-$1.02 vs prior year $0.75-$0.80]"
+      },
+      {
+       "finding": "Free cash flow conversion is weak and volatile\u2014FCF was only $0.06B in Q4 against net income of ~$0.09B, with a Q4 SBC figure of -$39.46B flagged as a likely data anomaly\u2014and Q1 2026 FCF growth est. of -92.3% raises near-term cash generation concerns.",
+       "evidence": "[Source: FMP /cash-flow-statement quarterly Q4 FCF $0.06B; FMP growth rates 2025-03 FCF growth -92.3%; SBC anomaly in Q4 data noted]"
+      }
+     ],
+     "score_rationale": "BWXT demonstrates strong near-term revenue acceleration (18-29% YoY growth in recent quarters) and a massive $7.26B backlog providing multi-year visibility, but margin compression, inconsistent FCF conversion, and a DCF valuation implying significant overvaluation temper the score."
+    },
+    "key_findings": [
+     "Revenue growth has accelerated sharply, with Q3 and Q4 2025 posting 28.9% and 18.7% YoY growth respectively, well above the prior-year mid-teens pace.",
+     "Backlog surged to $7.26B at FY2025 year-end from $4.88B at Q1 2025, a ~49% increase in nine months, providing strong multi-year revenue visibility with ~40% expected to recognize by end of 2026.",
+     "Operating margins have deteriorated materially, declining from 14-15% range in the year-ago period to 8-11% in the most recent four quarters, suggesting mix shift toward lower-margin contracts or cost inflation pressures.",
+     "EPS growth has been modest and decelerating relative to revenue growth\u2014ranging 4.7%-13.3% in forward estimates\u2014indicating the revenue acceleration is not fully flowing through to per-share earnings.",
+     "Free cash flow conversion is weak and volatile\u2014FCF was only $0.06B in Q4 against net income of ~$0.09B, with a Q4 SBC figure of -$39.46B flagged as a likely data anomaly\u2014and Q1 2026 FCF growth est. of -92.3% raises near-term cash generation concerns."
+    ]
+   },
+   "Sentiment & Narrative": {
+    "score": 62,
+    "content": "{\n  \"score\": 62,\n  \"score_rationale\": \"BWXT carries a constructive buy-side narrative supported by nuclear renaissance tailwinds and consistent revenue growth, but analyst price targets imply modest downside from current levels, insider activity skews net negative, and margin compression in recent quarters introduces concern about execution quality versus the premium valuation.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Analyst consensus is 'Buy' but price targets imply ~5.7% downside to the current price of $222.77, suggesting the stock has run ahead of near-term fundamental expectations.\",\n      \"evidence\": \"Analyst Consensus & Ratings: avg PT $210.00, range $195\u2013$225, vs current $222.77 [Source: FMP /analyst-estimates]\"\n    },\n    {\n      \"finding\": \"A Seaport Global downgrade from Buy to Neutral in January 2026 signals at least one institutional voice believes the risk/reward has deteriorated at current valuation levels.\",\n      \"evidence\": \"Recent Analyst Actions: Seaport Global downgrade 2026-01-20 [Source: FMP /analyst-ratings]\"\n    },\n    {\n      \"finding\": \"Gross and operating margins have compressed materially over the past four quarters \u2014 GM fell from ~24\u201325% in prior-year periods to 21% in Q4 and 21.8% in Q3, raising questions about cost absorption on ramping nuclear programs.\",\n      \"evidence\": \"Quarterly Income Statement: Q4 GM 21.0%, OM 8.1% vs. prior-year Q4 GM 23.4%, OM 12.4% [Source: FMP /financials/income-statement]\"\n    },\n    {\n      \"finding\": \"Insider activity over the last six Form 4 filings shows net selling of $0.64M, with the only buy ($0.14M) structured as an exercise-and-sell sequence by the President of Commercial Operations, reducing its bullish signaling value.\",\n      \"evidence\": \"Insider Transactions: $0.14M buys vs $0.79M sells; MacQuarrie buy/sell same date same share count [Source: FMP /insider-trading]\"\n    },\n    {\n      \"finding\": \"Revenue growth remains robust \u2014 four consecutive quarters of double-digit YoY growth peaking at +28.9% in Q3 \u2014 providing the fundamental bedrock for the positive narrative around nuclear defense and power demand.\",\n      \"evidence\": \"Quarterly Income Statement: Q3 Rev +28.9% YoY, Q4 +18.7%, Q2 +12.1%, Q1 +13.0% [Source: FMP /financials/income-statement]\"\n    }\n  ],\n  \"analysis\": \"BWXT sits at the intersection of two powerful secular narratives \u2014 nuclear naval propulsion (driven by U.S. Navy submarine and carrier fleet requirements) and commercial nuclear power renaissance (SMRs, CANDU life extensions, government-backed clean energy policy). These tailwinds have generated exceptional revenue momentum: four consecutive quarters of double-digit YoY top-line growth culminating in a standout +28.9% in Q3 [Source: FMP /financials/income-statement]. The market has rewarded this, with the stock at $222.77 carrying a $20.4B market cap. The nuclear narrative is broadly credible and well-understood on the buy side \u2014 nine Buy ratings from 16 analysts [Source: FMP /analyst-estimates] \u2014 and defense budget resilience provides a durable demand floor.\\n\\nHowever, the sentiment setup is less clean than the narrative suggests. The average analyst price target of $210.00 implies the stock is approximately 6% rich at current levels, meaning the near-term fundamental case is largely priced in. The tight target range of $195\u2013$225 reflects analyst consensus that upside from here requires either guidance beats or contract catalysts not yet in estimates. The January 2026 Seaport Global downgrade to Neutral is a meaningful signal: this is not a momentum-chasing firm, and their move likely reflects valuation discipline rather than fundamental concern, but it does mark a sentiment inflection for one of the earlier bulls [Source: FMP /analyst-ratings].\\n\\nMargin compression is the most significant narrative risk. Gross margin has deteriorated from ~24\u201325% range in prior-year quarters to 21.0% in Q4 and 21.8% in Q3 [Source: FMP /financials/income-statement]. Operating margin similarly fell from 12\u201315% to 8\u201311% range. Management has attributed some of this to program ramp costs and mix shift toward lower-margin nuclear services work, but if this becomes a persistent trend, it undermines the quality-of-growth thesis and threatens consensus EPS estimates. EPS growth is decelerating \u2014 projected at 5\u201313% in forward periods \u2014 while the stock is priced at a meaningful premium to intrinsic value (DCF suggests -76.7% overvaluation, though this likely reflects the model's conservatism on terminal assumptions and contract backlog optionality).\\n\\nInsider behavior is a mild negative signal. The MacQuarrie buy/sell on the same date at very different prices ($61.70 exercise vs. $216.47 sale) is a stock option cashout, not an open-market conviction buy [Source: FMP /insider-trading]. Net insider activity is a $0.64M sell. This is not alarming in dollar terms for a $20B company, but it is directionally uninspiring. No senior executives are buying the stock on the open market.\\n\\nOverall sentiment is constructive but stretched. The nuclear macro narrative is real and durable, analyst coverage is broadly supportive, and revenue execution is strong. But price targets have been eclipsed, margin quality is deteriorating, and insiders are not adding. The score reflects a stock well-covered and well-understood by the market with limited near-term sentiment catalyst from current levels.\",\n  \"data_gaps\": [\n    \"No social media / retail sentiment data (X signals) available to assess retail narrative momentum or crowding dynamics.\",\n    \"Backlog and contract award data not provided \u2014 critical for assessing forward revenue visibility and narrative durability in a defense/government contracting context.\",\n    \"Valuation ratios (P/E, EV/EBITDA) not available in provided data, limiting ability to benchmark sentiment-implied premium versus defense sector peers.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Sentiment & Narrative",
+    "structured": {
+     "score": 62,
+     "analysis": "BWXT sits at the intersection of two powerful secular narratives \u2014 nuclear naval propulsion (driven by U.S. Navy submarine and carrier fleet requirements) and commercial nuclear power renaissance (SMRs, CANDU life extensions, government-backed clean energy policy). These tailwinds have generated exceptional revenue momentum: four consecutive quarters of double-digit YoY top-line growth culminating in a standout +28.9% in Q3 [Source: FMP /financials/income-statement]. The market has rewarded this, with the stock at $222.77 carrying a $20.4B market cap. The nuclear narrative is broadly credible and well-understood on the buy side \u2014 nine Buy ratings from 16 analysts [Source: FMP /analyst-estimates] \u2014 and defense budget resilience provides a durable demand floor.\n\nHowever, the sentiment setup is less clean than the narrative suggests. The average analyst price target of $210.00 implies the stock is approximately 6% rich at current levels, meaning the near-term fundamental case is largely priced in. The tight target range of $195\u2013$225 reflects analyst consensus that upside from here requires either guidance beats or contract catalysts not yet in estimates. The January 2026 Seaport Global downgrade to Neutral is a meaningful signal: this is not a momentum-chasing firm, and their move likely reflects valuation discipline rather than fundamental concern, but it does mark a sentiment inflection for one of the earlier bulls [Source: FMP /analyst-ratings].\n\nMargin compression is the most significant narrative risk. Gross margin has deteriorated from ~24\u201325% range in prior-year quarters to 21.0% in Q4 and 21.8% in Q3 [Source: FMP /financials/income-statement]. Operating margin similarly fell from 12\u201315% to 8\u201311% range. Management has attributed some of this to program ramp costs and mix shift toward lower-margin nuclear services work, but if this becomes a persistent trend, it undermines the quality-of-growth thesis and threatens consensus EPS estimates. EPS growth is decelerating \u2014 projected at 5\u201313% in forward periods \u2014 while the stock is priced at a meaningful premium to intrinsic value (DCF suggests -76.7% overvaluation, though this likely reflects the model's conservatism on terminal assumptions and contract backlog optionality).\n\nInsider behavior is a mild negative signal. The MacQuarrie buy/sell on the same date at very different prices ($61.70 exercise vs. $216.47 sale) is a stock option cashout, not an open-market conviction buy [Source: FMP /insider-trading]. Net insider activity is a $0.64M sell. This is not alarming in dollar terms for a $20B company, but it is directionally uninspiring. No senior executives are buying the stock on the open market.\n\nOverall sentiment is constructive but stretched. The nuclear macro narrative is real and durable, analyst coverage is broadly supportive, and revenue execution is strong. But price targets have been eclipsed, margin quality is deteriorating, and insiders are not adding. The score reflects a stock well-covered and well-understood by the market with limited near-term sentiment catalyst from current levels.",
+     "data_gaps": [
+      "No social media / retail sentiment data (X signals) available to assess retail narrative momentum or crowding dynamics.",
+      "Backlog and contract award data not provided \u2014 critical for assessing forward revenue visibility and narrative durability in a defense/government contracting context.",
+      "Valuation ratios (P/E, EV/EBITDA) not available in provided data, limiting ability to benchmark sentiment-implied premium versus defense sector peers."
+     ],
+     "key_findings": [
+      {
+       "finding": "Analyst consensus is 'Buy' but price targets imply ~5.7% downside to the current price of $222.77, suggesting the stock has run ahead of near-term fundamental expectations.",
+       "evidence": "Analyst Consensus & Ratings: avg PT $210.00, range $195\u2013$225, vs current $222.77 [Source: FMP /analyst-estimates]"
+      },
+      {
+       "finding": "A Seaport Global downgrade from Buy to Neutral in January 2026 signals at least one institutional voice believes the risk/reward has deteriorated at current valuation levels.",
+       "evidence": "Recent Analyst Actions: Seaport Global downgrade 2026-01-20 [Source: FMP /analyst-ratings]"
+      },
+      {
+       "finding": "Gross and operating margins have compressed materially over the past four quarters \u2014 GM fell from ~24\u201325% in prior-year periods to 21% in Q4 and 21.8% in Q3, raising questions about cost absorption on ramping nuclear programs.",
+       "evidence": "Quarterly Income Statement: Q4 GM 21.0%, OM 8.1% vs. prior-year Q4 GM 23.4%, OM 12.4% [Source: FMP /financials/income-statement]"
+      },
+      {
+       "finding": "Insider activity over the last six Form 4 filings shows net selling of $0.64M, with the only buy ($0.14M) structured as an exercise-and-sell sequence by the President of Commercial Operations, reducing its bullish signaling value.",
+       "evidence": "Insider Transactions: $0.14M buys vs $0.79M sells; MacQuarrie buy/sell same date same share count [Source: FMP /insider-trading]"
+      },
+      {
+       "finding": "Revenue growth remains robust \u2014 four consecutive quarters of double-digit YoY growth peaking at +28.9% in Q3 \u2014 providing the fundamental bedrock for the positive narrative around nuclear defense and power demand.",
+       "evidence": "Quarterly Income Statement: Q3 Rev +28.9% YoY, Q4 +18.7%, Q2 +12.1%, Q1 +13.0% [Source: FMP /financials/income-statement]"
+      }
+     ],
+     "score_rationale": "BWXT carries a constructive buy-side narrative supported by nuclear renaissance tailwinds and consistent revenue growth, but analyst price targets imply modest downside from current levels, insider activity skews net negative, and margin compression in recent quarters introduces concern about execution quality versus the premium valuation."
+    },
+    "key_findings": [
+     "Analyst consensus is 'Buy' but price targets imply ~5.7% downside to the current price of $222.77, suggesting the stock has run ahead of near-term fundamental expectations.",
+     "A Seaport Global downgrade from Buy to Neutral in January 2026 signals at least one institutional voice believes the risk/reward has deteriorated at current valuation levels.",
+     "Gross and operating margins have compressed materially over the past four quarters \u2014 GM fell from ~24\u201325% in prior-year periods to 21% in Q4 and 21.8% in Q3, raising questions about cost absorption on ramping nuclear programs.",
+     "Insider activity over the last six Form 4 filings shows net selling of $0.64M, with the only buy ($0.14M) structured as an exercise-and-sell sequence by the President of Commercial Operations, reducing its bullish signaling value.",
+     "Revenue growth remains robust \u2014 four consecutive quarters of double-digit YoY growth peaking at +28.9% in Q3 \u2014 providing the fundamental bedrock for the positive narrative around nuclear defense and power demand."
+    ]
+   },
+   "Management & Governance": {
+    "score": 74,
+    "content": "{\n  \"score\": 74,\n  \"score_rationale\": \"BWXT demonstrates solid governance architecture with meaningful structural safeguards (12-year tenure limits, diverse and domain-relevant board composition, annual director elections), but insider activity skews net negative, margin compression in recent quarters raises capital allocation questions, and the Q4 SBC figure appears anomalous, warranting scrutiny.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Board composition is highly domain-relevant \u2014 all 10 directors have government, nuclear, or manufacturing industry expertise, providing genuine oversight depth for a specialized defense contractor.\",\n      \"evidence\": \"[Source: FMP /DEF 14A 2026-03-18 \u00b7 Director Qualifications matrix]\"\n    },\n    {\n      \"finding\": \"A proactive 12-year independent director tenure limit, measured from the 2015 spin-off, demonstrates above-average governance discipline and mitigates entrenchment risk.\",\n      \"evidence\": \"[Source: FMP /DEF 14A 2026-03-18 \u00b7 Board of Directors section]\"\n    },\n    {\n      \"finding\": \"Net insider activity over the last 6 Form 4 filings is negative at -$0.64M, with sell-side transactions dominating; notably, MacQuarrie's buy of 2,302 shares at $61.70 appears to be an options exercise immediately followed by a same-day open-market sale, reducing the signal quality of the apparent buy.\",\n      \"evidence\": \"[Source: FMP /insider-transactions \u2014 2026-03-04 MacQuarrie transactions]\"\n    },\n    {\n      \"finding\": \"Operating margins have compressed materially in the two most recent quarters (Q3 OM 10.6%, Q4 OM 8.1%) versus the year-ago comparable periods (Q3 14.4%, Q4 12.4%), suggesting either cost escalation or contract mix shift that management has not fully explained in consensus guidance.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly data, Q4 and Q3 TTM vs. prior year]\"\n    },\n    {\n      \"finding\": \"Q4 cash flow shows an anomalous SBC figure of -$39.46B, which is almost certainly a data error, but it obscures the true compensation structure and prevents clean assessment of SBC as a percentage of earnings.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement Q4 SBC line item \u2014 flagged as likely data artifact]\"\n    }\n  ],\n  \"analysis\": \"BWX Technologies presents a governance profile that is above average for the industrial defense sector, with several structural features that institutional investors should view favorably, but with enough execution and data concerns to temper enthusiasm. The board's composition is a genuine strength: the DEF 14A matrix shows all 10 nominees carry government, nuclear, or manufacturing industry credentials, and the majority also possess risk management, technology/scientific, and international experience [Source: FMP /DEF 14A 2026-03-18]. This is not box-checking \u2014 for a company whose core operations involve classified naval nuclear propulsion and commercial reactor services, sector-literate oversight is material. CEO Rex Geveden, himself a director since 2017, previously served as NASA Associate Administrator, which adds credibility to management's technical positioning. The board's adoption of a 12-year tenure cap for independent directors (from the 2015 spin-off date) is a meaningful governance differentiator; it imposes natural board renewal without sacrificing institutional memory, and three directors (Bertsch 2015, Jaska 2016, Krieg 2016) are approaching the limit, suggesting near-term refreshment is already underway with the 2026 addition of Jablonsky [Source: FMP /DEF 14A 2026-03-18]. Annual director elections for all nominees (no staggered board) further align governance with shareholder interests. On capital allocation and financial stewardship, the picture is more mixed. Revenue growth is strong \u2014 TTM up roughly 18% year-over-year \u2014 but operating margin compression from the 14-15% range in 2023 to sub-11% in Q3-Q4 2024 is notable [Source: FMP /income-statement]. Management has grown LT debt from ~$1.19B in Q1 to $2.02B in Q4, a ~70% increase in one year, with D/E rising from 1.09 to 1.63 [Source: FMP /balance-sheet]. While the cash balance jumped to $0.50B in Q4, suggesting proceeds from a debt raise rather than operational cash generation, this warrants monitoring. FCF has been inconsistent (Q1: $0.02B, Q2: $0.13B, Q3: $0.09B, Q4: $0.06B), and the company's CapEx is rising, which is appropriate for a growth phase but requires discipline. Insider activity is a mild negative signal. The only unambiguous open-market purchase in the last six filings is MacQuarrie's 2,302-share buy at $61.70, which is almost certainly an options exercise (below-market price) with same-day sale at $216.47, netting effectively zero new economic ownership [Source: FMP /insider-transactions 2026-03-04]. Gorman's three sell transactions aggregate $0.41M with no offsetting buys. While the dollar amounts are modest relative to market cap, the absence of discretionary open-market buying at current price levels by insiders is at least directionally cautious. Analyst sentiment is constructive but not euphoric \u2014 9 buys versus 6 holds with a price target of $210 implying modest downside from current $222.77 levels, and Seaport Global's January 2026 downgrade to Neutral warrants attention [Source: FMP /analyst-ratings]. Overall, the governance architecture is sound and domain-appropriate; the primary risks are operational margin management and the pace of leverage increase under incumbent leadership.\",\n  \"data_gaps\": [\n    \"Q4 SBC figure of -$39.46B is almost certainly a data error; true stock-based compensation quantum and its trend as a share of net income cannot be assessed without correction.\",\n    \"Executive compensation structure (total CEO pay, pay-at-risk percentages, performance metrics in long-term incentive plans) is not available from the provided DEF 14A excerpt, preventing a full pay-for-performance alignment assessment.\",\n    \"Details on the nature and terms of the Q4 debt raise (the LT debt jump from $1.19B to $2.02B) \u2014 whether acquisition-related, refinancing, or liquidity-driven \u2014 are not available in the provided data.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Management & Governance",
+    "structured": {
+     "score": 74,
+     "analysis": "BWX Technologies presents a governance profile that is above average for the industrial defense sector, with several structural features that institutional investors should view favorably, but with enough execution and data concerns to temper enthusiasm. The board's composition is a genuine strength: the DEF 14A matrix shows all 10 nominees carry government, nuclear, or manufacturing industry credentials, and the majority also possess risk management, technology/scientific, and international experience [Source: FMP /DEF 14A 2026-03-18]. This is not box-checking \u2014 for a company whose core operations involve classified naval nuclear propulsion and commercial reactor services, sector-literate oversight is material. CEO Rex Geveden, himself a director since 2017, previously served as NASA Associate Administrator, which adds credibility to management's technical positioning. The board's adoption of a 12-year tenure cap for independent directors (from the 2015 spin-off date) is a meaningful governance differentiator; it imposes natural board renewal without sacrificing institutional memory, and three directors (Bertsch 2015, Jaska 2016, Krieg 2016) are approaching the limit, suggesting near-term refreshment is already underway with the 2026 addition of Jablonsky [Source: FMP /DEF 14A 2026-03-18]. Annual director elections for all nominees (no staggered board) further align governance with shareholder interests. On capital allocation and financial stewardship, the picture is more mixed. Revenue growth is strong \u2014 TTM up roughly 18% year-over-year \u2014 but operating margin compression from the 14-15% range in 2023 to sub-11% in Q3-Q4 2024 is notable [Source: FMP /income-statement]. Management has grown LT debt from ~$1.19B in Q1 to $2.02B in Q4, a ~70% increase in one year, with D/E rising from 1.09 to 1.63 [Source: FMP /balance-sheet]. While the cash balance jumped to $0.50B in Q4, suggesting proceeds from a debt raise rather than operational cash generation, this warrants monitoring. FCF has been inconsistent (Q1: $0.02B, Q2: $0.13B, Q3: $0.09B, Q4: $0.06B), and the company's CapEx is rising, which is appropriate for a growth phase but requires discipline. Insider activity is a mild negative signal. The only unambiguous open-market purchase in the last six filings is MacQuarrie's 2,302-share buy at $61.70, which is almost certainly an options exercise (below-market price) with same-day sale at $216.47, netting effectively zero new economic ownership [Source: FMP /insider-transactions 2026-03-04]. Gorman's three sell transactions aggregate $0.41M with no offsetting buys. While the dollar amounts are modest relative to market cap, the absence of discretionary open-market buying at current price levels by insiders is at least directionally cautious. Analyst sentiment is constructive but not euphoric \u2014 9 buys versus 6 holds with a price target of $210 implying modest downside from current $222.77 levels, and Seaport Global's January 2026 downgrade to Neutral warrants attention [Source: FMP /analyst-ratings]. Overall, the governance architecture is sound and domain-appropriate; the primary risks are operational margin management and the pace of leverage increase under incumbent leadership.",
+     "data_gaps": [
+      "Q4 SBC figure of -$39.46B is almost certainly a data error; true stock-based compensation quantum and its trend as a share of net income cannot be assessed without correction.",
+      "Executive compensation structure (total CEO pay, pay-at-risk percentages, performance metrics in long-term incentive plans) is not available from the provided DEF 14A excerpt, preventing a full pay-for-performance alignment assessment.",
+      "Details on the nature and terms of the Q4 debt raise (the LT debt jump from $1.19B to $2.02B) \u2014 whether acquisition-related, refinancing, or liquidity-driven \u2014 are not available in the provided data."
+     ],
+     "key_findings": [
+      {
+       "finding": "Board composition is highly domain-relevant \u2014 all 10 directors have government, nuclear, or manufacturing industry expertise, providing genuine oversight depth for a specialized defense contractor.",
+       "evidence": "[Source: FMP /DEF 14A 2026-03-18 \u00b7 Director Qualifications matrix]"
+      },
+      {
+       "finding": "A proactive 12-year independent director tenure limit, measured from the 2015 spin-off, demonstrates above-average governance discipline and mitigates entrenchment risk.",
+       "evidence": "[Source: FMP /DEF 14A 2026-03-18 \u00b7 Board of Directors section]"
+      },
+      {
+       "finding": "Net insider activity over the last 6 Form 4 filings is negative at -$0.64M, with sell-side transactions dominating; notably, MacQuarrie's buy of 2,302 shares at $61.70 appears to be an options exercise immediately followed by a same-day open-market sale, reducing the signal quality of the apparent buy.",
+       "evidence": "[Source: FMP /insider-transactions \u2014 2026-03-04 MacQuarrie transactions]"
+      },
+      {
+       "finding": "Operating margins have compressed materially in the two most recent quarters (Q3 OM 10.6%, Q4 OM 8.1%) versus the year-ago comparable periods (Q3 14.4%, Q4 12.4%), suggesting either cost escalation or contract mix shift that management has not fully explained in consensus guidance.",
+       "evidence": "[Source: FMP /income-statement quarterly data, Q4 and Q3 TTM vs. prior year]"
+      },
+      {
+       "finding": "Q4 cash flow shows an anomalous SBC figure of -$39.46B, which is almost certainly a data error, but it obscures the true compensation structure and prevents clean assessment of SBC as a percentage of earnings.",
+       "evidence": "[Source: FMP /cash-flow-statement Q4 SBC line item \u2014 flagged as likely data artifact]"
+      }
+     ],
+     "score_rationale": "BWXT demonstrates solid governance architecture with meaningful structural safeguards (12-year tenure limits, diverse and domain-relevant board composition, annual director elections), but insider activity skews net negative, margin compression in recent quarters raises capital allocation questions, and the Q4 SBC figure appears anomalous, warranting scrutiny."
+    },
+    "key_findings": [
+     "Board composition is highly domain-relevant \u2014 all 10 directors have government, nuclear, or manufacturing industry expertise, providing genuine oversight depth for a specialized defense contractor.",
+     "A proactive 12-year independent director tenure limit, measured from the 2015 spin-off, demonstrates above-average governance discipline and mitigates entrenchment risk.",
+     "Net insider activity over the last 6 Form 4 filings is negative at -$0.64M, with sell-side transactions dominating; notably, MacQuarrie's buy of 2,302 shares at $61.70 appears to be an options exercise immediately followed by a same-day open-market sale, reducing the signal quality of the apparent buy.",
+     "Operating margins have compressed materially in the two most recent quarters (Q3 OM 10.6%, Q4 OM 8.1%) versus the year-ago comparable periods (Q3 14.4%, Q4 12.4%), suggesting either cost escalation or contract mix shift that management has not fully explained in consensus guidance.",
+     "Q4 cash flow shows an anomalous SBC figure of -$39.46B, which is almost certainly a data error, but it obscures the true compensation structure and prevents clean assessment of SBC as a percentage of earnings."
+    ]
+   },
+   "Technical & Market Structure": {
+    "score": 62,
+    "content": "{\n  \"score\": 62,\n  \"score_rationale\": \"BWXT exhibits a constructive medium-term technical structure with price well above both SMA50 and SMA200 and a neutral RSI, but near-term momentum has faded from April highs and the stock trades ~6% above consensus analyst price targets, creating a valuation-driven technical headwind.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Price is trading above both SMA50 ($211.49) and SMA200 ($188.86), confirming an intact intermediate and long-term uptrend, but the recent pullback from $238+ highs signals short-term distribution.\",\n      \"evidence\": \"[Source: Technical indicators, 1Y daily OHLCV] SMA50: $211.49, SMA200: $188.86, latest close: $223.28\"\n    },\n    {\n      \"finding\": \"RSI(14) at 52.47 is neutral and declining from a recent peak of ~66.4 on April 14, suggesting momentum deceleration rather than overbought exhaustion \u2014 the uptrend is intact but not accelerating.\",\n      \"evidence\": \"[Source: Technical indicators, 1Y daily OHLCV] RSI peaked at 66.47 on 2026-04-15, now at 52.47 on 2026-04-27\"\n    },\n    {\n      \"finding\": \"The stock staged a sharp volume-supported breakout on April 8 (1.58M shares, +8.1% single-day move to $231.78), likely a catalyst-driven event, but has failed to extend gains and has retraced ~4% from that impulse high.\",\n      \"evidence\": \"[Source: Technical indicators, 1Y daily OHLCV] April 8 volume 1,576,700 vs. 20-day average ~935K; close $231.78 vs. prior close $214.44\"\n    },\n    {\n      \"finding\": \"Analyst consensus price target of $210.00 (average and median) implies ~5.7% downside from current price of $222.77, meaning technical momentum must carry the stock as fundamental anchoring suggests limited institutional buy-side support at current levels.\",\n      \"evidence\": \"[Source: FMP analyst consensus] Avg PT $210.00, median $210.00, range $195\u2013$225; current price $222.77\"\n    },\n    {\n      \"finding\": \"Insider activity is net negative with $0.79M in sales vs. $0.14M in buys over the last 6 Form 4 filings, with the MacQuarrie exercise-and-sell pattern and Gorman outright sales both occurring near recent price peaks around $205\u2013$216.\",\n      \"evidence\": \"[Source: FMP insider transactions] Net insider selling of $0.64M; transactions dated 2026-03-03 to 2026-03-04\"\n    }\n  ],\n  \"analysis\": \"BWXT's technical structure is constructive on an intermediate basis but shows signs of near-term stalling after a significant April rally. The stock entered the trailing 20-session window in a recovery posture from a trough near $191.59 on March 30, rallied aggressively through early April, and peaked intraday in the $238\u2013$239 range around April 14\u201315 before pulling back to the $222\u2013$225 range where it currently consolidates. The SMA50 at $211.49 and SMA200 at $188.86 both slope upward, and the price-to-moving-average spread (~5.6% above SMA50, ~18.2% above SMA200) is consistent with a healthy but not extended uptrend. [Source: Technical indicators, 1Y daily OHLCV]\\n\\nThe April 8 session stands out as a likely single-event catalyst: volume surged to 1.58M shares \u2014 roughly 70% above recent daily averages \u2014 accompanying an 8.1% gap-up move. This kind of volume-price expansion is typically bullish continuation when followed by consolidation above the breakout level. However, the subsequent price action has been choppy with failed attempts to reclaim the $238 high, and the SMA9 ($226.77) has crossed below the recent close, indicating short-term momentum is fading. [Source: Technical indicators, 1Y daily OHLCV]\\n\\nRSI at 52.47 sits comfortably in neutral territory and is not signaling either overbought risk or oversold opportunity. The trajectory \u2014 declining from a recent high of 66.47 \u2014 is consistent with a normal post-rally consolidation. There is no divergence pattern evident from the available data that would signal an imminent trend reversal, but equally there is no fresh momentum signal to act on. [Source: Technical indicators, 1Y daily OHLCV]\\n\\nA critical structural overhang is the analyst price target gap. With 16 analysts covering the stock and both the average and median price target sitting at $210 \u2014 roughly 6% below the current price \u2014 the stock is trading above where the Street's fundamental models clear. This creates a ceiling effect: institutional investors anchored to consensus targets are unlikely to add aggressively above $210\u2013$215, and the recent pullback from $238 back toward $223 may reflect precisely this dynamic. One Seaport Global downgrade (Buy \u2192 Neutral on January 20) has not materially shifted consensus, but the flat trend in buy ratings (6 Buys steady since February) offers no incremental technical catalyst from ratings migration. [Source: FMP analyst consensus and recent analyst actions]\\n\\nInstitutional flow signals from insider transactions are modestly negative. The net $0.64M selling skew is not alarming in absolute dollar terms for a $20B market cap company, but the timing of sales at $205\u2013$216 \u2014 levels that were then resistance and are now being tested as support \u2014 is noteworthy. The MacQuarrie exercise-and-sell transaction on March 4 is likely compensation-driven, but Gorman's outright open-market sales are a mild negative signal. [Source: FMP insider transactions]\\n\\nBeta of 0.794 confirms BWXT trades with below-market volatility, appropriate for a government-contract-heavy defense/nuclear company with sticky, long-duration revenue. This dampens both upside momentum potential and downside risk. From a market structure perspective, BWXT behaves more like a defensive compounding name than a high-beta momentum vehicle, which means technical breakouts tend to be gradual and sustained rather than sharp \u2014 reinforcing the case that the April 8 spike may be mean-reverting back toward the SMA50 range before any renewed leg higher.\",\n  \"data_gaps\": [\n    \"No options market data available (open interest, put/call ratio, implied volatility term structure) to assess institutional hedging activity or near-term event risk positioning\",\n    \"No short interest or days-to-cover data available to assess squeeze potential or structural bearish positioning\",\n    \"Institutional 13F ownership trends and flow data not available, limiting assessment of buy-side accumulation or distribution patterns\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Technical & Market Structure",
+    "structured": {
+     "score": 62,
+     "analysis": "BWXT's technical structure is constructive on an intermediate basis but shows signs of near-term stalling after a significant April rally. The stock entered the trailing 20-session window in a recovery posture from a trough near $191.59 on March 30, rallied aggressively through early April, and peaked intraday in the $238\u2013$239 range around April 14\u201315 before pulling back to the $222\u2013$225 range where it currently consolidates. The SMA50 at $211.49 and SMA200 at $188.86 both slope upward, and the price-to-moving-average spread (~5.6% above SMA50, ~18.2% above SMA200) is consistent with a healthy but not extended uptrend. [Source: Technical indicators, 1Y daily OHLCV]\n\nThe April 8 session stands out as a likely single-event catalyst: volume surged to 1.58M shares \u2014 roughly 70% above recent daily averages \u2014 accompanying an 8.1% gap-up move. This kind of volume-price expansion is typically bullish continuation when followed by consolidation above the breakout level. However, the subsequent price action has been choppy with failed attempts to reclaim the $238 high, and the SMA9 ($226.77) has crossed below the recent close, indicating short-term momentum is fading. [Source: Technical indicators, 1Y daily OHLCV]\n\nRSI at 52.47 sits comfortably in neutral territory and is not signaling either overbought risk or oversold opportunity. The trajectory \u2014 declining from a recent high of 66.47 \u2014 is consistent with a normal post-rally consolidation. There is no divergence pattern evident from the available data that would signal an imminent trend reversal, but equally there is no fresh momentum signal to act on. [Source: Technical indicators, 1Y daily OHLCV]\n\nA critical structural overhang is the analyst price target gap. With 16 analysts covering the stock and both the average and median price target sitting at $210 \u2014 roughly 6% below the current price \u2014 the stock is trading above where the Street's fundamental models clear. This creates a ceiling effect: institutional investors anchored to consensus targets are unlikely to add aggressively above $210\u2013$215, and the recent pullback from $238 back toward $223 may reflect precisely this dynamic. One Seaport Global downgrade (Buy \u2192 Neutral on January 20) has not materially shifted consensus, but the flat trend in buy ratings (6 Buys steady since February) offers no incremental technical catalyst from ratings migration. [Source: FMP analyst consensus and recent analyst actions]\n\nInstitutional flow signals from insider transactions are modestly negative. The net $0.64M selling skew is not alarming in absolute dollar terms for a $20B market cap company, but the timing of sales at $205\u2013$216 \u2014 levels that were then resistance and are now being tested as support \u2014 is noteworthy. The MacQuarrie exercise-and-sell transaction on March 4 is likely compensation-driven, but Gorman's outright open-market sales are a mild negative signal. [Source: FMP insider transactions]\n\nBeta of 0.794 confirms BWXT trades with below-market volatility, appropriate for a government-contract-heavy defense/nuclear company with sticky, long-duration revenue. This dampens both upside momentum potential and downside risk. From a market structure perspective, BWXT behaves more like a defensive compounding name than a high-beta momentum vehicle, which means technical breakouts tend to be gradual and sustained rather than sharp \u2014 reinforcing the case that the April 8 spike may be mean-reverting back toward the SMA50 range before any renewed leg higher.",
+     "data_gaps": [
+      "No options market data available (open interest, put/call ratio, implied volatility term structure) to assess institutional hedging activity or near-term event risk positioning",
+      "No short interest or days-to-cover data available to assess squeeze potential or structural bearish positioning",
+      "Institutional 13F ownership trends and flow data not available, limiting assessment of buy-side accumulation or distribution patterns"
+     ],
+     "key_findings": [
+      {
+       "finding": "Price is trading above both SMA50 ($211.49) and SMA200 ($188.86), confirming an intact intermediate and long-term uptrend, but the recent pullback from $238+ highs signals short-term distribution.",
+       "evidence": "[Source: Technical indicators, 1Y daily OHLCV] SMA50: $211.49, SMA200: $188.86, latest close: $223.28"
+      },
+      {
+       "finding": "RSI(14) at 52.47 is neutral and declining from a recent peak of ~66.4 on April 14, suggesting momentum deceleration rather than overbought exhaustion \u2014 the uptrend is intact but not accelerating.",
+       "evidence": "[Source: Technical indicators, 1Y daily OHLCV] RSI peaked at 66.47 on 2026-04-15, now at 52.47 on 2026-04-27"
+      },
+      {
+       "finding": "The stock staged a sharp volume-supported breakout on April 8 (1.58M shares, +8.1% single-day move to $231.78), likely a catalyst-driven event, but has failed to extend gains and has retraced ~4% from that impulse high.",
+       "evidence": "[Source: Technical indicators, 1Y daily OHLCV] April 8 volume 1,576,700 vs. 20-day average ~935K; close $231.78 vs. prior close $214.44"
+      },
+      {
+       "finding": "Analyst consensus price target of $210.00 (average and median) implies ~5.7% downside from current price of $222.77, meaning technical momentum must carry the stock as fundamental anchoring suggests limited institutional buy-side support at current levels.",
+       "evidence": "[Source: FMP analyst consensus] Avg PT $210.00, median $210.00, range $195\u2013$225; current price $222.77"
+      },
+      {
+       "finding": "Insider activity is net negative with $0.79M in sales vs. $0.14M in buys over the last 6 Form 4 filings, with the MacQuarrie exercise-and-sell pattern and Gorman outright sales both occurring near recent price peaks around $205\u2013$216.",
+       "evidence": "[Source: FMP insider transactions] Net insider selling of $0.64M; transactions dated 2026-03-03 to 2026-03-04"
+      }
+     ],
+     "score_rationale": "BWXT exhibits a constructive medium-term technical structure with price well above both SMA50 and SMA200 and a neutral RSI, but near-term momentum has faded from April highs and the stock trades ~6% above consensus analyst price targets, creating a valuation-driven technical headwind."
+    },
+    "key_findings": [
+     "Price is trading above both SMA50 ($211.49) and SMA200 ($188.86), confirming an intact intermediate and long-term uptrend, but the recent pullback from $238+ highs signals short-term distribution.",
+     "RSI(14) at 52.47 is neutral and declining from a recent peak of ~66.4 on April 14, suggesting momentum deceleration rather than overbought exhaustion \u2014 the uptrend is intact but not accelerating.",
+     "The stock staged a sharp volume-supported breakout on April 8 (1.58M shares, +8.1% single-day move to $231.78), likely a catalyst-driven event, but has failed to extend gains and has retraced ~4% from that impulse high.",
+     "Analyst consensus price target of $210.00 (average and median) implies ~5.7% downside from current price of $222.77, meaning technical momentum must carry the stock as fundamental anchoring suggests limited institutional buy-side support at current levels.",
+     "Insider activity is net negative with $0.79M in sales vs. $0.14M in buys over the last 6 Form 4 filings, with the MacQuarrie exercise-and-sell pattern and Gorman outright sales both occurring near recent price peaks around $205\u2013$216."
+    ]
+   }
+  },
+  "stream_buffer": "",
+  "thesis_status": "ON TRACK",
+  "human_feedback": {},
+  "conviction_score": 62,
+  "curated_financials": {
+   "roa": 0.09562058093871847,
+   "roe": null,
+   "beta": 0.794,
+   "roic": null,
+   "sector": "Industrials",
+   "ticker": "BWXT",
+   "industry": "Aerospace & Defense",
+   "pe_ratio": null,
+   "peg_ratio": null,
+   "market_cap": 20408382963.0,
+   "volume_avg": null,
+   "company_name": "BWX Technologies, Inc.",
+   "daily_prices": [
+    {
+     "low": 217.016,
+     "rsi": 52.47,
+     "date": "2026-04-27",
+     "high": 224.0,
+     "open": 223.03,
+     "close": 223.28,
+     "sma_9": 226.7711,
+     "sma_20": 222.8985,
+     "sma_50": 211.4914,
+     "volume": 452047,
+     "sma_100": 201.4564,
+     "sma_200": 188.8622
+    }
+   ],
+   "ev_to_ebitda": null,
+   "price_to_fcf": null,
+   "current_price": 222.77,
+   "price_to_book": null,
+   "quarterly_eps": [
+    {
+     "value": 1.02,
+     "period": "Q4",
+     "yoy_growth": 13.333333333333334
+    },
+    {
+     "value": 0.9,
+     "period": "Q3",
+     "yoy_growth": 4.651162790697678
+    },
+    {
+     "value": 0.86,
+     "period": "Q2",
+     "yoy_growth": 4.878048780487809
+    },
+    {
+     "value": 0.82,
+     "period": "Q1",
+     "yoy_growth": 5.128205128205118
+    },
+    {
+     "value": 0.78,
+     "period": "Q4",
+     "yoy_growth": 2.6315789473684235
+    },
+    {
+     "value": 0.76,
+     "period": "Q3",
+     "yoy_growth": -5.000000000000004
+    },
+    {
+     "value": 0.8,
+     "period": "Q2",
+     "yoy_growth": 6.666666666666672
+    },
+    {
+     "value": 0.75,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "debt_to_equity": 1.63,
+   "dividend_yield": null,
+   "price_to_sales": null,
+   "quarterly_cash": [
+    {
+     "value": 502864000.0,
+     "period": "Q4",
+     "yoy_growth": 508.4258923169994
+    },
+    {
+     "value": 82650000.0,
+     "period": "Q3",
+     "yoy_growth": 123.47501622323168
+    },
+    {
+     "value": 36984000.0,
+     "period": "Q2",
+     "yoy_growth": -33.284026337151616
+    },
+    {
+     "value": 55435000.0,
+     "period": "Q1",
+     "yoy_growth": -25.198019133978327
+    },
+    {
+     "value": 74109000.0,
+     "period": "Q4",
+     "yoy_growth": 108.6284556049772
+    },
+    {
+     "value": 35522000.0,
+     "period": "Q3",
+     "yoy_growth": -26.517862683850147
+    },
+    {
+     "value": 48341000.0,
+     "period": "Q2",
+     "yoy_growth": 5.329556596579148
+    },
+    {
+     "value": 45895000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "dcf_gap_percent": -76.68,
+   "quarterly_capex": [
+    {
+     "value": -70192000.0,
+     "period": "Q4",
+     "yoy_growth": -45.42441005241676
+    },
+    {
+     "value": -48267000.0,
+     "period": "Q3",
+     "yoy_growth": -47.4747166121788
+    },
+    {
+     "value": -32729000.0,
+     "period": "Q2",
+     "yoy_growth": 1.9179477958584317
+    },
+    {
+     "value": -33369000.0,
+     "period": "Q1",
+     "yoy_growth": 36.46299434490375
+    },
+    {
+     "value": -52519000.0,
+     "period": "Q4",
+     "yoy_growth": -30.316865586461873
+    },
+    {
+     "value": -40301000.0,
+     "period": "Q3",
+     "yoy_growth": -32.54727840815656
+    },
+    {
+     "value": -30405000.0,
+     "period": "Q2",
+     "yoy_growth": 0.05588061271448294
+    },
+    {
+     "value": -30422000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "macro_indicators": {
+    "cpi": [
+     {
+      "date": "2024-04-01",
+      "value": 313.023
+     },
+     {
+      "date": "2024-05-01",
+      "value": 313.175
+     },
+     {
+      "date": "2024-06-01",
+      "value": 313.044
+     },
+     {
+      "date": "2024-07-01",
+      "value": 313.569
+     },
+     {
+      "date": "2024-08-01",
+      "value": 314.062
+     },
+     {
+      "date": "2024-09-01",
+      "value": 314.732
+     },
+     {
+      "date": "2024-10-01",
+      "value": 315.631
+     },
+     {
+      "date": "2024-11-01",
+      "value": 316.528
+     },
+     {
+      "date": "2024-12-01",
+      "value": 317.604
+     },
+     {
+      "date": "2025-01-01",
+      "value": 318.961
+     },
+     {
+      "date": "2025-02-01",
+      "value": 319.679
+     },
+     {
+      "date": "2025-03-01",
+      "value": 319.785
+     },
+     {
+      "date": "2025-04-01",
+      "value": 320.302
+     },
+     {
+      "date": "2025-05-01",
+      "value": 320.62
+     },
+     {
+      "date": "2025-06-01",
+      "value": 321.435
+     },
+     {
+      "date": "2025-07-01",
+      "value": 322.169
+     },
+     {
+      "date": "2025-08-01",
+      "value": 323.291
+     },
+     {
+      "date": "2025-09-01",
+      "value": 324.245
+     },
+     {
+      "date": "2025-11-01",
+      "value": 325.063
+     },
+     {
+      "date": "2025-12-01",
+      "value": 326.031
+     },
+     {
+      "date": "2026-01-01",
+      "value": 326.588
+     },
+     {
+      "date": "2026-02-01",
+      "value": 327.46
+     },
+     {
+      "date": "2026-03-01",
+      "value": 330.293
+     }
+    ],
+    "gdp_growth": [
+     {
+      "date": "2024-04-01",
+      "value": 3.6
+     },
+     {
+      "date": "2024-07-01",
+      "value": 3.3
+     },
+     {
+      "date": "2024-10-01",
+      "value": 1.9
+     },
+     {
+      "date": "2025-01-01",
+      "value": -0.6
+     },
+     {
+      "date": "2025-04-01",
+      "value": 3.8
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.4
+     },
+     {
+      "date": "2025-10-01",
+      "value": 0.5
+     }
+    ],
+    "treasury_2y": [
+     {
+      "date": "2024-05-03",
+      "value": 4.81
+     },
+     {
+      "date": "2024-05-10",
+      "value": 4.87
+     },
+     {
+      "date": "2024-05-17",
+      "value": 4.83
+     },
+     {
+      "date": "2024-05-24",
+      "value": 4.93
+     },
+     {
+      "date": "2024-05-31",
+      "value": 4.89
+     },
+     {
+      "date": "2024-06-07",
+      "value": 4.87
+     },
+     {
+      "date": "2024-06-14",
+      "value": 4.67
+     },
+     {
+      "date": "2024-06-21",
+      "value": 4.7
+     },
+     {
+      "date": "2024-06-28",
+      "value": 4.71
+     },
+     {
+      "date": "2024-07-05",
+      "value": 4.6
+     },
+     {
+      "date": "2024-07-12",
+      "value": 4.45
+     },
+     {
+      "date": "2024-07-19",
+      "value": 4.49
+     },
+     {
+      "date": "2024-07-26",
+      "value": 4.36
+     },
+     {
+      "date": "2024-08-02",
+      "value": 3.88
+     },
+     {
+      "date": "2024-08-09",
+      "value": 4.05
+     },
+     {
+      "date": "2024-08-16",
+      "value": 4.06
+     },
+     {
+      "date": "2024-08-23",
+      "value": 3.9
+     },
+     {
+      "date": "2024-08-30",
+      "value": 3.91
+     },
+     {
+      "date": "2024-09-06",
+      "value": 3.66
+     },
+     {
+      "date": "2024-09-13",
+      "value": 3.57
+     },
+     {
+      "date": "2024-09-20",
+      "value": 3.55
+     },
+     {
+      "date": "2024-09-27",
+      "value": 3.55
+     },
+     {
+      "date": "2024-10-04",
+      "value": 3.93
+     },
+     {
+      "date": "2024-10-11",
+      "value": 3.95
+     },
+     {
+      "date": "2024-10-18",
+      "value": 3.95
+     },
+     {
+      "date": "2024-10-25",
+      "value": 4.11
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.21
+     },
+     {
+      "date": "2024-11-08",
+      "value": 4.26
+     },
+     {
+      "date": "2024-11-15",
+      "value": 4.31
+     },
+     {
+      "date": "2024-11-22",
+      "value": 4.37
+     },
+     {
+      "date": "2024-11-29",
+      "value": 4.13
+     },
+     {
+      "date": "2024-12-06",
+      "value": 4.1
+     },
+     {
+      "date": "2024-12-13",
+      "value": 4.25
+     },
+     {
+      "date": "2024-12-20",
+      "value": 4.3
+     },
+     {
+      "date": "2024-12-27",
+      "value": 4.31
+     },
+     {
+      "date": "2025-01-03",
+      "value": 4.28
+     },
+     {
+      "date": "2025-01-10",
+      "value": 4.4
+     },
+     {
+      "date": "2025-01-17",
+      "value": 4.27
+     },
+     {
+      "date": "2025-01-24",
+      "value": 4.27
+     },
+     {
+      "date": "2025-01-31",
+      "value": 4.22
+     },
+     {
+      "date": "2025-02-07",
+      "value": 4.29
+     },
+     {
+      "date": "2025-02-14",
+      "value": 4.26
+     },
+     {
+      "date": "2025-02-21",
+      "value": 4.19
+     },
+     {
+      "date": "2025-02-28",
+      "value": 3.99
+     },
+     {
+      "date": "2025-03-07",
+      "value": 3.99
+     },
+     {
+      "date": "2025-03-14",
+      "value": 4.02
+     },
+     {
+      "date": "2025-03-21",
+      "value": 3.94
+     },
+     {
+      "date": "2025-03-28",
+      "value": 3.89
+     },
+     {
+      "date": "2025-04-04",
+      "value": 3.68
+     },
+     {
+      "date": "2025-04-11",
+      "value": 3.96
+     },
+     {
+      "date": "2025-04-17",
+      "value": 3.81
+     },
+     {
+      "date": "2025-04-25",
+      "value": 3.74
+     },
+     {
+      "date": "2025-05-02",
+      "value": 3.83
+     },
+     {
+      "date": "2025-05-09",
+      "value": 3.88
+     },
+     {
+      "date": "2025-05-16",
+      "value": 3.98
+     },
+     {
+      "date": "2025-05-23",
+      "value": 4.0
+     },
+     {
+      "date": "2025-05-30",
+      "value": 3.89
+     },
+     {
+      "date": "2025-06-06",
+      "value": 4.04
+     },
+     {
+      "date": "2025-06-13",
+      "value": 3.96
+     },
+     {
+      "date": "2025-06-20",
+      "value": 3.9
+     },
+     {
+      "date": "2025-06-27",
+      "value": 3.73
+     },
+     {
+      "date": "2025-07-03",
+      "value": 3.88
+     },
+     {
+      "date": "2025-07-11",
+      "value": 3.9
+     },
+     {
+      "date": "2025-07-18",
+      "value": 3.88
+     },
+     {
+      "date": "2025-07-25",
+      "value": 3.91
+     },
+     {
+      "date": "2025-08-01",
+      "value": 3.69
+     },
+     {
+      "date": "2025-08-08",
+      "value": 3.76
+     },
+     {
+      "date": "2025-08-15",
+      "value": 3.75
+     },
+     {
+      "date": "2025-08-22",
+      "value": 3.68
+     },
+     {
+      "date": "2025-08-29",
+      "value": 3.59
+     },
+     {
+      "date": "2025-09-05",
+      "value": 3.51
+     },
+     {
+      "date": "2025-09-12",
+      "value": 3.56
+     },
+     {
+      "date": "2025-09-19",
+      "value": 3.57
+     },
+     {
+      "date": "2025-09-26",
+      "value": 3.63
+     },
+     {
+      "date": "2025-10-03",
+      "value": 3.58
+     },
+     {
+      "date": "2025-10-10",
+      "value": 3.52
+     },
+     {
+      "date": "2025-10-17",
+      "value": 3.46
+     },
+     {
+      "date": "2025-10-24",
+      "value": 3.48
+     },
+     {
+      "date": "2025-10-31",
+      "value": 3.6
+     },
+     {
+      "date": "2025-11-07",
+      "value": 3.55
+     },
+     {
+      "date": "2025-11-14",
+      "value": 3.62
+     },
+     {
+      "date": "2025-11-21",
+      "value": 3.51
+     },
+     {
+      "date": "2025-11-28",
+      "value": 3.47
+     },
+     {
+      "date": "2025-12-05",
+      "value": 3.56
+     },
+     {
+      "date": "2025-12-12",
+      "value": 3.52
+     },
+     {
+      "date": "2025-12-19",
+      "value": 3.48
+     },
+     {
+      "date": "2025-12-26",
+      "value": 3.46
+     },
+     {
+      "date": "2026-01-02",
+      "value": 3.47
+     },
+     {
+      "date": "2026-01-09",
+      "value": 3.54
+     },
+     {
+      "date": "2026-01-16",
+      "value": 3.59
+     },
+     {
+      "date": "2026-01-23",
+      "value": 3.6
+     },
+     {
+      "date": "2026-01-30",
+      "value": 3.52
+     },
+     {
+      "date": "2026-02-06",
+      "value": 3.5
+     },
+     {
+      "date": "2026-02-13",
+      "value": 3.4
+     },
+     {
+      "date": "2026-02-20",
+      "value": 3.48
+     },
+     {
+      "date": "2026-02-27",
+      "value": 3.38
+     },
+     {
+      "date": "2026-03-06",
+      "value": 3.56
+     },
+     {
+      "date": "2026-03-13",
+      "value": 3.73
+     },
+     {
+      "date": "2026-03-20",
+      "value": 3.88
+     },
+     {
+      "date": "2026-03-27",
+      "value": 3.88
+     },
+     {
+      "date": "2026-04-03",
+      "value": 3.84
+     },
+     {
+      "date": "2026-04-10",
+      "value": 3.81
+     },
+     {
+      "date": "2026-04-17",
+      "value": 3.71
+     },
+     {
+      "date": "2026-04-23",
+      "value": 3.83
+     }
+    ],
+    "treasury_10y": [
+     {
+      "date": "2024-05-03",
+      "value": 4.5
+     },
+     {
+      "date": "2024-05-10",
+      "value": 4.5
+     },
+     {
+      "date": "2024-05-17",
+      "value": 4.42
+     },
+     {
+      "date": "2024-05-24",
+      "value": 4.46
+     },
+     {
+      "date": "2024-05-31",
+      "value": 4.51
+     },
+     {
+      "date": "2024-06-07",
+      "value": 4.43
+     },
+     {
+      "date": "2024-06-14",
+      "value": 4.2
+     },
+     {
+      "date": "2024-06-21",
+      "value": 4.25
+     },
+     {
+      "date": "2024-06-28",
+      "value": 4.36
+     },
+     {
+      "date": "2024-07-05",
+      "value": 4.28
+     },
+     {
+      "date": "2024-07-12",
+      "value": 4.18
+     },
+     {
+      "date": "2024-07-19",
+      "value": 4.25
+     },
+     {
+      "date": "2024-07-26",
+      "value": 4.2
+     },
+     {
+      "date": "2024-08-02",
+      "value": 3.8
+     },
+     {
+      "date": "2024-08-09",
+      "value": 3.94
+     },
+     {
+      "date": "2024-08-16",
+      "value": 3.89
+     },
+     {
+      "date": "2024-08-23",
+      "value": 3.81
+     },
+     {
+      "date": "2024-08-30",
+      "value": 3.91
+     },
+     {
+      "date": "2024-09-06",
+      "value": 3.72
+     },
+     {
+      "date": "2024-09-13",
+      "value": 3.66
+     },
+     {
+      "date": "2024-09-20",
+      "value": 3.73
+     },
+     {
+      "date": "2024-09-27",
+      "value": 3.75
+     },
+     {
+      "date": "2024-10-04",
+      "value": 3.98
+     },
+     {
+      "date": "2024-10-11",
+      "value": 4.08
+     },
+     {
+      "date": "2024-10-18",
+      "value": 4.08
+     },
+     {
+      "date": "2024-10-25",
+      "value": 4.25
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.37
+     },
+     {
+      "date": "2024-11-08",
+      "value": 4.3
+     },
+     {
+      "date": "2024-11-15",
+      "value": 4.43
+     },
+     {
+      "date": "2024-11-22",
+      "value": 4.41
+     },
+     {
+      "date": "2024-11-29",
+      "value": 4.18
+     },
+     {
+      "date": "2024-12-06",
+      "value": 4.15
+     },
+     {
+      "date": "2024-12-13",
+      "value": 4.4
+     },
+     {
+      "date": "2024-12-20",
+      "value": 4.52
+     },
+     {
+      "date": "2024-12-27",
+      "value": 4.62
+     },
+     {
+      "date": "2025-01-03",
+      "value": 4.6
+     },
+     {
+      "date": "2025-01-10",
+      "value": 4.77
+     },
+     {
+      "date": "2025-01-17",
+      "value": 4.61
+     },
+     {
+      "date": "2025-01-24",
+      "value": 4.63
+     },
+     {
+      "date": "2025-01-31",
+      "value": 4.58
+     },
+     {
+      "date": "2025-02-07",
+      "value": 4.49
+     },
+     {
+      "date": "2025-02-14",
+      "value": 4.47
+     },
+     {
+      "date": "2025-02-21",
+      "value": 4.42
+     },
+     {
+      "date": "2025-02-28",
+      "value": 4.24
+     },
+     {
+      "date": "2025-03-07",
+      "value": 4.32
+     },
+     {
+      "date": "2025-03-14",
+      "value": 4.31
+     },
+     {
+      "date": "2025-03-21",
+      "value": 4.25
+     },
+     {
+      "date": "2025-03-28",
+      "value": 4.27
+     },
+     {
+      "date": "2025-04-04",
+      "value": 4.01
+     },
+     {
+      "date": "2025-04-11",
+      "value": 4.48
+     },
+     {
+      "date": "2025-04-17",
+      "value": 4.34
+     },
+     {
+      "date": "2025-04-25",
+      "value": 4.29
+     },
+     {
+      "date": "2025-05-02",
+      "value": 4.33
+     },
+     {
+      "date": "2025-05-09",
+      "value": 4.37
+     },
+     {
+      "date": "2025-05-16",
+      "value": 4.43
+     },
+     {
+      "date": "2025-05-23",
+      "value": 4.51
+     },
+     {
+      "date": "2025-05-30",
+      "value": 4.41
+     },
+     {
+      "date": "2025-06-06",
+      "value": 4.51
+     },
+     {
+      "date": "2025-06-13",
+      "value": 4.41
+     },
+     {
+      "date": "2025-06-20",
+      "value": 4.38
+     },
+     {
+      "date": "2025-06-27",
+      "value": 4.29
+     },
+     {
+      "date": "2025-07-03",
+      "value": 4.35
+     },
+     {
+      "date": "2025-07-11",
+      "value": 4.43
+     },
+     {
+      "date": "2025-07-18",
+      "value": 4.44
+     },
+     {
+      "date": "2025-07-25",
+      "value": 4.4
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.23
+     },
+     {
+      "date": "2025-08-08",
+      "value": 4.27
+     },
+     {
+      "date": "2025-08-15",
+      "value": 4.33
+     },
+     {
+      "date": "2025-08-22",
+      "value": 4.26
+     },
+     {
+      "date": "2025-08-29",
+      "value": 4.23
+     },
+     {
+      "date": "2025-09-05",
+      "value": 4.1
+     },
+     {
+      "date": "2025-09-12",
+      "value": 4.06
+     },
+     {
+      "date": "2025-09-19",
+      "value": 4.14
+     },
+     {
+      "date": "2025-09-26",
+      "value": 4.2
+     },
+     {
+      "date": "2025-10-03",
+      "value": 4.13
+     },
+     {
+      "date": "2025-10-10",
+      "value": 4.05
+     },
+     {
+      "date": "2025-10-17",
+      "value": 4.02
+     },
+     {
+      "date": "2025-10-24",
+      "value": 4.02
+     },
+     {
+      "date": "2025-10-31",
+      "value": 4.11
+     },
+     {
+      "date": "2025-11-07",
+      "value": 4.11
+     },
+     {
+      "date": "2025-11-14",
+      "value": 4.14
+     },
+     {
+      "date": "2025-11-21",
+      "value": 4.06
+     },
+     {
+      "date": "2025-11-28",
+      "value": 4.02
+     },
+     {
+      "date": "2025-12-05",
+      "value": 4.14
+     },
+     {
+      "date": "2025-12-12",
+      "value": 4.19
+     },
+     {
+      "date": "2025-12-19",
+      "value": 4.16
+     },
+     {
+      "date": "2025-12-26",
+      "value": 4.14
+     },
+     {
+      "date": "2026-01-02",
+      "value": 4.19
+     },
+     {
+      "date": "2026-01-09",
+      "value": 4.18
+     },
+     {
+      "date": "2026-01-16",
+      "value": 4.24
+     },
+     {
+      "date": "2026-01-23",
+      "value": 4.24
+     },
+     {
+      "date": "2026-01-30",
+      "value": 4.26
+     },
+     {
+      "date": "2026-02-06",
+      "value": 4.22
+     },
+     {
+      "date": "2026-02-13",
+      "value": 4.04
+     },
+     {
+      "date": "2026-02-20",
+      "value": 4.08
+     },
+     {
+      "date": "2026-02-27",
+      "value": 3.97
+     },
+     {
+      "date": "2026-03-06",
+      "value": 4.15
+     },
+     {
+      "date": "2026-03-13",
+      "value": 4.28
+     },
+     {
+      "date": "2026-03-20",
+      "value": 4.39
+     },
+     {
+      "date": "2026-03-27",
+      "value": 4.44
+     },
+     {
+      "date": "2026-04-03",
+      "value": 4.35
+     },
+     {
+      "date": "2026-04-10",
+      "value": 4.31
+     },
+     {
+      "date": "2026-04-17",
+      "value": 4.26
+     },
+     {
+      "date": "2026-04-23",
+      "value": 4.34
+     }
+    ],
+    "unemployment": [
+     {
+      "date": "2024-04-01",
+      "value": 3.9
+     },
+     {
+      "date": "2024-05-01",
+      "value": 3.9
+     },
+     {
+      "date": "2024-06-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-07-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-08-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-09-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-10-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-12-01",
+      "value": 4.1
+     },
+     {
+      "date": "2025-01-01",
+      "value": 4.0
+     },
+     {
+      "date": "2025-02-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-03-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-04-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-05-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-06-01",
+      "value": 4.1
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-09-01",
+      "value": 4.4
+     },
+     {
+      "date": "2025-11-01",
+      "value": 4.5
+     },
+     {
+      "date": "2025-12-01",
+      "value": 4.4
+     },
+     {
+      "date": "2026-01-01",
+      "value": 4.3
+     },
+     {
+      "date": "2026-02-01",
+      "value": 4.4
+     },
+     {
+      "date": "2026-03-01",
+      "value": 4.3
+     }
+    ],
+    "fed_funds_rate": [
+     {
+      "date": "2024-04-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-05-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-06-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-07-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-08-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-09-01",
+      "value": 5.13
+     },
+     {
+      "date": "2024-10-01",
+      "value": 4.83
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.64
+     },
+     {
+      "date": "2024-12-01",
+      "value": 4.48
+     },
+     {
+      "date": "2025-01-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-02-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-03-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-04-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-05-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-06-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-09-01",
+      "value": 4.22
+     },
+     {
+      "date": "2025-10-01",
+      "value": 4.09
+     },
+     {
+      "date": "2025-11-01",
+      "value": 3.88
+     },
+     {
+      "date": "2025-12-01",
+      "value": 3.72
+     },
+     {
+      "date": "2026-01-01",
+      "value": 3.64
+     },
+     {
+      "date": "2026-02-01",
+      "value": 3.64
+     },
+     {
+      "date": "2026-03-01",
+      "value": 3.64
+     }
+    ],
+    "m2_money_supply": [
+     {
+      "date": "2024-04-01",
+      "value": 20958.8
+     },
+     {
+      "date": "2024-05-01",
+      "value": 21019.9
+     },
+     {
+      "date": "2024-06-01",
+      "value": 21067.7
+     },
+     {
+      "date": "2024-07-01",
+      "value": 21094.4
+     },
+     {
+      "date": "2024-08-01",
+      "value": 21185.8
+     },
+     {
+      "date": "2024-09-01",
+      "value": 21268.6
+     },
+     {
+      "date": "2024-10-01",
+      "value": 21331.0
+     },
+     {
+      "date": "2024-11-01",
+      "value": 21451.6
+     },
+     {
+      "date": "2024-12-01",
+      "value": 21485.3
+     },
+     {
+      "date": "2025-01-01",
+      "value": 21547.6
+     },
+     {
+      "date": "2025-02-01",
+      "value": 21613.2
+     },
+     {
+      "date": "2025-03-01",
+      "value": 21693.5
+     },
+     {
+      "date": "2025-04-01",
+      "value": 21775.5
+     },
+     {
+      "date": "2025-05-01",
+      "value": 21833.8
+     },
+     {
+      "date": "2025-06-01",
+      "value": 21938.7
+     },
+     {
+      "date": "2025-07-01",
+      "value": 22019.9
+     },
+     {
+      "date": "2025-08-01",
+      "value": 22086.8
+     },
+     {
+      "date": "2025-09-01",
+      "value": 22169.8
+     },
+     {
+      "date": "2025-10-01",
+      "value": 22250.4
+     },
+     {
+      "date": "2025-11-01",
+      "value": 22296.5
+     },
+     {
+      "date": "2025-12-01",
+      "value": 22386.9
+     },
+     {
+      "date": "2026-01-01",
+      "value": 22469.1
+     },
+     {
+      "date": "2026-02-01",
+      "value": 22667.3
+     }
+    ],
+    "nonfarm_payrolls": [
+     {
+      "date": "2024-04-01",
+      "value": 157530.0
+     },
+     {
+      "date": "2024-05-01",
+      "value": 157608.0
+     },
+     {
+      "date": "2024-06-01",
+      "value": 157695.0
+     },
+     {
+      "date": "2024-07-01",
+      "value": 157748.0
+     },
+     {
+      "date": "2024-08-01",
+      "value": 157757.0
+     },
+     {
+      "date": "2024-09-01",
+      "value": 157912.0
+     },
+     {
+      "date": "2024-10-01",
+      "value": 157945.0
+     },
+     {
+      "date": "2024-11-01",
+      "value": 158079.0
+     },
+     {
+      "date": "2024-12-01",
+      "value": 158316.0
+     },
+     {
+      "date": "2025-01-01",
+      "value": 158268.0
+     },
+     {
+      "date": "2025-02-01",
+      "value": 158310.0
+     },
+     {
+      "date": "2025-03-01",
+      "value": 158377.0
+     },
+     {
+      "date": "2025-04-01",
+      "value": 158485.0
+     },
+     {
+      "date": "2025-05-01",
+      "value": 158498.0
+     },
+     {
+      "date": "2025-06-01",
+      "value": 158478.0
+     },
+     {
+      "date": "2025-07-01",
+      "value": 158542.0
+     },
+     {
+      "date": "2025-08-01",
+      "value": 158472.0
+     },
+     {
+      "date": "2025-09-01",
+      "value": 158548.0
+     },
+     {
+      "date": "2025-10-01",
+      "value": 158408.0
+     },
+     {
+      "date": "2025-11-01",
+      "value": 158449.0
+     },
+     {
+      "date": "2025-12-01",
+      "value": 158432.0
+     },
+     {
+      "date": "2026-01-01",
+      "value": 158592.0
+     },
+     {
+      "date": "2026-02-01",
+      "value": 158459.0
+     },
+     {
+      "date": "2026-03-01",
+      "value": 158637.0
+     }
+    ],
+    "yield_curve_spread": [
+     {
+      "date": "2024-05-03",
+      "value": -0.31
+     },
+     {
+      "date": "2024-05-10",
+      "value": -0.37
+     },
+     {
+      "date": "2024-05-17",
+      "value": -0.41
+     },
+     {
+      "date": "2024-05-24",
+      "value": -0.47
+     },
+     {
+      "date": "2024-05-31",
+      "value": -0.38
+     },
+     {
+      "date": "2024-06-07",
+      "value": -0.44
+     },
+     {
+      "date": "2024-06-14",
+      "value": -0.47
+     },
+     {
+      "date": "2024-06-21",
+      "value": -0.45
+     },
+     {
+      "date": "2024-06-28",
+      "value": -0.35
+     },
+     {
+      "date": "2024-07-05",
+      "value": -0.32
+     },
+     {
+      "date": "2024-07-12",
+      "value": -0.27
+     },
+     {
+      "date": "2024-07-19",
+      "value": -0.24
+     },
+     {
+      "date": "2024-07-26",
+      "value": -0.16
+     },
+     {
+      "date": "2024-08-02",
+      "value": -0.08
+     },
+     {
+      "date": "2024-08-09",
+      "value": -0.11
+     },
+     {
+      "date": "2024-08-16",
+      "value": -0.17
+     },
+     {
+      "date": "2024-08-23",
+      "value": -0.09
+     },
+     {
+      "date": "2024-08-30",
+      "value": 0.0
+     },
+     {
+      "date": "2024-09-06",
+      "value": 0.06
+     },
+     {
+      "date": "2024-09-13",
+      "value": 0.09
+     },
+     {
+      "date": "2024-09-20",
+      "value": 0.18
+     },
+     {
+      "date": "2024-09-27",
+      "value": 0.2
+     },
+     {
+      "date": "2024-10-04",
+      "value": 0.05
+     },
+     {
+      "date": "2024-10-11",
+      "value": 0.13
+     },
+     {
+      "date": "2024-10-18",
+      "value": 0.13
+     },
+     {
+      "date": "2024-10-25",
+      "value": 0.14
+     },
+     {
+      "date": "2024-11-01",
+      "value": 0.16
+     },
+     {
+      "date": "2024-11-08",
+      "value": 0.04
+     },
+     {
+      "date": "2024-11-15",
+      "value": 0.12
+     },
+     {
+      "date": "2024-11-22",
+      "value": 0.04
+     },
+     {
+      "date": "2024-11-29",
+      "value": 0.05
+     },
+     {
+      "date": "2024-12-06",
+      "value": 0.05
+     },
+     {
+      "date": "2024-12-13",
+      "value": 0.15
+     },
+     {
+      "date": "2024-12-20",
+      "value": 0.22
+     },
+     {
+      "date": "2024-12-27",
+      "value": 0.31
+     },
+     {
+      "date": "2025-01-03",
+      "value": 0.32
+     },
+     {
+      "date": "2025-01-10",
+      "value": 0.37
+     },
+     {
+      "date": "2025-01-17",
+      "value": 0.34
+     },
+     {
+      "date": "2025-01-24",
+      "value": 0.36
+     },
+     {
+      "date": "2025-01-31",
+      "value": 0.36
+     },
+     {
+      "date": "2025-02-07",
+      "value": 0.2
+     },
+     {
+      "date": "2025-02-14",
+      "value": 0.21
+     },
+     {
+      "date": "2025-02-21",
+      "value": 0.23
+     },
+     {
+      "date": "2025-02-28",
+      "value": 0.25
+     },
+     {
+      "date": "2025-03-07",
+      "value": 0.33
+     },
+     {
+      "date": "2025-03-14",
+      "value": 0.29
+     },
+     {
+      "date": "2025-03-21",
+      "value": 0.31
+     },
+     {
+      "date": "2025-03-28",
+      "value": 0.38
+     },
+     {
+      "date": "2025-04-04",
+      "value": 0.33
+     },
+     {
+      "date": "2025-04-11",
+      "value": 0.52
+     },
+     {
+      "date": "2025-04-17",
+      "value": 0.53
+     },
+     {
+      "date": "2025-04-25",
+      "value": 0.55
+     },
+     {
+      "date": "2025-05-02",
+      "value": 0.5
+     },
+     {
+      "date": "2025-05-09",
+      "value": 0.49
+     },
+     {
+      "date": "2025-05-16",
+      "value": 0.45
+     },
+     {
+      "date": "2025-05-23",
+      "value": 0.51
+     },
+     {
+      "date": "2025-05-30",
+      "value": 0.52
+     },
+     {
+      "date": "2025-06-06",
+      "value": 0.47
+     },
+     {
+      "date": "2025-06-13",
+      "value": 0.45
+     },
+     {
+      "date": "2025-06-20",
+      "value": 0.48
+     },
+     {
+      "date": "2025-06-27",
+      "value": 0.56
+     },
+     {
+      "date": "2025-07-03",
+      "value": 0.47
+     },
+     {
+      "date": "2025-07-11",
+      "value": 0.53
+     },
+     {
+      "date": "2025-07-18",
+      "value": 0.56
+     },
+     {
+      "date": "2025-07-25",
+      "value": 0.49
+     },
+     {
+      "date": "2025-08-01",
+      "value": 0.54
+     },
+     {
+      "date": "2025-08-08",
+      "value": 0.51
+     },
+     {
+      "date": "2025-08-15",
+      "value": 0.58
+     },
+     {
+      "date": "2025-08-22",
+      "value": 0.58
+     },
+     {
+      "date": "2025-08-29",
+      "value": 0.64
+     },
+     {
+      "date": "2025-09-05",
+      "value": 0.59
+     },
+     {
+      "date": "2025-09-12",
+      "value": 0.5
+     },
+     {
+      "date": "2025-09-19",
+      "value": 0.57
+     },
+     {
+      "date": "2025-09-26",
+      "value": 0.57
+     },
+     {
+      "date": "2025-10-03",
+      "value": 0.55
+     },
+     {
+      "date": "2025-10-10",
+      "value": 0.53
+     },
+     {
+      "date": "2025-10-17",
+      "value": 0.56
+     },
+     {
+      "date": "2025-10-24",
+      "value": 0.54
+     },
+     {
+      "date": "2025-10-31",
+      "value": 0.51
+     },
+     {
+      "date": "2025-11-07",
+      "value": 0.56
+     },
+     {
+      "date": "2025-11-14",
+      "value": 0.52
+     },
+     {
+      "date": "2025-11-21",
+      "value": 0.55
+     },
+     {
+      "date": "2025-11-28",
+      "value": 0.55
+     },
+     {
+      "date": "2025-12-05",
+      "value": 0.58
+     },
+     {
+      "date": "2025-12-12",
+      "value": 0.67
+     },
+     {
+      "date": "2025-12-19",
+      "value": 0.68
+     },
+     {
+      "date": "2025-12-26",
+      "value": 0.68
+     },
+     {
+      "date": "2026-01-02",
+      "value": 0.72
+     },
+     {
+      "date": "2026-01-09",
+      "value": 0.64
+     },
+     {
+      "date": "2026-01-16",
+      "value": 0.65
+     },
+     {
+      "date": "2026-01-23",
+      "value": 0.64
+     },
+     {
+      "date": "2026-01-30",
+      "value": 0.74
+     },
+     {
+      "date": "2026-02-06",
+      "value": 0.72
+     },
+     {
+      "date": "2026-02-13",
+      "value": 0.64
+     },
+     {
+      "date": "2026-02-20",
+      "value": 0.6
+     },
+     {
+      "date": "2026-02-27",
+      "value": 0.59
+     },
+     {
+      "date": "2026-03-06",
+      "value": 0.59
+     },
+     {
+      "date": "2026-03-13",
+      "value": 0.55
+     },
+     {
+      "date": "2026-03-20",
+      "value": 0.51
+     },
+     {
+      "date": "2026-03-27",
+      "value": 0.56
+     },
+     {
+      "date": "2026-04-03",
+      "value": 0.51
+     },
+     {
+      "date": "2026-04-10",
+      "value": 0.5
+     },
+     {
+      "date": "2026-04-17",
+      "value": 0.55
+     },
+     {
+      "date": "2026-04-24",
+      "value": 0.53
+     }
+    ]
+   },
+   "interest_coverage": null,
+   "quarterly_free_cf": [
+    {
+     "value": 56803000.0,
+     "period": "Q4",
+     "yoy_growth": -40.13994709831073
+    },
+    {
+     "value": 94893000.0,
+     "period": "Q3",
+     "yoy_growth": -24.875310733568725
+    },
+    {
+     "value": 126314000.0,
+     "period": "Q2",
+     "yoy_growth": 630.9414964411782
+    },
+    {
+     "value": 17281000.0,
+     "period": "Q1",
+     "yoy_growth": -92.29768096950896
+    },
+    {
+     "value": 224361000.0,
+     "period": "Q4",
+     "yoy_growth": 3024.0323211260265
+    },
+    {
+     "value": -7673000.0,
+     "period": "Q3",
+     "yoy_growth": -121.62078390487194
+    },
+    {
+     "value": 35489000.0,
+     "period": "Q2",
+     "yoy_growth": 1262.8648233486945
+    },
+    {
+     "value": 2604000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_revenue": [
+    {
+     "value": 885815000.0,
+     "period": "Q4",
+     "yoy_growth": 2.2543363277254853
+    },
+    {
+     "value": 866286000.0,
+     "period": "Q3",
+     "yoy_growth": 13.38243204862579
+    },
+    {
+     "value": 764039000.0,
+     "period": "Q2",
+     "yoy_growth": 11.98681437227559
+    },
+    {
+     "value": 682258000.0,
+     "period": "Q1",
+     "yoy_growth": -8.577225041439592
+    },
+    {
+     "value": 746267000.0,
+     "period": "Q4",
+     "yoy_growth": 11.058908619016721
+    },
+    {
+     "value": 671956000.0,
+     "period": "Q3",
+     "yoy_growth": -1.3953761381729068
+    },
+    {
+     "value": 681465000.0,
+     "period": "Q2",
+     "yoy_growth": 12.831682578158373
+    },
+    {
+     "value": 603966000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "fifty_two_week_low": 102.42,
+   "dcf_intrinsic_value": 51.703055557658175,
+   "fifty_two_week_high": 241.82,
+   "quarterly_net_margin": [
+    {
+     "value": 10.5,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 9.48,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 10.26,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 11.07,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 9.52,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 10.34,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 10.71,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 11.34,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_total_debt": [
+    {
+     "value": 2015983000.0,
+     "period": "Q4",
+     "yoy_growth": 33.54683784123956
+    },
+    {
+     "value": 1509570000.0,
+     "period": "Q3",
+     "yoy_growth": -1.4787616464390416
+    },
+    {
+     "value": 1532228000.0,
+     "period": "Q2",
+     "yoy_growth": 27.914206715999253
+    },
+    {
+     "value": 1197856000.0,
+     "period": "Q1",
+     "yoy_growth": 13.49029342378277
+    },
+    {
+     "value": 1055470000.0,
+     "period": "Q4",
+     "yoy_growth": -14.295411933698249
+    },
+    {
+     "value": 1231521000.0,
+     "period": "Q3",
+     "yoy_growth": 1.5627950858135318
+    },
+    {
+     "value": 1212571000.0,
+     "period": "Q2",
+     "yoy_growth": -1.306422968170845
+    },
+    {
+     "value": 1228622000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "forward_eps_estimates": [
+    {
+     "actual": null,
+     "period": "2030-12",
+     "estimate": 0.0
+    },
+    {
+     "actual": null,
+     "period": "2030-09",
+     "estimate": 0.0
+    },
+    {
+     "actual": null,
+     "period": "2030-06",
+     "estimate": 0.0
+    },
+    {
+     "actual": null,
+     "period": "2030-03",
+     "estimate": 0.0
+    },
+    {
+     "actual": null,
+     "period": "2029-12",
+     "estimate": 0.0
+    },
+    {
+     "actual": null,
+     "period": "2029-09",
+     "estimate": 0.0
+    },
+    {
+     "actual": null,
+     "period": "2029-06",
+     "estimate": 0.0
+    },
+    {
+     "actual": null,
+     "period": "2029-03",
+     "estimate": 0.0
+    }
+   ],
+   "quarterly_gross_margin": [
+    {
+     "value": 20.98,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 21.82,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 25.05,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 24.21,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 23.37,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 24.4,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 24.7,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 24.61,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_operating_cf": [
+    {
+     "value": 126995000.0,
+     "period": "Q4",
+     "yoy_growth": -11.291561888795753
+    },
+    {
+     "value": 143160000.0,
+     "period": "Q3",
+     "yoy_growth": -9.98660739548424
+    },
+    {
+     "value": 159043000.0,
+     "period": "Q2",
+     "yoy_growth": 214.00394866732478
+    },
+    {
+     "value": 50650000.0,
+     "period": "Q1",
+     "yoy_growth": -81.70687662525282
+    },
+    {
+     "value": 276880000.0,
+     "period": "Q4",
+     "yoy_growth": 748.5962976584528
+    },
+    {
+     "value": 32628000.0,
+     "period": "Q3",
+     "yoy_growth": -50.48411084468996
+    },
+    {
+     "value": 65894000.0,
+     "period": "Q2",
+     "yoy_growth": 99.52158905105068
+    },
+    {
+     "value": 33026000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_current_ratio": [
+    {
+     "value": 2.32,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 1.71,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 1.69,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 2.02,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 1.96,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 2.25,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 2.23,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 2.24,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "forward_revenue_estimates": [
+    {
+     "actual": null,
+     "period": "2030-12",
+     "estimate": 1215027600.0
+    },
+    {
+     "actual": null,
+     "period": "2030-09",
+     "estimate": 1211289300.0
+    },
+    {
+     "actual": null,
+     "period": "2030-06",
+     "estimate": 1188591300.0
+    },
+    {
+     "actual": null,
+     "period": "2030-03",
+     "estimate": 1027792300.0
+    },
+    {
+     "actual": null,
+     "period": "2029-12",
+     "estimate": 1159585900.0
+    },
+    {
+     "actual": null,
+     "period": "2029-09",
+     "estimate": 1157003100.0
+    },
+    {
+     "actual": null,
+     "period": "2029-06",
+     "estimate": 1134227500.0
+    },
+    {
+     "actual": null,
+     "period": "2029-03",
+     "estimate": 981401600.0
+    }
+   ],
+   "quarterly_operating_margin": [
+    {
+     "value": 8.08,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 10.64,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 13.41,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 14.16,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 12.36,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 14.37,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 14.5,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 15.39,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_shareholders_equity": [
+    {
+     "value": 1233537000.0,
+     "period": "Q4",
+     "yoy_growth": -0.6194681709857834
+    },
+    {
+     "value": 1241226000.0,
+     "period": "Q3",
+     "yoy_growth": 4.841600600047639
+    },
+    {
+     "value": 1183906000.0,
+     "period": "Q2",
+     "yoy_growth": 7.624393769289159
+    },
+    {
+     "value": 1100035000.0,
+     "period": "Q1",
+     "yoy_growth": 1.8170054905387243
+    },
+    {
+     "value": 1080404000.0,
+     "period": "Q4",
+     "yoy_growth": 2.0528568365431754
+    },
+    {
+     "value": 1058671000.0,
+     "period": "Q3",
+     "yoy_growth": 6.052585972866543
+    },
+    {
+     "value": 998251000.0,
+     "period": "Q2",
+     "yoy_growth": 5.515999940807513
+    },
+    {
+     "value": 946066000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ]
+  },
+  "transcript_analysis": null
+ }
+}

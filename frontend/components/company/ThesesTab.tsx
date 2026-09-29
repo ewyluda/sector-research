@@ -73,7 +73,7 @@ export function ThesesTab({ ticker }: { ticker: string }) {
                   </span>
                   <Link
                     href={`/pipeline/${e.run_id}`}
-                    className="text-[var(--primary)] hover:underline"
+                    className="text-[var(--primary-dk)] hover:underline"
                   >
                     run →
                   </Link>
@@ -97,7 +97,7 @@ export function ThesesTab({ ticker }: { ticker: string }) {
                 </span>
                 <span className="text-[var(--text)]">{r.theme_name ?? "—"}</span>
                 <span className="text-xs text-[var(--text-muted)]">{r.thesis_status ?? r.status}</span>
-                <Link href={`/pipeline/${r.id}`} className="text-[var(--primary)] hover:underline">
+                <Link href={`/pipeline/${r.id}`} className="text-[var(--primary-dk)] hover:underline">
                   open →
                 </Link>
               </li>

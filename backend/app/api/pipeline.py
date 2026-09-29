@@ -24,6 +24,7 @@ from backend.app.models.uuid_path import RunIdPath
 from backend.app.models.signal import Signal
 from backend.app.graph.state import ResearchState
 from backend.app.models.theme import Theme
+from backend.app.services import llm_usage
 from backend.app.services.data_gaps import compute_data_gaps, aggregate_data_gaps
 
 logger = logging.getLogger(__name__)
@@ -186,6 +187,13 @@ async def get_data_gaps(
     ]
 
     return aggregate_data_gaps(runs_list)
+
+
+@router.get("/runs/{run_id}/usage")
+async def get_run_usage(run_id: str = Depends(RunIdPath), db: AsyncSession = Depends(get_db)):
+    """LLM cost, tokens, cache hit rate and wall-clock for one run, from llm_calls.
+    Runs that predate the table (2026-09-28) return zero calls."""
+    return await llm_usage.run_usage(db, run_id)
 
 
 @router.get("/runs/{run_id}")

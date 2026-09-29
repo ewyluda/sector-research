@@ -77,7 +77,9 @@ export function GlobalCommandPalette() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [dynamicItems, setDynamicItems] = useState<PaletteItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
-  // Session cache: tickers + recent runs are fetched on first open only.
+  const listRef = useRef<HTMLUListElement>(null);
+  // Last fetched tickers + recent runs: shown instantly on open while a fresh
+  // fetch runs (it used to be fetched once per session, so new runs never appeared).
   const dynamicCache = useRef<PaletteItem[] | null>(null);
 
   // Section entries only make sense on a report page (/pipeline/[runId]).
@@ -108,12 +110,12 @@ export function GlobalCommandPalette() {
     }
   }, [open]);
 
-  // Fetch dynamic sources (tickers + recent runs) on first open, then reuse.
+  // Fetch dynamic sources (tickers + recent runs) on every open; show the last
+  // result meanwhile.
   useEffect(() => {
     if (!open) return;
     if (dynamicCache.current) {
       setDynamicItems(dynamicCache.current);
-      return;
     }
     let cancelled = false;
     Promise.allSettled([getTickers(), pipeline.list({ limit: 15 })]).then(
@@ -225,6 +227,11 @@ export function GlobalCommandPalette() {
     }
   }
 
+  // Keep the highlighted item visible as the arrow keys move past the fold.
+  useEffect(() => {
+    if (open) listRef.current?.children[activeIdx]?.scrollIntoView({ block: "nearest" });
+  }, [open, activeIdx]);
+
   if (!open) return null;
 
   return (
@@ -257,7 +264,7 @@ export function GlobalCommandPalette() {
             Esc
           </kbd>
         </div>
-        <ul className="max-h-80 overflow-y-auto py-1">
+        <ul ref={listRef} className="max-h-80 overflow-y-auto py-1">
           {filtered.length === 0 ? (
             <li className="px-4 py-6 text-center text-xs text-[var(--color-text-faint)]">
               No matches.

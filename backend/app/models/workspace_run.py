@@ -2,7 +2,7 @@
 
 from uuid import uuid4
 
-from sqlalchemy import ForeignKey, Integer, String, Text
+from sqlalchemy import ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,6 +11,11 @@ from backend.app.models.base import Base, TimestampMixin
 
 class WorkspaceRun(Base, TimestampMixin):
     __tablename__ = "workspace_runs"
+    __table_args__ = (
+        Index("ix_workspace_runs_ticker_created", "ticker", text("created_at DESC")),
+        Index("uq_workspace_runs_one_running_per_ticker", "ticker",
+              unique=True, postgresql_where=text("status = 'running'")),
+    )
 
     id: Mapped[str] = mapped_column(
         UUID(as_uuid=False), primary_key=True, default=lambda: str(uuid4())

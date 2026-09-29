@@ -37,7 +37,7 @@ export default async function ThemeGraphPage() {
         </div>
         <Link
           href="/filings/graph"
-          className="shrink-0 text-sm text-[var(--color-accent)] hover:underline"
+          className="shrink-0 text-sm text-[var(--primary-dk)] hover:underline"
         >
           Root graph view →
         </Link>

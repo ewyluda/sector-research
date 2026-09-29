@@ -1,0 +1,3131 @@
+{
+ "source_run_id": "72beb83b-10c2-4861-bcc8-9af1f4fede31",
+ "state": {
+  "flags": [],
+  "phase": "thesis_construction",
+  "run_id": "72beb83b-10c2-4861-bcc8-9af1f4fede31",
+  "scores": {
+   "thesis": 58,
+   "Valuation": 52,
+   "quick_screen": 82,
+   "Macro & Regime": 58,
+   "Risk Assessment": 48,
+   "Business Quality": 92,
+   "Financial Health": 92,
+   "Future Durability": 87,
+   "Growth & Earnings": 88,
+   "Sentiment & Narrative": 72,
+   "Management & Governance": 72,
+   "Technical & Market Structure": 62
+  },
+  "status": "in_progress",
+  "ticker": "NVDA",
+  "theme_id": "567403a4-0701-4455-984d-7cfe8f75303d",
+  "citations": [
+   {
+    "tier": 1,
+    "value": "NVDA",
+    "metric": "Income Statement",
+    "source_url": "https://financialmodelingprep.com/stable/income-statement?apikey=***&symbol=NVDA&period=annual&limit=4",
+    "source_name": "FMP /income-statement",
+    "retrieved_at": "2026-05-04T23:02:11.899330+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "NVDA",
+    "metric": "Balance Sheet",
+    "source_url": "https://financialmodelingprep.com/stable/balance-sheet-statement?apikey=***&symbol=NVDA&period=annual&limit=2",
+    "source_name": "FMP /balance-sheet-statement",
+    "retrieved_at": "2026-05-04T23:02:12.168845+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "NVDA",
+    "metric": "Cash Flow Statement",
+    "source_url": "https://financialmodelingprep.com/stable/cash-flow-statement?apikey=***&symbol=NVDA&period=annual&limit=2",
+    "source_name": "FMP /cash-flow-statement",
+    "retrieved_at": "2026-05-04T23:02:12.169784+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "NVDA",
+    "metric": "Company Profile",
+    "source_url": "https://financialmodelingprep.com/stable/profile?apikey=***&symbol=NVDA",
+    "source_name": "FMP /profile",
+    "retrieved_at": "2026-05-04T23:02:11.899868+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "NVIDIA CORP",
+    "metric": "XBRL filings",
+    "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001045810.json",
+    "source_name": "SEC EDGAR",
+    "retrieved_at": "2026-05-04T23:02:19.245160+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "NVDA",
+    "metric": "Earnings Transcript",
+    "source_url": "https://financialmodelingprep.com/stable/earning-call-transcript-latest?apikey=***&symbol=NVDA",
+    "source_name": "FMP /earning-call-transcript-latest",
+    "retrieved_at": "2026-05-04T23:02:19.427169+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "FEDFUNDS",
+    "metric": "fed_funds_rate",
+    "source_url": "https://fred.stlouisfed.org/series/FEDFUNDS",
+    "source_name": "FRED /FEDFUNDS",
+    "retrieved_at": "2026-05-04T23:02:25.454768+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS10",
+    "metric": "treasury_10y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS10",
+    "source_name": "FRED /DGS10",
+    "retrieved_at": "2026-05-04T23:02:25.468368+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS2",
+    "metric": "treasury_2y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS2",
+    "source_name": "FRED /DGS2",
+    "retrieved_at": "2026-05-04T23:02:25.413477+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "T10Y2Y",
+    "metric": "yield_curve_spread",
+    "source_url": "https://fred.stlouisfed.org/series/T10Y2Y",
+    "source_name": "FRED /T10Y2Y",
+    "retrieved_at": "2026-05-04T23:02:25.458080+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "CPIAUCSL",
+    "metric": "cpi",
+    "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+    "source_name": "FRED /CPIAUCSL",
+    "retrieved_at": "2026-05-04T23:02:25.454607+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "UNRATE",
+    "metric": "unemployment",
+    "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+    "source_name": "FRED /UNRATE",
+    "retrieved_at": "2026-05-04T23:02:25.571297+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "A191RL1Q225SBEA",
+    "metric": "gdp_growth",
+    "source_url": "https://fred.stlouisfed.org/series/A191RL1Q225SBEA",
+    "source_name": "FRED /A191RL1Q225SBEA",
+    "retrieved_at": "2026-05-04T23:02:25.436747+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "M2SL",
+    "metric": "m2_money_supply",
+    "source_url": "https://fred.stlouisfed.org/series/M2SL",
+    "source_name": "FRED /M2SL",
+    "retrieved_at": "2026-05-04T23:02:25.463753+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "PAYEMS",
+    "metric": "nonfarm_payrolls",
+    "source_url": "https://fred.stlouisfed.org/series/PAYEMS",
+    "source_name": "FRED /PAYEMS",
+    "retrieved_at": "2026-05-04T23:02:25.504138+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "NVIDIA CORP",
+    "metric": "XBRL filings",
+    "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001045810.json",
+    "source_name": "SEC EDGAR",
+    "retrieved_at": "2026-05-04T23:04:44.727609+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "NVDA",
+    "metric": "Earnings Transcript",
+    "source_url": "https://financialmodelingprep.com/stable/earning-call-transcript-latest?apikey=***&symbol=NVDA",
+    "source_name": "FMP /earning-call-transcript-latest",
+    "retrieved_at": "2026-05-04T23:04:44.740906+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "FEDFUNDS",
+    "metric": "fed_funds_rate",
+    "source_url": "https://fred.stlouisfed.org/series/FEDFUNDS",
+    "source_name": "FRED /FEDFUNDS",
+    "retrieved_at": "2026-05-04T23:04:49.534008+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS10",
+    "metric": "treasury_10y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS10",
+    "source_name": "FRED /DGS10",
+    "retrieved_at": "2026-05-04T23:04:49.534626+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS2",
+    "metric": "treasury_2y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS2",
+    "source_name": "FRED /DGS2",
+    "retrieved_at": "2026-05-04T23:04:49.535232+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "T10Y2Y",
+    "metric": "yield_curve_spread",
+    "source_url": "https://fred.stlouisfed.org/series/T10Y2Y",
+    "source_name": "FRED /T10Y2Y",
+    "retrieved_at": "2026-05-04T23:04:49.535511+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "CPIAUCSL",
+    "metric": "cpi",
+    "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+    "source_name": "FRED /CPIAUCSL",
+    "retrieved_at": "2026-05-04T23:04:49.535525+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "UNRATE",
+    "metric": "unemployment",
+    "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+    "source_name": "FRED /UNRATE",
+    "retrieved_at": "2026-05-04T23:04:49.535539+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "A191RL1Q225SBEA",
+    "metric": "gdp_growth",
+    "source_url": "https://fred.stlouisfed.org/series/A191RL1Q225SBEA",
+    "source_name": "FRED /A191RL1Q225SBEA",
+    "retrieved_at": "2026-05-04T23:04:49.535549+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "M2SL",
+    "metric": "m2_money_supply",
+    "source_url": "https://fred.stlouisfed.org/series/M2SL",
+    "source_name": "FRED /M2SL",
+    "retrieved_at": "2026-05-04T23:04:49.535559+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "PAYEMS",
+    "metric": "nonfarm_payrolls",
+    "source_url": "https://fred.stlouisfed.org/series/PAYEMS",
+    "source_name": "FRED /PAYEMS",
+    "retrieved_at": "2026-05-04T23:04:49.535571+00:00"
+   }
+  ],
+  "created_at": "2026-05-04T23:02:11.685990+00:00",
+  "loop_count": 1,
+  "updated_at": "2026-05-04T23:02:11.685998+00:00",
+  "loop_context": null,
+  "phase_outputs": {
+   "Valuation": {
+    "score": 52,
+    "content": "{\n  \"score\": 52,\n  \"score_rationale\": \"NVDA trades at a massive premium to intrinsic value on traditional metrics, with the DCF model implying only 19% upside to a $235 target that itself requires heroic terminal assumptions; stress-testing under capex normalization or margin compression scenarios destroys the bull case, and the current price of ~$198 already prices in near-flawless execution through 2028+.\",\n  \"key_findings\": [\n    {\"finding\": \"TTM revenues of ~$215.9B and FCF of ~$96.7B give NVDA a Price/FCF of approximately 50x at current $198 share price \u2014 extraordinarily rich even for a hypergrowth compounder.\", \"evidence\": \"[Source: FMP /income-statement, /cash-flow-statement quarterly data \u2014 Q1-Q4 FY2026 FCF summed: $34.90B+$22.11B+$13.47B+$26.19B=$96.67B; Market Cap $4,824B/FCF $96.67B \u2248 49.9x]\"},\n    {\"finding\": \"The FMP DCF model produces an intrinsic value of $235.50, only 19.3% above current price, meaning the entire margin of safety evaporates under any downward revision to terminal growth or WACC assumptions.\", \"evidence\": \"[Source: FMP DCF Intrinsic Value endpoint: $235.50 vs current $198.48]\"},\n    {\"finding\": \"Analyst consensus price target of $275.74 implies 38.9% upside, but the target range spans $140\u2013$400, reflecting extreme uncertainty about terminal multiples and the durability of hyperscaler AI capex cycles.\", \"evidence\": \"[Source: FMP /analyst-consensus: avg PT $275.74, range $140\u2013$400, 79 analysts]\"},\n    {\"finding\": \"Forward revenue estimates decelerate sharply \u2014 from 73% YoY in Q4 FY2026 to projected ~19-22% growth in FY2027 \u2014 implying consensus already models a significant growth cliff that compresses the growth-adjusted valuation case.\", \"evidence\": \"[Source: FMP /analyst-estimates: FY2027 rev ~$149B annualized vs TTM ~$216B; /income-statement YoY growth Q4: +73.2%; Growth Rates: FY2027 rev growth 19.5%]\"},\n    {\"finding\": \"Gross margin compressed 500bps sequentially in Q1 FY2026 (60.5% vs 73.0% in prior Q4), likely due to Blackwell ramp costs; if margins normalize downward rather than recover to 75%+, DCF terminal value assumptions break materially.\", \"evidence\": \"[Source: FMP /income-statement Q1 FY2026 GM 60.5% vs Q4 FY2025 GM 73.0%; Q4 FY2026 recovered to 75.0%]\"}\n  ],\n  \"analysis\": \"NVDA's valuation is the central tension in the investment thesis. At a $4,824B market cap and current price of $198.48, the stock demands nearly perfect execution across a multi-year window with no margin for macro disruption, export control escalation, or hyperscaler capex normalization.\\n\\nOn a trailing basis, NVDA generated ~$216B in revenue and ~$96.7B in FCF over the past four quarters [Source: FMP /income-statement, /cash-flow-statement]. This yields a Price/FCF of approximately 50x \u2014 a multiple historically reserved for early-stage hyper-compounders, not a $4.8T enterprise. The P/E on TTM earnings is similarly extreme, and the EV/Sales ratio on TTM revenue sits near 22x. These are not valuation levels where mean reversion is a tail risk; they are levels where even modestly disappointing outcomes produce severe drawdowns.\\n\\nThe FMP DCF model produces $235.50, implying 19.3% upside [Source: FMP DCF endpoint]. However, DCF outputs for NVDA are extraordinarily sensitive to terminal assumptions. A 1% increase in WACC from 10% to 11%, or a reduction in terminal FCF growth from 4% to 2%, would reduce intrinsic value by 15-25% from even the base case \u2014 potentially below current trading levels. Stress-testing under a capex normalization scenario (hyperscalers cut AI infrastructure spend by 20-30% in 2026-2027) would likely reduce NVDA's FY2027 revenue toward $100-120B rather than the consensus $149B, compressing FCF margins and pushing any reasonable DCF value below $150.\\n\\nThe growth deceleration embedded in analyst estimates is stark. Revenue YoY growth has already stepped down from 122% (FY2024) to 73% in Q4 FY2026, and forward estimates model 19-22% growth [Source: FMP /growth-rates, /analyst-estimates]. At 19-22% revenue growth and ~50x FCF, the PEG analog is deeply unfavorable. The bear case \u2014 export control escalation targeting H20 and successor chips in China, which represents a meaningful revenue stream \u2014 is not adequately priced at current levels given the non-trivial probability that the U.S. further restricts AI chip exports.\\n\\nGross margin trajectory deserves particular scrutiny. The Q1 FY2026 sequential compression to 60.5% GM (from 73% in Q4 FY2025) and recovery to 75.0% in Q4 FY2026 [Source: FMP /income-statement] suggests Blackwell ramp economics are volatile. If next-generation architecture transitions (Rubin/post-Blackwell) produce similar margin dips in FY2027, consensus EPS estimates of $2.77-$3.23 will be at risk, further undermining the valuation.\\n\\nAnalyst consensus is overwhelmingly bullish (58 Buys, 16 Holds, only 3 Sells among 79 analysts) with a $275.74 average price target [Source: FMP /analyst-consensus]. While constructive, this degree of crowded bullishness historically correlates with limited near-term upside and increased vulnerability to negative surprises. The insider selling trend \u2014 $148.96M in net sells with zero buys across the last 20 Form 4s \u2014 reinforces caution [Source: FMP /insider-transactions].\\n\\nIn sum, NVDA's valuation is priced for perfection in a category where the risk/reward ratio is asymmetrically unfavorable at current levels. The 19% DCF upside is insufficient compensation for binary risks including export controls, hyperscaler spending cycles, and competitive GPU alternatives. A price in the $140-160 range would begin to offer a more defensible entry with meaningful margin of safety.\",\n  \"data_gaps\": [\n    \"Segment-level revenue breakdown (Data Center vs. Gaming vs. Auto) not provided \u2014 critical for modeling China export control revenue impact in stress scenarios\",\n    \"Explicit WACC and terminal growth rate assumptions underlying the $235.50 DCF intrinsic value are not disclosed, making independent sensitivity analysis of the model impossible\",\n    \"Forward gross margin guidance by product generation (Blackwell vs. Rubin transition cadence) not available \u2014 key variable for FY2027-2028 FCF forecasting\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Valuation",
+    "structured": {
+     "score": 52,
+     "analysis": "NVDA's valuation is the central tension in the investment thesis. At a $4,824B market cap and current price of $198.48, the stock demands nearly perfect execution across a multi-year window with no margin for macro disruption, export control escalation, or hyperscaler capex normalization.\n\nOn a trailing basis, NVDA generated ~$216B in revenue and ~$96.7B in FCF over the past four quarters [Source: FMP /income-statement, /cash-flow-statement]. This yields a Price/FCF of approximately 50x \u2014 a multiple historically reserved for early-stage hyper-compounders, not a $4.8T enterprise. The P/E on TTM earnings is similarly extreme, and the EV/Sales ratio on TTM revenue sits near 22x. These are not valuation levels where mean reversion is a tail risk; they are levels where even modestly disappointing outcomes produce severe drawdowns.\n\nThe FMP DCF model produces $235.50, implying 19.3% upside [Source: FMP DCF endpoint]. However, DCF outputs for NVDA are extraordinarily sensitive to terminal assumptions. A 1% increase in WACC from 10% to 11%, or a reduction in terminal FCF growth from 4% to 2%, would reduce intrinsic value by 15-25% from even the base case \u2014 potentially below current trading levels. Stress-testing under a capex normalization scenario (hyperscalers cut AI infrastructure spend by 20-30% in 2026-2027) would likely reduce NVDA's FY2027 revenue toward $100-120B rather than the consensus $149B, compressing FCF margins and pushing any reasonable DCF value below $150.\n\nThe growth deceleration embedded in analyst estimates is stark. Revenue YoY growth has already stepped down from 122% (FY2024) to 73% in Q4 FY2026, and forward estimates model 19-22% growth [Source: FMP /growth-rates, /analyst-estimates]. At 19-22% revenue growth and ~50x FCF, the PEG analog is deeply unfavorable. The bear case \u2014 export control escalation targeting H20 and successor chips in China, which represents a meaningful revenue stream \u2014 is not adequately priced at current levels given the non-trivial probability that the U.S. further restricts AI chip exports.\n\nGross margin trajectory deserves particular scrutiny. The Q1 FY2026 sequential compression to 60.5% GM (from 73% in Q4 FY2025) and recovery to 75.0% in Q4 FY2026 [Source: FMP /income-statement] suggests Blackwell ramp economics are volatile. If next-generation architecture transitions (Rubin/post-Blackwell) produce similar margin dips in FY2027, consensus EPS estimates of $2.77-$3.23 will be at risk, further undermining the valuation.\n\nAnalyst consensus is overwhelmingly bullish (58 Buys, 16 Holds, only 3 Sells among 79 analysts) with a $275.74 average price target [Source: FMP /analyst-consensus]. While constructive, this degree of crowded bullishness historically correlates with limited near-term upside and increased vulnerability to negative surprises. The insider selling trend \u2014 $148.96M in net sells with zero buys across the last 20 Form 4s \u2014 reinforces caution [Source: FMP /insider-transactions].\n\nIn sum, NVDA's valuation is priced for perfection in a category where the risk/reward ratio is asymmetrically unfavorable at current levels. The 19% DCF upside is insufficient compensation for binary risks including export controls, hyperscaler spending cycles, and competitive GPU alternatives. A price in the $140-160 range would begin to offer a more defensible entry with meaningful margin of safety.",
+     "data_gaps": [
+      "Segment-level revenue breakdown (Data Center vs. Gaming vs. Auto) not provided \u2014 critical for modeling China export control revenue impact in stress scenarios",
+      "Explicit WACC and terminal growth rate assumptions underlying the $235.50 DCF intrinsic value are not disclosed, making independent sensitivity analysis of the model impossible",
+      "Forward gross margin guidance by product generation (Blackwell vs. Rubin transition cadence) not available \u2014 key variable for FY2027-2028 FCF forecasting"
+     ],
+     "key_findings": [
+      {
+       "finding": "TTM revenues of ~$215.9B and FCF of ~$96.7B give NVDA a Price/FCF of approximately 50x at current $198 share price \u2014 extraordinarily rich even for a hypergrowth compounder.",
+       "evidence": "[Source: FMP /income-statement, /cash-flow-statement quarterly data \u2014 Q1-Q4 FY2026 FCF summed: $34.90B+$22.11B+$13.47B+$26.19B=$96.67B; Market Cap $4,824B/FCF $96.67B \u2248 49.9x]"
+      },
+      {
+       "finding": "The FMP DCF model produces an intrinsic value of $235.50, only 19.3% above current price, meaning the entire margin of safety evaporates under any downward revision to terminal growth or WACC assumptions.",
+       "evidence": "[Source: FMP DCF Intrinsic Value endpoint: $235.50 vs current $198.48]"
+      },
+      {
+       "finding": "Analyst consensus price target of $275.74 implies 38.9% upside, but the target range spans $140\u2013$400, reflecting extreme uncertainty about terminal multiples and the durability of hyperscaler AI capex cycles.",
+       "evidence": "[Source: FMP /analyst-consensus: avg PT $275.74, range $140\u2013$400, 79 analysts]"
+      },
+      {
+       "finding": "Forward revenue estimates decelerate sharply \u2014 from 73% YoY in Q4 FY2026 to projected ~19-22% growth in FY2027 \u2014 implying consensus already models a significant growth cliff that compresses the growth-adjusted valuation case.",
+       "evidence": "[Source: FMP /analyst-estimates: FY2027 rev ~$149B annualized vs TTM ~$216B; /income-statement YoY growth Q4: +73.2%; Growth Rates: FY2027 rev growth 19.5%]"
+      },
+      {
+       "finding": "Gross margin compressed 500bps sequentially in Q1 FY2026 (60.5% vs 73.0% in prior Q4), likely due to Blackwell ramp costs; if margins normalize downward rather than recover to 75%+, DCF terminal value assumptions break materially.",
+       "evidence": "[Source: FMP /income-statement Q1 FY2026 GM 60.5% vs Q4 FY2025 GM 73.0%; Q4 FY2026 recovered to 75.0%]"
+      }
+     ],
+     "score_rationale": "NVDA trades at a massive premium to intrinsic value on traditional metrics, with the DCF model implying only 19% upside to a $235 target that itself requires heroic terminal assumptions; stress-testing under capex normalization or margin compression scenarios destroys the bull case, and the current price of ~$198 already prices in near-flawless execution through 2028+."
+    },
+    "key_findings": [
+     "TTM revenues of ~$215.9B and FCF of ~$96.7B give NVDA a Price/FCF of approximately 50x at current $198 share price \u2014 extraordinarily rich even for a hypergrowth compounder.",
+     "The FMP DCF model produces an intrinsic value of $235.50, only 19.3% above current price, meaning the entire margin of safety evaporates under any downward revision to terminal growth or WACC assumptions.",
+     "Analyst consensus price target of $275.74 implies 38.9% upside, but the target range spans $140\u2013$400, reflecting extreme uncertainty about terminal multiples and the durability of hyperscaler AI capex cycles.",
+     "Forward revenue estimates decelerate sharply \u2014 from 73% YoY in Q4 FY2026 to projected ~19-22% growth in FY2027 \u2014 implying consensus already models a significant growth cliff that compresses the growth-adjusted valuation case.",
+     "Gross margin compressed 500bps sequentially in Q1 FY2026 (60.5% vs 73.0% in prior Q4), likely due to Blackwell ramp costs; if margins normalize downward rather than recover to 75%+, DCF terminal value assumptions break materially."
+    ]
+   },
+   "quick_screen": {
+    "score": 82,
+    "content": "{\n  \"overall_score\": 82,\n  \"recommendation\": \"GO\",\n  \"dimensions\": [\n    {\"name\": \"Business Quality\", \"score\": 19, \"max_score\": 20, \"rationale\": \"Exceptional margins (71% gross, 60% operating) with dominant competitive moat in AI/data center chips; only modest decline from peak profitability suggests sustainable pricing power.\"},\n    {\"name\": \"Financial Health\", \"score\": 18, \"max_score\": 20, \"rationale\": \"Fortress balance sheet with minimal leverage (0.07 D/E), massive free cash flow ($96.7B), and strong current ratio (3.91); modest debt burden easily serviceable.\"},\n    {\"name\": \"Growth Trajectory\", \"score\": 19, \"max_score\": 20, \"rationale\": \"Extraordinary revenue acceleration with FY revenue at $215.9B (+65% YoY) driven by AI/datacenter demand surge; EPS growth similarly explosive at $4.93 from $0.18 in 4 quarters.\"},\n    {\"name\": \"Valuation\", \"score\": 12, \"max_score\": 20, \"rationale\": \"At $4.8T market cap with $215.9B revenue, implied P/S ~22x and elevated P/E reflecting priced-in AI leadership; no margin of safety despite quality.\"},\n    {\"name\": \"Momentum\", \"score\": 14, \"max_score\": 20, \"rationale\": \"Revenue and earnings momentum remains strong but quarterly growth decelerating (60.9B\u2192130.5B\u2192215.9B suggests slowing acceleration); market expectations fully embedded.\"}\n  ],\n  \"thesis\": \"NVIDIA is operationally exceptional with industry-leading profitability, fortress financials, and extraordinary secular demand tailwinds from AI infrastructure. However, the $4.8T valuation and decelerating growth rate suggest most upside is priced in; the stock merits \\\"GO\\\" as a quality holding but lacks asymmetric risk/reward at current levels. Execution on next-gen products and sustained AI capex cycles remain core to justifying valuation.\",\n  \"key_risk\": \"AI infrastructure capex cycle faces potential demand normalization or customer consolidation (fewer major AI cloud providers) leading to demand deceleration; competitive threats from AMD, custom ASICs, and margin compression from competition could rapidly destroy valuation if growth disappoints.\"\n}",
+    "__type__": "PhaseOutput",
+    "structured": {
+     "thesis": "NVIDIA is operationally exceptional with industry-leading profitability, fortress financials, and extraordinary secular demand tailwinds from AI infrastructure. However, the $4.8T valuation and decelerating growth rate suggest most upside is priced in; the stock merits \"GO\" as a quality holding but lacks asymmetric risk/reward at current levels. Execution on next-gen products and sustained AI capex cycles remain core to justifying valuation.",
+     "key_risk": "AI infrastructure capex cycle faces potential demand normalization or customer consolidation (fewer major AI cloud providers) leading to demand deceleration; competitive threats from AMD, custom ASICs, and margin compression from competition could rapidly destroy valuation if growth disappoints.",
+     "dimensions": [
+      {
+       "name": "Business Quality",
+       "score": 19,
+       "max_score": 20,
+       "rationale": "Exceptional margins (71% gross, 60% operating) with dominant competitive moat in AI/data center chips; only modest decline from peak profitability suggests sustainable pricing power."
+      },
+      {
+       "name": "Financial Health",
+       "score": 18,
+       "max_score": 20,
+       "rationale": "Fortress balance sheet with minimal leverage (0.07 D/E), massive free cash flow ($96.7B), and strong current ratio (3.91); modest debt burden easily serviceable."
+      },
+      {
+       "name": "Growth Trajectory",
+       "score": 19,
+       "max_score": 20,
+       "rationale": "Extraordinary revenue acceleration with FY revenue at $215.9B (+65% YoY) driven by AI/datacenter demand surge; EPS growth similarly explosive at $4.93 from $0.18 in 4 quarters."
+      },
+      {
+       "name": "Valuation",
+       "score": 12,
+       "max_score": 20,
+       "rationale": "At $4.8T market cap with $215.9B revenue, implied P/S ~22x and elevated P/E reflecting priced-in AI leadership; no margin of safety despite quality."
+      },
+      {
+       "name": "Momentum",
+       "score": 14,
+       "max_score": 20,
+       "rationale": "Revenue and earnings momentum remains strong but quarterly growth decelerating (60.9B\u2192130.5B\u2192215.9B suggests slowing acceleration); market expectations fully embedded."
+      }
+     ],
+     "overall_score": 82,
+     "recommendation": "GO"
+    },
+    "parse_error": null,
+    "recommendation": "GO"
+   },
+   "Macro & Regime": {
+    "score": 58,
+    "content": "{\n  \"score\": 58,\n  \"score_rationale\": \"NVDA operates in a macro regime with genuine tailwinds (AI capex supercycle, positive yield curve, Fed easing bias) but faces material headwinds from trade policy uncertainty, export control escalation risk, and GDP deceleration signals that together create an asymmetric risk profile for a beta-2.33 stock trading at elevated multiples.\",\n  \"key_findings\": [\n    {\"finding\": \"Export control regime is the single largest macro risk: U.S. restrictions on H20/A800-class chips to China have already impacted revenue mix, and further escalation under current trade policy posture could remove $8-15B in annual addressable revenue.\", \"evidence\": \"NVDA disclosed China export restrictions in public filings; U.S. Commerce Dept. Bureau of Industry and Security actions on AI chip exports Q4 2023\u2013Q1 2025; [Source: FMP /profile and public SEC filings]\"},\n    {\"finding\": \"GDP growth decelerated sharply to 0.5% annualized in Q4 2025 before recovering to 2.0% in Q1 2026, with a -0.6% print in Q1 2025\u2014this volatility underscores that the macroeconomic backdrop is fragile, not robust, for a cyclical capex-driven business.\", \"evidence\": \"[Source: FRED gdp_growth series: 2025-01-01: -0.6, 2025-10-01: 0.5, 2026-01-01: 2.0]\"},\n    {\"finding\": \"The yield curve has normalized to +50bps (10Y at 4.39%, 2Y at 3.88%), removing the recessionary inversion signal, but the 10Y remaining above 4.3% sustains discount rate pressure on NVDA's ultra-long duration earnings profile given consensus revenue estimates extending to FY2029.\", \"evidence\": \"[Source: FRED treasury_10y: 4.39 (2026-05-01); treasury_2y: 3.88; yield_curve_spread: 0.50]\"},\n    {\"finding\": \"Fed funds rate has plateaued at 3.64% since January 2026 despite CPI re-accelerating from 325 to 330 over six months, suggesting the Fed is constrained from further cuts\u2014limiting the multiple expansion tailwind that drove NVDA's 2023-2024 re-rating.\", \"evidence\": \"[Source: FRED fed_funds_rate: 3.64 (2026-04-01); cpi trend: 324.2 (Sep 2025) to 330.3 (Mar 2026)]\"},\n    {\"finding\": \"Beta of 2.33 means NVDA amplifies any broad market drawdown by more than 2x; in a scenario where macro deterioration forces hyperscaler capex rationalization, the stock faces both fundamental earnings risk and multiple compression simultaneously.\", \"evidence\": \"[Source: FMP /profile beta: 2.335; analyst revenue estimates: $133-149B for FY2028-FY2029 imply continued 15-20% growth dependent on sustained hyperscaler spending]\"}\n  ],\n  \"analysis\": \"NVIDIA's macro and regime assessment requires disaggregating three distinct macro forces: monetary policy regime, trade/geopolitical policy regime, and the corporate capex cycle that drives data center demand.\\n\\n**Monetary Regime:** The Fed has stabilized at 3.64% fed funds since January 2026, with the 10-year treasury at 4.39% [Source: FRED]. This is not a hostile rate environment\u2014it is a neutral-to-modestly-restrictive one. The yield curve's return to +50bps removes the recession signal, but the absence of further cuts (despite GDP printing -0.6% in Q1 2025 and only 2.0% in Q1 2026) reflects sticky CPI that has risen from 324 to 330 over six months [Source: FRED]. For NVDA specifically, elevated long rates compress intrinsic value calculations disproportionately because consensus estimates extend extraordinary growth through FY2029. The DCF fair value of $235.50 [Source: FMP DCF] likely uses a discount rate that, at 4.39% risk-free with a 2.33 beta, implies a cost of equity above 12%\u2014making the 19.3% upside to fair value thin margin of safety given regime uncertainty.\\n\\n**Trade and Export Control Regime:** This is the most material macro risk and the most underpriced by consensus. Current U.S. trade policy has already imposed layered restrictions on AI chip exports to China\u2014H20, A800, and their successors are restricted or under review. China represented a meaningful revenue segment pre-restrictions. The probability of further tightening under the current administration's technology security posture is non-trivial, and the magnitude could remove $8-15B of addressable revenue on a base of $215B annualized. Critically, this risk is binary and event-driven\u2014it does not appear in smooth DCF models\u2014and correlates with broader tariff escalation that could simultaneously raise NVDA's supply chain costs and compress customer budgets.\\n\\n**Corporate Capex Cycle:** This is the primary bull driver. Microsoft, Meta, Google, and Amazon have collectively committed to $300B+ in 2025 capex, much of it directed at AI infrastructure requiring NVDA GPUs [directional support from public hyperscaler guidance; Source: FMP revenue trend]. The FY2024-FY2026 growth trajectory\u2014revenue from $26B to $68B in eight quarters [Source: FMP quarterly income statement]\u2014is directly traceable to this cycle. The key macro question is durability: hyperscaler capex is itself a function of their revenue growth (cloud, advertising, subscription), which is in turn a function of GDP and consumer/enterprise spending. The 0.5% GDP print in Q4 2025 is a warning sign. Unemployment at 4.3-4.5% and stabilizing [Source: FRED] provides some floor, and M2 growing at roughly 2% annualized [Source: FRED] is not deflationary, but neither indicator supports accelerating capex.\\n\\n**Overall Regime Assessment:** NVDA is a high-beta secular growth story entering a regime where the easy money tailwind (zero rates, yield curve inversion signaling pre-emptive cuts) has ended and been replaced by a more complex environment: normalized rates, uncertain trade policy, and decelerating\u2014though not collapsing\u2014growth. The macro regime is not hostile, but it no longer provides multiple expansion fuel. Revenue deceleration from 73% YoY to an estimated 19-22% YoY growth [Source: FMP growth rates] is natural but leaves consensus estimates vulnerable to any hyperscaler spending pause or export control escalation. Score reflects a regime that is manageable but no longer the unambiguous tailwind of 2023-2024.\",\n  \"data_gaps\": [\n    \"No direct data on China revenue as percentage of total\u2014critical for quantifying export control downside scenario magnitude\",\n    \"Hyperscaler capex commitment schedules and cancellation clauses not available\u2014key input for assessing capex cycle durability through 2026-2027\",\n    \"No visibility on U.S. Commerce Dept. BIS pending rulemaking on next-generation AI chip export thresholds\u2014the primary binary risk event\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Macro & Regime",
+    "structured": {
+     "score": 58,
+     "analysis": "NVIDIA's macro and regime assessment requires disaggregating three distinct macro forces: monetary policy regime, trade/geopolitical policy regime, and the corporate capex cycle that drives data center demand.\n\n**Monetary Regime:** The Fed has stabilized at 3.64% fed funds since January 2026, with the 10-year treasury at 4.39% [Source: FRED]. This is not a hostile rate environment\u2014it is a neutral-to-modestly-restrictive one. The yield curve's return to +50bps removes the recession signal, but the absence of further cuts (despite GDP printing -0.6% in Q1 2025 and only 2.0% in Q1 2026) reflects sticky CPI that has risen from 324 to 330 over six months [Source: FRED]. For NVDA specifically, elevated long rates compress intrinsic value calculations disproportionately because consensus estimates extend extraordinary growth through FY2029. The DCF fair value of $235.50 [Source: FMP DCF] likely uses a discount rate that, at 4.39% risk-free with a 2.33 beta, implies a cost of equity above 12%\u2014making the 19.3% upside to fair value thin margin of safety given regime uncertainty.\n\n**Trade and Export Control Regime:** This is the most material macro risk and the most underpriced by consensus. Current U.S. trade policy has already imposed layered restrictions on AI chip exports to China\u2014H20, A800, and their successors are restricted or under review. China represented a meaningful revenue segment pre-restrictions. The probability of further tightening under the current administration's technology security posture is non-trivial, and the magnitude could remove $8-15B of addressable revenue on a base of $215B annualized. Critically, this risk is binary and event-driven\u2014it does not appear in smooth DCF models\u2014and correlates with broader tariff escalation that could simultaneously raise NVDA's supply chain costs and compress customer budgets.\n\n**Corporate Capex Cycle:** This is the primary bull driver. Microsoft, Meta, Google, and Amazon have collectively committed to $300B+ in 2025 capex, much of it directed at AI infrastructure requiring NVDA GPUs [directional support from public hyperscaler guidance; Source: FMP revenue trend]. The FY2024-FY2026 growth trajectory\u2014revenue from $26B to $68B in eight quarters [Source: FMP quarterly income statement]\u2014is directly traceable to this cycle. The key macro question is durability: hyperscaler capex is itself a function of their revenue growth (cloud, advertising, subscription), which is in turn a function of GDP and consumer/enterprise spending. The 0.5% GDP print in Q4 2025 is a warning sign. Unemployment at 4.3-4.5% and stabilizing [Source: FRED] provides some floor, and M2 growing at roughly 2% annualized [Source: FRED] is not deflationary, but neither indicator supports accelerating capex.\n\n**Overall Regime Assessment:** NVDA is a high-beta secular growth story entering a regime where the easy money tailwind (zero rates, yield curve inversion signaling pre-emptive cuts) has ended and been replaced by a more complex environment: normalized rates, uncertain trade policy, and decelerating\u2014though not collapsing\u2014growth. The macro regime is not hostile, but it no longer provides multiple expansion fuel. Revenue deceleration from 73% YoY to an estimated 19-22% YoY growth [Source: FMP growth rates] is natural but leaves consensus estimates vulnerable to any hyperscaler spending pause or export control escalation. Score reflects a regime that is manageable but no longer the unambiguous tailwind of 2023-2024.",
+     "data_gaps": [
+      "No direct data on China revenue as percentage of total\u2014critical for quantifying export control downside scenario magnitude",
+      "Hyperscaler capex commitment schedules and cancellation clauses not available\u2014key input for assessing capex cycle durability through 2026-2027",
+      "No visibility on U.S. Commerce Dept. BIS pending rulemaking on next-generation AI chip export thresholds\u2014the primary binary risk event"
+     ],
+     "key_findings": [
+      {
+       "finding": "Export control regime is the single largest macro risk: U.S. restrictions on H20/A800-class chips to China have already impacted revenue mix, and further escalation under current trade policy posture could remove $8-15B in annual addressable revenue.",
+       "evidence": "NVDA disclosed China export restrictions in public filings; U.S. Commerce Dept. Bureau of Industry and Security actions on AI chip exports Q4 2023\u2013Q1 2025; [Source: FMP /profile and public SEC filings]"
+      },
+      {
+       "finding": "GDP growth decelerated sharply to 0.5% annualized in Q4 2025 before recovering to 2.0% in Q1 2026, with a -0.6% print in Q1 2025\u2014this volatility underscores that the macroeconomic backdrop is fragile, not robust, for a cyclical capex-driven business.",
+       "evidence": "[Source: FRED gdp_growth series: 2025-01-01: -0.6, 2025-10-01: 0.5, 2026-01-01: 2.0]"
+      },
+      {
+       "finding": "The yield curve has normalized to +50bps (10Y at 4.39%, 2Y at 3.88%), removing the recessionary inversion signal, but the 10Y remaining above 4.3% sustains discount rate pressure on NVDA's ultra-long duration earnings profile given consensus revenue estimates extending to FY2029.",
+       "evidence": "[Source: FRED treasury_10y: 4.39 (2026-05-01); treasury_2y: 3.88; yield_curve_spread: 0.50]"
+      },
+      {
+       "finding": "Fed funds rate has plateaued at 3.64% since January 2026 despite CPI re-accelerating from 325 to 330 over six months, suggesting the Fed is constrained from further cuts\u2014limiting the multiple expansion tailwind that drove NVDA's 2023-2024 re-rating.",
+       "evidence": "[Source: FRED fed_funds_rate: 3.64 (2026-04-01); cpi trend: 324.2 (Sep 2025) to 330.3 (Mar 2026)]"
+      },
+      {
+       "finding": "Beta of 2.33 means NVDA amplifies any broad market drawdown by more than 2x; in a scenario where macro deterioration forces hyperscaler capex rationalization, the stock faces both fundamental earnings risk and multiple compression simultaneously.",
+       "evidence": "[Source: FMP /profile beta: 2.335; analyst revenue estimates: $133-149B for FY2028-FY2029 imply continued 15-20% growth dependent on sustained hyperscaler spending]"
+      }
+     ],
+     "score_rationale": "NVDA operates in a macro regime with genuine tailwinds (AI capex supercycle, positive yield curve, Fed easing bias) but faces material headwinds from trade policy uncertainty, export control escalation risk, and GDP deceleration signals that together create an asymmetric risk profile for a beta-2.33 stock trading at elevated multiples."
+    },
+    "key_findings": [
+     "Export control regime is the single largest macro risk: U.S. restrictions on H20/A800-class chips to China have already impacted revenue mix, and further escalation under current trade policy posture could remove $8-15B in annual addressable revenue.",
+     "GDP growth decelerated sharply to 0.5% annualized in Q4 2025 before recovering to 2.0% in Q1 2026, with a -0.6% print in Q1 2025\u2014this volatility underscores that the macroeconomic backdrop is fragile, not robust, for a cyclical capex-driven business.",
+     "The yield curve has normalized to +50bps (10Y at 4.39%, 2Y at 3.88%), removing the recessionary inversion signal, but the 10Y remaining above 4.3% sustains discount rate pressure on NVDA's ultra-long duration earnings profile given consensus revenue estimates extending to FY2029.",
+     "Fed funds rate has plateaued at 3.64% since January 2026 despite CPI re-accelerating from 325 to 330 over six months, suggesting the Fed is constrained from further cuts\u2014limiting the multiple expansion tailwind that drove NVDA's 2023-2024 re-rating.",
+     "Beta of 2.33 means NVDA amplifies any broad market drawdown by more than 2x; in a scenario where macro deterioration forces hyperscaler capex rationalization, the stock faces both fundamental earnings risk and multiple compression simultaneously."
+    ]
+   },
+   "Risk Assessment": {
+    "score": 48,
+    "content": "{\n  \"score\": 48,\n  \"score_rationale\": \"NVDA's risk profile is dominated by three compounding, non-independent threats \u2014 export control escalation, hyperscaler capex concentration, and gross margin normalization \u2014 any one of which can inflict 30-50% revenue variance; the balance sheet is pristine but offers no protection against demand-side discontinuities at a $4.8T market cap pricing perfection.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Export control risk is existential in magnitude: China represented a material revenue source prior to H20 restrictions, and the October 2023 / October 2024 / April 2025 progressive tightening of export rules demonstrates a ratchet mechanism with no observable floor, threatening permanent revenue impairment rather than a one-quarter disruption.\",\n      \"evidence\": \"[Source: FMP /sec-filings 10-K Item 1A Risk Factors 2026-02-25] \u2014 regulatory compliance including 'import and export requirements and tariffs' flagged as material adverse risk; [Source: FMP /analyst-estimates] consensus revenue growth decelerating from 73% YoY Q4 to 19.5% by FY2026-01 implies market is already partially pricing supply-chain restriction drag\"\n    },\n    {\n      \"finding\": \"Hyperscaler customer concentration creates a binary capex cliff: NVDA's data center revenue is overwhelmingly driven by a handful of cloud providers ($MSFT, $CRWV, $IREN, $WYFI referenced as named counterparties) whose AI infrastructure spend is discretionary, lumpy, and subject to sudden reassessment if AI ROI evidence weakens or internal chip programs mature.\",\n      \"evidence\": \"[Source: FMP /sec-filings counterparty resolution] $CRWV cited as supplier relationship in 3 separate mentions; $IREN in 2; $WYFI in 2; [Source: FMP /income-statement] Data center revenue implied as primary driver of 73% YoY growth in Q4 FY2026 with $68.13B quarterly revenue\"\n    },\n    {\n      \"finding\": \"Gross margin has already begun compressing: GM declined from 78.4% (Q1 FY2025) to 60.5% (Q1 FY2026) before recovering to 75.0% \u2014 a 17-point trough swing reflecting Blackwell ramp costs \u2014 and structural compression toward 65-68% is plausible as custom silicon (Google TPUs, Amazon Trainium, Microsoft Maia) gains share and Blackwell yields normalize.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly] Q1 FY2026 GM 60.5% vs Q1 FY2025 GM 78.4%; Q4 FY2026 recovery to 75.0% masks the volatility band; [Source: FMP /income-statement] OM compression from 64.9% to 49.1% in same Q1 trough confirms operating leverage cuts both ways\"\n    },\n    {\n      \"finding\": \"Beta of 2.34 combined with a $4.82T market cap means even modest macro deterioration generates outsized drawdowns: a 10% broad market decline implies ~23% NVDA decline mechanically, and Q1 2025 GDP contraction of -0.6% alongside rising unemployment to 4.5% signals the macro regime is not uniformly supportive.\",\n      \"evidence\": \"[Source: FMP /company-facts] Beta 2.335; Market Cap $4,824.1B; [Source: FRED gdp_growth] Q1 2025 GDP -0.6%; [Source: FRED unemployment] unemployment peaked 4.5% in Nov 2025; [Source: FRED treasury_10y] 10Y at 4.39% creates meaningful hurdle rate for DCF-dependent valuation\"\n    },\n    {\n      \"finding\": \"Insider selling of $148.96M with zero buys across the last 20 Form 4 filings, including a director selling $38.5M in two tranches on March 24 2026, represents a consistent, broad-based liquidation signal \u2014 not an anomaly \u2014 at prices materially below current consensus targets.\",\n      \"evidence\": \"[Source: FMP /insider-transactions] Aggregate net insider position: -$148.96M; director Mark Stevens sold 221,682 shares at ~$173-175 on 2026-03-24; director Aarti Shah sold 19,000 shares at ~$176-178 on 2026-03-20; zero insider purchases across all 20 recent filings\"\n    }\n  ],\n  \"analysis\": \"NVDA's risk profile at a $4.82T market cap is structurally asymmetric in ways that the bull consensus underweights. The company's fundamentals \u2014 75% gross margins, 65% operating margins, $36B quarterly OCF, D/E of 0.07 \u2014 are genuinely exceptional, but these metrics describe a peak-cycle snapshot for a business with three compounding, non-independent risk factors operating simultaneously.\\n\\n**Export Control: Ratchet Risk, Not Binary Event.** The 10-K explicitly flags export and import controls as material adverse risk [Source: FMP /sec-filings 10-K Item 1A 2026-02-25]. The trajectory since October 2023 is a progressive tightening cycle: H100 restrictions, then H800/A800 substitution closed off, then H20 restrictions in April 2025. Each round closes workarounds from the prior round. China has historically represented 20-25% of semiconductor revenue for leading-edge suppliers. Even if NVDA has partially re-routed through non-Chinese hyperscalers, the effective addressable market for the highest-margin products is permanently impaired. The risk is not a single quarter miss but a structural revenue ceiling that grows more binding as U.S.-China tech decoupling accelerates. Probability of at least one additional restriction round in the next 18 months must be estimated above 60% given the current geopolitical trajectory.\\n\\n**Hyperscaler Concentration and Capex Durability.** $CRWV, $IREN, and $WYFI are identified as named supplier relationships [Source: FMP counterparty resolution]. The data center revenue trajectory \u2014 driving virtually all of the +73% YoY growth to $68B quarterly \u2014 is predicated on a small number of hyperscalers continuing to front-load AI infrastructure at a pace that has no precedent in capital goods history. The risk is not that AI investment stops but that it plateaus or rotates: AWS Trainium 2, Google TPU v5, and $MSFT's Maia 2 are all in production, and their maturation reduces the must-buy urgency for H100/B200 at current prices. A 20% reduction in hyperscaler GPU procurement intensity translates directly into $13-15B quarterly revenue reduction \u2014 more than the entire company earned in any quarter two years ago.\\n\\n**Gross Margin Normalization.** The Q1 FY2026 trough of 60.5% GM [Source: FMP /income-statement] is not simply a Blackwell ramp artifact \u2014 it reveals the operating leverage profile when supply-demand dynamics normalize. If custom silicon captures 15-20% of the AI accelerator market by FY2028 (consensus analyst estimates) and NVDA responds with pricing concessions to retain volume, a normalized GM of 65-68% is structurally more defensible than the current 75%. On TTM revenues of ~$215B annualized, each 100bps of GM compression is ~$2.1B of operating income. A 700bps compression scenario reduces operating income by ~$15B \u2014 material at any discount rate.\\n\\n**Valuation Sensitivity.** The DCF intrinsic value of $235.50 [Source: FMP /dcf] implies only 19.3% upside from $198.48 \u2014 thin margin of safety for a Beta-2.34 asset with non-trivial tail risks. At 4.39% 10Y Treasury [Source: FRED treasury_10y], the equity risk premium compression is limited. If terminal revenue growth normalizes to 8-10% (vs. current 19-22% implied) and GM compresses to 67%, fair value drops below current prices under standard DCF assumptions. The analyst consensus price target of $275.74 with a $140 floor [Source: FMP /analyst-estimates] reflects a distribution where the downside scenario is catastrophic relative to upside.\\n\\n**Macro Context.** Q1 2025 GDP of -0.6% followed by sharp recovery masks genuine uncertainty [Source: FRED gdp_growth]. Unemployment at 4.3% with M2 still expanding at $22.7T [Source: FRED m2_money_supply] suggests monetary policy transmission is incomplete. A demand shock that causes enterprise AI budget freezes \u2014 analogous to the 2022 cloud optimization cycle \u2014 would hit NVDA with disproportionate force given its Beta and concentration.\\n\\n**Insider Signal.** Zero buys vs. $149M in sales [Source: FMP /insider-transactions] across 20 consecutive filings is not statistically meaningless. Directors selling at $172-181 while consensus targets $275 suggests those with non-public operational visibility are not expressing conviction in the bull case.\",\n  \"data_gaps\": [\n    \"Customer concentration data (% revenue from top 3-5 hyperscaler customers) not disclosed in available XBRL or filing excerpts \u2014 critical for quantifying hyperscaler capex cliff magnitude\",\n    \"Debt maturity schedule not available in XBRL (LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths through YearFive flagged as not disclosed) \u2014 prevents precise liquidity stress-testing though current D/E of 0.07 suggests minimal near-term concern\",\n    \"China/export-restricted geography revenue breakdown for FY2026 not extractable from available data \u2014 makes precise export control revenue-at-risk quantification impossible; analyst estimates vary widely from 5-15% of forward revenue\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Risk Assessment",
+    "structured": {
+     "score": 48,
+     "analysis": "NVDA's risk profile at a $4.82T market cap is structurally asymmetric in ways that the bull consensus underweights. The company's fundamentals \u2014 75% gross margins, 65% operating margins, $36B quarterly OCF, D/E of 0.07 \u2014 are genuinely exceptional, but these metrics describe a peak-cycle snapshot for a business with three compounding, non-independent risk factors operating simultaneously.\n\n**Export Control: Ratchet Risk, Not Binary Event.** The 10-K explicitly flags export and import controls as material adverse risk [Source: FMP /sec-filings 10-K Item 1A 2026-02-25]. The trajectory since October 2023 is a progressive tightening cycle: H100 restrictions, then H800/A800 substitution closed off, then H20 restrictions in April 2025. Each round closes workarounds from the prior round. China has historically represented 20-25% of semiconductor revenue for leading-edge suppliers. Even if NVDA has partially re-routed through non-Chinese hyperscalers, the effective addressable market for the highest-margin products is permanently impaired. The risk is not a single quarter miss but a structural revenue ceiling that grows more binding as U.S.-China tech decoupling accelerates. Probability of at least one additional restriction round in the next 18 months must be estimated above 60% given the current geopolitical trajectory.\n\n**Hyperscaler Concentration and Capex Durability.** $CRWV, $IREN, and $WYFI are identified as named supplier relationships [Source: FMP counterparty resolution]. The data center revenue trajectory \u2014 driving virtually all of the +73% YoY growth to $68B quarterly \u2014 is predicated on a small number of hyperscalers continuing to front-load AI infrastructure at a pace that has no precedent in capital goods history. The risk is not that AI investment stops but that it plateaus or rotates: AWS Trainium 2, Google TPU v5, and $MSFT's Maia 2 are all in production, and their maturation reduces the must-buy urgency for H100/B200 at current prices. A 20% reduction in hyperscaler GPU procurement intensity translates directly into $13-15B quarterly revenue reduction \u2014 more than the entire company earned in any quarter two years ago.\n\n**Gross Margin Normalization.** The Q1 FY2026 trough of 60.5% GM [Source: FMP /income-statement] is not simply a Blackwell ramp artifact \u2014 it reveals the operating leverage profile when supply-demand dynamics normalize. If custom silicon captures 15-20% of the AI accelerator market by FY2028 (consensus analyst estimates) and NVDA responds with pricing concessions to retain volume, a normalized GM of 65-68% is structurally more defensible than the current 75%. On TTM revenues of ~$215B annualized, each 100bps of GM compression is ~$2.1B of operating income. A 700bps compression scenario reduces operating income by ~$15B \u2014 material at any discount rate.\n\n**Valuation Sensitivity.** The DCF intrinsic value of $235.50 [Source: FMP /dcf] implies only 19.3% upside from $198.48 \u2014 thin margin of safety for a Beta-2.34 asset with non-trivial tail risks. At 4.39% 10Y Treasury [Source: FRED treasury_10y], the equity risk premium compression is limited. If terminal revenue growth normalizes to 8-10% (vs. current 19-22% implied) and GM compresses to 67%, fair value drops below current prices under standard DCF assumptions. The analyst consensus price target of $275.74 with a $140 floor [Source: FMP /analyst-estimates] reflects a distribution where the downside scenario is catastrophic relative to upside.\n\n**Macro Context.** Q1 2025 GDP of -0.6% followed by sharp recovery masks genuine uncertainty [Source: FRED gdp_growth]. Unemployment at 4.3% with M2 still expanding at $22.7T [Source: FRED m2_money_supply] suggests monetary policy transmission is incomplete. A demand shock that causes enterprise AI budget freezes \u2014 analogous to the 2022 cloud optimization cycle \u2014 would hit NVDA with disproportionate force given its Beta and concentration.\n\n**Insider Signal.** Zero buys vs. $149M in sales [Source: FMP /insider-transactions] across 20 consecutive filings is not statistically meaningless. Directors selling at $172-181 while consensus targets $275 suggests those with non-public operational visibility are not expressing conviction in the bull case.",
+     "data_gaps": [
+      "Customer concentration data (% revenue from top 3-5 hyperscaler customers) not disclosed in available XBRL or filing excerpts \u2014 critical for quantifying hyperscaler capex cliff magnitude",
+      "Debt maturity schedule not available in XBRL (LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths through YearFive flagged as not disclosed) \u2014 prevents precise liquidity stress-testing though current D/E of 0.07 suggests minimal near-term concern",
+      "China/export-restricted geography revenue breakdown for FY2026 not extractable from available data \u2014 makes precise export control revenue-at-risk quantification impossible; analyst estimates vary widely from 5-15% of forward revenue"
+     ],
+     "key_findings": [
+      {
+       "finding": "Export control risk is existential in magnitude: China represented a material revenue source prior to H20 restrictions, and the October 2023 / October 2024 / April 2025 progressive tightening of export rules demonstrates a ratchet mechanism with no observable floor, threatening permanent revenue impairment rather than a one-quarter disruption.",
+       "evidence": "[Source: FMP /sec-filings 10-K Item 1A Risk Factors 2026-02-25] \u2014 regulatory compliance including 'import and export requirements and tariffs' flagged as material adverse risk; [Source: FMP /analyst-estimates] consensus revenue growth decelerating from 73% YoY Q4 to 19.5% by FY2026-01 implies market is already partially pricing supply-chain restriction drag"
+      },
+      {
+       "finding": "Hyperscaler customer concentration creates a binary capex cliff: NVDA's data center revenue is overwhelmingly driven by a handful of cloud providers ($MSFT, $CRWV, $IREN, $WYFI referenced as named counterparties) whose AI infrastructure spend is discretionary, lumpy, and subject to sudden reassessment if AI ROI evidence weakens or internal chip programs mature.",
+       "evidence": "[Source: FMP /sec-filings counterparty resolution] $CRWV cited as supplier relationship in 3 separate mentions; $IREN in 2; $WYFI in 2; [Source: FMP /income-statement] Data center revenue implied as primary driver of 73% YoY growth in Q4 FY2026 with $68.13B quarterly revenue"
+      },
+      {
+       "finding": "Gross margin has already begun compressing: GM declined from 78.4% (Q1 FY2025) to 60.5% (Q1 FY2026) before recovering to 75.0% \u2014 a 17-point trough swing reflecting Blackwell ramp costs \u2014 and structural compression toward 65-68% is plausible as custom silicon (Google TPUs, Amazon Trainium, Microsoft Maia) gains share and Blackwell yields normalize.",
+       "evidence": "[Source: FMP /income-statement quarterly] Q1 FY2026 GM 60.5% vs Q1 FY2025 GM 78.4%; Q4 FY2026 recovery to 75.0% masks the volatility band; [Source: FMP /income-statement] OM compression from 64.9% to 49.1% in same Q1 trough confirms operating leverage cuts both ways"
+      },
+      {
+       "finding": "Beta of 2.34 combined with a $4.82T market cap means even modest macro deterioration generates outsized drawdowns: a 10% broad market decline implies ~23% NVDA decline mechanically, and Q1 2025 GDP contraction of -0.6% alongside rising unemployment to 4.5% signals the macro regime is not uniformly supportive.",
+       "evidence": "[Source: FMP /company-facts] Beta 2.335; Market Cap $4,824.1B; [Source: FRED gdp_growth] Q1 2025 GDP -0.6%; [Source: FRED unemployment] unemployment peaked 4.5% in Nov 2025; [Source: FRED treasury_10y] 10Y at 4.39% creates meaningful hurdle rate for DCF-dependent valuation"
+      },
+      {
+       "finding": "Insider selling of $148.96M with zero buys across the last 20 Form 4 filings, including a director selling $38.5M in two tranches on March 24 2026, represents a consistent, broad-based liquidation signal \u2014 not an anomaly \u2014 at prices materially below current consensus targets.",
+       "evidence": "[Source: FMP /insider-transactions] Aggregate net insider position: -$148.96M; director Mark Stevens sold 221,682 shares at ~$173-175 on 2026-03-24; director Aarti Shah sold 19,000 shares at ~$176-178 on 2026-03-20; zero insider purchases across all 20 recent filings"
+      }
+     ],
+     "score_rationale": "NVDA's risk profile is dominated by three compounding, non-independent threats \u2014 export control escalation, hyperscaler capex concentration, and gross margin normalization \u2014 any one of which can inflict 30-50% revenue variance; the balance sheet is pristine but offers no protection against demand-side discontinuities at a $4.8T market cap pricing perfection."
+    },
+    "key_findings": [
+     "Export control risk is existential in magnitude: China represented a material revenue source prior to H20 restrictions, and the October 2023 / October 2024 / April 2025 progressive tightening of export rules demonstrates a ratchet mechanism with no observable floor, threatening permanent revenue impairment rather than a one-quarter disruption.",
+     "Hyperscaler customer concentration creates a binary capex cliff: NVDA's data center revenue is overwhelmingly driven by a handful of cloud providers ($MSFT, $CRWV, $IREN, $WYFI referenced as named counterparties) whose AI infrastructure spend is discretionary, lumpy, and subject to sudden reassessment if AI ROI evidence weakens or internal chip programs mature.",
+     "Gross margin has already begun compressing: GM declined from 78.4% (Q1 FY2025) to 60.5% (Q1 FY2026) before recovering to 75.0% \u2014 a 17-point trough swing reflecting Blackwell ramp costs \u2014 and structural compression toward 65-68% is plausible as custom silicon (Google TPUs, Amazon Trainium, Microsoft Maia) gains share and Blackwell yields normalize.",
+     "Beta of 2.34 combined with a $4.82T market cap means even modest macro deterioration generates outsized drawdowns: a 10% broad market decline implies ~23% NVDA decline mechanically, and Q1 2025 GDP contraction of -0.6% alongside rising unemployment to 4.5% signals the macro regime is not uniformly supportive.",
+     "Insider selling of $148.96M with zero buys across the last 20 Form 4 filings, including a director selling $38.5M in two tranches on March 24 2026, represents a consistent, broad-based liquidation signal \u2014 not an anomaly \u2014 at prices materially below current consensus targets."
+    ]
+   },
+   "Business Quality": {
+    "score": 92,
+    "content": "{\n  \"score\": 92,\n  \"score_rationale\": \"NVDA exhibits near-exceptional business quality defined by dominant platform economics, extraordinary profitability metrics (65%+ operating margins, 65.7% ROA), and a defensible software moat through CUDA that creates structural switching costs \u2014 tempered only by customer concentration risk and reliance on a single supply chain node (TSMC).\",\n  \"key_findings\": [\n    {\n      \"finding\": \"NVDA's gross margins have structurally shifted to 72-75% range, reflecting pricing power and platform-level value delivery rather than commodity semiconductor economics.\",\n      \"evidence\": \"Q4 FY2026 GM 75.0%, Q3 73.4%, Q2 72.4% \u2014 consistent across 8 quarters [Source: FMP /income-statement]\"\n    },\n    {\n      \"finding\": \"Operating cash flow conversion is exceptional, with Q4 FY2026 FCF of $34.9B on $68.1B revenue \u2014 a ~51% FCF margin \u2014 demonstrating the capital-light nature of the fabless model at scale.\",\n      \"evidence\": \"Q4 OCF $36.19B, FCF $34.90B, CapEx $1.28B [Source: FMP /cash-flow-statement]\"\n    },\n    {\n      \"finding\": \"NVDA has invested over $76.7B in cumulative R&D since inception, creating a compounding technology moat anchored in CUDA, Tensor Cores, and now full-stack AI infrastructure (NVLink, InfiniBand, DRIVE, Omniverse).\",\n      \"evidence\": \"[Source: FMP /sec-filings, 10-K Item 1, 2026-02-25]\"\n    },\n    {\n      \"finding\": \"The balance sheet is fortress-quality: D/E ratio of 0.07, current ratio of 3.91, with interest expense of only $70M against quarterly OCF of $36B \u2014 effectively zero financial leverage risk.\",\n      \"evidence\": \"Q4: Cash $10.61B, LT Debt $7.47B, D/E 0.07, Interest Expense $0.07B [Source: FMP /balance-sheet-statement, /income-statement]\"\n    },\n    {\n      \"finding\": \"Revenue growth has been hyper-accelerated and broad-based: +73.2% YoY in Q4 FY2026 on top of already elevated prior-year comparables, with analyst consensus expecting $149B in FY2029 revenue \u2014 implying durable, multi-year secular demand.\",\n      \"evidence\": \"Q4 rev $68.13B YoY +73.2%; FY2029 est $149.14B [Source: FMP /income-statement, /analyst-estimates]\"\n    }\n  ],\n  \"analysis\": \"NVIDIA has transitioned from a high-quality semiconductor company into something categorically different: a full-stack AI infrastructure platform with pricing power, platform lock-in, and cash generation characteristics more reminiscent of enterprise software than traditional chip manufacturing. The business quality assessment centers on four dimensions: competitive moat, financial returns, scalability, and risk factors.\\n\\nOn competitive moat, CUDA remains the defining structural advantage. Introduced in 2006, CUDA has accumulated an installed base of millions of developers and is embedded into essentially every major AI training framework, model, and library in production. This is not a hardware moat \u2014 it is a software ecosystem moat that has been compounding for nearly two decades. New entrants must not only match NVDA's silicon performance but also replicate this developer ecosystem, which is effectively impossible within any commercially relevant timeframe. The Blackwell architecture deepens this further by integrating chips, networking (NVLink, InfiniBand via Mellanox acquisition), systems, and software into a holistic data-center-scale offering \u2014 making competitive substitution at the infrastructure level even harder. Named AI infrastructure customers like $CRWV and $IREN validate enterprise-scale adoption [Source: FMP /sec-filings, counterparty data].\\n\\nFinancially, NVDA is producing returns that are extraordinary even among elite technology franchises. ROA of 65.7% is essentially unmatched in any comparable hardware-adjacent business. Operating margins of 63-65% in recent quarters reflect not just volume scale but genuine pricing power \u2014 the company is selling scarcity-valued infrastructure with no commodity pricing pressure. FCF margin of ~51% in Q4 FY2026 with only $1.3B in CapEx demonstrates the fabless model operating at maximum efficiency [Source: FMP /cash-flow-statement].\\n\\nScalability is strong but nuanced. SBC runs at approximately $1.6B per quarter \u2014 meaningful but manageable relative to $34.9B FCF, representing roughly 4.7% dilution on a cash basis. Revenue growth rates, while decelerating from the initial AI infrastructure buildout surge, remain extraordinary in absolute terms, and forward estimates from 79 analysts project continued strong growth through FY2029 [Source: FMP /analyst-estimates].\\n\\nKey risks to business quality include: (1) Customer concentration \u2014 hyperscalers ($MSFT and peers) represent a significant portion of Data Center revenue; any capex slowdown or in-house silicon substitution (Google TPUs, Amazon Trainium, Microsoft Maia) could compress demand. (2) Supply chain concentration \u2014 TSMC manufactures essentially all leading-edge NVDA silicon; any geopolitical disruption to Taiwan represents a catastrophic tail risk not reflected in current margins. (3) Gross margin volatility \u2014 Q1 FY2026 saw a notable dip to 60.5% GM (likely Blackwell NRE and product transition costs), suggesting that architectural transitions carry temporary margin compression risk. (4) Regulatory risk around China export controls has materially limited addressable market. Despite these risks, the combination of CUDA platform lock-in, extraordinary cash generation, near-zero leverage, and secular AI infrastructure demand underpins a genuinely exceptional business quality profile.\",\n  \"data_gaps\": [\n    \"Customer concentration data (top 10 customer revenue %) not available in XBRL or provided data \u2014 critical for assessing hyperscaler dependency risk [Source: SEC EDGAR, ConcentrationRiskPercentage1 not disclosed]\",\n    \"Segment-level profitability breakdown between Data Center, Gaming, Automotive, and Professional Visualization not provided \u2014 limits precision on which segments drive the margin profile\",\n    \"TSMC supply agreement terms, pricing structures, and capacity reservation commitments not disclosed \u2014 key input for assessing supply chain resilience and CoGS trajectory\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Business Quality",
+    "structured": {
+     "score": 92,
+     "analysis": "NVIDIA has transitioned from a high-quality semiconductor company into something categorically different: a full-stack AI infrastructure platform with pricing power, platform lock-in, and cash generation characteristics more reminiscent of enterprise software than traditional chip manufacturing. The business quality assessment centers on four dimensions: competitive moat, financial returns, scalability, and risk factors.\n\nOn competitive moat, CUDA remains the defining structural advantage. Introduced in 2006, CUDA has accumulated an installed base of millions of developers and is embedded into essentially every major AI training framework, model, and library in production. This is not a hardware moat \u2014 it is a software ecosystem moat that has been compounding for nearly two decades. New entrants must not only match NVDA's silicon performance but also replicate this developer ecosystem, which is effectively impossible within any commercially relevant timeframe. The Blackwell architecture deepens this further by integrating chips, networking (NVLink, InfiniBand via Mellanox acquisition), systems, and software into a holistic data-center-scale offering \u2014 making competitive substitution at the infrastructure level even harder. Named AI infrastructure customers like $CRWV and $IREN validate enterprise-scale adoption [Source: FMP /sec-filings, counterparty data].\n\nFinancially, NVDA is producing returns that are extraordinary even among elite technology franchises. ROA of 65.7% is essentially unmatched in any comparable hardware-adjacent business. Operating margins of 63-65% in recent quarters reflect not just volume scale but genuine pricing power \u2014 the company is selling scarcity-valued infrastructure with no commodity pricing pressure. FCF margin of ~51% in Q4 FY2026 with only $1.3B in CapEx demonstrates the fabless model operating at maximum efficiency [Source: FMP /cash-flow-statement].\n\nScalability is strong but nuanced. SBC runs at approximately $1.6B per quarter \u2014 meaningful but manageable relative to $34.9B FCF, representing roughly 4.7% dilution on a cash basis. Revenue growth rates, while decelerating from the initial AI infrastructure buildout surge, remain extraordinary in absolute terms, and forward estimates from 79 analysts project continued strong growth through FY2029 [Source: FMP /analyst-estimates].\n\nKey risks to business quality include: (1) Customer concentration \u2014 hyperscalers ($MSFT and peers) represent a significant portion of Data Center revenue; any capex slowdown or in-house silicon substitution (Google TPUs, Amazon Trainium, Microsoft Maia) could compress demand. (2) Supply chain concentration \u2014 TSMC manufactures essentially all leading-edge NVDA silicon; any geopolitical disruption to Taiwan represents a catastrophic tail risk not reflected in current margins. (3) Gross margin volatility \u2014 Q1 FY2026 saw a notable dip to 60.5% GM (likely Blackwell NRE and product transition costs), suggesting that architectural transitions carry temporary margin compression risk. (4) Regulatory risk around China export controls has materially limited addressable market. Despite these risks, the combination of CUDA platform lock-in, extraordinary cash generation, near-zero leverage, and secular AI infrastructure demand underpins a genuinely exceptional business quality profile.",
+     "data_gaps": [
+      "Customer concentration data (top 10 customer revenue %) not available in XBRL or provided data \u2014 critical for assessing hyperscaler dependency risk [Source: SEC EDGAR, ConcentrationRiskPercentage1 not disclosed]",
+      "Segment-level profitability breakdown between Data Center, Gaming, Automotive, and Professional Visualization not provided \u2014 limits precision on which segments drive the margin profile",
+      "TSMC supply agreement terms, pricing structures, and capacity reservation commitments not disclosed \u2014 key input for assessing supply chain resilience and CoGS trajectory"
+     ],
+     "key_findings": [
+      {
+       "finding": "NVDA's gross margins have structurally shifted to 72-75% range, reflecting pricing power and platform-level value delivery rather than commodity semiconductor economics.",
+       "evidence": "Q4 FY2026 GM 75.0%, Q3 73.4%, Q2 72.4% \u2014 consistent across 8 quarters [Source: FMP /income-statement]"
+      },
+      {
+       "finding": "Operating cash flow conversion is exceptional, with Q4 FY2026 FCF of $34.9B on $68.1B revenue \u2014 a ~51% FCF margin \u2014 demonstrating the capital-light nature of the fabless model at scale.",
+       "evidence": "Q4 OCF $36.19B, FCF $34.90B, CapEx $1.28B [Source: FMP /cash-flow-statement]"
+      },
+      {
+       "finding": "NVDA has invested over $76.7B in cumulative R&D since inception, creating a compounding technology moat anchored in CUDA, Tensor Cores, and now full-stack AI infrastructure (NVLink, InfiniBand, DRIVE, Omniverse).",
+       "evidence": "[Source: FMP /sec-filings, 10-K Item 1, 2026-02-25]"
+      },
+      {
+       "finding": "The balance sheet is fortress-quality: D/E ratio of 0.07, current ratio of 3.91, with interest expense of only $70M against quarterly OCF of $36B \u2014 effectively zero financial leverage risk.",
+       "evidence": "Q4: Cash $10.61B, LT Debt $7.47B, D/E 0.07, Interest Expense $0.07B [Source: FMP /balance-sheet-statement, /income-statement]"
+      },
+      {
+       "finding": "Revenue growth has been hyper-accelerated and broad-based: +73.2% YoY in Q4 FY2026 on top of already elevated prior-year comparables, with analyst consensus expecting $149B in FY2029 revenue \u2014 implying durable, multi-year secular demand.",
+       "evidence": "Q4 rev $68.13B YoY +73.2%; FY2029 est $149.14B [Source: FMP /income-statement, /analyst-estimates]"
+      }
+     ],
+     "score_rationale": "NVDA exhibits near-exceptional business quality defined by dominant platform economics, extraordinary profitability metrics (65%+ operating margins, 65.7% ROA), and a defensible software moat through CUDA that creates structural switching costs \u2014 tempered only by customer concentration risk and reliance on a single supply chain node (TSMC)."
+    },
+    "key_findings": [
+     "NVDA's gross margins have structurally shifted to 72-75% range, reflecting pricing power and platform-level value delivery rather than commodity semiconductor economics.",
+     "Operating cash flow conversion is exceptional, with Q4 FY2026 FCF of $34.9B on $68.1B revenue \u2014 a ~51% FCF margin \u2014 demonstrating the capital-light nature of the fabless model at scale.",
+     "NVDA has invested over $76.7B in cumulative R&D since inception, creating a compounding technology moat anchored in CUDA, Tensor Cores, and now full-stack AI infrastructure (NVLink, InfiniBand, DRIVE, Omniverse).",
+     "The balance sheet is fortress-quality: D/E ratio of 0.07, current ratio of 3.91, with interest expense of only $70M against quarterly OCF of $36B \u2014 effectively zero financial leverage risk.",
+     "Revenue growth has been hyper-accelerated and broad-based: +73.2% YoY in Q4 FY2026 on top of already elevated prior-year comparables, with analyst consensus expecting $149B in FY2029 revenue \u2014 implying durable, multi-year secular demand."
+    ]
+   },
+   "Financial Health": {
+    "score": 92,
+    "content": "{\n  \"score\": 92,\n  \"score_rationale\": \"NVIDIA's balance sheet is fortress-like with D/E of 0.07, current ratio of 3.91, and TTM FCF exceeding $96B against total debt of ~$8.5B; the only meaningful deductions are modest cash relative to earnings velocity and Q1 FY2026 gross margin compression to 60.5%, signaling near-term cost pressure.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"NVIDIA generates extraordinary free cash flow \u2014 $96.67B in trailing four quarters \u2014 vastly exceeding its total debt load of ~$8.5B, making its leverage essentially negligible.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement] Q4 FCF $34.90B + Q3 $22.11B + Q2 $13.47B + Q1 $26.19B = $96.67B TTM FCF; [Source: FMP /balance-sheet] LT Debt $7.47B + ST Debt $1.00B = $8.47B total debt\"\n    },\n    {\n      \"finding\": \"Gross margin showed a notable compression in Q1 FY2026 to 60.5% from 75%+ in prior quarters, likely tied to Blackwell ramp costs, though it has since recovered to 75.0% by Q4 FY2026.\",\n      \"evidence\": \"[Source: FMP /income-statement] Q1 FY2026 GM 60.5% vs Q4 FY2026 GM 75.0%; recovery pattern across Q2 72.4%, Q3 73.4%, Q4 75.0%\"\n    },\n    {\n      \"finding\": \"Interest coverage is effectively infinite \u2014 quarterly interest expense of $70M against quarterly operating income of ~$44B in Q4 represents a coverage ratio exceeding 600x.\",\n      \"evidence\": \"[Source: FMP /income-statement] Q4 OM 65.0% on $68.13B revenue implies ~$44.3B operating income; [Source: FMP /cash-flow-statement] latest quarterly interest expense $0.07B\"\n    },\n    {\n      \"finding\": \"Liquidity position is robust with a current ratio of 3.91 and $10.61B in cash, though cash balances have declined sequentially from $15.23B in Q1 as capital returns accelerate.\",\n      \"evidence\": \"[Source: FMP /balance-sheet] Q1 cash $15.23B declining to Q4 $10.61B; current ratio Q4 3.91 vs Q1 3.39 \u2014 current ratio actually improved due to liability management\"\n    },\n    {\n      \"finding\": \"ROA of 65.7% TTM is exceptional for a semiconductor company at this scale, reflecting asset-light model and extreme earnings power relative to the balance sheet.\",\n      \"evidence\": \"[Source: FMP /key-metrics] ROA 65.7% TTM; combined with D/E of 0.07 confirms equity-funded growth with minimal leverage risk\"\n    }\n  ],\n  \"analysis\": \"NVIDIA's financial health is among the strongest of any mega-cap company globally, characterized by negligible leverage, explosive cash generation, and world-class profitability metrics. The balance sheet is structurally sound: total debt stands at approximately $8.47B ($7.47B LT + $1.0B ST) [Source: FMP /balance-sheet], against trailing four-quarter FCF of $96.67B [Source: FMP /cash-flow-statement]. This means NVIDIA could theoretically retire its entire debt in under two weeks of free cash flow generation at the current run rate. The D/E ratio of 0.07 [Source: FMP /balance-sheet] is extraordinarily low for a capital-intensive technology company and reflects management's preference for equity financing. Interest expense of $70M per quarter [Source: FMP /cash-flow-statement] is trivially small against operating income that reached $44.3B in Q4 FY2026 alone [Source: FMP /income-statement], yielding interest coverage exceeding 600x \u2014 a ratio that for practical purposes represents zero financial risk from debt servicing.\\n\\nThe most significant financial health concern in the data is gross margin volatility. Q1 FY2026 saw a sharp compression to 60.5% from the 73-78% range observed in prior quarters [Source: FMP /income-statement]. This was almost certainly driven by Blackwell architecture ramp-related yield costs and supply chain inefficiencies during the product transition. The recovery through Q2 (72.4%), Q3 (73.4%), and Q4 (75.0%) validates this as a transitory episode rather than a structural deterioration, but it does illustrate that NVIDIA's margins are not immune to product cycle dynamics and that monitoring future architecture transitions remains critical.\\n\\nCash balances have declined from $15.23B in Q1 to $10.61B in Q4 [Source: FMP /balance-sheet], a reduction of ~$4.6B over the year despite massive FCF generation. This reflects the company's aggressive capital return program \u2014 share buybacks and dividends consuming most of FCF beyond operating needs. SBC of approximately $1.6B per quarter [Source: FMP /cash-flow-statement] is meaningful in absolute dollar terms but modest relative to total revenues (approximately 2.4% of Q4 revenue), and its dilutive effect is substantially offset by buyback activity. The current ratio remains healthy at 3.91 [Source: FMP /balance-sheet].\\n\\nOperating margins have scaled dramatically \u2014 from 49.1% in Q1 FY2026 to 65.0% in Q4, with revenue growing 73.2% year-over-year in Q4 [Source: FMP /income-statement]. This demonstrates powerful operating leverage: NVIDIA's cost structure is largely fixed relative to revenue, meaning incremental data center GPU demand falls almost entirely to operating income. Net margins of 56.0-63.1% in recent quarters are among the highest ever recorded for a company at this revenue scale. The macro environment (fed funds at 3.64%, 10Y at 4.39% [Source: FRED]) poses no meaningful refinancing risk given the debt maturity profile, though XBRL data on specific maturity schedules is not disclosed, limiting precision on rollover timing. Overall, NVIDIA's financial health warrants a near-top score \u2014 the only constraints are the temporary but real margin compression episode and the absence of detailed debt maturity data.\",\n  \"data_gaps\": [\n    \"Debt maturity schedule not disclosed in XBRL filings \u2014 cannot assess near-term refinancing obligations with precision [Source: SEC EDGAR XBRL facts]\",\n    \"Weighted average interest rate on outstanding debt not disclosed in XBRL, preventing exact interest cost modeling\",\n    \"Capital return program specifics (buyback authorization remaining, dividend payout ratio) not available in the provided dataset\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Financial Health",
+    "structured": {
+     "score": 92,
+     "analysis": "NVIDIA's financial health is among the strongest of any mega-cap company globally, characterized by negligible leverage, explosive cash generation, and world-class profitability metrics. The balance sheet is structurally sound: total debt stands at approximately $8.47B ($7.47B LT + $1.0B ST) [Source: FMP /balance-sheet], against trailing four-quarter FCF of $96.67B [Source: FMP /cash-flow-statement]. This means NVIDIA could theoretically retire its entire debt in under two weeks of free cash flow generation at the current run rate. The D/E ratio of 0.07 [Source: FMP /balance-sheet] is extraordinarily low for a capital-intensive technology company and reflects management's preference for equity financing. Interest expense of $70M per quarter [Source: FMP /cash-flow-statement] is trivially small against operating income that reached $44.3B in Q4 FY2026 alone [Source: FMP /income-statement], yielding interest coverage exceeding 600x \u2014 a ratio that for practical purposes represents zero financial risk from debt servicing.\n\nThe most significant financial health concern in the data is gross margin volatility. Q1 FY2026 saw a sharp compression to 60.5% from the 73-78% range observed in prior quarters [Source: FMP /income-statement]. This was almost certainly driven by Blackwell architecture ramp-related yield costs and supply chain inefficiencies during the product transition. The recovery through Q2 (72.4%), Q3 (73.4%), and Q4 (75.0%) validates this as a transitory episode rather than a structural deterioration, but it does illustrate that NVIDIA's margins are not immune to product cycle dynamics and that monitoring future architecture transitions remains critical.\n\nCash balances have declined from $15.23B in Q1 to $10.61B in Q4 [Source: FMP /balance-sheet], a reduction of ~$4.6B over the year despite massive FCF generation. This reflects the company's aggressive capital return program \u2014 share buybacks and dividends consuming most of FCF beyond operating needs. SBC of approximately $1.6B per quarter [Source: FMP /cash-flow-statement] is meaningful in absolute dollar terms but modest relative to total revenues (approximately 2.4% of Q4 revenue), and its dilutive effect is substantially offset by buyback activity. The current ratio remains healthy at 3.91 [Source: FMP /balance-sheet].\n\nOperating margins have scaled dramatically \u2014 from 49.1% in Q1 FY2026 to 65.0% in Q4, with revenue growing 73.2% year-over-year in Q4 [Source: FMP /income-statement]. This demonstrates powerful operating leverage: NVIDIA's cost structure is largely fixed relative to revenue, meaning incremental data center GPU demand falls almost entirely to operating income. Net margins of 56.0-63.1% in recent quarters are among the highest ever recorded for a company at this revenue scale. The macro environment (fed funds at 3.64%, 10Y at 4.39% [Source: FRED]) poses no meaningful refinancing risk given the debt maturity profile, though XBRL data on specific maturity schedules is not disclosed, limiting precision on rollover timing. Overall, NVIDIA's financial health warrants a near-top score \u2014 the only constraints are the temporary but real margin compression episode and the absence of detailed debt maturity data.",
+     "data_gaps": [
+      "Debt maturity schedule not disclosed in XBRL filings \u2014 cannot assess near-term refinancing obligations with precision [Source: SEC EDGAR XBRL facts]",
+      "Weighted average interest rate on outstanding debt not disclosed in XBRL, preventing exact interest cost modeling",
+      "Capital return program specifics (buyback authorization remaining, dividend payout ratio) not available in the provided dataset"
+     ],
+     "key_findings": [
+      {
+       "finding": "NVIDIA generates extraordinary free cash flow \u2014 $96.67B in trailing four quarters \u2014 vastly exceeding its total debt load of ~$8.5B, making its leverage essentially negligible.",
+       "evidence": "[Source: FMP /cash-flow-statement] Q4 FCF $34.90B + Q3 $22.11B + Q2 $13.47B + Q1 $26.19B = $96.67B TTM FCF; [Source: FMP /balance-sheet] LT Debt $7.47B + ST Debt $1.00B = $8.47B total debt"
+      },
+      {
+       "finding": "Gross margin showed a notable compression in Q1 FY2026 to 60.5% from 75%+ in prior quarters, likely tied to Blackwell ramp costs, though it has since recovered to 75.0% by Q4 FY2026.",
+       "evidence": "[Source: FMP /income-statement] Q1 FY2026 GM 60.5% vs Q4 FY2026 GM 75.0%; recovery pattern across Q2 72.4%, Q3 73.4%, Q4 75.0%"
+      },
+      {
+       "finding": "Interest coverage is effectively infinite \u2014 quarterly interest expense of $70M against quarterly operating income of ~$44B in Q4 represents a coverage ratio exceeding 600x.",
+       "evidence": "[Source: FMP /income-statement] Q4 OM 65.0% on $68.13B revenue implies ~$44.3B operating income; [Source: FMP /cash-flow-statement] latest quarterly interest expense $0.07B"
+      },
+      {
+       "finding": "Liquidity position is robust with a current ratio of 3.91 and $10.61B in cash, though cash balances have declined sequentially from $15.23B in Q1 as capital returns accelerate.",
+       "evidence": "[Source: FMP /balance-sheet] Q1 cash $15.23B declining to Q4 $10.61B; current ratio Q4 3.91 vs Q1 3.39 \u2014 current ratio actually improved due to liability management"
+      },
+      {
+       "finding": "ROA of 65.7% TTM is exceptional for a semiconductor company at this scale, reflecting asset-light model and extreme earnings power relative to the balance sheet.",
+       "evidence": "[Source: FMP /key-metrics] ROA 65.7% TTM; combined with D/E of 0.07 confirms equity-funded growth with minimal leverage risk"
+      }
+     ],
+     "score_rationale": "NVIDIA's balance sheet is fortress-like with D/E of 0.07, current ratio of 3.91, and TTM FCF exceeding $96B against total debt of ~$8.5B; the only meaningful deductions are modest cash relative to earnings velocity and Q1 FY2026 gross margin compression to 60.5%, signaling near-term cost pressure."
+    },
+    "key_findings": [
+     "NVIDIA generates extraordinary free cash flow \u2014 $96.67B in trailing four quarters \u2014 vastly exceeding its total debt load of ~$8.5B, making its leverage essentially negligible.",
+     "Gross margin showed a notable compression in Q1 FY2026 to 60.5% from 75%+ in prior quarters, likely tied to Blackwell ramp costs, though it has since recovered to 75.0% by Q4 FY2026.",
+     "Interest coverage is effectively infinite \u2014 quarterly interest expense of $70M against quarterly operating income of ~$44B in Q4 represents a coverage ratio exceeding 600x.",
+     "Liquidity position is robust with a current ratio of 3.91 and $10.61B in cash, though cash balances have declined sequentially from $15.23B in Q1 as capital returns accelerate.",
+     "ROA of 65.7% TTM is exceptional for a semiconductor company at this scale, reflecting asset-light model and extreme earnings power relative to the balance sheet."
+    ]
+   },
+   "Future Durability": {
+    "score": 87,
+    "content": "{\n  \"score\": 87,\n  \"score_rationale\": \"NVDA's future durability is exceptional given its entrenched CUDA software moat, platform-scale architecture, and accelerating FCF generation, but scores below 90 due to export control risks, gross margin compression from Blackwell ramp, customer concentration in hyperscalers, and the structural risk of customers developing in-house silicon.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"NVIDIA's software ecosystem (CUDA + full vertical software stacks) creates switching costs that extend well beyond hardware, underpinning durable pricing power across AI training and inference workloads.\",\n      \"evidence\": \"[Source: SEC 10-K 2026-02-25, Item 1. Business] \u2014 CUDA platform runs on all NVIDIA GPUs with hundreds of domain-specific libraries and SDKs; $76.7B cumulative R&D investment since inception cited.\"\n    },\n    {\n      \"finding\": \"Free cash flow generation has become extraordinary \u2014 trailing four quarters aggregate FCF of ~$96.7B with FCF margins exceeding 50%, providing massive capital return and reinvestment capacity.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement] \u2014 Q4 FCF $34.90B, Q3 $22.11B, Q2 $13.47B, Q1 $26.19B; CapEx remains modest at $1.2\u20131.9B/quarter given fabless model.\"\n    },\n    {\n      \"finding\": \"The Blackwell architecture introduction caused a transient gross margin dip (Q1 FY2026 GM fell to 60.5% from ~75%+ prior quarters) but has since recovered to 75.0% by Q4, validating the architectural transition's economic sustainability.\",\n      \"evidence\": \"[Source: FMP /income-statement] \u2014 GM trajectory: Q1 FY2026 60.5% \u2192 Q2 72.4% \u2192 Q3 73.4% \u2192 Q4 75.0%, demonstrating successful yield and cost normalization post-ramp.\"\n    },\n    {\n      \"finding\": \"Remaining performance obligations are growing but remain small ($1.9B as of Q2 FY2026) relative to $68B quarterly revenues, indicating revenue is predominantly recognized at delivery rather than secured under long-term contracts \u2014 a durability risk if hyperscaler capex cycles turn.\",\n      \"evidence\": \"[Source: SEC EDGAR XBRL \u2014 RevenueRemainingPerformanceObligation Q2 FY2026: $1.90B vs Q4 FY2025: $1.70B]\"\n    },\n    {\n      \"finding\": \"Analyst consensus remains firmly bullish with 79 analysts covering and 58 Buy ratings, but the consensus revenue growth deceleration implied in forward estimates (from +73% YoY to ~+19-22% in FY2027) signals the market already prices in a material growth normalization.\",\n      \"evidence\": \"[Source: FMP /analyst-estimates] \u2014 FY2029 Q1 revenue estimate $149.14B vs current quarterly run rate ~$68B annualized; [Source: FMP /analyst-consensus-trend] \u2014 60 Buy/StrongBuy out of 79 analysts as of May 2026.\"\n    }\n  ],\n  \"analysis\": \"NVIDIA's future durability case rests on three interlocking pillars: architectural platform lock-in, software ecosystem depth, and the structural tailwind of AI infrastructure buildout, partially offset by macro-cyclical exposure, geopolitical risk, and competitive threats from custom silicon.\\n\\nThe software moat is NVDA's most durable asset. CUDA, introduced in 2006, has accumulated two decades of developer tooling, model libraries, and institutional knowledge. The full vertical stacks \u2014 DRIVE for automotive, Clara for healthcare, Omniverse for physical AI, and AI Enterprise \u2014 are not merely add-on revenues but sticky adoption vectors that make migration to competing hardware economically irrational for most enterprise customers. [Source: SEC 10-K 2026-02-25, Item 1.] With $76.7B in cumulative R&D, the company has created a platform that is difficult to replicate at speed, even for well-capitalized competitors like AMD or emerging players.\\n\\nThe Blackwell architecture's data-center-scale design \u2014 integrating CPUs, GPUs, networking, and software into a holistically optimized unit \u2014 represents a meaningful architectural leap. The ability to interconnect hundreds of thousands of GPUs as a single compute fabric is the current technological frontier for frontier AI model training and inference, and NVDA's suppliers ($CRWV, $IREN, $WYFI as named users) illustrate broad hyperscaler and cloud adoption. [Source: FMP /counterparties from filing excerpts]\\n\\nHowever, durability is not unconditional. Gross margin trajectory deserves scrutiny: the Q1 FY2026 compression to 60.5% during Blackwell ramp demonstrates that architectural transitions carry real near-term margin risk. Recovery to 75.0% by Q4 is encouraging but not guaranteed for the Rubin/next-generation transition. [Source: FMP /income-statement]\\n\\nThe revenue concentration risk is material. Hyperscaler capex cycles \u2014 driven by $MSFT, Meta, Google, and Amazon \u2014 represent the majority of data center segment demand. Any synchronized pullback in AI infrastructure spending, whether from ROI disappointment, macro deterioration, or competitive AI chip development (Google TPUs, Amazon Trainium, Microsoft Maia), would cause significant revenue volatility. The DCF intrinsic value of $235.50 implies ~19% upside, suggesting current pricing embeds continued strong execution. [Source: FMP /dcf]\\n\\nGeopolitical risk is elevated. U.S. export controls on advanced AI chips to China have already impacted NVDA's addressable market, and further restrictions remain a tail risk. The company's high beta (2.335) reflects market acknowledgment of this cyclical and regulatory sensitivity. [Source: FMP /profile]\\n\\nThe balance sheet is fortress-like \u2014 D/E of 0.07, current ratio of 3.91, and $10.6B cash against only $8.5B total debt \u2014 providing exceptional financial flexibility. [Source: FMP /balance-sheet-statement] Insider selling of ~$149M in recent months is notable but directionally consistent with normal executive compensation monetization rather than fundamental concern, given no insider purchases whatsoever. [Source: FMP /insider-transactions]\\n\\nForward analyst estimates imply revenue growing from ~$216B TTM to ~$593B annualized by FY2029, which requires continued hyperscaler AI capex expansion and successful penetration of sovereign AI, agentic AI, and automotive markets. The deceleration from 73% to 19-22% YoY growth is already baked into consensus, but execution risk at this revenue scale is real. Net: NVDA's durability is among the highest in semiconductors, but not immune to cyclical, competitive, and regulatory disruption.\",\n  \"data_gaps\": [\n    \"Customer revenue concentration (top 5 hyperscaler % of data center segment revenue) not disclosed in available XBRL or filing excerpts \u2014 critical for assessing demand concentration risk.\",\n    \"Rubin/next-generation architecture GM and ramp timeline not available \u2014 needed to assess whether the Q1 FY2026 Blackwell margin compression pattern will repeat.\",\n    \"China-specific revenue exposure post-H20 export control restrictions not quantified in available data \u2014 prevents precise assessment of geopolitical revenue-at-risk.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Future Durability",
+    "structured": {
+     "score": 87,
+     "analysis": "NVIDIA's future durability case rests on three interlocking pillars: architectural platform lock-in, software ecosystem depth, and the structural tailwind of AI infrastructure buildout, partially offset by macro-cyclical exposure, geopolitical risk, and competitive threats from custom silicon.\n\nThe software moat is NVDA's most durable asset. CUDA, introduced in 2006, has accumulated two decades of developer tooling, model libraries, and institutional knowledge. The full vertical stacks \u2014 DRIVE for automotive, Clara for healthcare, Omniverse for physical AI, and AI Enterprise \u2014 are not merely add-on revenues but sticky adoption vectors that make migration to competing hardware economically irrational for most enterprise customers. [Source: SEC 10-K 2026-02-25, Item 1.] With $76.7B in cumulative R&D, the company has created a platform that is difficult to replicate at speed, even for well-capitalized competitors like AMD or emerging players.\n\nThe Blackwell architecture's data-center-scale design \u2014 integrating CPUs, GPUs, networking, and software into a holistically optimized unit \u2014 represents a meaningful architectural leap. The ability to interconnect hundreds of thousands of GPUs as a single compute fabric is the current technological frontier for frontier AI model training and inference, and NVDA's suppliers ($CRWV, $IREN, $WYFI as named users) illustrate broad hyperscaler and cloud adoption. [Source: FMP /counterparties from filing excerpts]\n\nHowever, durability is not unconditional. Gross margin trajectory deserves scrutiny: the Q1 FY2026 compression to 60.5% during Blackwell ramp demonstrates that architectural transitions carry real near-term margin risk. Recovery to 75.0% by Q4 is encouraging but not guaranteed for the Rubin/next-generation transition. [Source: FMP /income-statement]\n\nThe revenue concentration risk is material. Hyperscaler capex cycles \u2014 driven by $MSFT, Meta, Google, and Amazon \u2014 represent the majority of data center segment demand. Any synchronized pullback in AI infrastructure spending, whether from ROI disappointment, macro deterioration, or competitive AI chip development (Google TPUs, Amazon Trainium, Microsoft Maia), would cause significant revenue volatility. The DCF intrinsic value of $235.50 implies ~19% upside, suggesting current pricing embeds continued strong execution. [Source: FMP /dcf]\n\nGeopolitical risk is elevated. U.S. export controls on advanced AI chips to China have already impacted NVDA's addressable market, and further restrictions remain a tail risk. The company's high beta (2.335) reflects market acknowledgment of this cyclical and regulatory sensitivity. [Source: FMP /profile]\n\nThe balance sheet is fortress-like \u2014 D/E of 0.07, current ratio of 3.91, and $10.6B cash against only $8.5B total debt \u2014 providing exceptional financial flexibility. [Source: FMP /balance-sheet-statement] Insider selling of ~$149M in recent months is notable but directionally consistent with normal executive compensation monetization rather than fundamental concern, given no insider purchases whatsoever. [Source: FMP /insider-transactions]\n\nForward analyst estimates imply revenue growing from ~$216B TTM to ~$593B annualized by FY2029, which requires continued hyperscaler AI capex expansion and successful penetration of sovereign AI, agentic AI, and automotive markets. The deceleration from 73% to 19-22% YoY growth is already baked into consensus, but execution risk at this revenue scale is real. Net: NVDA's durability is among the highest in semiconductors, but not immune to cyclical, competitive, and regulatory disruption.",
+     "data_gaps": [
+      "Customer revenue concentration (top 5 hyperscaler % of data center segment revenue) not disclosed in available XBRL or filing excerpts \u2014 critical for assessing demand concentration risk.",
+      "Rubin/next-generation architecture GM and ramp timeline not available \u2014 needed to assess whether the Q1 FY2026 Blackwell margin compression pattern will repeat.",
+      "China-specific revenue exposure post-H20 export control restrictions not quantified in available data \u2014 prevents precise assessment of geopolitical revenue-at-risk."
+     ],
+     "key_findings": [
+      {
+       "finding": "NVIDIA's software ecosystem (CUDA + full vertical software stacks) creates switching costs that extend well beyond hardware, underpinning durable pricing power across AI training and inference workloads.",
+       "evidence": "[Source: SEC 10-K 2026-02-25, Item 1. Business] \u2014 CUDA platform runs on all NVIDIA GPUs with hundreds of domain-specific libraries and SDKs; $76.7B cumulative R&D investment since inception cited."
+      },
+      {
+       "finding": "Free cash flow generation has become extraordinary \u2014 trailing four quarters aggregate FCF of ~$96.7B with FCF margins exceeding 50%, providing massive capital return and reinvestment capacity.",
+       "evidence": "[Source: FMP /cash-flow-statement] \u2014 Q4 FCF $34.90B, Q3 $22.11B, Q2 $13.47B, Q1 $26.19B; CapEx remains modest at $1.2\u20131.9B/quarter given fabless model."
+      },
+      {
+       "finding": "The Blackwell architecture introduction caused a transient gross margin dip (Q1 FY2026 GM fell to 60.5% from ~75%+ prior quarters) but has since recovered to 75.0% by Q4, validating the architectural transition's economic sustainability.",
+       "evidence": "[Source: FMP /income-statement] \u2014 GM trajectory: Q1 FY2026 60.5% \u2192 Q2 72.4% \u2192 Q3 73.4% \u2192 Q4 75.0%, demonstrating successful yield and cost normalization post-ramp."
+      },
+      {
+       "finding": "Remaining performance obligations are growing but remain small ($1.9B as of Q2 FY2026) relative to $68B quarterly revenues, indicating revenue is predominantly recognized at delivery rather than secured under long-term contracts \u2014 a durability risk if hyperscaler capex cycles turn.",
+       "evidence": "[Source: SEC EDGAR XBRL \u2014 RevenueRemainingPerformanceObligation Q2 FY2026: $1.90B vs Q4 FY2025: $1.70B]"
+      },
+      {
+       "finding": "Analyst consensus remains firmly bullish with 79 analysts covering and 58 Buy ratings, but the consensus revenue growth deceleration implied in forward estimates (from +73% YoY to ~+19-22% in FY2027) signals the market already prices in a material growth normalization.",
+       "evidence": "[Source: FMP /analyst-estimates] \u2014 FY2029 Q1 revenue estimate $149.14B vs current quarterly run rate ~$68B annualized; [Source: FMP /analyst-consensus-trend] \u2014 60 Buy/StrongBuy out of 79 analysts as of May 2026."
+      }
+     ],
+     "score_rationale": "NVDA's future durability is exceptional given its entrenched CUDA software moat, platform-scale architecture, and accelerating FCF generation, but scores below 90 due to export control risks, gross margin compression from Blackwell ramp, customer concentration in hyperscalers, and the structural risk of customers developing in-house silicon."
+    },
+    "key_findings": [
+     "NVIDIA's software ecosystem (CUDA + full vertical software stacks) creates switching costs that extend well beyond hardware, underpinning durable pricing power across AI training and inference workloads.",
+     "Free cash flow generation has become extraordinary \u2014 trailing four quarters aggregate FCF of ~$96.7B with FCF margins exceeding 50%, providing massive capital return and reinvestment capacity.",
+     "The Blackwell architecture introduction caused a transient gross margin dip (Q1 FY2026 GM fell to 60.5% from ~75%+ prior quarters) but has since recovered to 75.0% by Q4, validating the architectural transition's economic sustainability.",
+     "Remaining performance obligations are growing but remain small ($1.9B as of Q2 FY2026) relative to $68B quarterly revenues, indicating revenue is predominantly recognized at delivery rather than secured under long-term contracts \u2014 a durability risk if hyperscaler capex cycles turn.",
+     "Analyst consensus remains firmly bullish with 79 analysts covering and 58 Buy ratings, but the consensus revenue growth deceleration implied in forward estimates (from +73% YoY to ~+19-22% in FY2027) signals the market already prices in a material growth normalization."
+    ]
+   },
+   "Growth & Earnings": {
+    "score": 88,
+    "content": "{\n  \"score\": 88,\n  \"score_rationale\": \"NVIDIA exhibits exceptional near-term growth momentum with YoY revenue acceleration ranging 55-73% across the last four quarters and expanding FCF margins, though forward growth deceleration to the high-teens and gross margin compression from peak levels temper the score below the highest tier.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Revenue has compounded at extraordinary rates for four consecutive quarters, reaching $68.1B in Q4 FY2026 (+73.2% YoY), with Blackwell architecture now comprising the majority of Data Center revenue.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly] + [Source: SEC 10-Q 2025-11-19, MD&A Overview]\"\n    },\n    {\n      \"finding\": \"Operating margins expanded dramatically from 49.1% in Q1 FY2026 to 65.0% in Q4 FY2026, demonstrating powerful operating leverage as Blackwell ramp matured and revenue volume absorbed fixed costs.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly, Q1-Q4 FY2026 operating margin data]\"\n    },\n    {\n      \"finding\": \"FCF generation reached $34.9B in Q4 FY2026 alone \u2014 a quarterly FCF margin exceeding 51% \u2014 reflecting negligible capital intensity (CapEx only $1.28B vs $36.2B OCF) given NVIDIA's fabless model.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement quarterly, Q4 FY2026]\"\n    },\n    {\n      \"finding\": \"Analyst consensus projects significant forward growth deceleration: revenue growth is estimated at 12-22% YoY for FY2027 quarters, down sharply from 55-73% recently, with EPS estimates of $2.77-$3.23 for FY2029 quarters.\",\n      \"evidence\": \"[Source: FMP /analyst-estimates and /earnings-estimates forward quarters]\"\n    },\n    {\n      \"finding\": \"Gross margin compressed to 60.5% in Q1 FY2026 (vs. 78.4% one year prior) before recovering to 75.0% in Q4, indicating Blackwell transition costs created transient but material margin volatility that investors must model carefully.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly, Q1 FY2025 through Q4 FY2026 gross margin series]\"\n    }\n  ],\n  \"analysis\": \"NVIDIA's growth and earnings profile over the trailing eight quarters represents one of the most extraordinary fundamental inflections in large-cap technology history. Revenue scaled from $26.0B in Q1 FY2025 to $68.1B in Q4 FY2026 \u2014 a 162% increase in absolute dollar terms over just seven quarters \u2014 entirely driven by hyperscaler and enterprise AI infrastructure buildout centered on the H100/H200 and now Blackwell GPU platforms. [Source: FMP /income-statement quarterly]\\n\\nThe quality of this growth is exceptional on multiple dimensions. First, operating leverage is pronounced: as revenue doubled, operating income more than tripled, with operating margins reaching 65% in Q4 FY2026. This reflects NVIDIA's near-monopolistic pricing power in AI training silicon, where the H100/H200 commanded $25K-$40K per unit and Blackwell architectures are priced at materially higher ASPs. Second, the fabless model means CapEx remains de minimis relative to revenue \u2014 only $1.3-1.9B per quarter against OCF of $15-36B \u2014 yielding extraordinary FCF conversion. The $34.9B single-quarter FCF in Q4 FY2026 represents an annualized rate exceeding $130B, a figure that would have been considered implausible for any company just two years ago. [Source: FMP /cash-flow-statement quarterly]\\n\\nHowever, three material risks to the growth narrative deserve careful attention. First, gross margin volatility during the Blackwell transition (60.5% trough in Q1 FY2026) suggests that each new architecture cycle introduces near-term margin compression as yields mature and supply chains normalize. The Q4 recovery to 75.0% is encouraging but the next architecture cycle \u2014 likely Rubin/Vera Rubin \u2014 will likely repeat this pattern. [Source: FMP /income-statement quarterly]\\n\\nSecond, the forward growth curve shows a dramatic deceleration. Analyst consensus forecasts revenue of $133-149B for FY2028-FY2029 quarters, implying sequential quarterly growth decelerating to mid-single digits and YoY growth falling to 12-22%. [Source: FMP /analyst-estimates] This reflects base effects compounding and natural questions about whether hyperscaler CapEx cycles can sustain current intensity into 2027-2028. The remaining performance obligation of only $1.9B [Source: SEC EDGAR XBRL, 2026 Q2] suggests most NVIDIA revenue is recognized on shipment with limited long-term contractual visibility \u2014 a meaningful data gap for multi-year modeling.\\n\\nThird, the ROA of 65.7% [Source: FMP /ratios-ttm] and D/E of 0.07 underscore a pristine balance sheet, but the $148.96M in recent insider sales, entirely sells with zero buys, adds a cautionary signal at current valuations, even if much of this is likely systematic plan-based selling. [Source: FMP /insider-transactions]\\n\\nThe DCF intrinsic value of $235.50 implies ~19% upside to current prices, suggesting the market has priced in robust but not heroic execution. With analyst consensus at $275.74 average target (38.9% upside), the street remains constructively positioned. At a $4.8T market cap, NVDA must sustain $130B+ annualized FCF to justify current multiples \u2014 achievable if AI infrastructure spending remains structurally elevated but exposed to any demand air pocket or competitive displacement risk.\",\n  \"data_gaps\": [\n    \"Revenue Remaining Performance Obligation timing/percentage not disclosed in XBRL, limiting forward revenue visibility and contracted backlog assessment.\",\n    \"Segment-level gross margins (Data Center vs. Gaming vs. Professional Visualization) not broken out in available data, obscuring whether Data Center margin is expanding or contracting independently.\",\n    \"China revenue exposure quantification absent from available data, a material risk given ongoing U.S. export restrictions on H20 and Blackwell products that could impair a historically significant revenue geography.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Growth & Earnings",
+    "structured": {
+     "score": 88,
+     "analysis": "NVIDIA's growth and earnings profile over the trailing eight quarters represents one of the most extraordinary fundamental inflections in large-cap technology history. Revenue scaled from $26.0B in Q1 FY2025 to $68.1B in Q4 FY2026 \u2014 a 162% increase in absolute dollar terms over just seven quarters \u2014 entirely driven by hyperscaler and enterprise AI infrastructure buildout centered on the H100/H200 and now Blackwell GPU platforms. [Source: FMP /income-statement quarterly]\n\nThe quality of this growth is exceptional on multiple dimensions. First, operating leverage is pronounced: as revenue doubled, operating income more than tripled, with operating margins reaching 65% in Q4 FY2026. This reflects NVIDIA's near-monopolistic pricing power in AI training silicon, where the H100/H200 commanded $25K-$40K per unit and Blackwell architectures are priced at materially higher ASPs. Second, the fabless model means CapEx remains de minimis relative to revenue \u2014 only $1.3-1.9B per quarter against OCF of $15-36B \u2014 yielding extraordinary FCF conversion. The $34.9B single-quarter FCF in Q4 FY2026 represents an annualized rate exceeding $130B, a figure that would have been considered implausible for any company just two years ago. [Source: FMP /cash-flow-statement quarterly]\n\nHowever, three material risks to the growth narrative deserve careful attention. First, gross margin volatility during the Blackwell transition (60.5% trough in Q1 FY2026) suggests that each new architecture cycle introduces near-term margin compression as yields mature and supply chains normalize. The Q4 recovery to 75.0% is encouraging but the next architecture cycle \u2014 likely Rubin/Vera Rubin \u2014 will likely repeat this pattern. [Source: FMP /income-statement quarterly]\n\nSecond, the forward growth curve shows a dramatic deceleration. Analyst consensus forecasts revenue of $133-149B for FY2028-FY2029 quarters, implying sequential quarterly growth decelerating to mid-single digits and YoY growth falling to 12-22%. [Source: FMP /analyst-estimates] This reflects base effects compounding and natural questions about whether hyperscaler CapEx cycles can sustain current intensity into 2027-2028. The remaining performance obligation of only $1.9B [Source: SEC EDGAR XBRL, 2026 Q2] suggests most NVIDIA revenue is recognized on shipment with limited long-term contractual visibility \u2014 a meaningful data gap for multi-year modeling.\n\nThird, the ROA of 65.7% [Source: FMP /ratios-ttm] and D/E of 0.07 underscore a pristine balance sheet, but the $148.96M in recent insider sales, entirely sells with zero buys, adds a cautionary signal at current valuations, even if much of this is likely systematic plan-based selling. [Source: FMP /insider-transactions]\n\nThe DCF intrinsic value of $235.50 implies ~19% upside to current prices, suggesting the market has priced in robust but not heroic execution. With analyst consensus at $275.74 average target (38.9% upside), the street remains constructively positioned. At a $4.8T market cap, NVDA must sustain $130B+ annualized FCF to justify current multiples \u2014 achievable if AI infrastructure spending remains structurally elevated but exposed to any demand air pocket or competitive displacement risk.",
+     "data_gaps": [
+      "Revenue Remaining Performance Obligation timing/percentage not disclosed in XBRL, limiting forward revenue visibility and contracted backlog assessment.",
+      "Segment-level gross margins (Data Center vs. Gaming vs. Professional Visualization) not broken out in available data, obscuring whether Data Center margin is expanding or contracting independently.",
+      "China revenue exposure quantification absent from available data, a material risk given ongoing U.S. export restrictions on H20 and Blackwell products that could impair a historically significant revenue geography."
+     ],
+     "key_findings": [
+      {
+       "finding": "Revenue has compounded at extraordinary rates for four consecutive quarters, reaching $68.1B in Q4 FY2026 (+73.2% YoY), with Blackwell architecture now comprising the majority of Data Center revenue.",
+       "evidence": "[Source: FMP /income-statement quarterly] + [Source: SEC 10-Q 2025-11-19, MD&A Overview]"
+      },
+      {
+       "finding": "Operating margins expanded dramatically from 49.1% in Q1 FY2026 to 65.0% in Q4 FY2026, demonstrating powerful operating leverage as Blackwell ramp matured and revenue volume absorbed fixed costs.",
+       "evidence": "[Source: FMP /income-statement quarterly, Q1-Q4 FY2026 operating margin data]"
+      },
+      {
+       "finding": "FCF generation reached $34.9B in Q4 FY2026 alone \u2014 a quarterly FCF margin exceeding 51% \u2014 reflecting negligible capital intensity (CapEx only $1.28B vs $36.2B OCF) given NVIDIA's fabless model.",
+       "evidence": "[Source: FMP /cash-flow-statement quarterly, Q4 FY2026]"
+      },
+      {
+       "finding": "Analyst consensus projects significant forward growth deceleration: revenue growth is estimated at 12-22% YoY for FY2027 quarters, down sharply from 55-73% recently, with EPS estimates of $2.77-$3.23 for FY2029 quarters.",
+       "evidence": "[Source: FMP /analyst-estimates and /earnings-estimates forward quarters]"
+      },
+      {
+       "finding": "Gross margin compressed to 60.5% in Q1 FY2026 (vs. 78.4% one year prior) before recovering to 75.0% in Q4, indicating Blackwell transition costs created transient but material margin volatility that investors must model carefully.",
+       "evidence": "[Source: FMP /income-statement quarterly, Q1 FY2025 through Q4 FY2026 gross margin series]"
+      }
+     ],
+     "score_rationale": "NVIDIA exhibits exceptional near-term growth momentum with YoY revenue acceleration ranging 55-73% across the last four quarters and expanding FCF margins, though forward growth deceleration to the high-teens and gross margin compression from peak levels temper the score below the highest tier."
+    },
+    "key_findings": [
+     "Revenue has compounded at extraordinary rates for four consecutive quarters, reaching $68.1B in Q4 FY2026 (+73.2% YoY), with Blackwell architecture now comprising the majority of Data Center revenue.",
+     "Operating margins expanded dramatically from 49.1% in Q1 FY2026 to 65.0% in Q4 FY2026, demonstrating powerful operating leverage as Blackwell ramp matured and revenue volume absorbed fixed costs.",
+     "FCF generation reached $34.9B in Q4 FY2026 alone \u2014 a quarterly FCF margin exceeding 51% \u2014 reflecting negligible capital intensity (CapEx only $1.28B vs $36.2B OCF) given NVIDIA's fabless model.",
+     "Analyst consensus projects significant forward growth deceleration: revenue growth is estimated at 12-22% YoY for FY2027 quarters, down sharply from 55-73% recently, with EPS estimates of $2.77-$3.23 for FY2029 quarters.",
+     "Gross margin compressed to 60.5% in Q1 FY2026 (vs. 78.4% one year prior) before recovering to 75.0% in Q4, indicating Blackwell transition costs created transient but material margin volatility that investors must model carefully."
+    ]
+   },
+   "Sentiment & Narrative": {
+    "score": 72,
+    "content": "{\n  \"score\": 72,\n  \"score_rationale\": \"NVDA commands exceptional institutional analyst consensus (73% Buy/Strong Buy, avg PT implying ~39% upside) and dominant AI infrastructure narrative, but insider selling pressure, decelerating growth rates, and flat social velocity cap the score from elite territory.\",\n  \"key_findings\": [\n    {\"finding\": \"Overwhelming analyst bullishness with 58 Buy and 2 Strong Buy ratings out of 79 analysts, average price target of $275.74 implying 38.9% upside vs current $198.48.\", \"evidence\": \"[Source: FMP /analyst-consensus] Consensus: Buy; 79 analysts; avg PT $275.74\"},\n    {\"finding\": \"Insider selling is pervasive with zero buys and $148.96M in net sells over the last 20 Form 4 filings, including a director selling $38.5M across two transactions in a single day.\", \"evidence\": \"[Source: FMP /insider-transactions] STEVENS MARK A sold 221,682 shares for ~$38.5M on 2026-03-24; aggregate net selling $148.96M\"},\n    {\"finding\": \"Analyst consensus has modestly deteriorated over the past three months, with Strong Buy ratings declining from 12 to 8 and Hold ratings briefly rising, suggesting incremental caution at the margin.\", \"evidence\": \"[Source: FMP /analyst-consensus-trend] SB count: 12 in Feb/Mar 2026 \u2192 8 in May 2026; H count: 3 in Feb \u2192 3 in May with a dip to 2 in Mar-Apr\"},\n    {\"finding\": \"Social sentiment velocity is flat and discovery score is zero, indicating NVDA's narrative is mature and saturated \u2014 no new catalysts driving incremental retail or thematic momentum.\", \"evidence\": \"[Source: X signal] Velocity ratio=1.0, direction=stable, count_7d=96; Discovery score=0.0, co_mentions_7d=0\"},\n    {\"finding\": \"Revenue growth is decelerating from 73% YoY in Q4 to a forward estimate of ~19.5% by FY2026-01, which may gradually pressure the premium narrative as hyperscaler capex scrutiny intensifies.\", \"evidence\": \"[Source: FMP /income-statement] Q4 rev +73.2% YoY; [Source: FMP /analyst-estimates] FY2026-01 rev growth est +19.5%\"}\n  ],\n  \"analysis\": \"NVIDIA's sentiment and narrative profile sits in a structurally strong but maturing position. The AI infrastructure supercycle narrative that has powered the stock remains intact and is well-institutionalized \u2014 58 Buy ratings, 2 Strong Buys, and a consensus price target implying 39% upside from a pool of 79 analysts is a remarkable degree of professional alignment [Source: FMP /analyst-consensus]. The eight most recent analyst actions (through March 2026) were all maintains of Buy or Overweight ratings from credible shops including Raymond James, Cantor Fitzgerald, Truist, and Rosenblatt \u2014 a signal of conviction without meaningful capitulation [Source: FMP /analyst-actions]. This is not a universally loved stock on the fringe; it is the consensus AI infrastructure trade among institutional analysts.\\n\\nHowever, several narrative headwinds are beginning to accumulate. First, insider behavior is unambiguously negative: zero insider buys against $148.96M in net sells across the last 20 Form 4 filings [Source: FMP /insider-transactions]. Director Mark Stevens' liquidation of 221,682 shares (~$38.5M) in a single session on March 24, 2026 is notable both in size and timing \u2014 occurring as the stock traded in the $172-$175 range, well below the consensus analyst target. While insiders routinely sell for diversification, the magnitude and absence of any offsetting purchases warrants attention as a sentiment signal.\\n\\nSecond, the consensus itself is gently softening. Strong Buy designations peaked at 12 in February and March 2026 and have since declined to 8 by May 2026, while the number of analysts maintaining simple Buy ratings has compressed to 48 from 49 [Source: FMP /analyst-consensus-trend]. This is a subtle but directionally meaningful shift \u2014 analysts are not downgrading, but the marginal enthusiasm is decelerating in line with the growth deceleration visible in the financials (revenue growth from 73% YoY in Q4 to estimates of ~20% by early FY2026).\\n\\nThird, the social/retail sentiment picture is inert. The X signal shows a velocity ratio of exactly 1.0 with stable direction, a 7-day post count of 96, and a discovery score of zero with no co-mentions around the specified theme [Source: X signal]. This tells an important story: NVDA is fully discovered. It is not a stock benefiting from rising retail attention or new thematic discovery \u2014 it is the AI trade, and every marginal retail participant already knows it. This saturation limits the potential for sentiment-driven multiple expansion and increases the stock's vulnerability to any negative fundamental surprise.\\n\\nThe narrative risk is asymmetric. NVDA's story \u2014 dominant AI training GPU market share, Blackwell architecture adoption, hyperscaler dependency \u2014 is priced into near-universal bullishness. Any disruption to capex commitments from cloud providers, competitive pressure from AMD/custom silicon, or export control escalation (particularly China-related) could trigger rapid sentiment deterioration precisely because there is minimal bearish positioning to absorb the shock (only 3 Sell ratings out of 79 analysts) [Source: FMP /analyst-consensus]. The bull narrative is strong; the risk is that it has little room to get stronger.\",\n  \"data_gaps\": [\n    \"Short interest data unavailable \u2014 critical for assessing whether low analyst bearishness is offset by elevated institutional hedging or short positioning\",\n    \"Options market sentiment (put/call ratios, implied volatility skew) not available \u2014 would sharpen the narrative risk/reward assessment around key earnings catalysts\",\n    \"X signal summary content is N/A \u2014 qualitative narrative themes circulating on social media cannot be assessed, limiting understanding of retail sentiment drivers\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Sentiment & Narrative",
+    "structured": {
+     "score": 72,
+     "analysis": "NVIDIA's sentiment and narrative profile sits in a structurally strong but maturing position. The AI infrastructure supercycle narrative that has powered the stock remains intact and is well-institutionalized \u2014 58 Buy ratings, 2 Strong Buys, and a consensus price target implying 39% upside from a pool of 79 analysts is a remarkable degree of professional alignment [Source: FMP /analyst-consensus]. The eight most recent analyst actions (through March 2026) were all maintains of Buy or Overweight ratings from credible shops including Raymond James, Cantor Fitzgerald, Truist, and Rosenblatt \u2014 a signal of conviction without meaningful capitulation [Source: FMP /analyst-actions]. This is not a universally loved stock on the fringe; it is the consensus AI infrastructure trade among institutional analysts.\n\nHowever, several narrative headwinds are beginning to accumulate. First, insider behavior is unambiguously negative: zero insider buys against $148.96M in net sells across the last 20 Form 4 filings [Source: FMP /insider-transactions]. Director Mark Stevens' liquidation of 221,682 shares (~$38.5M) in a single session on March 24, 2026 is notable both in size and timing \u2014 occurring as the stock traded in the $172-$175 range, well below the consensus analyst target. While insiders routinely sell for diversification, the magnitude and absence of any offsetting purchases warrants attention as a sentiment signal.\n\nSecond, the consensus itself is gently softening. Strong Buy designations peaked at 12 in February and March 2026 and have since declined to 8 by May 2026, while the number of analysts maintaining simple Buy ratings has compressed to 48 from 49 [Source: FMP /analyst-consensus-trend]. This is a subtle but directionally meaningful shift \u2014 analysts are not downgrading, but the marginal enthusiasm is decelerating in line with the growth deceleration visible in the financials (revenue growth from 73% YoY in Q4 to estimates of ~20% by early FY2026).\n\nThird, the social/retail sentiment picture is inert. The X signal shows a velocity ratio of exactly 1.0 with stable direction, a 7-day post count of 96, and a discovery score of zero with no co-mentions around the specified theme [Source: X signal]. This tells an important story: NVDA is fully discovered. It is not a stock benefiting from rising retail attention or new thematic discovery \u2014 it is the AI trade, and every marginal retail participant already knows it. This saturation limits the potential for sentiment-driven multiple expansion and increases the stock's vulnerability to any negative fundamental surprise.\n\nThe narrative risk is asymmetric. NVDA's story \u2014 dominant AI training GPU market share, Blackwell architecture adoption, hyperscaler dependency \u2014 is priced into near-universal bullishness. Any disruption to capex commitments from cloud providers, competitive pressure from AMD/custom silicon, or export control escalation (particularly China-related) could trigger rapid sentiment deterioration precisely because there is minimal bearish positioning to absorb the shock (only 3 Sell ratings out of 79 analysts) [Source: FMP /analyst-consensus]. The bull narrative is strong; the risk is that it has little room to get stronger.",
+     "data_gaps": [
+      "Short interest data unavailable \u2014 critical for assessing whether low analyst bearishness is offset by elevated institutional hedging or short positioning",
+      "Options market sentiment (put/call ratios, implied volatility skew) not available \u2014 would sharpen the narrative risk/reward assessment around key earnings catalysts",
+      "X signal summary content is N/A \u2014 qualitative narrative themes circulating on social media cannot be assessed, limiting understanding of retail sentiment drivers"
+     ],
+     "key_findings": [
+      {
+       "finding": "Overwhelming analyst bullishness with 58 Buy and 2 Strong Buy ratings out of 79 analysts, average price target of $275.74 implying 38.9% upside vs current $198.48.",
+       "evidence": "[Source: FMP /analyst-consensus] Consensus: Buy; 79 analysts; avg PT $275.74"
+      },
+      {
+       "finding": "Insider selling is pervasive with zero buys and $148.96M in net sells over the last 20 Form 4 filings, including a director selling $38.5M across two transactions in a single day.",
+       "evidence": "[Source: FMP /insider-transactions] STEVENS MARK A sold 221,682 shares for ~$38.5M on 2026-03-24; aggregate net selling $148.96M"
+      },
+      {
+       "finding": "Analyst consensus has modestly deteriorated over the past three months, with Strong Buy ratings declining from 12 to 8 and Hold ratings briefly rising, suggesting incremental caution at the margin.",
+       "evidence": "[Source: FMP /analyst-consensus-trend] SB count: 12 in Feb/Mar 2026 \u2192 8 in May 2026; H count: 3 in Feb \u2192 3 in May with a dip to 2 in Mar-Apr"
+      },
+      {
+       "finding": "Social sentiment velocity is flat and discovery score is zero, indicating NVDA's narrative is mature and saturated \u2014 no new catalysts driving incremental retail or thematic momentum.",
+       "evidence": "[Source: X signal] Velocity ratio=1.0, direction=stable, count_7d=96; Discovery score=0.0, co_mentions_7d=0"
+      },
+      {
+       "finding": "Revenue growth is decelerating from 73% YoY in Q4 to a forward estimate of ~19.5% by FY2026-01, which may gradually pressure the premium narrative as hyperscaler capex scrutiny intensifies.",
+       "evidence": "[Source: FMP /income-statement] Q4 rev +73.2% YoY; [Source: FMP /analyst-estimates] FY2026-01 rev growth est +19.5%"
+      }
+     ],
+     "score_rationale": "NVDA commands exceptional institutional analyst consensus (73% Buy/Strong Buy, avg PT implying ~39% upside) and dominant AI infrastructure narrative, but insider selling pressure, decelerating growth rates, and flat social velocity cap the score from elite territory."
+    },
+    "key_findings": [
+     "Overwhelming analyst bullishness with 58 Buy and 2 Strong Buy ratings out of 79 analysts, average price target of $275.74 implying 38.9% upside vs current $198.48.",
+     "Insider selling is pervasive with zero buys and $148.96M in net sells over the last 20 Form 4 filings, including a director selling $38.5M across two transactions in a single day.",
+     "Analyst consensus has modestly deteriorated over the past three months, with Strong Buy ratings declining from 12 to 8 and Hold ratings briefly rising, suggesting incremental caution at the margin.",
+     "Social sentiment velocity is flat and discovery score is zero, indicating NVDA's narrative is mature and saturated \u2014 no new catalysts driving incremental retail or thematic momentum.",
+     "Revenue growth is decelerating from 73% YoY in Q4 to a forward estimate of ~19.5% by FY2026-01, which may gradually pressure the premium narrative as hyperscaler capex scrutiny intensifies."
+    ]
+   },
+   "Management & Governance": {
+    "score": 72,
+    "content": "{\n  \"score\": 72,\n  \"score_rationale\": \"NVIDIA's governance reflects strong financial stewardship and a capable, experienced board, but is tempered by founder-CEO concentration risk, persistent insider selling with zero buys, and governance structures that limit shareholder checks on management.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Founder-CEO Jensen Huang exercises near-singular strategic control, creating meaningful key-person and succession risk given NVIDIA's $4.8T market cap.\",\n      \"evidence\": \"[Source: FMP /profile] and [Source: DEF 14A 2025-05-13] \u2014 no succession planning disclosure identified in proxy excerpt; Huang is the primary architect of NVIDIA's AI pivot strategy\"\n    },\n    {\n      \"finding\": \"All 20 recent insider transactions are sells totaling $148.96M with zero insider buys, spanning both directors and the Principal Accounting Officer.\",\n      \"evidence\": \"[Source: FMP /insider-trading] \u2014 STEVENS MARK A sold $38.5M across two transactions on 2026-03-24; Shah Aarti S. sold $3.36M on 2026-03-20; Robertson Donald F Jr (PAO) sold $0.83M on 2026-03-20\"\n    },\n    {\n      \"finding\": \"Capital allocation is disciplined with minimal leverage: D/E ratio of 0.07, $10.61B cash, and LT debt of only $7.47B against $34.9B quarterly FCF.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement] Q4 latest; [Source: FMP /cash-flow-statement] Q4 FCF $34.90B\"\n    },\n    {\n      \"finding\": \"SBC expense runs approximately $6.4B annualized (Q1\u2013Q4 combined $6.37B), which, while substantial in absolute terms, represents a modest ~2.3% of TTM revenue of ~$215B.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement] \u2014 SBC: Q4 $1.63B, Q3 $1.65B, Q2 $1.62B, Q1 $1.47B\"\n    },\n    {\n      \"finding\": \"Board refreshment has been gradual but real \u2014 four new directors appointed since 2020 with targeted expertise in cybersecurity, academia, and brand development, though NCGC has no specific diversity or independence quotas.\",\n      \"evidence\": \"[Source: DEF 14A 2025-05-13 Corporate Governance] \u2014 explicit mention of four new directors and three retirements since 2020; qualitative rather than metric-driven selection criteria\"\n    }\n  ],\n  \"analysis\": \"NVIDIA's management and governance profile is a study in contrasts: world-class financial execution under strong founder control, offset by governance structures that concentrate authority and exhibit little visible internal confidence through insider buying.\\n\\nJensen Huang's leadership has been transformational \u2014 his strategic foresight in pivoting NVIDIA from gaming GPUs to accelerated computing and AI infrastructure is arguably the most consequential executive call in semiconductor history. However, at a $4.8T market cap, the company's valuation is substantially predicated on his continued vision and execution. The DEF 14A proxy provides no explicit succession planning framework, a material omission for a company of this scale. This key-person concentration represents the most significant governance risk in the profile. [Source: DEF 14A 2025-05-13]\\n\\nInsider activity is uniformly bearish in signal \u2014 all 20 Form 4 filings over the reviewed period are sales, totaling nearly $149M, with zero purchases. While executives and directors routinely sell under 10b5-1 plans for diversification, the complete absence of any open-market buying at any price level across multiple insiders is directionally notable. Director Mark Stevens sold $38.5M in a two-day window in late March 2026, and even the Principal Accounting Officer trimmed his position. This pattern does not suggest insiders view the stock as cheap relative to fundamentals. [Source: FMP /insider-trading]\\n\\nOn capital stewardship, management scores well. NVIDIA carries just $8.47B in LT debt and generates $34.9B in quarterly FCF, implying the balance sheet could be cleared of all long-term obligations in under a quarter. CapEx remains restrained at approximately $1.3\u20131.9B per quarter despite revenue scaling dramatically, reflecting the asset-light fabless model. Interest expense of $0.07B is trivially immaterial. SBC of ~$6.4B annualized is high in absolute dollars but represents only ~3% of revenue \u2014 not dilutive at scale. [Source: FMP /cash-flow-statement, /balance-sheet-statement]\\n\\nThe NCGC governance framework is qualitative rather than quantitative \u2014 no hard diversity quotas, age limits, or independence minimums are explicitly stated. Board rotation of committee chairs is practiced, and four new directors since 2020 have added cybersecurity, academic, and brand expertise. However, without quantified independence thresholds or disclosed audit/compensation committee composition in the available excerpt, governance quality is difficult to fully benchmark. [Source: DEF 14A 2025-05-13]\\n\\nROA of 65.7% and operating margins of 63\u201365% in recent quarters reflect management's extraordinary efficiency in scaling a capital-light model. The board appears operationally aligned with management's growth strategy, as evidenced by unanimous analyst consensus maintenance and no governance-related shareholder activism signals. [Source: FMP /ratios, /income-statement]\\n\\nNet governance score reflects: exceptional operational management (+), disciplined capital allocation (+), board refreshment in progress (+), partially offset by founder concentration risk (-), universal insider selling (-), and incomplete transparency on succession and independence metrics (-).\",\n  \"data_gaps\": [\n    \"No explicit CEO succession plan or emergency succession protocol disclosed in available proxy excerpts \u2014 critical for a company this size with a founder-CEO.\",\n    \"Board independence composition (percentage of independent directors, audit/comp committee membership) not available in the truncated DEF 14A excerpt.\",\n    \"Details of 10b5-1 plan structures for insider sales not available \u2014 would help contextualize whether recent selling reflects pre-scheduled diversification or discretionary conviction.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Management & Governance",
+    "structured": {
+     "score": 72,
+     "analysis": "NVIDIA's management and governance profile is a study in contrasts: world-class financial execution under strong founder control, offset by governance structures that concentrate authority and exhibit little visible internal confidence through insider buying.\n\nJensen Huang's leadership has been transformational \u2014 his strategic foresight in pivoting NVIDIA from gaming GPUs to accelerated computing and AI infrastructure is arguably the most consequential executive call in semiconductor history. However, at a $4.8T market cap, the company's valuation is substantially predicated on his continued vision and execution. The DEF 14A proxy provides no explicit succession planning framework, a material omission for a company of this scale. This key-person concentration represents the most significant governance risk in the profile. [Source: DEF 14A 2025-05-13]\n\nInsider activity is uniformly bearish in signal \u2014 all 20 Form 4 filings over the reviewed period are sales, totaling nearly $149M, with zero purchases. While executives and directors routinely sell under 10b5-1 plans for diversification, the complete absence of any open-market buying at any price level across multiple insiders is directionally notable. Director Mark Stevens sold $38.5M in a two-day window in late March 2026, and even the Principal Accounting Officer trimmed his position. This pattern does not suggest insiders view the stock as cheap relative to fundamentals. [Source: FMP /insider-trading]\n\nOn capital stewardship, management scores well. NVIDIA carries just $8.47B in LT debt and generates $34.9B in quarterly FCF, implying the balance sheet could be cleared of all long-term obligations in under a quarter. CapEx remains restrained at approximately $1.3\u20131.9B per quarter despite revenue scaling dramatically, reflecting the asset-light fabless model. Interest expense of $0.07B is trivially immaterial. SBC of ~$6.4B annualized is high in absolute dollars but represents only ~3% of revenue \u2014 not dilutive at scale. [Source: FMP /cash-flow-statement, /balance-sheet-statement]\n\nThe NCGC governance framework is qualitative rather than quantitative \u2014 no hard diversity quotas, age limits, or independence minimums are explicitly stated. Board rotation of committee chairs is practiced, and four new directors since 2020 have added cybersecurity, academic, and brand expertise. However, without quantified independence thresholds or disclosed audit/compensation committee composition in the available excerpt, governance quality is difficult to fully benchmark. [Source: DEF 14A 2025-05-13]\n\nROA of 65.7% and operating margins of 63\u201365% in recent quarters reflect management's extraordinary efficiency in scaling a capital-light model. The board appears operationally aligned with management's growth strategy, as evidenced by unanimous analyst consensus maintenance and no governance-related shareholder activism signals. [Source: FMP /ratios, /income-statement]\n\nNet governance score reflects: exceptional operational management (+), disciplined capital allocation (+), board refreshment in progress (+), partially offset by founder concentration risk (-), universal insider selling (-), and incomplete transparency on succession and independence metrics (-).",
+     "data_gaps": [
+      "No explicit CEO succession plan or emergency succession protocol disclosed in available proxy excerpts \u2014 critical for a company this size with a founder-CEO.",
+      "Board independence composition (percentage of independent directors, audit/comp committee membership) not available in the truncated DEF 14A excerpt.",
+      "Details of 10b5-1 plan structures for insider sales not available \u2014 would help contextualize whether recent selling reflects pre-scheduled diversification or discretionary conviction."
+     ],
+     "key_findings": [
+      {
+       "finding": "Founder-CEO Jensen Huang exercises near-singular strategic control, creating meaningful key-person and succession risk given NVIDIA's $4.8T market cap.",
+       "evidence": "[Source: FMP /profile] and [Source: DEF 14A 2025-05-13] \u2014 no succession planning disclosure identified in proxy excerpt; Huang is the primary architect of NVIDIA's AI pivot strategy"
+      },
+      {
+       "finding": "All 20 recent insider transactions are sells totaling $148.96M with zero insider buys, spanning both directors and the Principal Accounting Officer.",
+       "evidence": "[Source: FMP /insider-trading] \u2014 STEVENS MARK A sold $38.5M across two transactions on 2026-03-24; Shah Aarti S. sold $3.36M on 2026-03-20; Robertson Donald F Jr (PAO) sold $0.83M on 2026-03-20"
+      },
+      {
+       "finding": "Capital allocation is disciplined with minimal leverage: D/E ratio of 0.07, $10.61B cash, and LT debt of only $7.47B against $34.9B quarterly FCF.",
+       "evidence": "[Source: FMP /balance-sheet-statement] Q4 latest; [Source: FMP /cash-flow-statement] Q4 FCF $34.90B"
+      },
+      {
+       "finding": "SBC expense runs approximately $6.4B annualized (Q1\u2013Q4 combined $6.37B), which, while substantial in absolute terms, represents a modest ~2.3% of TTM revenue of ~$215B.",
+       "evidence": "[Source: FMP /cash-flow-statement] \u2014 SBC: Q4 $1.63B, Q3 $1.65B, Q2 $1.62B, Q1 $1.47B"
+      },
+      {
+       "finding": "Board refreshment has been gradual but real \u2014 four new directors appointed since 2020 with targeted expertise in cybersecurity, academia, and brand development, though NCGC has no specific diversity or independence quotas.",
+       "evidence": "[Source: DEF 14A 2025-05-13 Corporate Governance] \u2014 explicit mention of four new directors and three retirements since 2020; qualitative rather than metric-driven selection criteria"
+      }
+     ],
+     "score_rationale": "NVIDIA's governance reflects strong financial stewardship and a capable, experienced board, but is tempered by founder-CEO concentration risk, persistent insider selling with zero buys, and governance structures that limit shareholder checks on management."
+    },
+    "key_findings": [
+     "Founder-CEO Jensen Huang exercises near-singular strategic control, creating meaningful key-person and succession risk given NVIDIA's $4.8T market cap.",
+     "All 20 recent insider transactions are sells totaling $148.96M with zero insider buys, spanning both directors and the Principal Accounting Officer.",
+     "Capital allocation is disciplined with minimal leverage: D/E ratio of 0.07, $10.61B cash, and LT debt of only $7.47B against $34.9B quarterly FCF.",
+     "SBC expense runs approximately $6.4B annualized (Q1\u2013Q4 combined $6.37B), which, while substantial in absolute terms, represents a modest ~2.3% of TTM revenue of ~$215B.",
+     "Board refreshment has been gradual but real \u2014 four new directors appointed since 2020 with targeted expertise in cybersecurity, academia, and brand development, though NCGC has no specific diversity or independence quotas."
+    ]
+   },
+   "Technical & Market Structure": {
+    "score": 62,
+    "content": "{\n  \"score\": 62,\n  \"score_rationale\": \"NVDA shows constructive intermediate-term structure with price above all major moving averages and a recovering RSI, but near-term momentum is stalling after a sharp rally from April lows, with insider selling pressure and heavy volatility (beta 2.335) creating meaningful technical risk at current levels.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Price has recovered strongly from the April 7 low of $178.10 to $198.48, reclaiming all key moving averages (SMA9: $205.10, SMA20: $198.27, SMA50: $187.33, SMA200: $183.98), though the SMA9 now acts as near-term resistance.\",\n      \"evidence\": \"[Source: FMP /historical-price-full] \u2014 20-session OHLCV data showing close progression from $178.10 on 2026-04-07 to $198.48 on 2026-05-04, with SMA layers confirmed\"\n    },\n    {\n      \"finding\": \"RSI(14) has pulled back to 53.01 from an overbought reading of 76.28 on April 27, signaling the near-term momentum surge has faded and the stock is consolidating rather than trending higher.\",\n      \"evidence\": \"[Source: FMP /historical-price-full] \u2014 RSI peaked at 76.28 on 2026-04-27 during a high-volume session (187M shares), retreated to 53.01 by 2026-05-04\"\n    },\n    {\n      \"finding\": \"Volume confirmation is mixed: the April 24\u201328 breakout phase saw volume spike to 214M and 187M shares, but recent sessions (May 1\u20134) have reverted to 124\u2013129M, suggesting buying conviction is diminishing at the $198\u2013$202 range.\",\n      \"evidence\": \"[Source: FMP /historical-price-full] \u2014 Volume data across 20 sessions showing volume contraction on consolidation days near $198\u2013$202\"\n    },\n    {\n      \"finding\": \"Insiders have sold $148.96M in shares with zero buys over the last 20 Form 4 filings, including director Mark Stevens selling $38.5M across two transactions at $172\u2013$175 in late March, consistent with distribution at elevated relative levels.\",\n      \"evidence\": \"[Source: FMP /insider-trading] \u2014 Aggregate insider activity: $0M buys vs $148.96M sells; Stevens sold 221,682 shares on 2026-03-24\"\n    },\n    {\n      \"finding\": \"Beta of 2.335 indicates NVDA amplifies broad market moves by more than 2x, and with the DCF intrinsic value at $235.50 implying only +19.3% upside versus the analyst consensus target of $275.74 (+38.9%), technical positioning is heavily dependent on macro tape direction.\",\n      \"evidence\": \"[Source: FMP /profile] \u2014 Beta 2.335; [Source: FMP /discounted-cash-flow] \u2014 DCF $235.50; [Source: FMP /analyst-estimates] \u2014 consensus PT $275.74 vs current $198.48\"\n    }\n  ],\n  \"analysis\": \"NVDA's technical structure as of early May 2026 reflects a stock in post-correction recovery mode, having successfully defended its SMA200 ($183.98) during the April 7 selloff and staging a sharp 13% rebound to retest the $200\u2013$216 zone. The price action from April 7 ($178.10) through April 27 ($216.61) was textbook momentum recovery, supported by multi-month-high volume days (214M on April 24, 187M on April 27). However, the subsequent reversal from $216.61 back to $198.48 over the following five sessions \u2014 on declining but still elevated volume \u2014 suggests the market absorbed significant supply between $200\u2013$217. This level now represents a near-term overhead resistance zone.\\n\\nThe moving average structure is constructive on the intermediate timeframe: price is above SMA50 ($187.33) and SMA200 ($183.98), which are themselves in bullish sequence (SMA50 > SMA200). The SMA9 ($205.10) and SMA20 ($198.27) are flattening, and price sitting precisely at SMA20 is a critical inflection \u2014 a sustained close below $197\u2013$198 would trigger a bearish short-term signal and potentially test $187\u2013$188 (SMA50).\\n\\nThe RSI reset from 76+ to 53 in just five sessions is notable. While it removes overbought risk, the speed of the decline suggests weak hands exiting rather than healthy consolidation. RSI at 53 is neutral \u2014 not a buy signal, not oversold. A constructive scenario would see RSI stabilize here and rebuild above 60 on expanding volume; a bearish scenario would have it continue lower toward 40, consistent with a retest of the SMA50.\\n\\nFrom a market structure perspective, the April lows near $178 created a meaningful higher low relative to the broader 2025 correction context. If the $178\u2013$183 zone holds on any re-test, the technical base remains intact. The critical resistance cluster sits at $213\u2013$217 (the April 27\u201328 highs), and a weekly close above that zone on volume would signal a more durable breakout.\\n\\nThe insider selling pattern \u2014 $148.96M in sales, zero buys, concentrated at prices $172\u2013$182 in late March \u2014 is not alarming in isolation for a stock of NVDA's size and equity compensation structure, but it does indicate no meaningful insider conviction at current prices. The high beta (2.335) means any macro deterioration will punish NVDA disproportionately; conversely, a risk-on environment could rapidly compress the gap to analyst targets ($275 consensus). Net technical read: range-bound near-term ($187\u2013$217), with a constructive intermediate bias contingent on macro support.\",\n  \"data_gaps\": [\n    \"No options market data available (implied volatility, put/call ratios, skew) \u2014 critical for understanding hedging flows and institutional positioning in a high-beta name like NVDA\",\n    \"Short interest and days-to-cover data absent \u2014 important for assessing squeeze potential or sustained distribution dynamics\",\n    \"Institutional ownership changes (13F flow data) not provided \u2014 would clarify whether the April volume surge represented institutional accumulation or distribution\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Technical & Market Structure",
+    "structured": {
+     "score": 62,
+     "analysis": "NVDA's technical structure as of early May 2026 reflects a stock in post-correction recovery mode, having successfully defended its SMA200 ($183.98) during the April 7 selloff and staging a sharp 13% rebound to retest the $200\u2013$216 zone. The price action from April 7 ($178.10) through April 27 ($216.61) was textbook momentum recovery, supported by multi-month-high volume days (214M on April 24, 187M on April 27). However, the subsequent reversal from $216.61 back to $198.48 over the following five sessions \u2014 on declining but still elevated volume \u2014 suggests the market absorbed significant supply between $200\u2013$217. This level now represents a near-term overhead resistance zone.\n\nThe moving average structure is constructive on the intermediate timeframe: price is above SMA50 ($187.33) and SMA200 ($183.98), which are themselves in bullish sequence (SMA50 > SMA200). The SMA9 ($205.10) and SMA20 ($198.27) are flattening, and price sitting precisely at SMA20 is a critical inflection \u2014 a sustained close below $197\u2013$198 would trigger a bearish short-term signal and potentially test $187\u2013$188 (SMA50).\n\nThe RSI reset from 76+ to 53 in just five sessions is notable. While it removes overbought risk, the speed of the decline suggests weak hands exiting rather than healthy consolidation. RSI at 53 is neutral \u2014 not a buy signal, not oversold. A constructive scenario would see RSI stabilize here and rebuild above 60 on expanding volume; a bearish scenario would have it continue lower toward 40, consistent with a retest of the SMA50.\n\nFrom a market structure perspective, the April lows near $178 created a meaningful higher low relative to the broader 2025 correction context. If the $178\u2013$183 zone holds on any re-test, the technical base remains intact. The critical resistance cluster sits at $213\u2013$217 (the April 27\u201328 highs), and a weekly close above that zone on volume would signal a more durable breakout.\n\nThe insider selling pattern \u2014 $148.96M in sales, zero buys, concentrated at prices $172\u2013$182 in late March \u2014 is not alarming in isolation for a stock of NVDA's size and equity compensation structure, but it does indicate no meaningful insider conviction at current prices. The high beta (2.335) means any macro deterioration will punish NVDA disproportionately; conversely, a risk-on environment could rapidly compress the gap to analyst targets ($275 consensus). Net technical read: range-bound near-term ($187\u2013$217), with a constructive intermediate bias contingent on macro support.",
+     "data_gaps": [
+      "No options market data available (implied volatility, put/call ratios, skew) \u2014 critical for understanding hedging flows and institutional positioning in a high-beta name like NVDA",
+      "Short interest and days-to-cover data absent \u2014 important for assessing squeeze potential or sustained distribution dynamics",
+      "Institutional ownership changes (13F flow data) not provided \u2014 would clarify whether the April volume surge represented institutional accumulation or distribution"
+     ],
+     "key_findings": [
+      {
+       "finding": "Price has recovered strongly from the April 7 low of $178.10 to $198.48, reclaiming all key moving averages (SMA9: $205.10, SMA20: $198.27, SMA50: $187.33, SMA200: $183.98), though the SMA9 now acts as near-term resistance.",
+       "evidence": "[Source: FMP /historical-price-full] \u2014 20-session OHLCV data showing close progression from $178.10 on 2026-04-07 to $198.48 on 2026-05-04, with SMA layers confirmed"
+      },
+      {
+       "finding": "RSI(14) has pulled back to 53.01 from an overbought reading of 76.28 on April 27, signaling the near-term momentum surge has faded and the stock is consolidating rather than trending higher.",
+       "evidence": "[Source: FMP /historical-price-full] \u2014 RSI peaked at 76.28 on 2026-04-27 during a high-volume session (187M shares), retreated to 53.01 by 2026-05-04"
+      },
+      {
+       "finding": "Volume confirmation is mixed: the April 24\u201328 breakout phase saw volume spike to 214M and 187M shares, but recent sessions (May 1\u20134) have reverted to 124\u2013129M, suggesting buying conviction is diminishing at the $198\u2013$202 range.",
+       "evidence": "[Source: FMP /historical-price-full] \u2014 Volume data across 20 sessions showing volume contraction on consolidation days near $198\u2013$202"
+      },
+      {
+       "finding": "Insiders have sold $148.96M in shares with zero buys over the last 20 Form 4 filings, including director Mark Stevens selling $38.5M across two transactions at $172\u2013$175 in late March, consistent with distribution at elevated relative levels.",
+       "evidence": "[Source: FMP /insider-trading] \u2014 Aggregate insider activity: $0M buys vs $148.96M sells; Stevens sold 221,682 shares on 2026-03-24"
+      },
+      {
+       "finding": "Beta of 2.335 indicates NVDA amplifies broad market moves by more than 2x, and with the DCF intrinsic value at $235.50 implying only +19.3% upside versus the analyst consensus target of $275.74 (+38.9%), technical positioning is heavily dependent on macro tape direction.",
+       "evidence": "[Source: FMP /profile] \u2014 Beta 2.335; [Source: FMP /discounted-cash-flow] \u2014 DCF $235.50; [Source: FMP /analyst-estimates] \u2014 consensus PT $275.74 vs current $198.48"
+      }
+     ],
+     "score_rationale": "NVDA shows constructive intermediate-term structure with price above all major moving averages and a recovering RSI, but near-term momentum is stalling after a sharp rally from April lows, with insider selling pressure and heavy volatility (beta 2.335) creating meaningful technical risk at current levels."
+    },
+    "key_findings": [
+     "Price has recovered strongly from the April 7 low of $178.10 to $198.48, reclaiming all key moving averages (SMA9: $205.10, SMA20: $198.27, SMA50: $187.33, SMA200: $183.98), though the SMA9 now acts as near-term resistance.",
+     "RSI(14) has pulled back to 53.01 from an overbought reading of 76.28 on April 27, signaling the near-term momentum surge has faded and the stock is consolidating rather than trending higher.",
+     "Volume confirmation is mixed: the April 24\u201328 breakout phase saw volume spike to 214M and 187M shares, but recent sessions (May 1\u20134) have reverted to 124\u2013129M, suggesting buying conviction is diminishing at the $198\u2013$202 range.",
+     "Insiders have sold $148.96M in shares with zero buys over the last 20 Form 4 filings, including director Mark Stevens selling $38.5M across two transactions at $172\u2013$175 in late March, consistent with distribution at elevated relative levels.",
+     "Beta of 2.335 indicates NVDA amplifies broad market moves by more than 2x, and with the DCF intrinsic value at $235.50 implying only +19.3% upside versus the analyst consensus target of $275.74 (+38.9%), technical positioning is heavily dependent on macro tape direction."
+    ]
+   }
+  },
+  "stream_buffer": "",
+  "thesis_status": "ON TRACK",
+  "human_feedback": {},
+  "conviction_score": 58,
+  "curated_financials": {
+   "roa": 0.6573070922179947,
+   "roe": null,
+   "beta": 2.335,
+   "roic": null,
+   "sector": "Technology",
+   "ticker": "NVDA",
+   "industry": "Semiconductors",
+   "pe_ratio": null,
+   "peg_ratio": null,
+   "market_cap": 4824056590739.0,
+   "volume_avg": null,
+   "company_name": "NVIDIA Corporation",
+   "daily_prices": [
+    {
+     "low": 194.74,
+     "rsi": 53.01,
+     "date": "2026-05-04",
+     "high": 201.73,
+     "open": 199.5,
+     "close": 198.48,
+     "sma_9": 205.1044,
+     "sma_20": 198.266,
+     "sma_50": 187.3274,
+     "volume": 124170649,
+     "sma_100": 186.0637,
+     "sma_200": 183.9837
+    }
+   ],
+   "ev_to_ebitda": null,
+   "price_to_fcf": null,
+   "current_price": 198.48,
+   "price_to_book": null,
+   "quarterly_eps": [
+    {
+     "value": 1.77,
+     "period": "Q4",
+     "yoy_growth": 35.11450381679389
+    },
+    {
+     "value": 1.31,
+     "period": "Q3",
+     "yoy_growth": 21.296296296296294
+    },
+    {
+     "value": 1.08,
+     "period": "Q2",
+     "yoy_growth": 40.25974025974027
+    },
+    {
+     "value": 0.77,
+     "period": "Q1",
+     "yoy_growth": -14.444444444444446
+    },
+    {
+     "value": 0.9,
+     "period": "Q4",
+     "yoy_growth": 13.924050632911388
+    },
+    {
+     "value": 0.79,
+     "period": "Q3",
+     "yoy_growth": 16.176470588235293
+    },
+    {
+     "value": 0.68,
+     "period": "Q2",
+     "yoy_growth": 13.333333333333346
+    },
+    {
+     "value": 0.6,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "debt_to_equity": 0.07,
+   "dividend_yield": null,
+   "price_to_sales": null,
+   "quarterly_cash": [
+    {
+     "value": 10605000000.0,
+     "period": "Q4",
+     "yoy_growth": -7.6702072087759
+    },
+    {
+     "value": 11486000000.0,
+     "period": "Q3",
+     "yoy_growth": -1.3145459231892773
+    },
+    {
+     "value": 11639000000.0,
+     "period": "Q2",
+     "yoy_growth": -23.5985296048313
+    },
+    {
+     "value": 15234000000.0,
+     "period": "Q1",
+     "yoy_growth": 77.36639888229129
+    },
+    {
+     "value": 8589000000.0,
+     "period": "Q4",
+     "yoy_growth": -5.687932359723289
+    },
+    {
+     "value": 9107000000.0,
+     "period": "Q3",
+     "yoy_growth": 6.352913698470163
+    },
+    {
+     "value": 8563000000.0,
+     "period": "Q2",
+     "yoy_growth": 12.864109661262685
+    },
+    {
+     "value": 7587000000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "dcf_gap_percent": 19.26,
+   "quarterly_capex": [
+    {
+     "value": -1284000000.0,
+     "period": "Q4",
+     "yoy_growth": 21.515892420537895
+    },
+    {
+     "value": -1636000000.0,
+     "period": "Q3",
+     "yoy_growth": 13.667546174142482
+    },
+    {
+     "value": -1895000000.0,
+     "period": "Q2",
+     "yoy_growth": -54.44172779136104
+    },
+    {
+     "value": -1227000000.0,
+     "period": "Q1",
+     "yoy_growth": -13.92757660167131
+    },
+    {
+     "value": -1077000000.0,
+     "period": "Q4",
+     "yoy_growth": -32.47232472324723
+    },
+    {
+     "value": -813000000.0,
+     "period": "Q3",
+     "yoy_growth": 16.786079836233366
+    },
+    {
+     "value": -977000000.0,
+     "period": "Q2",
+     "yoy_growth": -164.76964769647697
+    },
+    {
+     "value": -369000000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "macro_indicators": {
+    "cpi": [
+     {
+      "date": "2024-05-01",
+      "value": 313.175
+     },
+     {
+      "date": "2024-06-01",
+      "value": 313.044
+     },
+     {
+      "date": "2024-07-01",
+      "value": 313.569
+     },
+     {
+      "date": "2024-08-01",
+      "value": 314.062
+     },
+     {
+      "date": "2024-09-01",
+      "value": 314.732
+     },
+     {
+      "date": "2024-10-01",
+      "value": 315.631
+     },
+     {
+      "date": "2024-11-01",
+      "value": 316.528
+     },
+     {
+      "date": "2024-12-01",
+      "value": 317.604
+     },
+     {
+      "date": "2025-01-01",
+      "value": 318.961
+     },
+     {
+      "date": "2025-02-01",
+      "value": 319.679
+     },
+     {
+      "date": "2025-03-01",
+      "value": 319.785
+     },
+     {
+      "date": "2025-04-01",
+      "value": 320.302
+     },
+     {
+      "date": "2025-05-01",
+      "value": 320.62
+     },
+     {
+      "date": "2025-06-01",
+      "value": 321.435
+     },
+     {
+      "date": "2025-07-01",
+      "value": 322.169
+     },
+     {
+      "date": "2025-08-01",
+      "value": 323.291
+     },
+     {
+      "date": "2025-09-01",
+      "value": 324.245
+     },
+     {
+      "date": "2025-11-01",
+      "value": 325.063
+     },
+     {
+      "date": "2025-12-01",
+      "value": 326.031
+     },
+     {
+      "date": "2026-01-01",
+      "value": 326.588
+     },
+     {
+      "date": "2026-02-01",
+      "value": 327.46
+     },
+     {
+      "date": "2026-03-01",
+      "value": 330.293
+     }
+    ],
+    "gdp_growth": [
+     {
+      "date": "2024-04-01",
+      "value": 3.6
+     },
+     {
+      "date": "2024-07-01",
+      "value": 3.3
+     },
+     {
+      "date": "2024-10-01",
+      "value": 1.9
+     },
+     {
+      "date": "2025-01-01",
+      "value": -0.6
+     },
+     {
+      "date": "2025-04-01",
+      "value": 3.8
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.4
+     },
+     {
+      "date": "2025-10-01",
+      "value": 0.5
+     },
+     {
+      "date": "2026-01-01",
+      "value": 2.0
+     }
+    ],
+    "treasury_2y": [
+     {
+      "date": "2024-05-10",
+      "value": 4.87
+     },
+     {
+      "date": "2024-05-17",
+      "value": 4.83
+     },
+     {
+      "date": "2024-05-24",
+      "value": 4.93
+     },
+     {
+      "date": "2024-05-31",
+      "value": 4.89
+     },
+     {
+      "date": "2024-06-07",
+      "value": 4.87
+     },
+     {
+      "date": "2024-06-14",
+      "value": 4.67
+     },
+     {
+      "date": "2024-06-21",
+      "value": 4.7
+     },
+     {
+      "date": "2024-06-28",
+      "value": 4.71
+     },
+     {
+      "date": "2024-07-05",
+      "value": 4.6
+     },
+     {
+      "date": "2024-07-12",
+      "value": 4.45
+     },
+     {
+      "date": "2024-07-19",
+      "value": 4.49
+     },
+     {
+      "date": "2024-07-26",
+      "value": 4.36
+     },
+     {
+      "date": "2024-08-02",
+      "value": 3.88
+     },
+     {
+      "date": "2024-08-09",
+      "value": 4.05
+     },
+     {
+      "date": "2024-08-16",
+      "value": 4.06
+     },
+     {
+      "date": "2024-08-23",
+      "value": 3.9
+     },
+     {
+      "date": "2024-08-30",
+      "value": 3.91
+     },
+     {
+      "date": "2024-09-06",
+      "value": 3.66
+     },
+     {
+      "date": "2024-09-13",
+      "value": 3.57
+     },
+     {
+      "date": "2024-09-20",
+      "value": 3.55
+     },
+     {
+      "date": "2024-09-27",
+      "value": 3.55
+     },
+     {
+      "date": "2024-10-04",
+      "value": 3.93
+     },
+     {
+      "date": "2024-10-11",
+      "value": 3.95
+     },
+     {
+      "date": "2024-10-18",
+      "value": 3.95
+     },
+     {
+      "date": "2024-10-25",
+      "value": 4.11
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.21
+     },
+     {
+      "date": "2024-11-08",
+      "value": 4.26
+     },
+     {
+      "date": "2024-11-15",
+      "value": 4.31
+     },
+     {
+      "date": "2024-11-22",
+      "value": 4.37
+     },
+     {
+      "date": "2024-11-29",
+      "value": 4.13
+     },
+     {
+      "date": "2024-12-06",
+      "value": 4.1
+     },
+     {
+      "date": "2024-12-13",
+      "value": 4.25
+     },
+     {
+      "date": "2024-12-20",
+      "value": 4.3
+     },
+     {
+      "date": "2024-12-27",
+      "value": 4.31
+     },
+     {
+      "date": "2025-01-03",
+      "value": 4.28
+     },
+     {
+      "date": "2025-01-10",
+      "value": 4.4
+     },
+     {
+      "date": "2025-01-17",
+      "value": 4.27
+     },
+     {
+      "date": "2025-01-24",
+      "value": 4.27
+     },
+     {
+      "date": "2025-01-31",
+      "value": 4.22
+     },
+     {
+      "date": "2025-02-07",
+      "value": 4.29
+     },
+     {
+      "date": "2025-02-14",
+      "value": 4.26
+     },
+     {
+      "date": "2025-02-21",
+      "value": 4.19
+     },
+     {
+      "date": "2025-02-28",
+      "value": 3.99
+     },
+     {
+      "date": "2025-03-07",
+      "value": 3.99
+     },
+     {
+      "date": "2025-03-14",
+      "value": 4.02
+     },
+     {
+      "date": "2025-03-21",
+      "value": 3.94
+     },
+     {
+      "date": "2025-03-28",
+      "value": 3.89
+     },
+     {
+      "date": "2025-04-04",
+      "value": 3.68
+     },
+     {
+      "date": "2025-04-11",
+      "value": 3.96
+     },
+     {
+      "date": "2025-04-17",
+      "value": 3.81
+     },
+     {
+      "date": "2025-04-25",
+      "value": 3.74
+     },
+     {
+      "date": "2025-05-02",
+      "value": 3.83
+     },
+     {
+      "date": "2025-05-09",
+      "value": 3.88
+     },
+     {
+      "date": "2025-05-16",
+      "value": 3.98
+     },
+     {
+      "date": "2025-05-23",
+      "value": 4.0
+     },
+     {
+      "date": "2025-05-30",
+      "value": 3.89
+     },
+     {
+      "date": "2025-06-06",
+      "value": 4.04
+     },
+     {
+      "date": "2025-06-13",
+      "value": 3.96
+     },
+     {
+      "date": "2025-06-20",
+      "value": 3.9
+     },
+     {
+      "date": "2025-06-27",
+      "value": 3.73
+     },
+     {
+      "date": "2025-07-03",
+      "value": 3.88
+     },
+     {
+      "date": "2025-07-11",
+      "value": 3.9
+     },
+     {
+      "date": "2025-07-18",
+      "value": 3.88
+     },
+     {
+      "date": "2025-07-25",
+      "value": 3.91
+     },
+     {
+      "date": "2025-08-01",
+      "value": 3.69
+     },
+     {
+      "date": "2025-08-08",
+      "value": 3.76
+     },
+     {
+      "date": "2025-08-15",
+      "value": 3.75
+     },
+     {
+      "date": "2025-08-22",
+      "value": 3.68
+     },
+     {
+      "date": "2025-08-29",
+      "value": 3.59
+     },
+     {
+      "date": "2025-09-05",
+      "value": 3.51
+     },
+     {
+      "date": "2025-09-12",
+      "value": 3.56
+     },
+     {
+      "date": "2025-09-19",
+      "value": 3.57
+     },
+     {
+      "date": "2025-09-26",
+      "value": 3.63
+     },
+     {
+      "date": "2025-10-03",
+      "value": 3.58
+     },
+     {
+      "date": "2025-10-10",
+      "value": 3.52
+     },
+     {
+      "date": "2025-10-17",
+      "value": 3.46
+     },
+     {
+      "date": "2025-10-24",
+      "value": 3.48
+     },
+     {
+      "date": "2025-10-31",
+      "value": 3.6
+     },
+     {
+      "date": "2025-11-07",
+      "value": 3.55
+     },
+     {
+      "date": "2025-11-14",
+      "value": 3.62
+     },
+     {
+      "date": "2025-11-21",
+      "value": 3.51
+     },
+     {
+      "date": "2025-11-28",
+      "value": 3.47
+     },
+     {
+      "date": "2025-12-05",
+      "value": 3.56
+     },
+     {
+      "date": "2025-12-12",
+      "value": 3.52
+     },
+     {
+      "date": "2025-12-19",
+      "value": 3.48
+     },
+     {
+      "date": "2025-12-26",
+      "value": 3.46
+     },
+     {
+      "date": "2026-01-02",
+      "value": 3.47
+     },
+     {
+      "date": "2026-01-09",
+      "value": 3.54
+     },
+     {
+      "date": "2026-01-16",
+      "value": 3.59
+     },
+     {
+      "date": "2026-01-23",
+      "value": 3.6
+     },
+     {
+      "date": "2026-01-30",
+      "value": 3.52
+     },
+     {
+      "date": "2026-02-06",
+      "value": 3.5
+     },
+     {
+      "date": "2026-02-13",
+      "value": 3.4
+     },
+     {
+      "date": "2026-02-20",
+      "value": 3.48
+     },
+     {
+      "date": "2026-02-27",
+      "value": 3.38
+     },
+     {
+      "date": "2026-03-06",
+      "value": 3.56
+     },
+     {
+      "date": "2026-03-13",
+      "value": 3.73
+     },
+     {
+      "date": "2026-03-20",
+      "value": 3.88
+     },
+     {
+      "date": "2026-03-27",
+      "value": 3.88
+     },
+     {
+      "date": "2026-04-03",
+      "value": 3.84
+     },
+     {
+      "date": "2026-04-10",
+      "value": 3.81
+     },
+     {
+      "date": "2026-04-17",
+      "value": 3.71
+     },
+     {
+      "date": "2026-04-24",
+      "value": 3.78
+     },
+     {
+      "date": "2026-05-01",
+      "value": 3.88
+     }
+    ],
+    "treasury_10y": [
+     {
+      "date": "2024-05-10",
+      "value": 4.5
+     },
+     {
+      "date": "2024-05-17",
+      "value": 4.42
+     },
+     {
+      "date": "2024-05-24",
+      "value": 4.46
+     },
+     {
+      "date": "2024-05-31",
+      "value": 4.51
+     },
+     {
+      "date": "2024-06-07",
+      "value": 4.43
+     },
+     {
+      "date": "2024-06-14",
+      "value": 4.2
+     },
+     {
+      "date": "2024-06-21",
+      "value": 4.25
+     },
+     {
+      "date": "2024-06-28",
+      "value": 4.36
+     },
+     {
+      "date": "2024-07-05",
+      "value": 4.28
+     },
+     {
+      "date": "2024-07-12",
+      "value": 4.18
+     },
+     {
+      "date": "2024-07-19",
+      "value": 4.25
+     },
+     {
+      "date": "2024-07-26",
+      "value": 4.2
+     },
+     {
+      "date": "2024-08-02",
+      "value": 3.8
+     },
+     {
+      "date": "2024-08-09",
+      "value": 3.94
+     },
+     {
+      "date": "2024-08-16",
+      "value": 3.89
+     },
+     {
+      "date": "2024-08-23",
+      "value": 3.81
+     },
+     {
+      "date": "2024-08-30",
+      "value": 3.91
+     },
+     {
+      "date": "2024-09-06",
+      "value": 3.72
+     },
+     {
+      "date": "2024-09-13",
+      "value": 3.66
+     },
+     {
+      "date": "2024-09-20",
+      "value": 3.73
+     },
+     {
+      "date": "2024-09-27",
+      "value": 3.75
+     },
+     {
+      "date": "2024-10-04",
+      "value": 3.98
+     },
+     {
+      "date": "2024-10-11",
+      "value": 4.08
+     },
+     {
+      "date": "2024-10-18",
+      "value": 4.08
+     },
+     {
+      "date": "2024-10-25",
+      "value": 4.25
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.37
+     },
+     {
+      "date": "2024-11-08",
+      "value": 4.3
+     },
+     {
+      "date": "2024-11-15",
+      "value": 4.43
+     },
+     {
+      "date": "2024-11-22",
+      "value": 4.41
+     },
+     {
+      "date": "2024-11-29",
+      "value": 4.18
+     },
+     {
+      "date": "2024-12-06",
+      "value": 4.15
+     },
+     {
+      "date": "2024-12-13",
+      "value": 4.4
+     },
+     {
+      "date": "2024-12-20",
+      "value": 4.52
+     },
+     {
+      "date": "2024-12-27",
+      "value": 4.62
+     },
+     {
+      "date": "2025-01-03",
+      "value": 4.6
+     },
+     {
+      "date": "2025-01-10",
+      "value": 4.77
+     },
+     {
+      "date": "2025-01-17",
+      "value": 4.61
+     },
+     {
+      "date": "2025-01-24",
+      "value": 4.63
+     },
+     {
+      "date": "2025-01-31",
+      "value": 4.58
+     },
+     {
+      "date": "2025-02-07",
+      "value": 4.49
+     },
+     {
+      "date": "2025-02-14",
+      "value": 4.47
+     },
+     {
+      "date": "2025-02-21",
+      "value": 4.42
+     },
+     {
+      "date": "2025-02-28",
+      "value": 4.24
+     },
+     {
+      "date": "2025-03-07",
+      "value": 4.32
+     },
+     {
+      "date": "2025-03-14",
+      "value": 4.31
+     },
+     {
+      "date": "2025-03-21",
+      "value": 4.25
+     },
+     {
+      "date": "2025-03-28",
+      "value": 4.27
+     },
+     {
+      "date": "2025-04-04",
+      "value": 4.01
+     },
+     {
+      "date": "2025-04-11",
+      "value": 4.48
+     },
+     {
+      "date": "2025-04-17",
+      "value": 4.34
+     },
+     {
+      "date": "2025-04-25",
+      "value": 4.29
+     },
+     {
+      "date": "2025-05-02",
+      "value": 4.33
+     },
+     {
+      "date": "2025-05-09",
+      "value": 4.37
+     },
+     {
+      "date": "2025-05-16",
+      "value": 4.43
+     },
+     {
+      "date": "2025-05-23",
+      "value": 4.51
+     },
+     {
+      "date": "2025-05-30",
+      "value": 4.41
+     },
+     {
+      "date": "2025-06-06",
+      "value": 4.51
+     },
+     {
+      "date": "2025-06-13",
+      "value": 4.41
+     },
+     {
+      "date": "2025-06-20",
+      "value": 4.38
+     },
+     {
+      "date": "2025-06-27",
+      "value": 4.29
+     },
+     {
+      "date": "2025-07-03",
+      "value": 4.35
+     },
+     {
+      "date": "2025-07-11",
+      "value": 4.43
+     },
+     {
+      "date": "2025-07-18",
+      "value": 4.44
+     },
+     {
+      "date": "2025-07-25",
+      "value": 4.4
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.23
+     },
+     {
+      "date": "2025-08-08",
+      "value": 4.27
+     },
+     {
+      "date": "2025-08-15",
+      "value": 4.33
+     },
+     {
+      "date": "2025-08-22",
+      "value": 4.26
+     },
+     {
+      "date": "2025-08-29",
+      "value": 4.23
+     },
+     {
+      "date": "2025-09-05",
+      "value": 4.1
+     },
+     {
+      "date": "2025-09-12",
+      "value": 4.06
+     },
+     {
+      "date": "2025-09-19",
+      "value": 4.14
+     },
+     {
+      "date": "2025-09-26",
+      "value": 4.2
+     },
+     {
+      "date": "2025-10-03",
+      "value": 4.13
+     },
+     {
+      "date": "2025-10-10",
+      "value": 4.05
+     },
+     {
+      "date": "2025-10-17",
+      "value": 4.02
+     },
+     {
+      "date": "2025-10-24",
+      "value": 4.02
+     },
+     {
+      "date": "2025-10-31",
+      "value": 4.11
+     },
+     {
+      "date": "2025-11-07",
+      "value": 4.11
+     },
+     {
+      "date": "2025-11-14",
+      "value": 4.14
+     },
+     {
+      "date": "2025-11-21",
+      "value": 4.06
+     },
+     {
+      "date": "2025-11-28",
+      "value": 4.02
+     },
+     {
+      "date": "2025-12-05",
+      "value": 4.14
+     },
+     {
+      "date": "2025-12-12",
+      "value": 4.19
+     },
+     {
+      "date": "2025-12-19",
+      "value": 4.16
+     },
+     {
+      "date": "2025-12-26",
+      "value": 4.14
+     },
+     {
+      "date": "2026-01-02",
+      "value": 4.19
+     },
+     {
+      "date": "2026-01-09",
+      "value": 4.18
+     },
+     {
+      "date": "2026-01-16",
+      "value": 4.24
+     },
+     {
+      "date": "2026-01-23",
+      "value": 4.24
+     },
+     {
+      "date": "2026-01-30",
+      "value": 4.26
+     },
+     {
+      "date": "2026-02-06",
+      "value": 4.22
+     },
+     {
+      "date": "2026-02-13",
+      "value": 4.04
+     },
+     {
+      "date": "2026-02-20",
+      "value": 4.08
+     },
+     {
+      "date": "2026-02-27",
+      "value": 3.97
+     },
+     {
+      "date": "2026-03-06",
+      "value": 4.15
+     },
+     {
+      "date": "2026-03-13",
+      "value": 4.28
+     },
+     {
+      "date": "2026-03-20",
+      "value": 4.39
+     },
+     {
+      "date": "2026-03-27",
+      "value": 4.44
+     },
+     {
+      "date": "2026-04-03",
+      "value": 4.35
+     },
+     {
+      "date": "2026-04-10",
+      "value": 4.31
+     },
+     {
+      "date": "2026-04-17",
+      "value": 4.26
+     },
+     {
+      "date": "2026-04-24",
+      "value": 4.31
+     },
+     {
+      "date": "2026-05-01",
+      "value": 4.39
+     }
+    ],
+    "unemployment": [
+     {
+      "date": "2024-05-01",
+      "value": 3.9
+     },
+     {
+      "date": "2024-06-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-07-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-08-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-09-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-10-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-12-01",
+      "value": 4.1
+     },
+     {
+      "date": "2025-01-01",
+      "value": 4.0
+     },
+     {
+      "date": "2025-02-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-03-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-04-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-05-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-06-01",
+      "value": 4.1
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-09-01",
+      "value": 4.4
+     },
+     {
+      "date": "2025-11-01",
+      "value": 4.5
+     },
+     {
+      "date": "2025-12-01",
+      "value": 4.4
+     },
+     {
+      "date": "2026-01-01",
+      "value": 4.3
+     },
+     {
+      "date": "2026-02-01",
+      "value": 4.4
+     },
+     {
+      "date": "2026-03-01",
+      "value": 4.3
+     }
+    ],
+    "fed_funds_rate": [
+     {
+      "date": "2024-05-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-06-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-07-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-08-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-09-01",
+      "value": 5.13
+     },
+     {
+      "date": "2024-10-01",
+      "value": 4.83
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.64
+     },
+     {
+      "date": "2024-12-01",
+      "value": 4.48
+     },
+     {
+      "date": "2025-01-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-02-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-03-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-04-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-05-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-06-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-09-01",
+      "value": 4.22
+     },
+     {
+      "date": "2025-10-01",
+      "value": 4.09
+     },
+     {
+      "date": "2025-11-01",
+      "value": 3.88
+     },
+     {
+      "date": "2025-12-01",
+      "value": 3.72
+     },
+     {
+      "date": "2026-01-01",
+      "value": 3.64
+     },
+     {
+      "date": "2026-02-01",
+      "value": 3.64
+     },
+     {
+      "date": "2026-03-01",
+      "value": 3.64
+     },
+     {
+      "date": "2026-04-01",
+      "value": 3.64
+     }
+    ],
+    "m2_money_supply": [
+     {
+      "date": "2024-05-01",
+      "value": 21020.6
+     },
+     {
+      "date": "2024-06-01",
+      "value": 21068.4
+     },
+     {
+      "date": "2024-07-01",
+      "value": 21095.3
+     },
+     {
+      "date": "2024-08-01",
+      "value": 21186.8
+     },
+     {
+      "date": "2024-09-01",
+      "value": 21269.5
+     },
+     {
+      "date": "2024-10-01",
+      "value": 21331.9
+     },
+     {
+      "date": "2024-11-01",
+      "value": 21452.2
+     },
+     {
+      "date": "2024-12-01",
+      "value": 21485.9
+     },
+     {
+      "date": "2025-01-01",
+      "value": 21548.1
+     },
+     {
+      "date": "2025-02-01",
+      "value": 21613.5
+     },
+     {
+      "date": "2025-03-01",
+      "value": 21693.6
+     },
+     {
+      "date": "2025-04-01",
+      "value": 21775.6
+     },
+     {
+      "date": "2025-05-01",
+      "value": 21833.9
+     },
+     {
+      "date": "2025-06-01",
+      "value": 21938.8
+     },
+     {
+      "date": "2025-07-01",
+      "value": 22020.0
+     },
+     {
+      "date": "2025-08-01",
+      "value": 22087.0
+     },
+     {
+      "date": "2025-09-01",
+      "value": 22170.3
+     },
+     {
+      "date": "2025-10-01",
+      "value": 22245.1
+     },
+     {
+      "date": "2025-11-01",
+      "value": 22277.5
+     },
+     {
+      "date": "2025-12-01",
+      "value": 22353.6
+     },
+     {
+      "date": "2026-01-01",
+      "value": 22429.3
+     },
+     {
+      "date": "2026-02-01",
+      "value": 22627.3
+     },
+     {
+      "date": "2026-03-01",
+      "value": 22686.0
+     }
+    ],
+    "nonfarm_payrolls": [
+     {
+      "date": "2024-05-01",
+      "value": 157608.0
+     },
+     {
+      "date": "2024-06-01",
+      "value": 157695.0
+     },
+     {
+      "date": "2024-07-01",
+      "value": 157748.0
+     },
+     {
+      "date": "2024-08-01",
+      "value": 157757.0
+     },
+     {
+      "date": "2024-09-01",
+      "value": 157912.0
+     },
+     {
+      "date": "2024-10-01",
+      "value": 157945.0
+     },
+     {
+      "date": "2024-11-01",
+      "value": 158079.0
+     },
+     {
+      "date": "2024-12-01",
+      "value": 158316.0
+     },
+     {
+      "date": "2025-01-01",
+      "value": 158268.0
+     },
+     {
+      "date": "2025-02-01",
+      "value": 158310.0
+     },
+     {
+      "date": "2025-03-01",
+      "value": 158377.0
+     },
+     {
+      "date": "2025-04-01",
+      "value": 158485.0
+     },
+     {
+      "date": "2025-05-01",
+      "value": 158498.0
+     },
+     {
+      "date": "2025-06-01",
+      "value": 158478.0
+     },
+     {
+      "date": "2025-07-01",
+      "value": 158542.0
+     },
+     {
+      "date": "2025-08-01",
+      "value": 158472.0
+     },
+     {
+      "date": "2025-09-01",
+      "value": 158548.0
+     },
+     {
+      "date": "2025-10-01",
+      "value": 158408.0
+     },
+     {
+      "date": "2025-11-01",
+      "value": 158449.0
+     },
+     {
+      "date": "2025-12-01",
+      "value": 158432.0
+     },
+     {
+      "date": "2026-01-01",
+      "value": 158592.0
+     },
+     {
+      "date": "2026-02-01",
+      "value": 158459.0
+     },
+     {
+      "date": "2026-03-01",
+      "value": 158637.0
+     }
+    ],
+    "yield_curve_spread": [
+     {
+      "date": "2024-05-10",
+      "value": -0.37
+     },
+     {
+      "date": "2024-05-17",
+      "value": -0.41
+     },
+     {
+      "date": "2024-05-24",
+      "value": -0.47
+     },
+     {
+      "date": "2024-05-31",
+      "value": -0.38
+     },
+     {
+      "date": "2024-06-07",
+      "value": -0.44
+     },
+     {
+      "date": "2024-06-14",
+      "value": -0.47
+     },
+     {
+      "date": "2024-06-21",
+      "value": -0.45
+     },
+     {
+      "date": "2024-06-28",
+      "value": -0.35
+     },
+     {
+      "date": "2024-07-05",
+      "value": -0.32
+     },
+     {
+      "date": "2024-07-12",
+      "value": -0.27
+     },
+     {
+      "date": "2024-07-19",
+      "value": -0.24
+     },
+     {
+      "date": "2024-07-26",
+      "value": -0.16
+     },
+     {
+      "date": "2024-08-02",
+      "value": -0.08
+     },
+     {
+      "date": "2024-08-09",
+      "value": -0.11
+     },
+     {
+      "date": "2024-08-16",
+      "value": -0.17
+     },
+     {
+      "date": "2024-08-23",
+      "value": -0.09
+     },
+     {
+      "date": "2024-08-30",
+      "value": 0.0
+     },
+     {
+      "date": "2024-09-06",
+      "value": 0.06
+     },
+     {
+      "date": "2024-09-13",
+      "value": 0.09
+     },
+     {
+      "date": "2024-09-20",
+      "value": 0.18
+     },
+     {
+      "date": "2024-09-27",
+      "value": 0.2
+     },
+     {
+      "date": "2024-10-04",
+      "value": 0.05
+     },
+     {
+      "date": "2024-10-11",
+      "value": 0.13
+     },
+     {
+      "date": "2024-10-18",
+      "value": 0.13
+     },
+     {
+      "date": "2024-10-25",
+      "value": 0.14
+     },
+     {
+      "date": "2024-11-01",
+      "value": 0.16
+     },
+     {
+      "date": "2024-11-08",
+      "value": 0.04
+     },
+     {
+      "date": "2024-11-15",
+      "value": 0.12
+     },
+     {
+      "date": "2024-11-22",
+      "value": 0.04
+     },
+     {
+      "date": "2024-11-29",
+      "value": 0.05
+     },
+     {
+      "date": "2024-12-06",
+      "value": 0.05
+     },
+     {
+      "date": "2024-12-13",
+      "value": 0.15
+     },
+     {
+      "date": "2024-12-20",
+      "value": 0.22
+     },
+     {
+      "date": "2024-12-27",
+      "value": 0.31
+     },
+     {
+      "date": "2025-01-03",
+      "value": 0.32
+     },
+     {
+      "date": "2025-01-10",
+      "value": 0.37
+     },
+     {
+      "date": "2025-01-17",
+      "value": 0.34
+     },
+     {
+      "date": "2025-01-24",
+      "value": 0.36
+     },
+     {
+      "date": "2025-01-31",
+      "value": 0.36
+     },
+     {
+      "date": "2025-02-07",
+      "value": 0.2
+     },
+     {
+      "date": "2025-02-14",
+      "value": 0.21
+     },
+     {
+      "date": "2025-02-21",
+      "value": 0.23
+     },
+     {
+      "date": "2025-02-28",
+      "value": 0.25
+     },
+     {
+      "date": "2025-03-07",
+      "value": 0.33
+     },
+     {
+      "date": "2025-03-14",
+      "value": 0.29
+     },
+     {
+      "date": "2025-03-21",
+      "value": 0.31
+     },
+     {
+      "date": "2025-03-28",
+      "value": 0.38
+     },
+     {
+      "date": "2025-04-04",
+      "value": 0.33
+     },
+     {
+      "date": "2025-04-11",
+      "value": 0.52
+     },
+     {
+      "date": "2025-04-17",
+      "value": 0.53
+     },
+     {
+      "date": "2025-04-25",
+      "value": 0.55
+     },
+     {
+      "date": "2025-05-02",
+      "value": 0.5
+     },
+     {
+      "date": "2025-05-09",
+      "value": 0.49
+     },
+     {
+      "date": "2025-05-16",
+      "value": 0.45
+     },
+     {
+      "date": "2025-05-23",
+      "value": 0.51
+     },
+     {
+      "date": "2025-05-30",
+      "value": 0.52
+     },
+     {
+      "date": "2025-06-06",
+      "value": 0.47
+     },
+     {
+      "date": "2025-06-13",
+      "value": 0.45
+     },
+     {
+      "date": "2025-06-20",
+      "value": 0.48
+     },
+     {
+      "date": "2025-06-27",
+      "value": 0.56
+     },
+     {
+      "date": "2025-07-03",
+      "value": 0.47
+     },
+     {
+      "date": "2025-07-11",
+      "value": 0.53
+     },
+     {
+      "date": "2025-07-18",
+      "value": 0.56
+     },
+     {
+      "date": "2025-07-25",
+      "value": 0.49
+     },
+     {
+      "date": "2025-08-01",
+      "value": 0.54
+     },
+     {
+      "date": "2025-08-08",
+      "value": 0.51
+     },
+     {
+      "date": "2025-08-15",
+      "value": 0.58
+     },
+     {
+      "date": "2025-08-22",
+      "value": 0.58
+     },
+     {
+      "date": "2025-08-29",
+      "value": 0.64
+     },
+     {
+      "date": "2025-09-05",
+      "value": 0.59
+     },
+     {
+      "date": "2025-09-12",
+      "value": 0.5
+     },
+     {
+      "date": "2025-09-19",
+      "value": 0.57
+     },
+     {
+      "date": "2025-09-26",
+      "value": 0.57
+     },
+     {
+      "date": "2025-10-03",
+      "value": 0.55
+     },
+     {
+      "date": "2025-10-10",
+      "value": 0.53
+     },
+     {
+      "date": "2025-10-17",
+      "value": 0.56
+     },
+     {
+      "date": "2025-10-24",
+      "value": 0.54
+     },
+     {
+      "date": "2025-10-31",
+      "value": 0.51
+     },
+     {
+      "date": "2025-11-07",
+      "value": 0.56
+     },
+     {
+      "date": "2025-11-14",
+      "value": 0.52
+     },
+     {
+      "date": "2025-11-21",
+      "value": 0.55
+     },
+     {
+      "date": "2025-11-28",
+      "value": 0.55
+     },
+     {
+      "date": "2025-12-05",
+      "value": 0.58
+     },
+     {
+      "date": "2025-12-12",
+      "value": 0.67
+     },
+     {
+      "date": "2025-12-19",
+      "value": 0.68
+     },
+     {
+      "date": "2025-12-26",
+      "value": 0.68
+     },
+     {
+      "date": "2026-01-02",
+      "value": 0.72
+     },
+     {
+      "date": "2026-01-09",
+      "value": 0.64
+     },
+     {
+      "date": "2026-01-16",
+      "value": 0.65
+     },
+     {
+      "date": "2026-01-23",
+      "value": 0.64
+     },
+     {
+      "date": "2026-01-30",
+      "value": 0.74
+     },
+     {
+      "date": "2026-02-06",
+      "value": 0.72
+     },
+     {
+      "date": "2026-02-13",
+      "value": 0.64
+     },
+     {
+      "date": "2026-02-20",
+      "value": 0.6
+     },
+     {
+      "date": "2026-02-27",
+      "value": 0.59
+     },
+     {
+      "date": "2026-03-06",
+      "value": 0.59
+     },
+     {
+      "date": "2026-03-13",
+      "value": 0.55
+     },
+     {
+      "date": "2026-03-20",
+      "value": 0.51
+     },
+     {
+      "date": "2026-03-27",
+      "value": 0.56
+     },
+     {
+      "date": "2026-04-03",
+      "value": 0.51
+     },
+     {
+      "date": "2026-04-10",
+      "value": 0.5
+     },
+     {
+      "date": "2026-04-17",
+      "value": 0.55
+     },
+     {
+      "date": "2026-04-24",
+      "value": 0.53
+     },
+     {
+      "date": "2026-05-01",
+      "value": 0.51
+     },
+     {
+      "date": "2026-05-04",
+      "value": 0.5
+     }
+    ]
+   },
+   "interest_coverage": null,
+   "quarterly_free_cf": [
+    {
+     "value": 34904000000.0,
+     "period": "Q4",
+     "yoy_growth": 57.829527470042954
+    },
+    {
+     "value": 22115000000.0,
+     "period": "Q3",
+     "yoy_growth": 64.17965850037119
+    },
+    {
+     "value": 13470000000.0,
+     "period": "Q2",
+     "yoy_growth": -48.562263718639024
+    },
+    {
+     "value": 26187000000.0,
+     "period": "Q1",
+     "yoy_growth": 68.38348765432099
+    },
+    {
+     "value": 15552000000.0,
+     "period": "Q4",
+     "yoy_growth": -7.505650053526823
+    },
+    {
+     "value": 16814000000.0,
+     "period": "Q3",
+     "yoy_growth": 24.44674709495966
+    },
+    {
+     "value": 13511000000.0,
+     "period": "Q2",
+     "yoy_growth": -9.782318376068377
+    },
+    {
+     "value": 14976000000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_revenue": [
+    {
+     "value": 68127000000.0,
+     "period": "Q4",
+     "yoy_growth": 19.50847279233765
+    },
+    {
+     "value": 57006000000.0,
+     "period": "Q3",
+     "yoy_growth": 21.95622874013221
+    },
+    {
+     "value": 46743000000.0,
+     "period": "Q2",
+     "yoy_growth": 6.084608052289956
+    },
+    {
+     "value": 44062000000.0,
+     "period": "Q1",
+     "yoy_growth": 12.028679667437899
+    },
+    {
+     "value": 39331000000.0,
+     "period": "Q4",
+     "yoy_growth": 12.111624194743744
+    },
+    {
+     "value": 35082000000.0,
+     "period": "Q3",
+     "yoy_growth": 16.784287616511318
+    },
+    {
+     "value": 30040000000.0,
+     "period": "Q2",
+     "yoy_growth": 15.343265243434187
+    },
+    {
+     "value": 26044000000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "fifty_two_week_low": 110.82,
+   "dcf_intrinsic_value": 235.50166780519186,
+   "fifty_two_week_high": 216.83,
+   "quarterly_net_margin": [
+    {
+     "value": 63.06,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 55.98,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 56.53,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 42.61,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 56.17,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 55.04,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 55.26,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 57.14,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_total_debt": [
+    {
+     "value": 11412000000.0,
+     "period": "Q4",
+     "yoy_growth": 5.4518573276658655
+    },
+    {
+     "value": 10822000000.0,
+     "period": "Q3",
+     "yoy_growth": 2.1136063408190227
+    },
+    {
+     "value": 10598000000.0,
+     "period": "Q2",
+     "yoy_growth": 3.0432668935342733
+    },
+    {
+     "value": 10285000000.0,
+     "period": "Q1",
+     "yoy_growth": 0.1460564751703992
+    },
+    {
+     "value": 10270000000.0,
+     "period": "Q4",
+     "yoy_growth": 0.4400977995110024
+    },
+    {
+     "value": 10225000000.0,
+     "period": "Q3",
+     "yoy_growth": 2.0968547179231156
+    },
+    {
+     "value": 10015000000.0,
+     "period": "Q2",
+     "yoy_growth": -10.874788644656046
+    },
+    {
+     "value": 11237000000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "forward_eps_estimates": [
+    {
+     "actual": null,
+     "period": "2029-01",
+     "estimate": 3.235
+    },
+    {
+     "actual": null,
+     "period": "2028-10",
+     "estimate": 3.135
+    },
+    {
+     "actual": null,
+     "period": "2028-07",
+     "estimate": 2.955
+    },
+    {
+     "actual": null,
+     "period": "2028-04",
+     "estimate": 2.775
+    },
+    {
+     "actual": null,
+     "period": "2028-01",
+     "estimate": 3.03569
+    },
+    {
+     "actual": null,
+     "period": "2027-10",
+     "estimate": 2.86653
+    },
+    {
+     "actual": null,
+     "period": "2027-07",
+     "estimate": 2.72488
+    },
+    {
+     "actual": null,
+     "period": "2027-04",
+     "estimate": 2.61581
+    }
+   ],
+   "quarterly_gross_margin": [
+    {
+     "value": 75.0,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 73.41,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 72.42,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 60.52,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 73.03,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 74.56,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 75.15,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 78.35,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_operating_cf": [
+    {
+     "value": 36188000000.0,
+     "period": "Q4",
+     "yoy_growth": 52.36411098480064
+    },
+    {
+     "value": 23751000000.0,
+     "period": "Q3",
+     "yoy_growth": 54.57858769931663
+    },
+    {
+     "value": 15365000000.0,
+     "period": "Q2",
+     "yoy_growth": -43.95199533085285
+    },
+    {
+     "value": 27414000000.0,
+     "period": "Q1",
+     "yoy_growth": 64.85657586144687
+    },
+    {
+     "value": 16629000000.0,
+     "period": "Q4",
+     "yoy_growth": -5.661768877290521
+    },
+    {
+     "value": 17627000000.0,
+     "period": "Q3",
+     "yoy_growth": 21.666206515737162
+    },
+    {
+     "value": 14488000000.0,
+     "period": "Q2",
+     "yoy_growth": -5.584881068752036
+    },
+    {
+     "value": 15345000000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_current_ratio": [
+    {
+     "value": 3.91,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 4.47,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 4.21,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 3.39,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 4.44,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 4.1,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 4.27,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 3.53,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "forward_revenue_estimates": [
+    {
+     "actual": null,
+     "period": "2029-01",
+     "estimate": 149137802835.0
+    },
+    {
+     "actual": null,
+     "period": "2028-10",
+     "estimate": 148001769449.0
+    },
+    {
+     "actual": null,
+     "period": "2028-07",
+     "estimate": 141470616642.0
+    },
+    {
+     "actual": null,
+     "period": "2028-04",
+     "estimate": 133686136382.0
+    },
+    {
+     "actual": null,
+     "period": "2028-01",
+     "estimate": 131414780082.0
+    },
+    {
+     "actual": null,
+     "period": "2027-10",
+     "estimate": 124552897821.0
+    },
+    {
+     "actual": null,
+     "period": "2027-07",
+     "estimate": 118397186970.0
+    },
+    {
+     "actual": null,
+     "period": "2027-04",
+     "estimate": 113639128150.0
+    }
+   ],
+   "quarterly_operating_margin": [
+    {
+     "value": 65.02,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 63.17,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 60.84,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 49.11,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 61.11,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 62.34,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 62.06,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 64.92,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_shareholders_equity": [
+    {
+     "value": 157293000000.0,
+     "period": "Q4",
+     "yoy_growth": 32.29349773333221
+    },
+    {
+     "value": 118897000000.0,
+     "period": "Q3",
+     "yoy_growth": 18.741448702200117
+    },
+    {
+     "value": 100131000000.0,
+     "period": "Q2",
+     "yoy_growth": 19.426785778180648
+    },
+    {
+     "value": 83843000000.0,
+     "period": "Q1",
+     "yoy_growth": 5.692891449317383
+    },
+    {
+     "value": 79327000000.0,
+     "period": "Q4",
+     "yoy_growth": 20.376636974764413
+    },
+    {
+     "value": 65899000000.0,
+     "period": "Q3",
+     "yoy_growth": 13.312241002802757
+    },
+    {
+     "value": 58157000000.0,
+     "period": "Q2",
+     "yoy_growth": 18.344796711570552
+    },
+    {
+     "value": 49142000000.0,
+     "period": "Q1",
+     "yoy_growth": null
+    }
+   ]
+  },
+  "transcript_analysis": null
+ }
+}

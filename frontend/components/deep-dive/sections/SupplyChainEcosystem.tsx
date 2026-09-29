@@ -136,7 +136,7 @@ function SupplyChainEcosystemImpl({ ticker }: Props) {
           No extracted relationships yet.{" "}
           <Link
             href="/filings"
-            className="text-[var(--color-primary)] hover:underline font-medium"
+            className="text-[var(--primary-dk)] hover:underline font-medium"
           >
             Open the Filings page
           </Link>
@@ -161,7 +161,7 @@ function SupplyChainEcosystemImpl({ ticker }: Props) {
         <div className="flex justify-end">
           <Link
             href={`/filings/graph?root=${encodeURIComponent(ticker)}`}
-            className="text-[11px] text-[var(--color-primary)] hover:underline font-medium"
+            className="text-[11px] text-[var(--primary-dk)] hover:underline font-medium"
           >
             Explore 2-hop graph →
           </Link>
@@ -218,7 +218,7 @@ function EdgeRow({ entry }: { entry: SupplyChainEntry }) {
   const nameNode = tracked && ticker ? (
     <Link
       href={`/pipeline/new?ticker=${encodeURIComponent(ticker)}`}
-      className="text-[var(--color-accent)] hover:underline font-medium"
+      className="text-[var(--primary-dk)] hover:underline font-medium"
     >
       {name}
     </Link>

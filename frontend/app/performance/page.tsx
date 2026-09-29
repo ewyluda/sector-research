@@ -48,6 +48,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       snapshotOffset,
       benchmark,
       sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+      includeSuperseded: showSuperseded,
     });
   } else {
     // No URL offset: fetch summary with "1m" placeholder to learn populated offsets,
@@ -59,6 +60,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       snapshotOffset: "1m",
       benchmark,
       sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+      includeSuperseded: showSuperseded,
     });
     snapshotOffset =
       OFFSET_PRIORITY.find((o) => discoverySummary.populated_offsets.includes(o)) ?? "1m";
@@ -72,6 +74,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
         snapshotOffset,
         benchmark,
         sourceType: sourceType === "all" ? undefined : (sourceType as SourceType),
+        includeSuperseded: showSuperseded,
       });
     }
   }
@@ -79,7 +82,7 @@ export default async function PerformancePage({ searchParams }: PageProps) {
   const outcomes = await outcomesPromise;
 
   return (
-    <main id="main-content" className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
+    <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
       <header className="px-4 py-3 border-b border-[var(--border)]">
         <h1 className="text-lg font-semibold">Performance</h1>
       </header>
@@ -90,6 +93,6 @@ export default async function PerformancePage({ searchParams }: PageProps) {
       <BySignalBucketPanel summary={summary} />
       <OutcomeList outcomes={outcomes} />
       <TradeJournalSection />
-    </main>
+    </div>
   );
 }

@@ -352,16 +352,17 @@ class CuratedAttachTests(unittest.TestCase):
 
 class PromptSlotTests(unittest.TestCase):
     def test_quant_data_slot_present_exactly_once(self):
-        from backend.app.graph.prompts import DEEP_DIVE_USER
+        from backend.app.graph.prompts import DEEP_DIVE_SHARED, DEEP_DIVE_USER
         self.assertEqual(DEEP_DIVE_USER.count("{quant_data}"), 1)
-        # Positioned directly after the fundamentals block.
-        self.assertLess(DEEP_DIVE_USER.index("{data}"), DEEP_DIVE_USER.index("{quant_data}"))
+        # Fundamentals sit in the shared (cached) block; quant data opens the
+        # category brief, ahead of the other routed slots.
+        self.assertIn("{data}", DEEP_DIVE_SHARED)
         self.assertLess(DEEP_DIVE_USER.index("{quant_data}"), DEEP_DIVE_USER.index("{transcript_data}"))
 
     def test_template_formats_with_quant_kwarg(self):
         from backend.app.graph.prompts import DEEP_DIVE_USER
         rendered = DEEP_DIVE_USER.format(
-            ticker="NVDA", theme="ai", as_of="2026-09-26", category="Financial Health", data="d",
+            category="Financial Health",
             quant_data="QUANT-SENTINEL", transcript_data="", macro_data="",
             technical_data="", sentiment_data="", edgar_data="",
             filing_excerpts="", counterparty_context="", prior_questions="",

@@ -14,7 +14,7 @@ import { useState } from "react";
 import type { Catalyst, CatalystType } from "@/lib/api";
 
 const TYPE_COLORS: Record<CatalystType, string> = {
-  earnings:   "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30",
+  earnings:   "bg-[var(--primary)]/10 text-[var(--primary-dk)] border-[var(--primary)]/30",
   product:    "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30",
   regulatory: "bg-[var(--warning)]/10 text-[var(--warning)] border-[var(--warning)]/30",
   m_and_a:    "bg-[var(--error)]/10 text-[var(--error)] border-[var(--error)]/30",
@@ -68,7 +68,7 @@ export function CatalystList({
                 i > 0 ? "border-t border-[var(--border)]/50" : ""
               }`}
             >
-              <span className="text-[10px] font-semibold font-mono text-[var(--primary)] uppercase">
+              <span className="text-[10px] font-semibold font-mono text-[var(--primary-dk)] uppercase">
                 {c.timeframe}
               </span>
               <div className="flex flex-col gap-1.5">
@@ -99,7 +99,7 @@ export function CatalystList({
                       aria-expanded={isOpen}
                       aria-controls={`catalyst-signposts-${i}`}
                       onClick={() => toggle(i)}
-                      className="text-[9px] font-mono text-[var(--text-faint)] hover:text-[var(--primary)] underline-offset-2"
+                      className="text-[9px] font-mono text-[var(--text-faint)] hover:text-[var(--primary-dk)] underline-offset-2"
                     >
                       {isOpen ? "− signposts" : `+ ${(c.signposts ?? []).length} signpost${(c.signposts ?? []).length === 1 ? "" : "s"}`}
                     </button>

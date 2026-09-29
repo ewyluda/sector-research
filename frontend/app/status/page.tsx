@@ -116,15 +116,22 @@ function OverflowMenu({
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative">
+    // Close when focus leaves the whole menu, not the trigger: closing on the
+    // trigger's blur shut the menu as Tab moved into it, so Archive/Unarchive
+    // were unreachable by keyboard.
+    <div
+      className="relative"
+      onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(false); }}
+      onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
+    >
       <button
         type="button"
         aria-label="Row menu"
+        aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        onBlur={() => setTimeout(() => setOpen(false), 100)}
         className="px-2 py-0.5 text-[var(--text-muted)] hover:text-[var(--text)] rounded"
       >
         ⋯
@@ -198,24 +205,34 @@ function Row({
   actions?: React.ReactNode;
 }) {
   return (
+    // The whole row opens the report on click (a mouse convenience); keyboard and
+    // screen-reader users get the health link below. A role="button" row
+    // wrapping links was invalid nested-interactive markup, and its Enter
+    // handler hijacked Enter on every control inside the row.
     <div
-      role="button"
-      tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === "Enter") onClick(); }}
       className={`grid grid-cols-[80px_110px_60px_minmax(0,1fr)_120px_70px_auto_40px] gap-3 items-center px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:border-[var(--accent-bg)] hover:bg-[var(--surface-alt)] cursor-pointer transition-colors ${archived ? "opacity-50" : ""}`}
     >
       <div className="font-mono font-bold text-sm text-[var(--text)] tracking-wide">
         <Link
           href={`/company/${entry.ticker}`}
           onClick={(e) => e.stopPropagation()}
-          className="hover:text-[var(--primary)] hover:underline"
+          className="hover:text-[var(--primary-dk)] hover:underline"
           title="Open company workspace"
         >
           {entry.ticker}
         </Link>
       </div>
-      <div><HealthPill health={entry.health} /></div>
+      <div>
+        <Link
+          href={`/pipeline/${entry.run_id}`}
+          onClick={(e) => e.stopPropagation()}
+          aria-label={`Open ${entry.ticker} report (${entry.health})`}
+          className="rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary-dk)]"
+        >
+          <HealthPill health={entry.health} />
+        </Link>
+      </div>
       <div className="font-mono text-sm text-[var(--text)] tabular-nums">
         {entry.conviction_score ?? "—"}
       </div>
@@ -515,7 +532,7 @@ export default function StatusPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-5">
+    <div className="mx-auto max-w-5xl px-6 py-8 flex flex-col gap-5">
       <header>
         <h1 className="text-xl font-semibold text-[var(--text)] tracking-wide">
           Status Board
@@ -528,6 +545,7 @@ export default function StatusPage() {
       {/* Filter bar */}
       <div className="flex items-center gap-3 flex-wrap">
         <select
+          aria-label="Filter by theme"
           value={themeId}
           onChange={(e) => setThemeId(e.target.value)}
           className="px-3 py-1.5 rounded-md bg-[var(--surface)] border border-[var(--border)] text-xs text-[var(--text)]"
@@ -550,7 +568,7 @@ export default function StatusPage() {
               }`}
             >
               <span>{k === "all" ? "All" : HEALTH_LABEL[k]}</span>
-              <span className="text-[10px] tabular-nums font-mono opacity-70">
+              <span className="text-[10px] tabular-nums font-mono">
                 {counts[k]}
               </span>
             </button>
@@ -775,6 +793,6 @@ export default function StatusPage() {
         autoExpandTicker={orphanAutoExpand}
         onDismissed={handleEventDismissed}
       />
-    </main>
+    </div>
   );
 }

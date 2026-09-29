@@ -150,7 +150,7 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
           </div>
         </div>
       )}
-      <main className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto">
         {tab === "forecast" && (
           <ForecastTabContent
             state={activeState}
@@ -165,7 +165,7 @@ export function ModelWorkspace({ ticker: tickerProp }: { ticker: string }) {
         )}
         {tab === "reverse-dcf" && <ReverseDcfTabContent ticker={ticker} hasDraft={!!draft} />}
         {tab === "history" && <HistoryTabContent ticker={ticker} />}
-      </main>
+      </div>
     </div>
   );
 }

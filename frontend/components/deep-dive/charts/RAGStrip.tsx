@@ -23,15 +23,19 @@ function severityColor(score: number): { bg: string; text: string; label: string
 }
 
 export function RAGStrip({ findings, score }: RAGStripProps) {
+  // The level comes from the section's score — findings carry no severity of
+  // their own — so it's shown once for the section, not stamped on every row
+  // (which labelled every finding "High" on a low-scoring section).
   const sev = severityColor(score);
   return (
     <div className="space-y-1">
+      <div className={`inline-flex items-center gap-1 rounded-md px-2 py-1 ${sev.bg} ${sev.text}`}>
+        {sev.icon}
+        <span className="text-[10px] font-semibold uppercase">Section risk: {sev.label}</span>
+      </div>
       {findings.map((f, i) => (
-        <div key={i} className={`flex items-center gap-2 rounded-md px-3 py-1.5 ${sev.bg}`}>
-          <span className={`flex items-center gap-1 ${sev.text} shrink-0`}>
-            {sev.icon}
-            <span className="text-[10px] font-semibold uppercase w-12">{sev.label}</span>
-          </span>
+        <div key={i} className="flex items-start gap-2 rounded-md px-3 py-1.5 bg-[var(--color-surface-alt)]">
+          <span className="text-[var(--color-text-faint)] text-xs" aria-hidden="true">•</span>
           <span className="text-xs text-[var(--color-text-primary)] leading-snug">{f.finding}</span>
         </div>
       ))}

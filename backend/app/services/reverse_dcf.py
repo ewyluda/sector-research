@@ -18,15 +18,22 @@ BOUNDS: dict[str, tuple[float, float]] = {
 
 
 def _apply_uniform_override(state: ModelState, dimension: ImpliedDimension, value: float) -> ModelState:
-    """Return a deep-copied state with the chosen dimension overridden uniformly across forecast periods.
-    For terminal_multiple, overrides assumptions.terminal_multiple directly.
-    For driver-style dimensions (revenue_growth_pct, ebit_margin_pct), sets the driver on every
-    forecast period and re-runs recompute() so the IS/CF/BS are fully consistent."""
-    s = deepcopy(state)
-    forecast = [p for p in s.periods if not p.is_historical]
+    """Return a new state with the chosen dimension overridden uniformly across
+    forecast periods; the input is never mutated, and callers treat the result
+    as read-only.
+
+    terminal_multiple swaps only the assumption (statements are shared with the
+    input — a multiple never changes them). Driver dimensions (revenue_growth_pct,
+    ebit_margin_pct) copy the drivers, set the value on every forecast period and
+    recompute(), which makes the one deep copy of the state. (Deep-copying here
+    as well doubled the cost of every grid cell.)"""
     if dimension == "terminal_multiple":
-        s.assumptions.terminal_multiple.value = value
-        return s
+        multiple = state.assumptions.terminal_multiple.model_copy(update={"value": value})
+        return state.model_copy(update={
+            "assumptions": state.assumptions.model_copy(update={"terminal_multiple": multiple}),
+        })
+    s = state.model_copy(update={"drivers": deepcopy(state.drivers)})
+    forecast = [p for p in s.periods if not p.is_historical]
     if dimension == "ebit_margin_pct":
         for p in forecast:
             expense_drag = sum(
@@ -137,6 +144,15 @@ def sensitivity_grid(
         raise ValueError("sensitivity_grid: x_dim and y_dim must differ")
     xs = [x_range[0] + (x_range[1] - x_range[0]) * i / (size - 1) for i in range(size)]
     ys = [y_range[0] + (y_range[1] - y_range[0]) * i / (size - 1) for i in range(size)]
+    if y_dim == "terminal_multiple":
+        # Recompute once per x (the driver), then only swap the multiple: 21
+        # recomputes instead of 441. Values stay indexed [y][x].
+        columns = []
+        for x in xs:
+            s_x = _apply_uniform_override(state, x_dim, x)
+            columns.append([dcf(_apply_uniform_override(s_x, y_dim, y)).intrinsic_per_share for y in ys])
+        values = [[columns[xi][yi] for xi in range(size)] for yi in range(size)]
+        return {"x_dim": x_dim, "y_dim": y_dim, "x_values": xs, "y_values": ys, "values": values}
     values: list[list[float]] = []
     for y in ys:
         row: list[float] = []

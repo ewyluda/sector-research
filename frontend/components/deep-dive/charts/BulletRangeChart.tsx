@@ -20,7 +20,7 @@ export function BulletRangeChart({ low, high, current, dcfTarget }: BulletRangeC
           className="absolute top-0 bottom-0 w-0.5 bg-[var(--color-primary)]"
           style={{ left: `${Math.min(Math.max(currentPct, 0), 100)}%` }}
         >
-          <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-[var(--color-primary)] whitespace-nowrap">
+          <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-[9px] font-mono text-[var(--primary-dk)] whitespace-nowrap">
             ${current.toFixed(0)}
           </div>
         </div>

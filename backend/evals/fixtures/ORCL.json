@@ -1,0 +1,3101 @@
+{
+ "source_run_id": "abb960e0-a2ac-4c54-a01e-da9e55b81a28",
+ "state": {
+  "flags": [],
+  "phase": "thesis_construction",
+  "run_id": "abb960e0-a2ac-4c54-a01e-da9e55b81a28",
+  "scores": {
+   "thesis": 38,
+   "quick_screen": 72,
+   "Macro & Regime": 58,
+   "Risk Assessment": 35,
+   "Business Quality": 72,
+   "Financial Health": 35,
+   "Future Durability": 72,
+   "Growth & Earnings": 72,
+   "Sentiment & Narrative": 62,
+   "Management & Governance": 42,
+   "Technical & Market Structure": 52
+  },
+  "status": "in_progress",
+  "ticker": "ORCL",
+  "theme_id": "ebfa88fa-ed89-4c31-8a1c-10f5d9027490",
+  "citations": [
+   {
+    "tier": 1,
+    "value": "ORCL",
+    "metric": "Income Statement",
+    "source_url": "https://financialmodelingprep.com/stable/income-statement?apikey=***&symbol=ORCL&period=annual&limit=4",
+    "source_name": "FMP /income-statement",
+    "retrieved_at": "2026-04-25T21:04:08.590482+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "ORCL",
+    "metric": "Balance Sheet",
+    "source_url": "https://financialmodelingprep.com/stable/balance-sheet-statement?apikey=***&symbol=ORCL&period=annual&limit=2",
+    "source_name": "FMP /balance-sheet-statement",
+    "retrieved_at": "2026-04-25T21:04:08.576322+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "ORCL",
+    "metric": "Cash Flow Statement",
+    "source_url": "https://financialmodelingprep.com/stable/cash-flow-statement?apikey=***&symbol=ORCL&period=annual&limit=2",
+    "source_name": "FMP /cash-flow-statement",
+    "retrieved_at": "2026-04-25T21:04:08.591692+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "ORCL",
+    "metric": "Company Profile",
+    "source_url": "https://financialmodelingprep.com/stable/profile?apikey=***&symbol=ORCL",
+    "source_name": "FMP /profile",
+    "retrieved_at": "2026-04-25T21:04:08.577387+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "Oracle Corporation",
+    "metric": "XBRL filings",
+    "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001341439.json",
+    "source_name": "SEC EDGAR",
+    "retrieved_at": "2026-04-25T21:04:16.861879+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "ORCL",
+    "metric": "Earnings Transcript",
+    "source_url": "https://financialmodelingprep.com/stable/earning-call-transcript-latest?apikey=***&symbol=ORCL",
+    "source_name": "FMP /earning-call-transcript-latest",
+    "retrieved_at": "2026-04-25T21:04:17.068350+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "FEDFUNDS",
+    "metric": "fed_funds_rate",
+    "source_url": "https://fred.stlouisfed.org/series/FEDFUNDS",
+    "source_name": "FRED /FEDFUNDS",
+    "retrieved_at": "2026-04-25T21:04:23.912175+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS10",
+    "metric": "treasury_10y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS10",
+    "source_name": "FRED /DGS10",
+    "retrieved_at": "2026-04-25T21:04:23.863848+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS2",
+    "metric": "treasury_2y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS2",
+    "source_name": "FRED /DGS2",
+    "retrieved_at": "2026-04-25T21:04:23.839182+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "T10Y2Y",
+    "metric": "yield_curve_spread",
+    "source_url": "https://fred.stlouisfed.org/series/T10Y2Y",
+    "source_name": "FRED /T10Y2Y",
+    "retrieved_at": "2026-04-25T21:04:23.832463+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "CPIAUCSL",
+    "metric": "cpi",
+    "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+    "source_name": "FRED /CPIAUCSL",
+    "retrieved_at": "2026-04-25T21:04:23.857476+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "UNRATE",
+    "metric": "unemployment",
+    "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+    "source_name": "FRED /UNRATE",
+    "retrieved_at": "2026-04-25T21:04:23.840085+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "A191RL1Q225SBEA",
+    "metric": "gdp_growth",
+    "source_url": "https://fred.stlouisfed.org/series/A191RL1Q225SBEA",
+    "source_name": "FRED /A191RL1Q225SBEA",
+    "retrieved_at": "2026-04-25T21:04:23.955641+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "M2SL",
+    "metric": "m2_money_supply",
+    "source_url": "https://fred.stlouisfed.org/series/M2SL",
+    "source_name": "FRED /M2SL",
+    "retrieved_at": "2026-04-25T21:04:23.954529+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "PAYEMS",
+    "metric": "nonfarm_payrolls",
+    "source_url": "https://fred.stlouisfed.org/series/PAYEMS",
+    "source_name": "FRED /PAYEMS",
+    "retrieved_at": "2026-04-25T21:04:23.840254+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "Oracle Corporation",
+    "metric": "XBRL filings",
+    "source_url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001341439.json",
+    "source_name": "SEC EDGAR",
+    "retrieved_at": "2026-04-25T21:06:12.582288+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "ORCL",
+    "metric": "Earnings Transcript",
+    "source_url": "https://financialmodelingprep.com/stable/earning-call-transcript-latest?apikey=***&symbol=ORCL",
+    "source_name": "FMP /earning-call-transcript-latest",
+    "retrieved_at": "2026-04-25T21:06:12.593615+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "FEDFUNDS",
+    "metric": "fed_funds_rate",
+    "source_url": "https://fred.stlouisfed.org/series/FEDFUNDS",
+    "source_name": "FRED /FEDFUNDS",
+    "retrieved_at": "2026-04-25T21:06:18.602042+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS10",
+    "metric": "treasury_10y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS10",
+    "source_name": "FRED /DGS10",
+    "retrieved_at": "2026-04-25T21:06:18.603121+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "DGS2",
+    "metric": "treasury_2y",
+    "source_url": "https://fred.stlouisfed.org/series/DGS2",
+    "source_name": "FRED /DGS2",
+    "retrieved_at": "2026-04-25T21:06:18.604356+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "T10Y2Y",
+    "metric": "yield_curve_spread",
+    "source_url": "https://fred.stlouisfed.org/series/T10Y2Y",
+    "source_name": "FRED /T10Y2Y",
+    "retrieved_at": "2026-04-25T21:06:18.605236+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "CPIAUCSL",
+    "metric": "cpi",
+    "source_url": "https://fred.stlouisfed.org/series/CPIAUCSL",
+    "source_name": "FRED /CPIAUCSL",
+    "retrieved_at": "2026-04-25T21:06:18.605283+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "UNRATE",
+    "metric": "unemployment",
+    "source_url": "https://fred.stlouisfed.org/series/UNRATE",
+    "source_name": "FRED /UNRATE",
+    "retrieved_at": "2026-04-25T21:06:18.605318+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "A191RL1Q225SBEA",
+    "metric": "gdp_growth",
+    "source_url": "https://fred.stlouisfed.org/series/A191RL1Q225SBEA",
+    "source_name": "FRED /A191RL1Q225SBEA",
+    "retrieved_at": "2026-04-25T21:06:18.605344+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "M2SL",
+    "metric": "m2_money_supply",
+    "source_url": "https://fred.stlouisfed.org/series/M2SL",
+    "source_name": "FRED /M2SL",
+    "retrieved_at": "2026-04-25T21:06:18.605378+00:00"
+   },
+   {
+    "tier": 1,
+    "value": "PAYEMS",
+    "metric": "nonfarm_payrolls",
+    "source_url": "https://fred.stlouisfed.org/series/PAYEMS",
+    "source_name": "FRED /PAYEMS",
+    "retrieved_at": "2026-04-25T21:06:18.605407+00:00"
+   }
+  ],
+  "created_at": "2026-04-25T21:04:08.360107+00:00",
+  "loop_count": 1,
+  "updated_at": "2026-04-25T21:04:08.360119+00:00",
+  "loop_context": null,
+  "phase_outputs": {
+   "quick_screen": {
+    "score": 72,
+    "content": "{\n  \"overall_score\": 72,\n  \"recommendation\": \"GO\",\n  \"dimensions\": [\n    {\"name\": \"Business Quality\", \"score\": 18, \"max_score\": 20, \"rationale\": \"Oracle commands a fortress-like position in enterprise infrastructure software with exceptional gross margins (70%+) and expanding operating margins (25-31%), though diversified revenue streams and switching costs are formidable competitive moats.\"},\n    {\"name\": \"Financial Health\", \"score\": 12, \"max_score\": 20, \"rationale\": \"High debt load ($85B LT debt, 4.96 D/E ratio) and elevated interest expense ($3.58B annually) offset strong operating cash flow ($20.8B), while low current ratio (0.75) and negative recent FCF raise working capital concerns despite legacy profitability.\"},\n    {\"name\": \"Growth Trajectory\", \"score\": 16, \"max_score\": 20, \"rationale\": \"Revenue growth of 35% year-over-year ($42.4B \u2192 $57.4B) driven by cloud adoption signals strong secular tailwinds, while EPS growth of 79% (2.49 \u2192 4.46) demonstrates operating leverage and successful business model transition to higher-margin SaaS.\"},\n    {\"name\": \"Valuation\", \"score\": 15, \"max_score\": 20, \"rationale\": \"At $498B market cap with $57.4B revenue and $12.5B net income, Oracle trades at ~8.7x sales and ~40x earnings, reasonable for a mature megacap cloud infrastructure player growing 35% but not compelling given leverage and capital intensity.\"},\n    {\"name\": \"Momentum\", \"score\": 11, \"max_score\": 20, \"rationale\": \"Sustained quarterly acceleration in revenue and profitability metrics signal positive momentum, but beta of 1.6 introduces tech-sector volatility risk, and recent FCF swing to negative ($-0.39B) despite strong OCF suggests aggressive CapEx deployment may pressure near-term returns.\"}\n  ],\n  \"thesis\": \"Oracle represents a best-in-class enterprise software incumbent executing a high-growth cloud transition, evidenced by 35% revenue growth, 70%+ gross margins, and accelerating net profitability. However, a $85B debt burden, elevated leverage ratios, and negative free cash flow despite strong operating cash generation temper enthusiasm and suggest a company reinvesting aggressively into infrastructure. The company deserves a GO rating based on market dominance and growth acceleration, but is not a screaming buy at current valuations given financial risk.\",\n  \"key_risk\": \"Debt serviceability becomes acute if cloud transition stalls or competitive pressure from AWS/Azure intensifies; with $3.58B annual interest expense and thin working capital buffer (0.75 current ratio), an earnings miss could quickly amplify leverage concerns and trigger credit downgrade.\"\n}",
+    "__type__": "PhaseOutput",
+    "structured": {
+     "thesis": "Oracle represents a best-in-class enterprise software incumbent executing a high-growth cloud transition, evidenced by 35% revenue growth, 70%+ gross margins, and accelerating net profitability. However, a $85B debt burden, elevated leverage ratios, and negative free cash flow despite strong operating cash generation temper enthusiasm and suggest a company reinvesting aggressively into infrastructure. The company deserves a GO rating based on market dominance and growth acceleration, but is not a screaming buy at current valuations given financial risk.",
+     "key_risk": "Debt serviceability becomes acute if cloud transition stalls or competitive pressure from AWS/Azure intensifies; with $3.58B annual interest expense and thin working capital buffer (0.75 current ratio), an earnings miss could quickly amplify leverage concerns and trigger credit downgrade.",
+     "dimensions": [
+      {
+       "name": "Business Quality",
+       "score": 18,
+       "max_score": 20,
+       "rationale": "Oracle commands a fortress-like position in enterprise infrastructure software with exceptional gross margins (70%+) and expanding operating margins (25-31%), though diversified revenue streams and switching costs are formidable competitive moats."
+      },
+      {
+       "name": "Financial Health",
+       "score": 12,
+       "max_score": 20,
+       "rationale": "High debt load ($85B LT debt, 4.96 D/E ratio) and elevated interest expense ($3.58B annually) offset strong operating cash flow ($20.8B), while low current ratio (0.75) and negative recent FCF raise working capital concerns despite legacy profitability."
+      },
+      {
+       "name": "Growth Trajectory",
+       "score": 16,
+       "max_score": 20,
+       "rationale": "Revenue growth of 35% year-over-year ($42.4B \u2192 $57.4B) driven by cloud adoption signals strong secular tailwinds, while EPS growth of 79% (2.49 \u2192 4.46) demonstrates operating leverage and successful business model transition to higher-margin SaaS."
+      },
+      {
+       "name": "Valuation",
+       "score": 15,
+       "max_score": 20,
+       "rationale": "At $498B market cap with $57.4B revenue and $12.5B net income, Oracle trades at ~8.7x sales and ~40x earnings, reasonable for a mature megacap cloud infrastructure player growing 35% but not compelling given leverage and capital intensity."
+      },
+      {
+       "name": "Momentum",
+       "score": 11,
+       "max_score": 20,
+       "rationale": "Sustained quarterly acceleration in revenue and profitability metrics signal positive momentum, but beta of 1.6 introduces tech-sector volatility risk, and recent FCF swing to negative ($-0.39B) despite strong OCF suggests aggressive CapEx deployment may pressure near-term returns."
+      }
+     ],
+     "overall_score": 72,
+     "recommendation": "GO"
+    },
+    "parse_error": null,
+    "recommendation": "GO"
+   },
+   "Macro & Regime": {
+    "score": 58,
+    "content": "{\n  \"score\": 58,\n  \"score_rationale\": \"Oracle benefits from secular AI infrastructure tailwinds and a mildly easing rate environment, but faces meaningful macro headwinds from slowing GDP growth, elevated long-end rates compressing its highly leveraged balance sheet, and enterprise spending uncertainty that could defer large cloud commitments.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"GDP growth decelerated sharply to 0.5% in Q4 2025 after a 4.4% surge in Q3, signaling potential enterprise IT budget caution entering 2026 that could pressure Oracle's deal closure rates.\",\n      \"evidence\": \"[Source: FRED gdp_growth, latest=0.5 as of 2025-10-01]\"\n    },\n    {\n      \"finding\": \"Oracle's beta of 1.597 makes it materially more volatile than the broader market, amplifying macro regime risks during periods of growth deceleration or rate re-pricing.\",\n      \"evidence\": \"[Source: FMP /profile \u2014 Beta: 1.597]\"\n    },\n    {\n      \"finding\": \"The 10-year Treasury yield remains elevated at 4.34%, a meaningful headwind for Oracle given $130.4B in long-term debt and a D/E ratio of 4.15, with quarterly interest expense of $1.18B representing a persistent earnings drag.\",\n      \"evidence\": \"[Source: FRED treasury_10y latest=4.34; FMP /balance-sheet Q3: LT Debt $130.43B, D/E 4.15; FMP /income-statement Interest Expense $1.18B]\"\n    },\n    {\n      \"finding\": \"Revenue acceleration to +21.7% YoY in Q3 FY2026 suggests Oracle is capturing AI-driven cloud demand that is relatively insulated from near-term cyclical softness, as hyperscaler CapEx commitments underpin multi-year cloud contracts.\",\n      \"evidence\": \"[Source: FMP /income-statement Q3: Rev $17.19B, YoY +21.7%]\"\n    },\n    {\n      \"finding\": \"CPI rising to 330.3 (March 2026) with Fed funds rate steady at 3.64% and a yield curve spread of only +0.53 points to a stagflationary tilt that constrains further Fed easing, limiting the refinancing relief Oracle needs given its debt load.\",\n      \"evidence\": \"[Source: FRED cpi latest=330.293; fed_funds_rate latest=3.64; yield_curve_spread latest=0.53]\"\n    }\n  ],\n  \"analysis\": \"Oracle operates at the intersection of two macro regimes that are pulling in opposite directions: a secular AI infrastructure supercycle driving accelerating cloud demand, and a cyclical macro environment characterized by decelerating growth, persistent inflation, and elevated interest rates that create real balance sheet stress.\\n\\nOn the growth side, the GDP trajectory is concerning. After a 4.4% annualized print in Q3 2025, growth collapsed to 0.5% in Q4 2025 [Source: FRED gdp_growth]. While the prior negative Q1 2025 reading (-0.6%) corrected sharply, the volatility itself signals an unstable demand environment. Enterprise IT typically lags macro by 1-2 quarters, meaning Oracle could face incremental deal slippage or elongated sales cycles in H1 2026 \u2014 particularly for large, multi-year OCI (Oracle Cloud Infrastructure) commitments. Unemployment at 4.3% [Source: FRED unemployment] has modestly improved from 4.5% but does not suggest labor market tightness sufficient to sustain robust enterprise IT hiring plans that drive software procurement.\\n\\nThe interest rate regime is Oracle's most acute macro vulnerability. The Fed funds rate has eased from 4.09% in October 2025 to 3.64% in March 2026 [Source: FRED fed_funds_rate], but the 10-year yield remains sticky at 4.34% [Source: FRED treasury_10y], producing a relatively flat term structure. For a company carrying $130.4B in long-term debt at a D/E of 4.15 [Source: FMP /balance-sheet Q3], the cost of refinancing remains structurally elevated. Quarterly interest expense of $1.18B [Source: FMP /income-statement] consumes a meaningful share of operating income \u2014 with Q3 operating income implying approximately $5.6B on $17.19B revenue [Source: FMP /income-statement Q3 OM 32.8%], interest coverage is manageable but sensitive to rate re-pricing. The spike in cash to $38.45B in Q3 [Source: FMP /balance-sheet Q3] vs. $10.45B-$10.79B in prior quarters suggests a large debt issuance (ST debt jumped to $13.22B), which was likely executed to fund the massive $18.64B capex quarter \u2014 precisely the type of financing behavior that is expensive in a 4%+ long-rate environment.\\n\\nM2 money supply expanding to $22.67T [Source: FRED m2_money_supply] and a still-positive yield curve spread of +0.53 [Source: FRED yield_curve_spread] are mild positives \u2014 no recession signal in credit markets, and liquidity remains broadly supportive of risk asset pricing. However, CPI at 330.3 [Source: FRED cpi] rising incrementally suggests the Fed is unlikely to deliver aggressive cuts, limiting Oracle's ability to meaningfully reduce its debt burden at favorable rates in the near term.\\n\\nOracle's high beta (1.597) [Source: FMP /profile] means that macro sentiment shifts \u2014 particularly around AI spending narratives, rate expectations, or trade policy \u2014 translate into outsized equity volatility. The current macro regime (slow growth, sticky rates, uncertain tariff environment) is not ideal for a high-beta, high-leverage technology compounder, even one with genuine secular tailwinds. The net assessment is modestly cautious: Oracle's cloud growth provides a meaningful buffer, but the macro regime is neither accommodative nor benign enough to warrant a high macro score.\",\n  \"data_gaps\": [\n    \"No data on Oracle's weighted average cost of debt or debt maturity schedule, which would clarify near-term refinancing risk under current rate conditions\",\n    \"No breakdown of Oracle's revenue by geography to assess exposure to international macro deterioration or currency headwinds from USD strength\",\n    \"No data on enterprise IT spending surveys or CIO budget data for 2026, which would directly inform the demand elasticity of Oracle's cloud pipeline to the macro slowdown\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Macro & Regime",
+    "structured": {
+     "score": 58,
+     "analysis": "Oracle operates at the intersection of two macro regimes that are pulling in opposite directions: a secular AI infrastructure supercycle driving accelerating cloud demand, and a cyclical macro environment characterized by decelerating growth, persistent inflation, and elevated interest rates that create real balance sheet stress.\n\nOn the growth side, the GDP trajectory is concerning. After a 4.4% annualized print in Q3 2025, growth collapsed to 0.5% in Q4 2025 [Source: FRED gdp_growth]. While the prior negative Q1 2025 reading (-0.6%) corrected sharply, the volatility itself signals an unstable demand environment. Enterprise IT typically lags macro by 1-2 quarters, meaning Oracle could face incremental deal slippage or elongated sales cycles in H1 2026 \u2014 particularly for large, multi-year OCI (Oracle Cloud Infrastructure) commitments. Unemployment at 4.3% [Source: FRED unemployment] has modestly improved from 4.5% but does not suggest labor market tightness sufficient to sustain robust enterprise IT hiring plans that drive software procurement.\n\nThe interest rate regime is Oracle's most acute macro vulnerability. The Fed funds rate has eased from 4.09% in October 2025 to 3.64% in March 2026 [Source: FRED fed_funds_rate], but the 10-year yield remains sticky at 4.34% [Source: FRED treasury_10y], producing a relatively flat term structure. For a company carrying $130.4B in long-term debt at a D/E of 4.15 [Source: FMP /balance-sheet Q3], the cost of refinancing remains structurally elevated. Quarterly interest expense of $1.18B [Source: FMP /income-statement] consumes a meaningful share of operating income \u2014 with Q3 operating income implying approximately $5.6B on $17.19B revenue [Source: FMP /income-statement Q3 OM 32.8%], interest coverage is manageable but sensitive to rate re-pricing. The spike in cash to $38.45B in Q3 [Source: FMP /balance-sheet Q3] vs. $10.45B-$10.79B in prior quarters suggests a large debt issuance (ST debt jumped to $13.22B), which was likely executed to fund the massive $18.64B capex quarter \u2014 precisely the type of financing behavior that is expensive in a 4%+ long-rate environment.\n\nM2 money supply expanding to $22.67T [Source: FRED m2_money_supply] and a still-positive yield curve spread of +0.53 [Source: FRED yield_curve_spread] are mild positives \u2014 no recession signal in credit markets, and liquidity remains broadly supportive of risk asset pricing. However, CPI at 330.3 [Source: FRED cpi] rising incrementally suggests the Fed is unlikely to deliver aggressive cuts, limiting Oracle's ability to meaningfully reduce its debt burden at favorable rates in the near term.\n\nOracle's high beta (1.597) [Source: FMP /profile] means that macro sentiment shifts \u2014 particularly around AI spending narratives, rate expectations, or trade policy \u2014 translate into outsized equity volatility. The current macro regime (slow growth, sticky rates, uncertain tariff environment) is not ideal for a high-beta, high-leverage technology compounder, even one with genuine secular tailwinds. The net assessment is modestly cautious: Oracle's cloud growth provides a meaningful buffer, but the macro regime is neither accommodative nor benign enough to warrant a high macro score.",
+     "data_gaps": [
+      "No data on Oracle's weighted average cost of debt or debt maturity schedule, which would clarify near-term refinancing risk under current rate conditions",
+      "No breakdown of Oracle's revenue by geography to assess exposure to international macro deterioration or currency headwinds from USD strength",
+      "No data on enterprise IT spending surveys or CIO budget data for 2026, which would directly inform the demand elasticity of Oracle's cloud pipeline to the macro slowdown"
+     ],
+     "key_findings": [
+      {
+       "finding": "GDP growth decelerated sharply to 0.5% in Q4 2025 after a 4.4% surge in Q3, signaling potential enterprise IT budget caution entering 2026 that could pressure Oracle's deal closure rates.",
+       "evidence": "[Source: FRED gdp_growth, latest=0.5 as of 2025-10-01]"
+      },
+      {
+       "finding": "Oracle's beta of 1.597 makes it materially more volatile than the broader market, amplifying macro regime risks during periods of growth deceleration or rate re-pricing.",
+       "evidence": "[Source: FMP /profile \u2014 Beta: 1.597]"
+      },
+      {
+       "finding": "The 10-year Treasury yield remains elevated at 4.34%, a meaningful headwind for Oracle given $130.4B in long-term debt and a D/E ratio of 4.15, with quarterly interest expense of $1.18B representing a persistent earnings drag.",
+       "evidence": "[Source: FRED treasury_10y latest=4.34; FMP /balance-sheet Q3: LT Debt $130.43B, D/E 4.15; FMP /income-statement Interest Expense $1.18B]"
+      },
+      {
+       "finding": "Revenue acceleration to +21.7% YoY in Q3 FY2026 suggests Oracle is capturing AI-driven cloud demand that is relatively insulated from near-term cyclical softness, as hyperscaler CapEx commitments underpin multi-year cloud contracts.",
+       "evidence": "[Source: FMP /income-statement Q3: Rev $17.19B, YoY +21.7%]"
+      },
+      {
+       "finding": "CPI rising to 330.3 (March 2026) with Fed funds rate steady at 3.64% and a yield curve spread of only +0.53 points to a stagflationary tilt that constrains further Fed easing, limiting the refinancing relief Oracle needs given its debt load.",
+       "evidence": "[Source: FRED cpi latest=330.293; fed_funds_rate latest=3.64; yield_curve_spread latest=0.53]"
+      }
+     ],
+     "score_rationale": "Oracle benefits from secular AI infrastructure tailwinds and a mildly easing rate environment, but faces meaningful macro headwinds from slowing GDP growth, elevated long-end rates compressing its highly leveraged balance sheet, and enterprise spending uncertainty that could defer large cloud commitments."
+    },
+    "key_findings": [
+     "GDP growth decelerated sharply to 0.5% in Q4 2025 after a 4.4% surge in Q3, signaling potential enterprise IT budget caution entering 2026 that could pressure Oracle's deal closure rates.",
+     "Oracle's beta of 1.597 makes it materially more volatile than the broader market, amplifying macro regime risks during periods of growth deceleration or rate re-pricing.",
+     "The 10-year Treasury yield remains elevated at 4.34%, a meaningful headwind for Oracle given $130.4B in long-term debt and a D/E ratio of 4.15, with quarterly interest expense of $1.18B representing a persistent earnings drag.",
+     "Revenue acceleration to +21.7% YoY in Q3 FY2026 suggests Oracle is capturing AI-driven cloud demand that is relatively insulated from near-term cyclical softness, as hyperscaler CapEx commitments underpin multi-year cloud contracts.",
+     "CPI rising to 330.3 (March 2026) with Fed funds rate steady at 3.64% and a yield curve spread of only +0.53 points to a stagflationary tilt that constrains further Fed easing, limiting the refinancing relief Oracle needs given its debt load."
+    ]
+   },
+   "Risk Assessment": {
+    "score": 35,
+    "content": "{\n  \"score\": 35,\n  \"score_rationale\": \"ORCL carries an exceptionally elevated risk profile driven by $143.7B in total debt (D/E ~4.1x), deeply negative free cash flow driven by accelerating AI infrastructure CapEx, and a DCF-implied intrinsic value 72% below current price \u2014 creating a precarious combination of balance sheet fragility, equity dilution risk, and valuation-dependent execution risk.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Total debt load has expanded dramatically to ~$143.7B (ST + LT combined as of Q3), with D/E ratios ranging 4.08\u20134.96x across the last four quarters, and $60.5B due after year five per XBRL debt maturity schedules.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement, quarterly; Source: SEC EDGAR XBRL LongTermDebtMaturitiesRepaymentsOfPrincipalAfterYearFive 2025 FY = $60.50B]\"\n    },\n    {\n      \"finding\": \"Free cash flow has collapsed to deeply negative territory: FCF was -$11.48B in Q3, -$9.97B in Q2, and -$2.92B in Q4, driven by CapEx surging to $18.64B in Q3 alone as Oracle aggressively builds AI cloud infrastructure.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement, quarterly Q3\u2013Q4 FY2026]\"\n    },\n    {\n      \"finding\": \"Gross margin has deteriorated materially, compressing from 72.5% (Q4 prior year) to 62.2% in Q3 FY2026, reflecting the capital-intensive cloud infrastructure build and mix shift toward lower-margin IaaS, reducing operating leverage cushion.\",\n      \"evidence\": \"[Source: FMP /income-statement, quarterly, 8-quarter series]\"\n    },\n    {\n      \"finding\": \"All seven recent insider transactions were sales aggregating $17.56M with zero purchases, including the CFO selling $6.82M and the CEO selling $1.55M at prices substantially above current levels, signaling insider conviction risk.\",\n      \"evidence\": \"[Source: FMP /insider-trading, last 7 Form 4 filings; CFO KEHRING sold 35,000 sh @ $194.89; CEO Magouyrk sold 10,000 sh @ $155.23 and $192.52]\"\n    },\n    {\n      \"finding\": \"The SEC 10-Q discloses incremental dilution risk from Mandatory Convertible Preferred Stock conversion and an ATM equity program, layering equity dilution risk atop an already-leveraged capital structure during a period of maximum capital deployment.\",\n      \"evidence\": \"[Source: 10-Q 2026-03-11, Item 1A Risk Factors \u2014 MCPS conversion and ATM Program dilution disclosures]\"\n    }\n  ],\n  \"analysis\": \"Oracle's risk profile is one of the most asymmetric among large-cap technology companies, and the combination of structural debt overhang, accelerating CapEx burn, margin compression, and stretched valuation creates a multi-dimensional risk environment that warrants significant caution.\\n\\n**Debt and Liquidity Risk**: Total debt stands at approximately $143.7B ($13.2B ST + $130.4B LT as of Q3 FY2026) [Source: FMP /balance-sheet-statement]. The XBRL-derived maturity schedule reveals near-term obligations of $7.31B in the next 12 months, $5.74B in year two, and $10.14B in year three from the FY2025 filing baseline, with $60.5B deferred beyond year five [Source: SEC EDGAR XBRL]. Interest expense of $1.18B per quarter (~$4.7B annualized) consumes meaningful operating cash flow. At 3.64% fed funds and 10-year Treasuries at 4.34% [Source: FRED treasury_10y], refinancing the near-term maturities is manageable but not trivial given the scale and the fact that Oracle is simultaneously issuing new debt to fund CapEx. Covenant structures and any net leverage restrictions are not disclosed in the XBRL data \u2014 this is a material data gap.\\n\\n**Free Cash Flow Inflection Risk**: The market is pricing in a sharp FCF inflection from the current deeply negative trajectory (Q3 FCF: -$11.48B; Q2 FCF: -$9.97B) [Source: FMP /cash-flow-statement]. Analyst estimates project revenue reaching $60.1B by May 2030 [Source: FMP /analyst-estimates], implying a ~40% revenue CAGR scenario that must materialize for the FCF story to work. The FCF growth rate figures are statistically explosive (-4,216.9% in Q1 FY2026, -2,653.3% in Q2 FY2026) [Source: FMP /financial-growth], confirming the investment cycle is at peak intensity. If cloud hyperscalers like $AMZN, $MSFT, and Google Cloud maintain infrastructure advantages and price competitively, Oracle's AI cloud RPO conversion to recognized revenue may lag materially.\\n\\n**Margin Compression**: Gross margins have fallen from 72.5% to 62.2% in four quarters [Source: FMP /income-statement], a 1,030 bps deterioration. This is not cyclical \u2014 it reflects the structural cost of running data center infrastructure versus licensing software. As IaaS becomes a larger revenue component, the operating model transforms toward a capital-intensive profile more akin to cloud infrastructure peers than traditional software. Operating margins (28.7%\u201332.8% range) remain respectable, but the trajectory is downward as SBC ($2.48B in Q3) adds further cash cost pressure [Source: FMP /cash-flow-statement].\\n\\n**Dilution Risk**: The 10-Q explicitly flags conversion of Mandatory Convertible Preferred Stock and ATM equity issuance as dilutive risks, including potential downward price pressure from hedging and arbitrage activity [Source: 10-Q 2026-03-11, Item 1A]. This is incremental to the existing leverage risk and represents a non-trivial equity overhang given the scale of Oracle's capital raise program.\\n\\n**Valuation and Beta Risk**: With a beta of 1.597 [Source: FMP /company-profile] and a DCF intrinsic value of ~$49.28 versus a current price of $173.29 [Source: FMP /discounted-cash-flow], the stock trades at roughly 3.5x DCF fair value, embedding aggressive growth assumptions. Any slip in cloud revenue ramp, RPO conversion rates, or margin recovery timeline would trigger significant multiple compression. The GDP growth deceleration to 0.5% (Q4 2025) [Source: FRED gdp_growth] and elevated unemployment at 4.3% [Source: FRED unemployment] add macro headwinds to enterprise IT budget cycles, which historically tighten in periods of economic uncertainty. The risk/reward is unfavorable at current levels absent near-term evidence of FCF inflection.\",\n  \"data_gaps\": [\n    \"Debt covenant structures and net leverage maintenance requirements are not disclosed in XBRL or 10-Q excerpts \u2014 critical for assessing refinancing flexibility and potential covenant breach risk given D/E >4x\",\n    \"Remaining Performance Obligation (RPO) detail by product segment and expected recognition timeline not available \u2014 essential for validating the FCF inflection thesis and revenue visibility quality\",\n    \"Weighted average interest rate on existing debt not disclosed in XBRL (flagged as 'Not disclosed') \u2014 limits ability to precisely model annual interest burden under various refinancing scenarios\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Risk Assessment",
+    "structured": {
+     "score": 35,
+     "analysis": "Oracle's risk profile is one of the most asymmetric among large-cap technology companies, and the combination of structural debt overhang, accelerating CapEx burn, margin compression, and stretched valuation creates a multi-dimensional risk environment that warrants significant caution.\n\n**Debt and Liquidity Risk**: Total debt stands at approximately $143.7B ($13.2B ST + $130.4B LT as of Q3 FY2026) [Source: FMP /balance-sheet-statement]. The XBRL-derived maturity schedule reveals near-term obligations of $7.31B in the next 12 months, $5.74B in year two, and $10.14B in year three from the FY2025 filing baseline, with $60.5B deferred beyond year five [Source: SEC EDGAR XBRL]. Interest expense of $1.18B per quarter (~$4.7B annualized) consumes meaningful operating cash flow. At 3.64% fed funds and 10-year Treasuries at 4.34% [Source: FRED treasury_10y], refinancing the near-term maturities is manageable but not trivial given the scale and the fact that Oracle is simultaneously issuing new debt to fund CapEx. Covenant structures and any net leverage restrictions are not disclosed in the XBRL data \u2014 this is a material data gap.\n\n**Free Cash Flow Inflection Risk**: The market is pricing in a sharp FCF inflection from the current deeply negative trajectory (Q3 FCF: -$11.48B; Q2 FCF: -$9.97B) [Source: FMP /cash-flow-statement]. Analyst estimates project revenue reaching $60.1B by May 2030 [Source: FMP /analyst-estimates], implying a ~40% revenue CAGR scenario that must materialize for the FCF story to work. The FCF growth rate figures are statistically explosive (-4,216.9% in Q1 FY2026, -2,653.3% in Q2 FY2026) [Source: FMP /financial-growth], confirming the investment cycle is at peak intensity. If cloud hyperscalers like $AMZN, $MSFT, and Google Cloud maintain infrastructure advantages and price competitively, Oracle's AI cloud RPO conversion to recognized revenue may lag materially.\n\n**Margin Compression**: Gross margins have fallen from 72.5% to 62.2% in four quarters [Source: FMP /income-statement], a 1,030 bps deterioration. This is not cyclical \u2014 it reflects the structural cost of running data center infrastructure versus licensing software. As IaaS becomes a larger revenue component, the operating model transforms toward a capital-intensive profile more akin to cloud infrastructure peers than traditional software. Operating margins (28.7%\u201332.8% range) remain respectable, but the trajectory is downward as SBC ($2.48B in Q3) adds further cash cost pressure [Source: FMP /cash-flow-statement].\n\n**Dilution Risk**: The 10-Q explicitly flags conversion of Mandatory Convertible Preferred Stock and ATM equity issuance as dilutive risks, including potential downward price pressure from hedging and arbitrage activity [Source: 10-Q 2026-03-11, Item 1A]. This is incremental to the existing leverage risk and represents a non-trivial equity overhang given the scale of Oracle's capital raise program.\n\n**Valuation and Beta Risk**: With a beta of 1.597 [Source: FMP /company-profile] and a DCF intrinsic value of ~$49.28 versus a current price of $173.29 [Source: FMP /discounted-cash-flow], the stock trades at roughly 3.5x DCF fair value, embedding aggressive growth assumptions. Any slip in cloud revenue ramp, RPO conversion rates, or margin recovery timeline would trigger significant multiple compression. The GDP growth deceleration to 0.5% (Q4 2025) [Source: FRED gdp_growth] and elevated unemployment at 4.3% [Source: FRED unemployment] add macro headwinds to enterprise IT budget cycles, which historically tighten in periods of economic uncertainty. The risk/reward is unfavorable at current levels absent near-term evidence of FCF inflection.",
+     "data_gaps": [
+      "Debt covenant structures and net leverage maintenance requirements are not disclosed in XBRL or 10-Q excerpts \u2014 critical for assessing refinancing flexibility and potential covenant breach risk given D/E >4x",
+      "Remaining Performance Obligation (RPO) detail by product segment and expected recognition timeline not available \u2014 essential for validating the FCF inflection thesis and revenue visibility quality",
+      "Weighted average interest rate on existing debt not disclosed in XBRL (flagged as 'Not disclosed') \u2014 limits ability to precisely model annual interest burden under various refinancing scenarios"
+     ],
+     "key_findings": [
+      {
+       "finding": "Total debt load has expanded dramatically to ~$143.7B (ST + LT combined as of Q3), with D/E ratios ranging 4.08\u20134.96x across the last four quarters, and $60.5B due after year five per XBRL debt maturity schedules.",
+       "evidence": "[Source: FMP /balance-sheet-statement, quarterly; Source: SEC EDGAR XBRL LongTermDebtMaturitiesRepaymentsOfPrincipalAfterYearFive 2025 FY = $60.50B]"
+      },
+      {
+       "finding": "Free cash flow has collapsed to deeply negative territory: FCF was -$11.48B in Q3, -$9.97B in Q2, and -$2.92B in Q4, driven by CapEx surging to $18.64B in Q3 alone as Oracle aggressively builds AI cloud infrastructure.",
+       "evidence": "[Source: FMP /cash-flow-statement, quarterly Q3\u2013Q4 FY2026]"
+      },
+      {
+       "finding": "Gross margin has deteriorated materially, compressing from 72.5% (Q4 prior year) to 62.2% in Q3 FY2026, reflecting the capital-intensive cloud infrastructure build and mix shift toward lower-margin IaaS, reducing operating leverage cushion.",
+       "evidence": "[Source: FMP /income-statement, quarterly, 8-quarter series]"
+      },
+      {
+       "finding": "All seven recent insider transactions were sales aggregating $17.56M with zero purchases, including the CFO selling $6.82M and the CEO selling $1.55M at prices substantially above current levels, signaling insider conviction risk.",
+       "evidence": "[Source: FMP /insider-trading, last 7 Form 4 filings; CFO KEHRING sold 35,000 sh @ $194.89; CEO Magouyrk sold 10,000 sh @ $155.23 and $192.52]"
+      },
+      {
+       "finding": "The SEC 10-Q discloses incremental dilution risk from Mandatory Convertible Preferred Stock conversion and an ATM equity program, layering equity dilution risk atop an already-leveraged capital structure during a period of maximum capital deployment.",
+       "evidence": "[Source: 10-Q 2026-03-11, Item 1A Risk Factors \u2014 MCPS conversion and ATM Program dilution disclosures]"
+      }
+     ],
+     "score_rationale": "ORCL carries an exceptionally elevated risk profile driven by $143.7B in total debt (D/E ~4.1x), deeply negative free cash flow driven by accelerating AI infrastructure CapEx, and a DCF-implied intrinsic value 72% below current price \u2014 creating a precarious combination of balance sheet fragility, equity dilution risk, and valuation-dependent execution risk."
+    },
+    "key_findings": [
+     "Total debt load has expanded dramatically to ~$143.7B (ST + LT combined as of Q3), with D/E ratios ranging 4.08\u20134.96x across the last four quarters, and $60.5B due after year five per XBRL debt maturity schedules.",
+     "Free cash flow has collapsed to deeply negative territory: FCF was -$11.48B in Q3, -$9.97B in Q2, and -$2.92B in Q4, driven by CapEx surging to $18.64B in Q3 alone as Oracle aggressively builds AI cloud infrastructure.",
+     "Gross margin has deteriorated materially, compressing from 72.5% (Q4 prior year) to 62.2% in Q3 FY2026, reflecting the capital-intensive cloud infrastructure build and mix shift toward lower-margin IaaS, reducing operating leverage cushion.",
+     "All seven recent insider transactions were sales aggregating $17.56M with zero purchases, including the CFO selling $6.82M and the CEO selling $1.55M at prices substantially above current levels, signaling insider conviction risk.",
+     "The SEC 10-Q discloses incremental dilution risk from Mandatory Convertible Preferred Stock conversion and an ATM equity program, layering equity dilution risk atop an already-leveraged capital structure during a period of maximum capital deployment."
+    ]
+   },
+   "Business Quality": {
+    "score": 72,
+    "content": "{\n  \"score\": 72,\n  \"score_rationale\": \"Oracle possesses a genuinely durable franchise anchored by sticky enterprise software relationships and accelerating cloud momentum, but capital-intensive infrastructure buildout, extreme leverage, and margin compression weigh meaningfully against a higher quality designation.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Cloud services revenue is growing rapidly, rising from 32% of total revenues in FY2023 to 43% in FY2025, demonstrating successful transition from legacy license to high-quality recurring subscription revenue.\",\n      \"evidence\": \"[Source: FMP SEC 10-K 2025-06-18, Item 1 Business \u2014 cloud services revenue mix disclosure]\"\n    },\n    {\n      \"finding\": \"Gross margins have deteriorated materially over the trailing 8 quarters, compressing from 72.5% (Q4 FY2024) to 62.2% in the most recent quarter (Q3 FY2026), reflecting the capital intensity of cloud infrastructure buildout.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly \u2014 GM progression Q4 FY2024 through Q3 FY2026]\"\n    },\n    {\n      \"finding\": \"CapEx is running at an extraordinary pace \u2014 $18.64B in Q3 FY2026 alone \u2014 generating deeply negative free cash flow ($-11.48B in Q3) and signaling Oracle is in a heavy infrastructure investment cycle to compete with $AMZN, $MSFT, and Google Cloud.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement quarterly \u2014 Q3 FY2026 CapEx and FCF figures]\"\n    },\n    {\n      \"finding\": \"The balance sheet carries severe leverage with LT debt of $130.4B and a D/E ratio of 4.15x as of Q3 FY2026, while interest expense runs ~$1.18B per quarter, creating meaningful financial fragility if cloud transition economics disappoint.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement quarterly \u2014 Q3 FY2026; /income-statement for interest expense]\"\n    },\n    {\n      \"finding\": \"The license support business remains a powerful recurring cash engine \u2014 'substantially all' license support customers renew contracts annually \u2014 providing a defensive floor of predictable revenue while the cloud transition proceeds.\",\n      \"evidence\": \"[Source: FMP SEC 10-K 2025-06-18, Item 1 Business \u2014 license support renewal behavior description]\"\n    }\n  ],\n  \"analysis\": \"Oracle's business quality must be evaluated across two distinct layers: its mature, highly defensible legacy franchise and its aggressively scaling cloud infrastructure ambition. The legacy layer \u2014 perpetual software licenses plus annual support contracts \u2014 remains a formidable moat. Support contracts, priced as a percentage of original license fees and renewed by 'substantially all' customers, generate near-annuity cash flows with minimal incremental cost. This installed base of enterprise ERP, database (Oracle Database, Java, Middleware), and applications customers represents switching costs that are among the highest in enterprise technology; ripping out Oracle infrastructure is a multi-year, high-risk endeavor that most CIOs avoid absent compelling cause [Source: FMP SEC 10-K 2025-06-18]. Cloud services \u2014 now 43% of total revenue in FY2025 versus 32% in FY2023 \u2014 are growing at 21.7% YoY in the most recent quarter and represent a genuine secular acceleration [Source: FMP /income-statement quarterly; 10-K]. The cloud business benefits from the same enterprise relationships, giving Oracle a cross-sell advantage that pure-play cloud competitors lack. Revenue growth has re-accelerated to +21.7% YoY in Q3 FY2026 from a trough of ~+11% range, and analyst consensus projects revenues reaching ~$60B by May 2030, implying sustained double-digit compounding [Source: FMP analyst estimates]. However, several quality concerns are significant. Gross margins have compressed sharply \u2014 from 72.5% to 62.2% over eight quarters \u2014 as cloud infrastructure buildout (data centers, servers, networking) carries a very different cost structure than software licensing [Source: FMP quarterly income statements]. CapEx has surged to $18.6B in a single quarter (Q3 FY2026), a level that exceeds many prior full years, generating sustained negative FCF despite strong operating cash flows [Source: FMP /cash-flow-statement]. This investment is a rational strategic bet on AI workload infrastructure demand, but it is a bet, not a certainty. The balance sheet reflects this aggression: LT debt stands at $130.4B with D/E of 4.15x and quarterly interest expense of $1.18B [Source: FMP balance sheet, income statement]. While Oracle's operating cash flows (~$7-8B in strong quarters) can service this debt, the leverage leaves limited room for error. The competitive landscape intensifies this risk \u2014 $AMZN, $MSFT, and Google Cloud all have larger cloud infrastructure footprints, deeper capital resources, and established hyperscaler ecosystems. Oracle's differentiation lies in its multi-cloud database positioning and enterprise application depth (Fusion ERP), but it is competing from a position of relative scale disadvantage in IaaS. Insider selling is uniformly directional ($17.56M in net sells, zero buys) across CEO, CFO, and other C-suite officers [Source: FMP insider transactions], which is consistent with stock-based compensation realization but offers no positive signal. SBC is substantial ($2.48B in Q3 alone), creating dilution pressure alongside the leverage. Taken together, Oracle is a high-quality franchise undergoing a capital-intensive metamorphosis. The core business quality is genuine and durable, but the balance sheet risk, margin compression, and execution dependency on AI infrastructure demand adoption temper the score materially below best-in-class software peers.\",\n  \"data_gaps\": [\n    \"Remaining performance obligations (RPO) or deferred revenue backlog detail not available in provided data \u2014 critical for assessing forward revenue visibility and contract duration mix\",\n    \"Customer concentration data flagged as not disclosed in XBRL (ConcentrationRiskPercentage1) \u2014 inability to assess single-customer or vertical risk exposure\",\n    \"Segment-level profitability breakdown between cloud services and license support not available \u2014 prevents precise assessment of cloud unit economics versus legacy business margins\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Business Quality",
+    "structured": {
+     "score": 72,
+     "analysis": "Oracle's business quality must be evaluated across two distinct layers: its mature, highly defensible legacy franchise and its aggressively scaling cloud infrastructure ambition. The legacy layer \u2014 perpetual software licenses plus annual support contracts \u2014 remains a formidable moat. Support contracts, priced as a percentage of original license fees and renewed by 'substantially all' customers, generate near-annuity cash flows with minimal incremental cost. This installed base of enterprise ERP, database (Oracle Database, Java, Middleware), and applications customers represents switching costs that are among the highest in enterprise technology; ripping out Oracle infrastructure is a multi-year, high-risk endeavor that most CIOs avoid absent compelling cause [Source: FMP SEC 10-K 2025-06-18]. Cloud services \u2014 now 43% of total revenue in FY2025 versus 32% in FY2023 \u2014 are growing at 21.7% YoY in the most recent quarter and represent a genuine secular acceleration [Source: FMP /income-statement quarterly; 10-K]. The cloud business benefits from the same enterprise relationships, giving Oracle a cross-sell advantage that pure-play cloud competitors lack. Revenue growth has re-accelerated to +21.7% YoY in Q3 FY2026 from a trough of ~+11% range, and analyst consensus projects revenues reaching ~$60B by May 2030, implying sustained double-digit compounding [Source: FMP analyst estimates]. However, several quality concerns are significant. Gross margins have compressed sharply \u2014 from 72.5% to 62.2% over eight quarters \u2014 as cloud infrastructure buildout (data centers, servers, networking) carries a very different cost structure than software licensing [Source: FMP quarterly income statements]. CapEx has surged to $18.6B in a single quarter (Q3 FY2026), a level that exceeds many prior full years, generating sustained negative FCF despite strong operating cash flows [Source: FMP /cash-flow-statement]. This investment is a rational strategic bet on AI workload infrastructure demand, but it is a bet, not a certainty. The balance sheet reflects this aggression: LT debt stands at $130.4B with D/E of 4.15x and quarterly interest expense of $1.18B [Source: FMP balance sheet, income statement]. While Oracle's operating cash flows (~$7-8B in strong quarters) can service this debt, the leverage leaves limited room for error. The competitive landscape intensifies this risk \u2014 $AMZN, $MSFT, and Google Cloud all have larger cloud infrastructure footprints, deeper capital resources, and established hyperscaler ecosystems. Oracle's differentiation lies in its multi-cloud database positioning and enterprise application depth (Fusion ERP), but it is competing from a position of relative scale disadvantage in IaaS. Insider selling is uniformly directional ($17.56M in net sells, zero buys) across CEO, CFO, and other C-suite officers [Source: FMP insider transactions], which is consistent with stock-based compensation realization but offers no positive signal. SBC is substantial ($2.48B in Q3 alone), creating dilution pressure alongside the leverage. Taken together, Oracle is a high-quality franchise undergoing a capital-intensive metamorphosis. The core business quality is genuine and durable, but the balance sheet risk, margin compression, and execution dependency on AI infrastructure demand adoption temper the score materially below best-in-class software peers.",
+     "data_gaps": [
+      "Remaining performance obligations (RPO) or deferred revenue backlog detail not available in provided data \u2014 critical for assessing forward revenue visibility and contract duration mix",
+      "Customer concentration data flagged as not disclosed in XBRL (ConcentrationRiskPercentage1) \u2014 inability to assess single-customer or vertical risk exposure",
+      "Segment-level profitability breakdown between cloud services and license support not available \u2014 prevents precise assessment of cloud unit economics versus legacy business margins"
+     ],
+     "key_findings": [
+      {
+       "finding": "Cloud services revenue is growing rapidly, rising from 32% of total revenues in FY2023 to 43% in FY2025, demonstrating successful transition from legacy license to high-quality recurring subscription revenue.",
+       "evidence": "[Source: FMP SEC 10-K 2025-06-18, Item 1 Business \u2014 cloud services revenue mix disclosure]"
+      },
+      {
+       "finding": "Gross margins have deteriorated materially over the trailing 8 quarters, compressing from 72.5% (Q4 FY2024) to 62.2% in the most recent quarter (Q3 FY2026), reflecting the capital intensity of cloud infrastructure buildout.",
+       "evidence": "[Source: FMP /income-statement quarterly \u2014 GM progression Q4 FY2024 through Q3 FY2026]"
+      },
+      {
+       "finding": "CapEx is running at an extraordinary pace \u2014 $18.64B in Q3 FY2026 alone \u2014 generating deeply negative free cash flow ($-11.48B in Q3) and signaling Oracle is in a heavy infrastructure investment cycle to compete with $AMZN, $MSFT, and Google Cloud.",
+       "evidence": "[Source: FMP /cash-flow-statement quarterly \u2014 Q3 FY2026 CapEx and FCF figures]"
+      },
+      {
+       "finding": "The balance sheet carries severe leverage with LT debt of $130.4B and a D/E ratio of 4.15x as of Q3 FY2026, while interest expense runs ~$1.18B per quarter, creating meaningful financial fragility if cloud transition economics disappoint.",
+       "evidence": "[Source: FMP /balance-sheet-statement quarterly \u2014 Q3 FY2026; /income-statement for interest expense]"
+      },
+      {
+       "finding": "The license support business remains a powerful recurring cash engine \u2014 'substantially all' license support customers renew contracts annually \u2014 providing a defensive floor of predictable revenue while the cloud transition proceeds.",
+       "evidence": "[Source: FMP SEC 10-K 2025-06-18, Item 1 Business \u2014 license support renewal behavior description]"
+      }
+     ],
+     "score_rationale": "Oracle possesses a genuinely durable franchise anchored by sticky enterprise software relationships and accelerating cloud momentum, but capital-intensive infrastructure buildout, extreme leverage, and margin compression weigh meaningfully against a higher quality designation."
+    },
+    "key_findings": [
+     "Cloud services revenue is growing rapidly, rising from 32% of total revenues in FY2023 to 43% in FY2025, demonstrating successful transition from legacy license to high-quality recurring subscription revenue.",
+     "Gross margins have deteriorated materially over the trailing 8 quarters, compressing from 72.5% (Q4 FY2024) to 62.2% in the most recent quarter (Q3 FY2026), reflecting the capital intensity of cloud infrastructure buildout.",
+     "CapEx is running at an extraordinary pace \u2014 $18.64B in Q3 FY2026 alone \u2014 generating deeply negative free cash flow ($-11.48B in Q3) and signaling Oracle is in a heavy infrastructure investment cycle to compete with $AMZN, $MSFT, and Google Cloud.",
+     "The balance sheet carries severe leverage with LT debt of $130.4B and a D/E ratio of 4.15x as of Q3 FY2026, while interest expense runs ~$1.18B per quarter, creating meaningful financial fragility if cloud transition economics disappoint.",
+     "The license support business remains a powerful recurring cash engine \u2014 'substantially all' license support customers renew contracts annually \u2014 providing a defensive floor of predictable revenue while the cloud transition proceeds."
+    ]
+   },
+   "Financial Health": {
+    "score": 35,
+    "content": "{\n  \"score\": 35,\n  \"score_rationale\": \"Oracle carries ~$143.65B in total debt against a deeply negative book equity position, with D/E ratios consistently above 4x, FCF deeply negative for four consecutive quarters due to unprecedented CapEx escalation ($18.6B in Q3 alone), and gross margin compression of ~800bps YoY \u2014 the combination of extreme leverage, negative FCF, and deteriorating margins warrants a materially below-average financial health score despite strong revenue growth and adequate near-term liquidity.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Total debt surged to ~$143.65B (ST $13.22B + LT $130.43B) in Q3, with D/E ratio of 4.15x, reflecting aggressive AI infrastructure financing that has fundamentally altered the balance sheet risk profile.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement Q3 quarterly data]; [Source: SEC EDGAR XBRL LongTermDebt maturities]\"\n    },\n    {\n      \"finding\": \"Free cash flow has been deeply negative for four consecutive quarters \u2014 Q3 FCF was -$11.48B on $18.64B CapEx \u2014 making debt service dependent on revolving credit access and debt market conditions rather than organic cash generation.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement, Q1-Q3 quarterly data showing FCF of -$0.36B, -$9.97B, -$11.48B respectively]\"\n    },\n    {\n      \"finding\": \"Gross margins have compressed ~800bps YoY from 70.3% to 62.2%, driven by cloud infrastructure build-out costs, signaling that revenue growth is being purchased at significant margin sacrifice with no near-term inflection visible.\",\n      \"evidence\": \"[Source: FMP /income-statement Q3 current period 62.2% vs Q3 prior year 70.3%]\"\n    },\n    {\n      \"finding\": \"Debt maturity schedule is manageable near-term ($7.31B due within 12 months per FY2025 10-K) but back-loaded with $60.5B due after five years, creating substantial refinancing risk in a sustained high-rate environment (10Y Treasury at 4.34%).\",\n      \"evidence\": \"[Source: SEC EDGAR XBRL LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths FY2025: $7.31B; AfterYearFive: $60.50B]; [Source: FRED treasury_10y: 4.34 as of 2026-04-23]\"\n    },\n    {\n      \"finding\": \"Interest expense of $1.18B per quarter (~$4.7B annualized) consumes roughly 16% of trailing operating income, and at current debt levels this burden will likely increase as new financing is layered on to fund continued CapEx.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement, latest interest expense $1.18B]; [Source: FMP /income-statement, OM ~29-33% on ~$16-17B quarterly revenue implies ~$5-6B quarterly operating income]\"\n    }\n  ],\n  \"analysis\": \"Oracle's financial health is under meaningful stress, not because the business is deteriorating in isolation, but because management is executing a deliberate, high-velocity bet on AI cloud infrastructure that has temporarily \u2014 and perhaps structurally \u2014 compromised the balance sheet. The risk is that 'temporary' becomes 'permanent' before cash flows inflect.\\n\\nThe debt load is the central concern. Total debt of approximately $143.65B as of Q3 [Source: FMP /balance-sheet-statement] places Oracle among the most leveraged large-cap technology companies globally. Equity is deeply negative, rendering D/E ratios technically misleading but still directionally alarming at 4.15x. The FY2025 10-K XBRL data [Source: SEC EDGAR] confirms the maturity ladder: $7.31B due in the next twelve months, $5.74B in year two, $10.14B in year three, $2.0B in year four, $7.25B in year five, and $60.5B thereafter. This back-loaded structure buys time but creates a multi-decade refinancing obligation. Covenant structure is not disclosed in the available XBRL data, which is a meaningful gap \u2014 any maintenance covenants tied to leverage ratios or interest coverage could become binding constraints if FCF does not recover.\\n\\nThe FCF situation is the most acute financial health issue. Oracle generated OCF of $7.15B in Q3 but spent $18.64B on CapEx [Source: FMP /cash-flow-statement], yielding FCF of -$11.48B. The prior three quarters also showed negative FCF. This is not a one-quarter aberration \u2014 it is a sustained incineration of cash, funded through debt issuance. Cash balances jumped to $38.45B in Q3 [Source: FMP /balance-sheet-statement] \u2014 the only quarter with adequate liquidity \u2014 likely reflecting a large debt raise rather than operational cash accumulation, given the simultaneous LT debt increase from $82.24B (Q1) to $130.43B (Q3). The Q1 current ratio of 0.62 reflects the underlying liquidity fragility when cash raises are excluded.\\n\\nGross margin compression from ~70% to 62.2% over eight quarters [Source: FMP /income-statement] is a structural warning. Cloud infrastructure build costs \u2014 particularly GPU-intensive AI workloads \u2014 carry lower initial margins than software licenses or mature SaaS. If Oracle's cloud business mix continues shifting toward IaaS, margins may not recover to prior levels even as revenue scales. Operating margins have held in the 28-33% range, but net margins in Q1 (19.6%) and Q4 (21.5%) are below aspirational levels.\\n\\nInterest expense of ~$1.18B/quarter ($4.7B annualized) [Source: FMP /balance-sheet-statement] at a 10Y Treasury of 4.34% [Source: FRED] means any new debt issuance occurs at materially higher coupons than Oracle's legacy debt. If CapEx remains elevated at $8-18B per quarter through FY2026-2027, Oracle will need continued capital markets access. The current yield curve spread of 0.53 [Source: FRED] suggests modest normalization, which does not materially reduce Oracle's borrowing costs given its non-government credit profile.\\n\\nThe bullish offset: operating cash flow has been strong ($6-8B/quarter ex-investment spend), analyst revenue estimates project 60%+ revenue growth by FY2030 [Source: FMP analyst estimates], and RPO (remaining performance obligations) likely support long-duration contracted revenue \u2014 though RPO detail is not available in the provided data. If CapEx peaks in FY2026 and revenue scales as projected, FCF inflection is plausible by FY2027-2028. But this requires a nearly perfect execution of a multi-year infrastructure buildout under a high-rate regime with significant competitive pressure from AWS, Azure, and Google Cloud.\\n\\nROA of 9.0% [Source: FMP return metrics TTM] is respectable but must be viewed against an artificially deflated asset base (negative equity) and the forward asset base expansion from CapEx. Net debt to EBITDA is likely in the 6-8x range, which is investment-grade territory only by virtue of Oracle's durable software revenue base and contracted backlog.\",\n  \"data_gaps\": [\n    \"Covenant structure and compliance thresholds on Oracle's credit facilities and bond indentures \u2014 absence of this data prevents assessment of potential technical default risk under stress scenarios\",\n    \"Remaining Performance Obligations (RPO) detail and contract term distribution \u2014 critical for assessing whether contracted revenue can support debt service if cloud adoption slows\",\n    \"Weighted average interest rate on total debt portfolio \u2014 without this, precise interest coverage forward modeling is not possible; not disclosed in XBRL data\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Financial Health",
+    "structured": {
+     "score": 35,
+     "analysis": "Oracle's financial health is under meaningful stress, not because the business is deteriorating in isolation, but because management is executing a deliberate, high-velocity bet on AI cloud infrastructure that has temporarily \u2014 and perhaps structurally \u2014 compromised the balance sheet. The risk is that 'temporary' becomes 'permanent' before cash flows inflect.\n\nThe debt load is the central concern. Total debt of approximately $143.65B as of Q3 [Source: FMP /balance-sheet-statement] places Oracle among the most leveraged large-cap technology companies globally. Equity is deeply negative, rendering D/E ratios technically misleading but still directionally alarming at 4.15x. The FY2025 10-K XBRL data [Source: SEC EDGAR] confirms the maturity ladder: $7.31B due in the next twelve months, $5.74B in year two, $10.14B in year three, $2.0B in year four, $7.25B in year five, and $60.5B thereafter. This back-loaded structure buys time but creates a multi-decade refinancing obligation. Covenant structure is not disclosed in the available XBRL data, which is a meaningful gap \u2014 any maintenance covenants tied to leverage ratios or interest coverage could become binding constraints if FCF does not recover.\n\nThe FCF situation is the most acute financial health issue. Oracle generated OCF of $7.15B in Q3 but spent $18.64B on CapEx [Source: FMP /cash-flow-statement], yielding FCF of -$11.48B. The prior three quarters also showed negative FCF. This is not a one-quarter aberration \u2014 it is a sustained incineration of cash, funded through debt issuance. Cash balances jumped to $38.45B in Q3 [Source: FMP /balance-sheet-statement] \u2014 the only quarter with adequate liquidity \u2014 likely reflecting a large debt raise rather than operational cash accumulation, given the simultaneous LT debt increase from $82.24B (Q1) to $130.43B (Q3). The Q1 current ratio of 0.62 reflects the underlying liquidity fragility when cash raises are excluded.\n\nGross margin compression from ~70% to 62.2% over eight quarters [Source: FMP /income-statement] is a structural warning. Cloud infrastructure build costs \u2014 particularly GPU-intensive AI workloads \u2014 carry lower initial margins than software licenses or mature SaaS. If Oracle's cloud business mix continues shifting toward IaaS, margins may not recover to prior levels even as revenue scales. Operating margins have held in the 28-33% range, but net margins in Q1 (19.6%) and Q4 (21.5%) are below aspirational levels.\n\nInterest expense of ~$1.18B/quarter ($4.7B annualized) [Source: FMP /balance-sheet-statement] at a 10Y Treasury of 4.34% [Source: FRED] means any new debt issuance occurs at materially higher coupons than Oracle's legacy debt. If CapEx remains elevated at $8-18B per quarter through FY2026-2027, Oracle will need continued capital markets access. The current yield curve spread of 0.53 [Source: FRED] suggests modest normalization, which does not materially reduce Oracle's borrowing costs given its non-government credit profile.\n\nThe bullish offset: operating cash flow has been strong ($6-8B/quarter ex-investment spend), analyst revenue estimates project 60%+ revenue growth by FY2030 [Source: FMP analyst estimates], and RPO (remaining performance obligations) likely support long-duration contracted revenue \u2014 though RPO detail is not available in the provided data. If CapEx peaks in FY2026 and revenue scales as projected, FCF inflection is plausible by FY2027-2028. But this requires a nearly perfect execution of a multi-year infrastructure buildout under a high-rate regime with significant competitive pressure from AWS, Azure, and Google Cloud.\n\nROA of 9.0% [Source: FMP return metrics TTM] is respectable but must be viewed against an artificially deflated asset base (negative equity) and the forward asset base expansion from CapEx. Net debt to EBITDA is likely in the 6-8x range, which is investment-grade territory only by virtue of Oracle's durable software revenue base and contracted backlog.",
+     "data_gaps": [
+      "Covenant structure and compliance thresholds on Oracle's credit facilities and bond indentures \u2014 absence of this data prevents assessment of potential technical default risk under stress scenarios",
+      "Remaining Performance Obligations (RPO) detail and contract term distribution \u2014 critical for assessing whether contracted revenue can support debt service if cloud adoption slows",
+      "Weighted average interest rate on total debt portfolio \u2014 without this, precise interest coverage forward modeling is not possible; not disclosed in XBRL data"
+     ],
+     "key_findings": [
+      {
+       "finding": "Total debt surged to ~$143.65B (ST $13.22B + LT $130.43B) in Q3, with D/E ratio of 4.15x, reflecting aggressive AI infrastructure financing that has fundamentally altered the balance sheet risk profile.",
+       "evidence": "[Source: FMP /balance-sheet-statement Q3 quarterly data]; [Source: SEC EDGAR XBRL LongTermDebt maturities]"
+      },
+      {
+       "finding": "Free cash flow has been deeply negative for four consecutive quarters \u2014 Q3 FCF was -$11.48B on $18.64B CapEx \u2014 making debt service dependent on revolving credit access and debt market conditions rather than organic cash generation.",
+       "evidence": "[Source: FMP /cash-flow-statement, Q1-Q3 quarterly data showing FCF of -$0.36B, -$9.97B, -$11.48B respectively]"
+      },
+      {
+       "finding": "Gross margins have compressed ~800bps YoY from 70.3% to 62.2%, driven by cloud infrastructure build-out costs, signaling that revenue growth is being purchased at significant margin sacrifice with no near-term inflection visible.",
+       "evidence": "[Source: FMP /income-statement Q3 current period 62.2% vs Q3 prior year 70.3%]"
+      },
+      {
+       "finding": "Debt maturity schedule is manageable near-term ($7.31B due within 12 months per FY2025 10-K) but back-loaded with $60.5B due after five years, creating substantial refinancing risk in a sustained high-rate environment (10Y Treasury at 4.34%).",
+       "evidence": "[Source: SEC EDGAR XBRL LongTermDebtMaturitiesRepaymentsOfPrincipalInNextTwelveMonths FY2025: $7.31B; AfterYearFive: $60.50B]; [Source: FRED treasury_10y: 4.34 as of 2026-04-23]"
+      },
+      {
+       "finding": "Interest expense of $1.18B per quarter (~$4.7B annualized) consumes roughly 16% of trailing operating income, and at current debt levels this burden will likely increase as new financing is layered on to fund continued CapEx.",
+       "evidence": "[Source: FMP /balance-sheet-statement, latest interest expense $1.18B]; [Source: FMP /income-statement, OM ~29-33% on ~$16-17B quarterly revenue implies ~$5-6B quarterly operating income]"
+      }
+     ],
+     "score_rationale": "Oracle carries ~$143.65B in total debt against a deeply negative book equity position, with D/E ratios consistently above 4x, FCF deeply negative for four consecutive quarters due to unprecedented CapEx escalation ($18.6B in Q3 alone), and gross margin compression of ~800bps YoY \u2014 the combination of extreme leverage, negative FCF, and deteriorating margins warrants a materially below-average financial health score despite strong revenue growth and adequate near-term liquidity."
+    },
+    "key_findings": [
+     "Total debt surged to ~$143.65B (ST $13.22B + LT $130.43B) in Q3, with D/E ratio of 4.15x, reflecting aggressive AI infrastructure financing that has fundamentally altered the balance sheet risk profile.",
+     "Free cash flow has been deeply negative for four consecutive quarters \u2014 Q3 FCF was -$11.48B on $18.64B CapEx \u2014 making debt service dependent on revolving credit access and debt market conditions rather than organic cash generation.",
+     "Gross margins have compressed ~800bps YoY from 70.3% to 62.2%, driven by cloud infrastructure build-out costs, signaling that revenue growth is being purchased at significant margin sacrifice with no near-term inflection visible.",
+     "Debt maturity schedule is manageable near-term ($7.31B due within 12 months per FY2025 10-K) but back-loaded with $60.5B due after five years, creating substantial refinancing risk in a sustained high-rate environment (10Y Treasury at 4.34%).",
+     "Interest expense of $1.18B per quarter (~$4.7B annualized) consumes roughly 16% of trailing operating income, and at current debt levels this burden will likely increase as new financing is layered on to fund continued CapEx."
+    ]
+   },
+   "Future Durability": {
+    "score": 72,
+    "content": "{\n  \"score\": 72,\n  \"score_rationale\": \"Oracle's future durability is supported by an extraordinary $552.6B RPO backlog and accelerating cloud revenue trajectory, but is meaningfully constrained by extreme leverage (D/E 4.15), massively negative free cash flow driven by unprecedented CapEx, gross margin compression, and execution risk on an AI infrastructure bet that remains unproven at scale.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Remaining performance obligations surged to $552.6B as of Q3 FY2026 (Feb 2026), up from $455.3B just two quarters prior, representing roughly 8x trailing annual revenue and providing exceptional revenue visibility for years ahead.\",\n      \"evidence\": \"[Source: FMP SEC EDGAR XBRL facts / RevenueRemainingPerformanceObligation, Q1-Q3 FY2026]\"\n    },\n    {\n      \"finding\": \"CapEx has exploded to $18.64B in Q3 FY2026 alone, driving free cash flow deeply negative (-$11.48B in Q3), reflecting a massive data center buildout for cloud/AI infrastructure that compresses near-term returns but is designed to capture multi-year demand.\",\n      \"evidence\": \"[Source: FMP /financials/cash-flow-statement, Q3 FY2026]\"\n    },\n    {\n      \"finding\": \"Cloud services revenue mix has risen from 32% of total revenue in FY2023 to 43% in FY2025, with Q3 FY2026 revenue accelerating to +21.7% YoY \u2014 the fastest growth rate in the 8-quarter dataset \u2014 signaling a genuine secular shift in the business model.\",\n      \"evidence\": \"[Source: FMP /financials/income-statement Q3 FY2026; SEC 10-K 2025-06-18 Item 1 Business]\"\n    },\n    {\n      \"finding\": \"Gross margins have compressed materially from ~72.5% two years ago to 62.2% in Q3 FY2026, as capital-intensive IaaS infrastructure (lower margin than SaaS) becomes a larger revenue mix, raising questions about long-term margin structure.\",\n      \"evidence\": \"[Source: FMP /financials/income-statement, Q3 FY2026 vs. Q4 FY2024]\"\n    },\n    {\n      \"finding\": \"Total debt load of ~$143.6B against a current cash position of $38.45B at $1.18B quarterly interest expense creates meaningful financial durability risk if cloud demand decelerates or CapEx timelines extend, particularly in a 4.34% 10-year Treasury environment.\",\n      \"evidence\": \"[Source: FMP /balance-sheet Q3 FY2026; FRED treasury_10y 2026-04-23]\"\n    }\n  ],\n  \"analysis\": \"Oracle's future durability thesis rests on a single high-conviction bet: that its aggressive data center buildout and cloud infrastructure platform will capture a disproportionate share of enterprise AI workloads over the next 3-5 years. The evidence for this thesis is compelling in terms of demand signals but carries significant execution and financial risk.\\n\\nThe RPO trajectory is the most powerful forward-looking indicator in the dataset. The jump from $137.8B at FY2025 year-end to $552.6B by Q3 FY2026 \u2014 a 4x increase in less than three quarters \u2014 is extraordinary and likely reflects large, multi-year hyperscaler and sovereign cloud contracts that have not yet been widely reported. [Source: FMP SEC EDGAR XBRL facts] This backlog dwarfs Oracle's current annual revenue run rate of approximately $64B on a trailing basis, effectively providing a multi-year revenue floor assuming normal contract execution. Revenue acceleration to +21.7% YoY in Q3 FY2026 confirms that some of this backlog is beginning to convert. [Source: FMP /financials/income-statement Q3 FY2026]\\n\\nHowever, the cost of capturing this opportunity is enormous. CapEx has escalated to $18.64B in a single quarter, a figure that would have represented roughly 130% of total company quarterly revenue just two years ago. [Source: FMP /financials/cash-flow-statement Q3 FY2026] This investment pace is consistent with management's stated ambition to build out competitive GPU-dense data center capacity, but it is generating deeply negative FCF across every recent quarter. The critical durability question is whether this CapEx is pre-funded by contract commitments (as the RPO data suggests) or speculative. The RPO surge implies significant pre-committed demand, but timing of satisfaction and project completion risk remains undisclosed. [Source: FMP SEC EDGAR XBRL, RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage not disclosed]\\n\\nThe balance sheet is a legitimate concern. At D/E of 4.15 with $143.6B in total debt and $1.18B in quarterly interest expense, Oracle's financial flexibility is constrained. [Source: FMP /balance-sheet Q3 FY2026] The Q3 cash position of $38.45B (up sharply from $10.45B in Q1) suggests recent debt issuance to fund CapEx \u2014 a manageable but escalating carry cost in a 4.34% 10-year rate environment. [Source: FRED treasury_10y 2026-04-23] If AI cloud demand materializes as the backlog implies, this leverage is serviceable. If demand is delayed or concentrated among a few hyperscalers who later renegotiate, Oracle's financial durability degrades quickly.\\n\\nGross margin compression from 72.5% to 62.2% over eight quarters is a structural signal that Oracle is transitioning toward infrastructure services \u2014 a lower-margin business than its legacy database and SaaS segments. [Source: FMP /financials/income-statement] This is rational if IaaS revenues scale faster, but it permanently resets the margin ceiling unless Oracle can layer high-margin AI application and database services on top of the infrastructure.\\n\\nCompetitively, Oracle faces $AMZN AWS, $MSFT Azure, and Google Cloud \u2014 all better-capitalized infrastructure players \u2014 but has carved a differentiated position through its database IP, OCI pricing, and multi-cloud flexibility. The 43% cloud revenue mix and accelerating growth suggest this differentiation is working commercially. Analyst consensus remains firmly Buy with an average price target of $257.19 (+48% upside), though the DCF model at $49.28 intrinsic value signals that current market pricing is entirely predicated on the successful execution of this long-duration cloud/AI build-out. [Source: FMP analyst consensus; FMP DCF]\\n\\nNet assessment: Oracle's future durability is real but heavily dependent on executing one of the largest corporate infrastructure investments in technology history while managing an extreme debt load. The RPO backlog provides genuine revenue durability; the financial structure does not.\",\n  \"data_gaps\": [\n    \"RPO timing/satisfaction schedule not disclosed in XBRL (RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage), making it impossible to assess near-term vs. long-term revenue conversion from the $552.6B backlog\",\n    \"Customer concentration data within the RPO backlog is not disclosed \u2014 if the backlog is concentrated in 2-3 hyperscaler relationships, renewal and renegotiation risk is material and unquantifiable from available data\",\n    \"CapEx project-level details (number of data centers, completion timelines, committed vs. speculative capacity) not available in public filings reviewed, limiting ability to assess whether current CapEx pace is demand-driven or speculative\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Future Durability",
+    "structured": {
+     "score": 72,
+     "analysis": "Oracle's future durability thesis rests on a single high-conviction bet: that its aggressive data center buildout and cloud infrastructure platform will capture a disproportionate share of enterprise AI workloads over the next 3-5 years. The evidence for this thesis is compelling in terms of demand signals but carries significant execution and financial risk.\n\nThe RPO trajectory is the most powerful forward-looking indicator in the dataset. The jump from $137.8B at FY2025 year-end to $552.6B by Q3 FY2026 \u2014 a 4x increase in less than three quarters \u2014 is extraordinary and likely reflects large, multi-year hyperscaler and sovereign cloud contracts that have not yet been widely reported. [Source: FMP SEC EDGAR XBRL facts] This backlog dwarfs Oracle's current annual revenue run rate of approximately $64B on a trailing basis, effectively providing a multi-year revenue floor assuming normal contract execution. Revenue acceleration to +21.7% YoY in Q3 FY2026 confirms that some of this backlog is beginning to convert. [Source: FMP /financials/income-statement Q3 FY2026]\n\nHowever, the cost of capturing this opportunity is enormous. CapEx has escalated to $18.64B in a single quarter, a figure that would have represented roughly 130% of total company quarterly revenue just two years ago. [Source: FMP /financials/cash-flow-statement Q3 FY2026] This investment pace is consistent with management's stated ambition to build out competitive GPU-dense data center capacity, but it is generating deeply negative FCF across every recent quarter. The critical durability question is whether this CapEx is pre-funded by contract commitments (as the RPO data suggests) or speculative. The RPO surge implies significant pre-committed demand, but timing of satisfaction and project completion risk remains undisclosed. [Source: FMP SEC EDGAR XBRL, RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage not disclosed]\n\nThe balance sheet is a legitimate concern. At D/E of 4.15 with $143.6B in total debt and $1.18B in quarterly interest expense, Oracle's financial flexibility is constrained. [Source: FMP /balance-sheet Q3 FY2026] The Q3 cash position of $38.45B (up sharply from $10.45B in Q1) suggests recent debt issuance to fund CapEx \u2014 a manageable but escalating carry cost in a 4.34% 10-year rate environment. [Source: FRED treasury_10y 2026-04-23] If AI cloud demand materializes as the backlog implies, this leverage is serviceable. If demand is delayed or concentrated among a few hyperscalers who later renegotiate, Oracle's financial durability degrades quickly.\n\nGross margin compression from 72.5% to 62.2% over eight quarters is a structural signal that Oracle is transitioning toward infrastructure services \u2014 a lower-margin business than its legacy database and SaaS segments. [Source: FMP /financials/income-statement] This is rational if IaaS revenues scale faster, but it permanently resets the margin ceiling unless Oracle can layer high-margin AI application and database services on top of the infrastructure.\n\nCompetitively, Oracle faces $AMZN AWS, $MSFT Azure, and Google Cloud \u2014 all better-capitalized infrastructure players \u2014 but has carved a differentiated position through its database IP, OCI pricing, and multi-cloud flexibility. The 43% cloud revenue mix and accelerating growth suggest this differentiation is working commercially. Analyst consensus remains firmly Buy with an average price target of $257.19 (+48% upside), though the DCF model at $49.28 intrinsic value signals that current market pricing is entirely predicated on the successful execution of this long-duration cloud/AI build-out. [Source: FMP analyst consensus; FMP DCF]\n\nNet assessment: Oracle's future durability is real but heavily dependent on executing one of the largest corporate infrastructure investments in technology history while managing an extreme debt load. The RPO backlog provides genuine revenue durability; the financial structure does not.",
+     "data_gaps": [
+      "RPO timing/satisfaction schedule not disclosed in XBRL (RevenueRemainingPerformanceObligationExpectedTimingOfSatisfactionPercentage), making it impossible to assess near-term vs. long-term revenue conversion from the $552.6B backlog",
+      "Customer concentration data within the RPO backlog is not disclosed \u2014 if the backlog is concentrated in 2-3 hyperscaler relationships, renewal and renegotiation risk is material and unquantifiable from available data",
+      "CapEx project-level details (number of data centers, completion timelines, committed vs. speculative capacity) not available in public filings reviewed, limiting ability to assess whether current CapEx pace is demand-driven or speculative"
+     ],
+     "key_findings": [
+      {
+       "finding": "Remaining performance obligations surged to $552.6B as of Q3 FY2026 (Feb 2026), up from $455.3B just two quarters prior, representing roughly 8x trailing annual revenue and providing exceptional revenue visibility for years ahead.",
+       "evidence": "[Source: FMP SEC EDGAR XBRL facts / RevenueRemainingPerformanceObligation, Q1-Q3 FY2026]"
+      },
+      {
+       "finding": "CapEx has exploded to $18.64B in Q3 FY2026 alone, driving free cash flow deeply negative (-$11.48B in Q3), reflecting a massive data center buildout for cloud/AI infrastructure that compresses near-term returns but is designed to capture multi-year demand.",
+       "evidence": "[Source: FMP /financials/cash-flow-statement, Q3 FY2026]"
+      },
+      {
+       "finding": "Cloud services revenue mix has risen from 32% of total revenue in FY2023 to 43% in FY2025, with Q3 FY2026 revenue accelerating to +21.7% YoY \u2014 the fastest growth rate in the 8-quarter dataset \u2014 signaling a genuine secular shift in the business model.",
+       "evidence": "[Source: FMP /financials/income-statement Q3 FY2026; SEC 10-K 2025-06-18 Item 1 Business]"
+      },
+      {
+       "finding": "Gross margins have compressed materially from ~72.5% two years ago to 62.2% in Q3 FY2026, as capital-intensive IaaS infrastructure (lower margin than SaaS) becomes a larger revenue mix, raising questions about long-term margin structure.",
+       "evidence": "[Source: FMP /financials/income-statement, Q3 FY2026 vs. Q4 FY2024]"
+      },
+      {
+       "finding": "Total debt load of ~$143.6B against a current cash position of $38.45B at $1.18B quarterly interest expense creates meaningful financial durability risk if cloud demand decelerates or CapEx timelines extend, particularly in a 4.34% 10-year Treasury environment.",
+       "evidence": "[Source: FMP /balance-sheet Q3 FY2026; FRED treasury_10y 2026-04-23]"
+      }
+     ],
+     "score_rationale": "Oracle's future durability is supported by an extraordinary $552.6B RPO backlog and accelerating cloud revenue trajectory, but is meaningfully constrained by extreme leverage (D/E 4.15), massively negative free cash flow driven by unprecedented CapEx, gross margin compression, and execution risk on an AI infrastructure bet that remains unproven at scale."
+    },
+    "key_findings": [
+     "Remaining performance obligations surged to $552.6B as of Q3 FY2026 (Feb 2026), up from $455.3B just two quarters prior, representing roughly 8x trailing annual revenue and providing exceptional revenue visibility for years ahead.",
+     "CapEx has exploded to $18.64B in Q3 FY2026 alone, driving free cash flow deeply negative (-$11.48B in Q3), reflecting a massive data center buildout for cloud/AI infrastructure that compresses near-term returns but is designed to capture multi-year demand.",
+     "Cloud services revenue mix has risen from 32% of total revenue in FY2023 to 43% in FY2025, with Q3 FY2026 revenue accelerating to +21.7% YoY \u2014 the fastest growth rate in the 8-quarter dataset \u2014 signaling a genuine secular shift in the business model.",
+     "Gross margins have compressed materially from ~72.5% two years ago to 62.2% in Q3 FY2026, as capital-intensive IaaS infrastructure (lower margin than SaaS) becomes a larger revenue mix, raising questions about long-term margin structure.",
+     "Total debt load of ~$143.6B against a current cash position of $38.45B at $1.18B quarterly interest expense creates meaningful financial durability risk if cloud demand decelerates or CapEx timelines extend, particularly in a 4.34% 10-year Treasury environment."
+    ]
+   },
+   "Growth & Earnings": {
+    "score": 72,
+    "content": "{\n  \"score\": 72,\n  \"score_rationale\": \"Oracle shows genuine revenue acceleration (12% to 22% YoY growth over four quarters) and a massive RPO backlog of $552.6B signaling durable demand, but gross margin compression of ~800bps YoY, deeply negative FCF driven by unprecedented CapEx, volatile EPS, and a DCF intrinsic value implying severe overvaluation temper the score materially.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Revenue growth has re-accelerated sharply, with Q3 FY2026 posting +21.7% YoY on $17.19B \u2014 the strongest quarterly growth in the trailing eight quarters \u2014 driven by cloud infrastructure demand.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly, Q3 FY2026 vs Q3 FY2025: $17.19B vs $14.13B]\"\n    },\n    {\n      \"finding\": \"Remaining Performance Obligations (RPO) have surged to $552.6B as of February 2026 from $137.8B at FY2025 year-end, representing a multi-year revenue runway that dwarfs current annual revenues and signals extraordinary demand momentum \u2014 though the FY2025 figure likely reflects different disclosure methodology (total vs. current portion).\",\n      \"evidence\": \"[Source: SEC EDGAR XBRL facts, RevenueRemainingPerformanceObligation Q3 FY2026: $552.60B vs FY2025: $137.80B]\"\n    },\n    {\n      \"finding\": \"Gross margin has compressed significantly \u2014 from 72.5% in Q4 FY2025 to 62.2% in Q3 FY2026 \u2014 reflecting the cost burden of massive cloud infrastructure buildout consuming higher-cost hardware, energy, and data center resources.\",\n      \"evidence\": \"[Source: FMP /income-statement quarterly, GM trend Q4 FY2025 through Q3 FY2026]\"\n    },\n    {\n      \"finding\": \"Free cash flow has turned sharply negative, with FCF of -$11.48B in Q3 FY2026 driven by $18.64B in CapEx \u2014 a single-quarter figure exceeding Oracle's total annual CapEx from prior years \u2014 indicating the company is in a highly capital-intensive investment phase for AI and cloud infrastructure.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement quarterly, Q3 FY2026: OCF $7.15B, CapEx -$18.64B, FCF -$11.48B]\"\n    },\n    {\n      \"finding\": \"EPS growth is highly volatile and difficult to rely on as a quality earnings signal: Q2 FY2026 showed +106.7% YoY EPS growth while Q1 FY2026 showed -40.5%, likely driven by one-time tax items and non-operating gains rather than underlying operating leverage.\",\n      \"evidence\": \"[Source: FMP /growth-rates quarterly, EPS Growth: +106.7% in 2025-11, -40.5% in 2026-02; NM swings from 19.6% to 38.2% to 21.6% across three quarters]\"\n    }\n  ],\n  \"analysis\": \"Oracle's growth profile has undergone a genuine inflection, with revenue accelerating from ~11-12% YoY in early FY2025 to 21.7% in Q3 FY2026 [Source: FMP /income-statement quarterly]. This acceleration is cloud-driven, as Oracle Fusion applications, OCI (Oracle Cloud Infrastructure), and AI workload contracts have gained traction against hyperscaler competition. The RPO of $552.6B [Source: SEC EDGAR XBRL] is the single most compelling forward growth indicator in the dataset \u2014 even if the year-end FY2025 figure of $137.8B reflects a narrower disclosure scope (e.g., current portion only), the sequential trajectory from $455.3B to $523.3B to $552.6B across three consecutive quarters confirms that large, long-duration cloud contracts are accumulating at an extraordinary pace. Analyst consensus estimates project revenues reaching $60.1B by May 2030 [Source: FMP /analyst-estimates], implying a roughly 2x from current TTM revenues, consistent with RPO-backed confidence.\\n\\nHowever, the cost of this growth inflection is severe and must be weighted carefully. Gross margin has declined from 72.5% to 62.2% over four quarters [Source: FMP /income-statement quarterly], a structural shift reflecting OCI's capital-intensive nature \u2014 cloud infrastructure carries materially lower margins than Oracle's legacy software business. This is a known transition cost, but the trajectory is steep and ongoing. CapEx reached $18.64B in Q3 FY2026 alone, producing FCF of -$11.48B for the quarter [Source: FMP /cash-flow-statement]. Annualizing this CapEx run-rate implies $50-70B+ per year, which would fundamentally alter Oracle's historical FCF generation profile. The balance sheet already shows $130.4B in long-term debt with a D/E of 4.15x [Source: FMP /balance-sheet quarterly], and the company is funding CapEx partly through new equity issuance (at-the-market program referenced in 10-Q) and debt.\\n\\nEPS quality is poor as a standalone metric. The NM swings from 19.6% (Q1) to 38.2% (Q2) to 21.6% (Q3) [Source: FMP /income-statement quarterly] reflect non-operating items rather than operating improvement. Operating margins have been rangebound at 28-33%, showing no meaningful expansion despite revenue growth \u2014 reinforcing that incremental revenue is flowing into infrastructure cost, not to shareholders in the near term.\\n\\nInsider behavior is unanimously selling across all seven disclosed transactions totaling $17.6M in aggregate [Source: FMP /insider-transactions], with no offsetting buys. While routine at large-cap tech companies, the consistency across multiple C-suite officers including the CEO and CFO at prices of $155-$197 is a directional cautionary signal. The DCF intrinsic value of $49.28 [Source: FMP /dcf] implies the current $173 price embeds enormous future value, consistent with a market pricing in the full-scale cloud/AI transition at peak multiples. The 55 Buy ratings and $257 average price target [Source: FMP /analyst-consensus] reflect optimism but a wide $160-$400 range signals high fundamental uncertainty. The growth story is real; the question is whether the margin and FCF recovery timeline justifies current pricing.\",\n  \"data_gaps\": [\n    \"Cloud revenue segment breakout (OCI vs. SaaS vs. support) is not provided \u2014 critical for assessing whether infrastructure or application cloud is driving growth and what the margin mix shift implies going forward.\",\n    \"RPO timing of satisfaction percentage not disclosed in XBRL, making it impossible to determine what portion of the $552.6B is expected to convert to revenue within 12 months vs. multi-year.\",\n    \"Forward CapEx guidance and data center capacity commitments are referenced in the 10-Q but not quantified in available data, creating uncertainty around FCF recovery timeline and peak investment year.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Growth & Earnings",
+    "structured": {
+     "score": 72,
+     "analysis": "Oracle's growth profile has undergone a genuine inflection, with revenue accelerating from ~11-12% YoY in early FY2025 to 21.7% in Q3 FY2026 [Source: FMP /income-statement quarterly]. This acceleration is cloud-driven, as Oracle Fusion applications, OCI (Oracle Cloud Infrastructure), and AI workload contracts have gained traction against hyperscaler competition. The RPO of $552.6B [Source: SEC EDGAR XBRL] is the single most compelling forward growth indicator in the dataset \u2014 even if the year-end FY2025 figure of $137.8B reflects a narrower disclosure scope (e.g., current portion only), the sequential trajectory from $455.3B to $523.3B to $552.6B across three consecutive quarters confirms that large, long-duration cloud contracts are accumulating at an extraordinary pace. Analyst consensus estimates project revenues reaching $60.1B by May 2030 [Source: FMP /analyst-estimates], implying a roughly 2x from current TTM revenues, consistent with RPO-backed confidence.\n\nHowever, the cost of this growth inflection is severe and must be weighted carefully. Gross margin has declined from 72.5% to 62.2% over four quarters [Source: FMP /income-statement quarterly], a structural shift reflecting OCI's capital-intensive nature \u2014 cloud infrastructure carries materially lower margins than Oracle's legacy software business. This is a known transition cost, but the trajectory is steep and ongoing. CapEx reached $18.64B in Q3 FY2026 alone, producing FCF of -$11.48B for the quarter [Source: FMP /cash-flow-statement]. Annualizing this CapEx run-rate implies $50-70B+ per year, which would fundamentally alter Oracle's historical FCF generation profile. The balance sheet already shows $130.4B in long-term debt with a D/E of 4.15x [Source: FMP /balance-sheet quarterly], and the company is funding CapEx partly through new equity issuance (at-the-market program referenced in 10-Q) and debt.\n\nEPS quality is poor as a standalone metric. The NM swings from 19.6% (Q1) to 38.2% (Q2) to 21.6% (Q3) [Source: FMP /income-statement quarterly] reflect non-operating items rather than operating improvement. Operating margins have been rangebound at 28-33%, showing no meaningful expansion despite revenue growth \u2014 reinforcing that incremental revenue is flowing into infrastructure cost, not to shareholders in the near term.\n\nInsider behavior is unanimously selling across all seven disclosed transactions totaling $17.6M in aggregate [Source: FMP /insider-transactions], with no offsetting buys. While routine at large-cap tech companies, the consistency across multiple C-suite officers including the CEO and CFO at prices of $155-$197 is a directional cautionary signal. The DCF intrinsic value of $49.28 [Source: FMP /dcf] implies the current $173 price embeds enormous future value, consistent with a market pricing in the full-scale cloud/AI transition at peak multiples. The 55 Buy ratings and $257 average price target [Source: FMP /analyst-consensus] reflect optimism but a wide $160-$400 range signals high fundamental uncertainty. The growth story is real; the question is whether the margin and FCF recovery timeline justifies current pricing.",
+     "data_gaps": [
+      "Cloud revenue segment breakout (OCI vs. SaaS vs. support) is not provided \u2014 critical for assessing whether infrastructure or application cloud is driving growth and what the margin mix shift implies going forward.",
+      "RPO timing of satisfaction percentage not disclosed in XBRL, making it impossible to determine what portion of the $552.6B is expected to convert to revenue within 12 months vs. multi-year.",
+      "Forward CapEx guidance and data center capacity commitments are referenced in the 10-Q but not quantified in available data, creating uncertainty around FCF recovery timeline and peak investment year."
+     ],
+     "key_findings": [
+      {
+       "finding": "Revenue growth has re-accelerated sharply, with Q3 FY2026 posting +21.7% YoY on $17.19B \u2014 the strongest quarterly growth in the trailing eight quarters \u2014 driven by cloud infrastructure demand.",
+       "evidence": "[Source: FMP /income-statement quarterly, Q3 FY2026 vs Q3 FY2025: $17.19B vs $14.13B]"
+      },
+      {
+       "finding": "Remaining Performance Obligations (RPO) have surged to $552.6B as of February 2026 from $137.8B at FY2025 year-end, representing a multi-year revenue runway that dwarfs current annual revenues and signals extraordinary demand momentum \u2014 though the FY2025 figure likely reflects different disclosure methodology (total vs. current portion).",
+       "evidence": "[Source: SEC EDGAR XBRL facts, RevenueRemainingPerformanceObligation Q3 FY2026: $552.60B vs FY2025: $137.80B]"
+      },
+      {
+       "finding": "Gross margin has compressed significantly \u2014 from 72.5% in Q4 FY2025 to 62.2% in Q3 FY2026 \u2014 reflecting the cost burden of massive cloud infrastructure buildout consuming higher-cost hardware, energy, and data center resources.",
+       "evidence": "[Source: FMP /income-statement quarterly, GM trend Q4 FY2025 through Q3 FY2026]"
+      },
+      {
+       "finding": "Free cash flow has turned sharply negative, with FCF of -$11.48B in Q3 FY2026 driven by $18.64B in CapEx \u2014 a single-quarter figure exceeding Oracle's total annual CapEx from prior years \u2014 indicating the company is in a highly capital-intensive investment phase for AI and cloud infrastructure.",
+       "evidence": "[Source: FMP /cash-flow-statement quarterly, Q3 FY2026: OCF $7.15B, CapEx -$18.64B, FCF -$11.48B]"
+      },
+      {
+       "finding": "EPS growth is highly volatile and difficult to rely on as a quality earnings signal: Q2 FY2026 showed +106.7% YoY EPS growth while Q1 FY2026 showed -40.5%, likely driven by one-time tax items and non-operating gains rather than underlying operating leverage.",
+       "evidence": "[Source: FMP /growth-rates quarterly, EPS Growth: +106.7% in 2025-11, -40.5% in 2026-02; NM swings from 19.6% to 38.2% to 21.6% across three quarters]"
+      }
+     ],
+     "score_rationale": "Oracle shows genuine revenue acceleration (12% to 22% YoY growth over four quarters) and a massive RPO backlog of $552.6B signaling durable demand, but gross margin compression of ~800bps YoY, deeply negative FCF driven by unprecedented CapEx, volatile EPS, and a DCF intrinsic value implying severe overvaluation temper the score materially."
+    },
+    "key_findings": [
+     "Revenue growth has re-accelerated sharply, with Q3 FY2026 posting +21.7% YoY on $17.19B \u2014 the strongest quarterly growth in the trailing eight quarters \u2014 driven by cloud infrastructure demand.",
+     "Remaining Performance Obligations (RPO) have surged to $552.6B as of February 2026 from $137.8B at FY2025 year-end, representing a multi-year revenue runway that dwarfs current annual revenues and signals extraordinary demand momentum \u2014 though the FY2025 figure likely reflects different disclosure methodology (total vs. current portion).",
+     "Gross margin has compressed significantly \u2014 from 72.5% in Q4 FY2025 to 62.2% in Q3 FY2026 \u2014 reflecting the cost burden of massive cloud infrastructure buildout consuming higher-cost hardware, energy, and data center resources.",
+     "Free cash flow has turned sharply negative, with FCF of -$11.48B in Q3 FY2026 driven by $18.64B in CapEx \u2014 a single-quarter figure exceeding Oracle's total annual CapEx from prior years \u2014 indicating the company is in a highly capital-intensive investment phase for AI and cloud infrastructure.",
+     "EPS growth is highly volatile and difficult to rely on as a quality earnings signal: Q2 FY2026 showed +106.7% YoY EPS growth while Q1 FY2026 showed -40.5%, likely driven by one-time tax items and non-operating gains rather than underlying operating leverage."
+    ]
+   },
+   "Sentiment & Narrative": {
+    "score": 62,
+    "content": "{\n  \"score\": 62,\n  \"score_rationale\": \"ORCL carries a broadly constructive sell-side narrative (Buy consensus, ~48% implied upside) supported by accelerating cloud revenue, but insider selling pressure, negative free cash flow, gross margin compression, and a DCF that implies massive overvaluation temper the sentiment picture meaningfully.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Sell-side consensus is solidly bullish with 55 Buy ratings and average price target of $257.19, implying ~48% upside from current $173.29, but no Strong Buy upgrades have occurred recently and the consensus has been static for months.\",\n      \"evidence\": \"[Source: FMP /analyst-estimates & /analyst-ratings] \u2014 86 analysts covering; SB/B/H/S/SS = 0/55/27/4/0 as of April 2026\"\n    },\n    {\n      \"finding\": \"Revenue growth has re-accelerated sharply \u2014 Q3 FY2026 posted +21.7% YoY at $17.19B \u2014 but gross margins have simultaneously compressed from 72.5% (Q4 FY2025) to 62.2% (Q3 FY2026), signaling heavy cloud infrastructure cost drag.\",\n      \"evidence\": \"[Source: FMP /income-statement] \u2014 GM declined ~10 percentage points over eight quarters as CapEx-intensive cloud buildout scales\"\n    },\n    {\n      \"finding\": \"All seven of the most recent insider Form 4 filings are pure sell transactions totaling $17.56M, including the CEO, CFO, CLO, and President of Global Field Operations \u2014 no insider purchases recorded.\",\n      \"evidence\": \"[Source: FMP /insider-transactions] \u2014 Aggregate: $0.00M buys vs $17.56M sells, spanning Dec 2025\u2013Apr 2026\"\n    },\n    {\n      \"finding\": \"Free cash flow has turned sharply negative \u2014 Q3 FCF was -$11.48B on $18.64B CapEx \u2014 reflecting massive data center investment commitments tied to AI/cloud demand; this narrative is growth-positive but creates near-term valuation risk.\",\n      \"evidence\": \"[Source: FMP /cash-flow-statement] \u2014 FCF growth rate -4216.9% (FY2025-05), -2653.3% (FY2025-11), confirming sustained negative FCF trajectory\"\n    },\n    {\n      \"finding\": \"Social signal velocity is stable but not elevated \u2014 only 54 posts in 7 days with a 1.0 ratio, and theme discovery score of 0.905 with 76 co-mentions suggests ORCL is a satellite beneficiary in AI infrastructure narratives rather than a primary thematic driver.\",\n      \"evidence\": \"[Source: X social signal, Tier 2 directional] \u2014 count_7d=54, ratio=1.0 stable, co_mentions_7d=76 vs total_theme_mentions_7d=84\"\n    }\n  ],\n  \"analysis\": \"Oracle sits at an interesting narrative crossroads: the sell-side has constructed a compelling AI infrastructure story around cloud revenue acceleration and landmark hyperscaler co-location deals, but the underlying data reveals a more complicated picture that warrants a measured rather than enthusiastic sentiment score.\\n\\nOn the constructive side, sell-side consensus has drifted incrementally more bullish over the trailing four months \u2014 Hold ratings dropped from 11 (January 2026) to 8 (April 2026) while Buy ratings held at 28 in the most recent tracked subset [Source: FMP /analyst-ratings trend]. Recent analyst actions are predominantly maintenance of existing bullish stances \u2014 Mizuho, Guggenheim, Citigroup, BMO, and Stifel all reaffirmed Outperform/Buy in March 2026 \u2014 which signals conviction rather than chasing. The $257.19 average price target carries meaningful upside at current prices (~48%), and the revenue trajectory does support a growth narrative: Q3 FY2026's 21.7% YoY growth is the fastest in the eight-quarter window and suggests the cloud backlog is converting [Source: FMP /income-statement].\\n\\nHowever, several sentiment headwinds are non-trivial. First, the gross margin compression from 72.5% to 62.2% over eight quarters is not being adequately flagged in the bullish narrative \u2014 this is a structural shift driven by CapEx-heavy cloud infrastructure deployment, and it pressures the earnings quality story even as top-line beats expectations. Q3's operating margin of 32.8% is not dramatically different from prior periods, but the gross margin decline telegraphs a business mix shift with long-term uncertainty [Source: FMP /income-statement]. Second, free cash flow has deteriorated severely \u2014 Q3 CapEx of $18.64B produced FCF of -$11.48B, and the pattern is persistent across four consecutive quarters [Source: FMP /cash-flow-statement]. The narrative reframes this as 'growth investment,' but the balance sheet now shows $130.43B in LT debt at a D/E of 4.15 and interest expense of $1.18B/quarter \u2014 a leverage profile that limits sentiment durability if growth decelerates [Source: FMP /balance-sheet].\\n\\nInsider behavior adds a cautionary signal. The CEO sold shares twice (December 2025 and February 2026), the CFO sold $6.82M in January 2026 at $194.89 \u2014 near recent highs \u2014 and the CLO sold in April 2026 at $176.19 [Source: FMP /insider-transactions]. While planned selling programs are common, the pattern of zero buys across seven filings from multiple C-suite officers is a meaningful sentiment negative.\\n\\nSocial signal data suggests ORCL is benefiting from AI infrastructure narrative spillover but is not a primary thematic name \u2014 76 co-mentions in 7 days within a theme that generated 84 total mentions indicates broad inclusion but not intense focus [Source: X social signal, Tier 2]. The DCF intrinsic value of $49.28 (-71.6% vs current) is a stark reminder that the current valuation is entirely sentiment/growth-premium driven [Source: FMP /dcf], which makes narrative stability critical and any disappointment outsized in its downside impact.\\n\\nNet: the sentiment picture is bullish but fragile \u2014 consensus is constructive, growth is real, but insiders are selling, margins are compressing, FCF is deeply negative, and the multiple leaves zero room for error.\",\n  \"data_gaps\": [\n    \"No cloud revenue backlog or remaining performance obligation (RPO) data available \u2014 this is the single most important forward demand indicator for validating the AI infrastructure narrative\",\n    \"Specific details on hyperscaler partnership deal structures (e.g., Microsoft, Google co-location arrangements) and their revenue recognition timeline are not available in FMP data\",\n    \"X social signal summary is listed as N/A \u2014 qualitative narrative tone (bullish/bearish retail sentiment, specific catalyst mentions) cannot be assessed from raw counts alone\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Sentiment & Narrative",
+    "structured": {
+     "score": 62,
+     "analysis": "Oracle sits at an interesting narrative crossroads: the sell-side has constructed a compelling AI infrastructure story around cloud revenue acceleration and landmark hyperscaler co-location deals, but the underlying data reveals a more complicated picture that warrants a measured rather than enthusiastic sentiment score.\n\nOn the constructive side, sell-side consensus has drifted incrementally more bullish over the trailing four months \u2014 Hold ratings dropped from 11 (January 2026) to 8 (April 2026) while Buy ratings held at 28 in the most recent tracked subset [Source: FMP /analyst-ratings trend]. Recent analyst actions are predominantly maintenance of existing bullish stances \u2014 Mizuho, Guggenheim, Citigroup, BMO, and Stifel all reaffirmed Outperform/Buy in March 2026 \u2014 which signals conviction rather than chasing. The $257.19 average price target carries meaningful upside at current prices (~48%), and the revenue trajectory does support a growth narrative: Q3 FY2026's 21.7% YoY growth is the fastest in the eight-quarter window and suggests the cloud backlog is converting [Source: FMP /income-statement].\n\nHowever, several sentiment headwinds are non-trivial. First, the gross margin compression from 72.5% to 62.2% over eight quarters is not being adequately flagged in the bullish narrative \u2014 this is a structural shift driven by CapEx-heavy cloud infrastructure deployment, and it pressures the earnings quality story even as top-line beats expectations. Q3's operating margin of 32.8% is not dramatically different from prior periods, but the gross margin decline telegraphs a business mix shift with long-term uncertainty [Source: FMP /income-statement]. Second, free cash flow has deteriorated severely \u2014 Q3 CapEx of $18.64B produced FCF of -$11.48B, and the pattern is persistent across four consecutive quarters [Source: FMP /cash-flow-statement]. The narrative reframes this as 'growth investment,' but the balance sheet now shows $130.43B in LT debt at a D/E of 4.15 and interest expense of $1.18B/quarter \u2014 a leverage profile that limits sentiment durability if growth decelerates [Source: FMP /balance-sheet].\n\nInsider behavior adds a cautionary signal. The CEO sold shares twice (December 2025 and February 2026), the CFO sold $6.82M in January 2026 at $194.89 \u2014 near recent highs \u2014 and the CLO sold in April 2026 at $176.19 [Source: FMP /insider-transactions]. While planned selling programs are common, the pattern of zero buys across seven filings from multiple C-suite officers is a meaningful sentiment negative.\n\nSocial signal data suggests ORCL is benefiting from AI infrastructure narrative spillover but is not a primary thematic name \u2014 76 co-mentions in 7 days within a theme that generated 84 total mentions indicates broad inclusion but not intense focus [Source: X social signal, Tier 2]. The DCF intrinsic value of $49.28 (-71.6% vs current) is a stark reminder that the current valuation is entirely sentiment/growth-premium driven [Source: FMP /dcf], which makes narrative stability critical and any disappointment outsized in its downside impact.\n\nNet: the sentiment picture is bullish but fragile \u2014 consensus is constructive, growth is real, but insiders are selling, margins are compressing, FCF is deeply negative, and the multiple leaves zero room for error.",
+     "data_gaps": [
+      "No cloud revenue backlog or remaining performance obligation (RPO) data available \u2014 this is the single most important forward demand indicator for validating the AI infrastructure narrative",
+      "Specific details on hyperscaler partnership deal structures (e.g., Microsoft, Google co-location arrangements) and their revenue recognition timeline are not available in FMP data",
+      "X social signal summary is listed as N/A \u2014 qualitative narrative tone (bullish/bearish retail sentiment, specific catalyst mentions) cannot be assessed from raw counts alone"
+     ],
+     "key_findings": [
+      {
+       "finding": "Sell-side consensus is solidly bullish with 55 Buy ratings and average price target of $257.19, implying ~48% upside from current $173.29, but no Strong Buy upgrades have occurred recently and the consensus has been static for months.",
+       "evidence": "[Source: FMP /analyst-estimates & /analyst-ratings] \u2014 86 analysts covering; SB/B/H/S/SS = 0/55/27/4/0 as of April 2026"
+      },
+      {
+       "finding": "Revenue growth has re-accelerated sharply \u2014 Q3 FY2026 posted +21.7% YoY at $17.19B \u2014 but gross margins have simultaneously compressed from 72.5% (Q4 FY2025) to 62.2% (Q3 FY2026), signaling heavy cloud infrastructure cost drag.",
+       "evidence": "[Source: FMP /income-statement] \u2014 GM declined ~10 percentage points over eight quarters as CapEx-intensive cloud buildout scales"
+      },
+      {
+       "finding": "All seven of the most recent insider Form 4 filings are pure sell transactions totaling $17.56M, including the CEO, CFO, CLO, and President of Global Field Operations \u2014 no insider purchases recorded.",
+       "evidence": "[Source: FMP /insider-transactions] \u2014 Aggregate: $0.00M buys vs $17.56M sells, spanning Dec 2025\u2013Apr 2026"
+      },
+      {
+       "finding": "Free cash flow has turned sharply negative \u2014 Q3 FCF was -$11.48B on $18.64B CapEx \u2014 reflecting massive data center investment commitments tied to AI/cloud demand; this narrative is growth-positive but creates near-term valuation risk.",
+       "evidence": "[Source: FMP /cash-flow-statement] \u2014 FCF growth rate -4216.9% (FY2025-05), -2653.3% (FY2025-11), confirming sustained negative FCF trajectory"
+      },
+      {
+       "finding": "Social signal velocity is stable but not elevated \u2014 only 54 posts in 7 days with a 1.0 ratio, and theme discovery score of 0.905 with 76 co-mentions suggests ORCL is a satellite beneficiary in AI infrastructure narratives rather than a primary thematic driver.",
+       "evidence": "[Source: X social signal, Tier 2 directional] \u2014 count_7d=54, ratio=1.0 stable, co_mentions_7d=76 vs total_theme_mentions_7d=84"
+      }
+     ],
+     "score_rationale": "ORCL carries a broadly constructive sell-side narrative (Buy consensus, ~48% implied upside) supported by accelerating cloud revenue, but insider selling pressure, negative free cash flow, gross margin compression, and a DCF that implies massive overvaluation temper the sentiment picture meaningfully."
+    },
+    "key_findings": [
+     "Sell-side consensus is solidly bullish with 55 Buy ratings and average price target of $257.19, implying ~48% upside from current $173.29, but no Strong Buy upgrades have occurred recently and the consensus has been static for months.",
+     "Revenue growth has re-accelerated sharply \u2014 Q3 FY2026 posted +21.7% YoY at $17.19B \u2014 but gross margins have simultaneously compressed from 72.5% (Q4 FY2025) to 62.2% (Q3 FY2026), signaling heavy cloud infrastructure cost drag.",
+     "All seven of the most recent insider Form 4 filings are pure sell transactions totaling $17.56M, including the CEO, CFO, CLO, and President of Global Field Operations \u2014 no insider purchases recorded.",
+     "Free cash flow has turned sharply negative \u2014 Q3 FCF was -$11.48B on $18.64B CapEx \u2014 reflecting massive data center investment commitments tied to AI/cloud demand; this narrative is growth-positive but creates near-term valuation risk.",
+     "Social signal velocity is stable but not elevated \u2014 only 54 posts in 7 days with a 1.0 ratio, and theme discovery score of 0.905 with 76 co-mentions suggests ORCL is a satellite beneficiary in AI infrastructure narratives rather than a primary thematic driver."
+    ]
+   },
+   "Management & Governance": {
+    "score": 42,
+    "content": "{\n  \"score\": 42,\n  \"score_rationale\": \"Oracle's governance is structurally compromised by Larry Ellison's near-total control over the company despite his executive chairman role, while aggressive leverage, insider selling with zero buying, and compensation structures that favor insiders over shareholders warrant a materially below-average governance score.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"Insider transactions over the past seven Form 4 filings show $0 in purchases versus $17.56M in sales across multiple C-suite executives including the CEO and CFO, signaling limited insider conviction at current price levels.\",\n      \"evidence\": \"[Source: FMP /insider-transactions] \u2014 CEO Magouyrk sold $3.48M across two transactions; CFO Kehring sold $6.82M; CLO Levey sold $2.64M; no offsetting buys recorded.\"\n    },\n    {\n      \"finding\": \"Oracle carries an extraordinarily leveraged balance sheet with $130.43B in long-term debt and a D/E ratio of 4.15x as of Q3, with $18.64B in quarterly CapEx driving deeply negative FCF of -$11.48B in the most recent quarter.\",\n      \"evidence\": \"[Source: FMP /balance-sheet-statement, /cash-flow-statement] \u2014 LT debt rose sharply from $85.3B (Q4 prior year) to $130.43B in Q3 latest, while FCF has been negative for all four most recent quarters.\"\n    },\n    {\n      \"finding\": \"Larry Ellison, as founder and Executive Chairman/CTO, retains effective voting control over Oracle through concentrated share ownership, creating a persistent principal-agent conflict that structurally limits independent board oversight.\",\n      \"evidence\": \"[Source: DEF 14A 2025-09-26] \u2014 Board unanimously recommends FOR on NEO compensation advisory vote, consistent with a board posture of alignment with controlling shareholder rather than independent challenge.\"\n    },\n    {\n      \"finding\": \"EY has served as Oracle's independent auditor since 2002\u2014a 23-year tenure that raises legitimate auditor independence concerns, though the F&A Committee has formally reviewed rotation and elected to retain EY.\",\n      \"evidence\": \"[Source: DEF 14A 2025-09-26, Proposal No. 3] \u2014 'EY has served as our independent registered public accounting firm since 2002'; F&A Committee concluded rotation is not merited.\"\n    },\n    {\n      \"finding\": \"Gross margin compression from ~72.5% to 62.2% over eight quarters despite accelerating revenue growth (+21.7% YoY in Q3) suggests management's aggressive cloud infrastructure investment is diluting near-term returns and raises questions about capital allocation discipline.\",\n      \"evidence\": \"[Source: FMP /income-statement] \u2014 GM declined from 72.5% (Q4 two years prior) to 62.2% in most recent Q3 as CapEx surged to $18.64B in a single quarter, vs. $9.08B just four quarters prior.\"\n    }\n  ],\n  \"analysis\": \"Oracle's management and governance profile is structurally dominated by founder Larry Ellison, whose role as Executive Chairman and CTO\u2014combined with concentrated equity ownership\u2014creates a governance framework that functionally subordinates minority shareholder interests. The board's unanimous recommendation to approve NEO compensation and its long-standing retention of EY (since 2002) suggest a governance culture oriented toward entrenchment rather than independent challenge [Source: DEF 14A 2025-09-26].\\n\\nThe insider transaction record over the seven most recent Form 4 filings is unambiguously negative for minority shareholders: $17.56M in aggregate selling with zero offsetting purchases [Source: FMP /insider-transactions]. Critically, both the CEO (Magouyrk, $3.48M sold across two dates) and the Principal Financial Officer (Kehring, $6.82M sold) liquidated shares during a period when Oracle was actively messaging an accelerating cloud growth narrative. While sales may be plan-driven (10b5-1), the absence of any disclosed buying at any level of the organization is a meaningful governance signal.\\n\\nCapital allocation decisions present the most pressing governance concern. Management has dramatically accelerated CapEx\u2014from $8.5B in Q1 to $18.64B in Q3 of the current period\u2014driving FCF deeply negative ($-11.48B in Q3, $-9.97B in Q2) [Source: FMP /cash-flow-statement]. Simultaneously, the company raised LT debt from $82.24B to $130.43B in three quarters [Source: FMP /balance-sheet-statement]. This reflects a massive, CEO-directed bet on AI infrastructure (OCI expansion, GPU cluster buildout) executed at a pace that bypasses typical capital committee deliberation visible to outside investors. While the strategic rationale may be sound, the speed and scale of leverage accumulation\u2014with D/E now at 4.15x and quarterly interest expense at $1.18B\u2014represents a governance risk if demand assumptions prove optimistic.\\n\\nGross margin compression from 72.5% to 62.2% over eight quarters further illustrates management's willingness to sacrifice near-term financial quality metrics for long-term positioning [Source: FMP /income-statement]. The question for minority shareholders is whether this trade-off was transparently communicated, subject to rigorous board oversight, or largely driven by Ellison's top-down strategic vision without meaningful institutional check.\\n\\nOn the positive side, the F&A Committee maintains a structured pre-approval policy for EY services, and the board does include independent directors who formally review auditor independence [Source: DEF 14A 2025-09-26]. The analyst community remains constructively oriented (55 Buy vs. 4 Sell out of 86 analysts) [Source: FMP /analyst-consensus], suggesting execution credibility survives governance discounts. However, the combination of founder control, heavy insider selling, extreme leverage accumulation, and a 23-year auditor relationship is a governance profile that warrants a material discount relative to peers with more balanced stakeholder structures.\",\n  \"data_gaps\": [\n    \"Ellison's precise economic ownership percentage and voting control mechanics are not confirmed from the data provided\u2014critical for quantifying founder concentration risk.\",\n    \"Details on board composition (number of independent directors, committee chairs, tenure distribution) are not included in the available DEF 14A excerpt, limiting full board independence assessment.\",\n    \"10b5-1 plan status for insider sales is not disclosed in the Form 4 data, making it impossible to distinguish discretionary selling from pre-scheduled plan transactions.\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Management & Governance",
+    "structured": {
+     "score": 42,
+     "analysis": "Oracle's management and governance profile is structurally dominated by founder Larry Ellison, whose role as Executive Chairman and CTO\u2014combined with concentrated equity ownership\u2014creates a governance framework that functionally subordinates minority shareholder interests. The board's unanimous recommendation to approve NEO compensation and its long-standing retention of EY (since 2002) suggest a governance culture oriented toward entrenchment rather than independent challenge [Source: DEF 14A 2025-09-26].\n\nThe insider transaction record over the seven most recent Form 4 filings is unambiguously negative for minority shareholders: $17.56M in aggregate selling with zero offsetting purchases [Source: FMP /insider-transactions]. Critically, both the CEO (Magouyrk, $3.48M sold across two dates) and the Principal Financial Officer (Kehring, $6.82M sold) liquidated shares during a period when Oracle was actively messaging an accelerating cloud growth narrative. While sales may be plan-driven (10b5-1), the absence of any disclosed buying at any level of the organization is a meaningful governance signal.\n\nCapital allocation decisions present the most pressing governance concern. Management has dramatically accelerated CapEx\u2014from $8.5B in Q1 to $18.64B in Q3 of the current period\u2014driving FCF deeply negative ($-11.48B in Q3, $-9.97B in Q2) [Source: FMP /cash-flow-statement]. Simultaneously, the company raised LT debt from $82.24B to $130.43B in three quarters [Source: FMP /balance-sheet-statement]. This reflects a massive, CEO-directed bet on AI infrastructure (OCI expansion, GPU cluster buildout) executed at a pace that bypasses typical capital committee deliberation visible to outside investors. While the strategic rationale may be sound, the speed and scale of leverage accumulation\u2014with D/E now at 4.15x and quarterly interest expense at $1.18B\u2014represents a governance risk if demand assumptions prove optimistic.\n\nGross margin compression from 72.5% to 62.2% over eight quarters further illustrates management's willingness to sacrifice near-term financial quality metrics for long-term positioning [Source: FMP /income-statement]. The question for minority shareholders is whether this trade-off was transparently communicated, subject to rigorous board oversight, or largely driven by Ellison's top-down strategic vision without meaningful institutional check.\n\nOn the positive side, the F&A Committee maintains a structured pre-approval policy for EY services, and the board does include independent directors who formally review auditor independence [Source: DEF 14A 2025-09-26]. The analyst community remains constructively oriented (55 Buy vs. 4 Sell out of 86 analysts) [Source: FMP /analyst-consensus], suggesting execution credibility survives governance discounts. However, the combination of founder control, heavy insider selling, extreme leverage accumulation, and a 23-year auditor relationship is a governance profile that warrants a material discount relative to peers with more balanced stakeholder structures.",
+     "data_gaps": [
+      "Ellison's precise economic ownership percentage and voting control mechanics are not confirmed from the data provided\u2014critical for quantifying founder concentration risk.",
+      "Details on board composition (number of independent directors, committee chairs, tenure distribution) are not included in the available DEF 14A excerpt, limiting full board independence assessment.",
+      "10b5-1 plan status for insider sales is not disclosed in the Form 4 data, making it impossible to distinguish discretionary selling from pre-scheduled plan transactions."
+     ],
+     "key_findings": [
+      {
+       "finding": "Insider transactions over the past seven Form 4 filings show $0 in purchases versus $17.56M in sales across multiple C-suite executives including the CEO and CFO, signaling limited insider conviction at current price levels.",
+       "evidence": "[Source: FMP /insider-transactions] \u2014 CEO Magouyrk sold $3.48M across two transactions; CFO Kehring sold $6.82M; CLO Levey sold $2.64M; no offsetting buys recorded."
+      },
+      {
+       "finding": "Oracle carries an extraordinarily leveraged balance sheet with $130.43B in long-term debt and a D/E ratio of 4.15x as of Q3, with $18.64B in quarterly CapEx driving deeply negative FCF of -$11.48B in the most recent quarter.",
+       "evidence": "[Source: FMP /balance-sheet-statement, /cash-flow-statement] \u2014 LT debt rose sharply from $85.3B (Q4 prior year) to $130.43B in Q3 latest, while FCF has been negative for all four most recent quarters."
+      },
+      {
+       "finding": "Larry Ellison, as founder and Executive Chairman/CTO, retains effective voting control over Oracle through concentrated share ownership, creating a persistent principal-agent conflict that structurally limits independent board oversight.",
+       "evidence": "[Source: DEF 14A 2025-09-26] \u2014 Board unanimously recommends FOR on NEO compensation advisory vote, consistent with a board posture of alignment with controlling shareholder rather than independent challenge."
+      },
+      {
+       "finding": "EY has served as Oracle's independent auditor since 2002\u2014a 23-year tenure that raises legitimate auditor independence concerns, though the F&A Committee has formally reviewed rotation and elected to retain EY.",
+       "evidence": "[Source: DEF 14A 2025-09-26, Proposal No. 3] \u2014 'EY has served as our independent registered public accounting firm since 2002'; F&A Committee concluded rotation is not merited."
+      },
+      {
+       "finding": "Gross margin compression from ~72.5% to 62.2% over eight quarters despite accelerating revenue growth (+21.7% YoY in Q3) suggests management's aggressive cloud infrastructure investment is diluting near-term returns and raises questions about capital allocation discipline.",
+       "evidence": "[Source: FMP /income-statement] \u2014 GM declined from 72.5% (Q4 two years prior) to 62.2% in most recent Q3 as CapEx surged to $18.64B in a single quarter, vs. $9.08B just four quarters prior."
+      }
+     ],
+     "score_rationale": "Oracle's governance is structurally compromised by Larry Ellison's near-total control over the company despite his executive chairman role, while aggressive leverage, insider selling with zero buying, and compensation structures that favor insiders over shareholders warrant a materially below-average governance score."
+    },
+    "key_findings": [
+     "Insider transactions over the past seven Form 4 filings show $0 in purchases versus $17.56M in sales across multiple C-suite executives including the CEO and CFO, signaling limited insider conviction at current price levels.",
+     "Oracle carries an extraordinarily leveraged balance sheet with $130.43B in long-term debt and a D/E ratio of 4.15x as of Q3, with $18.64B in quarterly CapEx driving deeply negative FCF of -$11.48B in the most recent quarter.",
+     "Larry Ellison, as founder and Executive Chairman/CTO, retains effective voting control over Oracle through concentrated share ownership, creating a persistent principal-agent conflict that structurally limits independent board oversight.",
+     "EY has served as Oracle's independent auditor since 2002\u2014a 23-year tenure that raises legitimate auditor independence concerns, though the F&A Committee has formally reviewed rotation and elected to retain EY.",
+     "Gross margin compression from ~72.5% to 62.2% over eight quarters despite accelerating revenue growth (+21.7% YoY in Q3) suggests management's aggressive cloud infrastructure investment is diluting near-term returns and raises questions about capital allocation discipline."
+    ]
+   },
+   "Technical & Market Structure": {
+    "score": 52,
+    "content": "{\n  \"score\": 52,\n  \"score_rationale\": \"ORCL exhibits a powerful near-term momentum recovery from April lows but remains trapped in a structural downtrend well below its SMA200 ($214), with insider selling pressure, deeply negative FCF, and a DCF suggesting significant overvaluation\u2014offsetting the bullish short-term technicals.\",\n  \"key_findings\": [\n    {\n      \"finding\": \"ORCL staged a sharp V-shaped recovery from its April 9 intraday low (~$137.86) to $187.50 on April 22, a ~36% rally in 9 sessions, before pulling back to $173.28\u2014suggesting momentum exhaustion near-term.\",\n      \"evidence\": \"[Source: FMP /historical-price-full] Last 20 sessions OHLCV data showing close progression from $137.86 (Apr 9) to $187.50 (Apr 22) with peak volume of 59.8M shares on Apr 14\"\n    },\n    {\n      \"finding\": \"ORCL remains in a structural bear trend: the stock trades ~19% below its 200-day SMA ($214.00), and the SMA200 itself is declining (from $219.34 on Mar 27 to $214.00 on Apr 24), confirming no technical base has formed on a longer-term basis.\",\n      \"evidence\": \"[Source: FMP /historical-price-full] SMA200 declining sequentially across all 20 observed sessions; current close $173.28 vs SMA200 $214.00\"\n    },\n    {\n      \"finding\": \"RSI(14) at 58.83 after peaking at 73.02 on April 22 signals the momentum surge is fading; the stock failed to hold above $187 and pulled back ~$14 in two sessions on elevated volume, a distribution signal.\",\n      \"evidence\": \"[Source: FMP /historical-price-full] RSI peaked at 73.02 on Apr 22 (close $187.50), declined to 61.5 (Apr 23, close $176.28) and 58.83 (Apr 24, close $173.28) on combined volume of ~70M shares\"\n    },\n    {\n      \"finding\": \"All seven recent insider transactions are pure sells totaling $17.56M with zero buys, including the CFO selling $6.82M in January near the 52-week peak and the CEO selling twice\u2014a persistent negative signal on insider conviction.\",\n      \"evidence\": \"[Source: FMP /insider-trading] KEHRING DOUGLAS A (CFO) sold 35,000 sh @ $194.89 on Jan 16; CEO Magouyrk sold in Dec 2025 and Feb 2026; aggregate net: -$17.56M\"\n    },\n    {\n      \"finding\": \"Analyst consensus is constructive (55 Buys, avg PT $257.19 implying +48% upside), but the average price target has compressed from what was presumably higher levels and the DCF intrinsic value of $49.28 implies the fundamental risk/reward severely contradicts the technical recovery.\",\n      \"evidence\": \"[Source: FMP /analyst-estimates and /analyst-stock-recommendations] 86-analyst consensus Buy; avg PT $257.19 vs current $173.28; DCF IV $49.28 (-71.6% vs current)\"\n    }\n  ],\n  \"analysis\": \"ORCL's technical picture is bifurcated: near-term momentum is strong but the structural trend remains broken, and distribution signals are appearing at resistance.\\n\\nThe April recovery is undeniably impressive in velocity. From a closing low of $137.86 on April 9\u2014reached on 30.4M shares amid apparent macro-driven selling\u2014the stock ripped to $187.50 by April 22, a 36% move driven by extreme volume (Apr 13: 50.0M, Apr 14: 59.8M, Apr 15: 43.0M shares). This surge pushed the 9-day SMA from $143 to $174 and the 20-day SMA from $147 to $158, confirming short-term momentum recapture. RSI reached 73 at the peak, entering mildly overbought territory. However, the immediate two-session reversal from $187.50 to $173.28 on combined volume of ~70M shares looks like institutional distribution\u2014buyers who participated in the recovery locking in gains.\\n\\nCritically, the structural technical picture is still bearish. The SMA200 stands at $214.00 and has been declining every session in the observed window, moving from $219.34 (Mar 27) to $214.00 (Apr 24). The current price at $173.28 is approximately 19% below this long-term average, meaning no institutional trend-following algorithm will signal a structural buy. The SMA50 at $154.43 has recently been recrossed from above, providing some near-term support, but the gap to SMA200 represents a massive overhead supply zone. The stock would need to sustain a move above roughly $195-$214 to shift from a corrective bounce to a structural reversal.\\n\\nBeta of 1.597 [Source: FMP /company-facts] amplifies both upside and downside\u2014the April spike likely captured significant short covering in addition to fundamental buying, which means the move may be less durable than the price action suggests.\\n\\nInsider behavior is unambiguously negative. Every Form 4 filing in the last 7 transactions represents a sale, with no offsetting purchases [Source: FMP /insider-trading]. The CFO sold near the highs in January ($194.89), the CEO sold twice (December and February), and the CLO sold in April ($176.19) even after the stock had already corrected ~20% from highs. This systematic selling across C-suite and board members\u2014$17.56M aggregate\u2014suggests insiders view current levels as fair-to-full despite the correction.\\n\\nThe analyst community's average price target of $257.19 implies 48% upside and reflects AI infrastructure tailwinds in Oracle's cloud business [Source: FMP /analyst-stock-recommendations], but the target spread ($160\u2013$400) is extremely wide, indicating high dispersion of views. The DCF of $49.28 is an extreme outlier on the downside, largely reflecting the heavily leveraged balance sheet (D/E 4.15) and deeply negative FCF (Q3: -$11.48B on $18.64B CapEx) [Source: FMP /cash-flow-statement]. Capex is running at a pace that mechanically destroys FCF, justified only if cloud revenue growth accelerates materially.\\n\\nFor a technical trader, the key levels are: support at the 50-day SMA ($154) and the April gap zone ($155-$163), with resistance at the recent high of $187.50 and the psychologically important $200 level. A break above $187.50 with sustained volume would be a constructive signal; failure to hold $154 would confirm the bounce was corrective only. Current RSI at 58.83 leaves room for either direction without a clear signal. Market structure is still bearish on a 6-12 month basis.\",\n  \"data_gaps\": [\n    \"Short interest data (shares short, days-to-cover) unavailable\u2014critical for assessing whether the April surge was short-squeeze driven vs. fundamental buying\",\n    \"Options market structure (put/call ratio, implied volatility surface, major open interest strikes) not available\u2014would materially inform near-term price range expectations given beta of 1.597\",\n    \"Institutional ownership flow data (13F quarterly changes, recent large block trades) absent\u2014needed to determine if the April volume spike represents accumulation or distribution by smart money\"\n  ]\n}",
+    "__type__": "CategoryResult",
+    "category": "Technical & Market Structure",
+    "structured": {
+     "score": 52,
+     "analysis": "ORCL's technical picture is bifurcated: near-term momentum is strong but the structural trend remains broken, and distribution signals are appearing at resistance.\n\nThe April recovery is undeniably impressive in velocity. From a closing low of $137.86 on April 9\u2014reached on 30.4M shares amid apparent macro-driven selling\u2014the stock ripped to $187.50 by April 22, a 36% move driven by extreme volume (Apr 13: 50.0M, Apr 14: 59.8M, Apr 15: 43.0M shares). This surge pushed the 9-day SMA from $143 to $174 and the 20-day SMA from $147 to $158, confirming short-term momentum recapture. RSI reached 73 at the peak, entering mildly overbought territory. However, the immediate two-session reversal from $187.50 to $173.28 on combined volume of ~70M shares looks like institutional distribution\u2014buyers who participated in the recovery locking in gains.\n\nCritically, the structural technical picture is still bearish. The SMA200 stands at $214.00 and has been declining every session in the observed window, moving from $219.34 (Mar 27) to $214.00 (Apr 24). The current price at $173.28 is approximately 19% below this long-term average, meaning no institutional trend-following algorithm will signal a structural buy. The SMA50 at $154.43 has recently been recrossed from above, providing some near-term support, but the gap to SMA200 represents a massive overhead supply zone. The stock would need to sustain a move above roughly $195-$214 to shift from a corrective bounce to a structural reversal.\n\nBeta of 1.597 [Source: FMP /company-facts] amplifies both upside and downside\u2014the April spike likely captured significant short covering in addition to fundamental buying, which means the move may be less durable than the price action suggests.\n\nInsider behavior is unambiguously negative. Every Form 4 filing in the last 7 transactions represents a sale, with no offsetting purchases [Source: FMP /insider-trading]. The CFO sold near the highs in January ($194.89), the CEO sold twice (December and February), and the CLO sold in April ($176.19) even after the stock had already corrected ~20% from highs. This systematic selling across C-suite and board members\u2014$17.56M aggregate\u2014suggests insiders view current levels as fair-to-full despite the correction.\n\nThe analyst community's average price target of $257.19 implies 48% upside and reflects AI infrastructure tailwinds in Oracle's cloud business [Source: FMP /analyst-stock-recommendations], but the target spread ($160\u2013$400) is extremely wide, indicating high dispersion of views. The DCF of $49.28 is an extreme outlier on the downside, largely reflecting the heavily leveraged balance sheet (D/E 4.15) and deeply negative FCF (Q3: -$11.48B on $18.64B CapEx) [Source: FMP /cash-flow-statement]. Capex is running at a pace that mechanically destroys FCF, justified only if cloud revenue growth accelerates materially.\n\nFor a technical trader, the key levels are: support at the 50-day SMA ($154) and the April gap zone ($155-$163), with resistance at the recent high of $187.50 and the psychologically important $200 level. A break above $187.50 with sustained volume would be a constructive signal; failure to hold $154 would confirm the bounce was corrective only. Current RSI at 58.83 leaves room for either direction without a clear signal. Market structure is still bearish on a 6-12 month basis.",
+     "data_gaps": [
+      "Short interest data (shares short, days-to-cover) unavailable\u2014critical for assessing whether the April surge was short-squeeze driven vs. fundamental buying",
+      "Options market structure (put/call ratio, implied volatility surface, major open interest strikes) not available\u2014would materially inform near-term price range expectations given beta of 1.597",
+      "Institutional ownership flow data (13F quarterly changes, recent large block trades) absent\u2014needed to determine if the April volume spike represents accumulation or distribution by smart money"
+     ],
+     "key_findings": [
+      {
+       "finding": "ORCL staged a sharp V-shaped recovery from its April 9 intraday low (~$137.86) to $187.50 on April 22, a ~36% rally in 9 sessions, before pulling back to $173.28\u2014suggesting momentum exhaustion near-term.",
+       "evidence": "[Source: FMP /historical-price-full] Last 20 sessions OHLCV data showing close progression from $137.86 (Apr 9) to $187.50 (Apr 22) with peak volume of 59.8M shares on Apr 14"
+      },
+      {
+       "finding": "ORCL remains in a structural bear trend: the stock trades ~19% below its 200-day SMA ($214.00), and the SMA200 itself is declining (from $219.34 on Mar 27 to $214.00 on Apr 24), confirming no technical base has formed on a longer-term basis.",
+       "evidence": "[Source: FMP /historical-price-full] SMA200 declining sequentially across all 20 observed sessions; current close $173.28 vs SMA200 $214.00"
+      },
+      {
+       "finding": "RSI(14) at 58.83 after peaking at 73.02 on April 22 signals the momentum surge is fading; the stock failed to hold above $187 and pulled back ~$14 in two sessions on elevated volume, a distribution signal.",
+       "evidence": "[Source: FMP /historical-price-full] RSI peaked at 73.02 on Apr 22 (close $187.50), declined to 61.5 (Apr 23, close $176.28) and 58.83 (Apr 24, close $173.28) on combined volume of ~70M shares"
+      },
+      {
+       "finding": "All seven recent insider transactions are pure sells totaling $17.56M with zero buys, including the CFO selling $6.82M in January near the 52-week peak and the CEO selling twice\u2014a persistent negative signal on insider conviction.",
+       "evidence": "[Source: FMP /insider-trading] KEHRING DOUGLAS A (CFO) sold 35,000 sh @ $194.89 on Jan 16; CEO Magouyrk sold in Dec 2025 and Feb 2026; aggregate net: -$17.56M"
+      },
+      {
+       "finding": "Analyst consensus is constructive (55 Buys, avg PT $257.19 implying +48% upside), but the average price target has compressed from what was presumably higher levels and the DCF intrinsic value of $49.28 implies the fundamental risk/reward severely contradicts the technical recovery.",
+       "evidence": "[Source: FMP /analyst-estimates and /analyst-stock-recommendations] 86-analyst consensus Buy; avg PT $257.19 vs current $173.28; DCF IV $49.28 (-71.6% vs current)"
+      }
+     ],
+     "score_rationale": "ORCL exhibits a powerful near-term momentum recovery from April lows but remains trapped in a structural downtrend well below its SMA200 ($214), with insider selling pressure, deeply negative FCF, and a DCF suggesting significant overvaluation\u2014offsetting the bullish short-term technicals."
+    },
+    "key_findings": [
+     "ORCL staged a sharp V-shaped recovery from its April 9 intraday low (~$137.86) to $187.50 on April 22, a ~36% rally in 9 sessions, before pulling back to $173.28\u2014suggesting momentum exhaustion near-term.",
+     "ORCL remains in a structural bear trend: the stock trades ~19% below its 200-day SMA ($214.00), and the SMA200 itself is declining (from $219.34 on Mar 27 to $214.00 on Apr 24), confirming no technical base has formed on a longer-term basis.",
+     "RSI(14) at 58.83 after peaking at 73.02 on April 22 signals the momentum surge is fading; the stock failed to hold above $187 and pulled back ~$14 in two sessions on elevated volume, a distribution signal.",
+     "All seven recent insider transactions are pure sells totaling $17.56M with zero buys, including the CFO selling $6.82M in January near the 52-week peak and the CEO selling twice\u2014a persistent negative signal on insider conviction.",
+     "Analyst consensus is constructive (55 Buys, avg PT $257.19 implying +48% upside), but the average price target has compressed from what was presumably higher levels and the DCF intrinsic value of $49.28 implies the fundamental risk/reward severely contradicts the technical recovery."
+    ]
+   }
+  },
+  "stream_buffer": "",
+  "thesis_status": "ON TRACK",
+  "human_feedback": {},
+  "conviction_score": 38,
+  "curated_financials": {
+   "roa": 0.09039453506203819,
+   "roe": null,
+   "beta": 1.597,
+   "roic": null,
+   "sector": "Technology",
+   "ticker": "ORCL",
+   "industry": "Software - Infrastructure",
+   "pe_ratio": null,
+   "peg_ratio": null,
+   "market_cap": 498390011340.0,
+   "volume_avg": null,
+   "company_name": "Oracle Corporation",
+   "daily_prices": [
+    {
+     "low": 168.8,
+     "rsi": 58.83,
+     "date": "2026-04-24",
+     "high": 180.71,
+     "open": 180.51,
+     "close": 173.28,
+     "sma_9": 175.78,
+     "sma_20": 158.157,
+     "sma_50": 154.4264,
+     "volume": 33214988,
+     "sma_100": 170.4942,
+     "sma_200": 214.0026
+    }
+   ],
+   "ev_to_ebitda": null,
+   "price_to_fcf": null,
+   "current_price": 173.29,
+   "price_to_book": null,
+   "quarterly_eps": [
+    {
+     "value": 1.28,
+     "period": "Q3",
+     "yoy_growth": -40.46511627906976
+    },
+    {
+     "value": 2.15,
+     "period": "Q2",
+     "yoy_growth": 106.73076923076921
+    },
+    {
+     "value": 1.04,
+     "period": "Q1",
+     "yoy_growth": -14.754098360655732
+    },
+    {
+     "value": 1.22,
+     "period": "Q4",
+     "yoy_growth": 16.190476190476183
+    },
+    {
+     "value": 1.05,
+     "period": "Q3",
+     "yoy_growth": -7.079646017699102
+    },
+    {
+     "value": 1.13,
+     "period": "Q2",
+     "yoy_growth": 6.603773584905645
+    },
+    {
+     "value": 1.06,
+     "period": "Q1",
+     "yoy_growth": -7.01754385964911
+    },
+    {
+     "value": 1.14,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "debt_to_equity": 4.15,
+   "dividend_yield": null,
+   "price_to_sales": null,
+   "quarterly_cash": [
+    {
+     "value": 38455000000.0,
+     "period": "Q3",
+     "yoy_growth": 99.85967465308457
+    },
+    {
+     "value": 19241000000.0,
+     "period": "Q2",
+     "yoy_growth": 84.21254188606989
+    },
+    {
+     "value": 10445000000.0,
+     "period": "Q1",
+     "yoy_growth": -3.161505655479325
+    },
+    {
+     "value": 10786000000.0,
+     "period": "Q4",
+     "yoy_growth": -38.032862231414455
+    },
+    {
+     "value": 17406000000.0,
+     "period": "Q3",
+     "yoy_growth": 59.089662736495754
+    },
+    {
+     "value": 10941000000.0,
+     "period": "Q2",
+     "yoy_growth": 3.0614167294649586
+    },
+    {
+     "value": 10616000000.0,
+     "period": "Q1",
+     "yoy_growth": 1.54964606849053
+    },
+    {
+     "value": 10454000000.0,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "dcf_gap_percent": -71.56,
+   "quarterly_capex": [
+    {
+     "value": -18635000000.0,
+     "period": "Q3",
+     "yoy_growth": -54.86578575583812
+    },
+    {
+     "value": -12033000000.0,
+     "period": "Q2",
+     "yoy_growth": -41.53140437544107
+    },
+    {
+     "value": -8502000000.0,
+     "period": "Q1",
+     "yoy_growth": 6.365638766519824
+    },
+    {
+     "value": -9080000000.0,
+     "period": "Q4",
+     "yoy_growth": -54.89593995223473
+    },
+    {
+     "value": -5862000000.0,
+     "period": "Q3",
+     "yoy_growth": -47.65743073047859
+    },
+    {
+     "value": -3970000000.0,
+     "period": "Q2",
+     "yoy_growth": -72.38384715588363
+    },
+    {
+     "value": -2303000000.0,
+     "period": "Q1",
+     "yoy_growth": 17.69120800571837
+    },
+    {
+     "value": -2798000000.0,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "macro_indicators": {
+    "cpi": [
+     {
+      "date": "2024-04-01",
+      "value": 313.023
+     },
+     {
+      "date": "2024-05-01",
+      "value": 313.175
+     },
+     {
+      "date": "2024-06-01",
+      "value": 313.044
+     },
+     {
+      "date": "2024-07-01",
+      "value": 313.569
+     },
+     {
+      "date": "2024-08-01",
+      "value": 314.062
+     },
+     {
+      "date": "2024-09-01",
+      "value": 314.732
+     },
+     {
+      "date": "2024-10-01",
+      "value": 315.631
+     },
+     {
+      "date": "2024-11-01",
+      "value": 316.528
+     },
+     {
+      "date": "2024-12-01",
+      "value": 317.604
+     },
+     {
+      "date": "2025-01-01",
+      "value": 318.961
+     },
+     {
+      "date": "2025-02-01",
+      "value": 319.679
+     },
+     {
+      "date": "2025-03-01",
+      "value": 319.785
+     },
+     {
+      "date": "2025-04-01",
+      "value": 320.302
+     },
+     {
+      "date": "2025-05-01",
+      "value": 320.62
+     },
+     {
+      "date": "2025-06-01",
+      "value": 321.435
+     },
+     {
+      "date": "2025-07-01",
+      "value": 322.169
+     },
+     {
+      "date": "2025-08-01",
+      "value": 323.291
+     },
+     {
+      "date": "2025-09-01",
+      "value": 324.245
+     },
+     {
+      "date": "2025-11-01",
+      "value": 325.063
+     },
+     {
+      "date": "2025-12-01",
+      "value": 326.031
+     },
+     {
+      "date": "2026-01-01",
+      "value": 326.588
+     },
+     {
+      "date": "2026-02-01",
+      "value": 327.46
+     },
+     {
+      "date": "2026-03-01",
+      "value": 330.293
+     }
+    ],
+    "gdp_growth": [
+     {
+      "date": "2024-04-01",
+      "value": 3.6
+     },
+     {
+      "date": "2024-07-01",
+      "value": 3.3
+     },
+     {
+      "date": "2024-10-01",
+      "value": 1.9
+     },
+     {
+      "date": "2025-01-01",
+      "value": -0.6
+     },
+     {
+      "date": "2025-04-01",
+      "value": 3.8
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.4
+     },
+     {
+      "date": "2025-10-01",
+      "value": 0.5
+     }
+    ],
+    "treasury_2y": [
+     {
+      "date": "2024-04-26",
+      "value": 4.96
+     },
+     {
+      "date": "2024-05-03",
+      "value": 4.81
+     },
+     {
+      "date": "2024-05-10",
+      "value": 4.87
+     },
+     {
+      "date": "2024-05-17",
+      "value": 4.83
+     },
+     {
+      "date": "2024-05-24",
+      "value": 4.93
+     },
+     {
+      "date": "2024-05-31",
+      "value": 4.89
+     },
+     {
+      "date": "2024-06-07",
+      "value": 4.87
+     },
+     {
+      "date": "2024-06-14",
+      "value": 4.67
+     },
+     {
+      "date": "2024-06-21",
+      "value": 4.7
+     },
+     {
+      "date": "2024-06-28",
+      "value": 4.71
+     },
+     {
+      "date": "2024-07-05",
+      "value": 4.6
+     },
+     {
+      "date": "2024-07-12",
+      "value": 4.45
+     },
+     {
+      "date": "2024-07-19",
+      "value": 4.49
+     },
+     {
+      "date": "2024-07-26",
+      "value": 4.36
+     },
+     {
+      "date": "2024-08-02",
+      "value": 3.88
+     },
+     {
+      "date": "2024-08-09",
+      "value": 4.05
+     },
+     {
+      "date": "2024-08-16",
+      "value": 4.06
+     },
+     {
+      "date": "2024-08-23",
+      "value": 3.9
+     },
+     {
+      "date": "2024-08-30",
+      "value": 3.91
+     },
+     {
+      "date": "2024-09-06",
+      "value": 3.66
+     },
+     {
+      "date": "2024-09-13",
+      "value": 3.57
+     },
+     {
+      "date": "2024-09-20",
+      "value": 3.55
+     },
+     {
+      "date": "2024-09-27",
+      "value": 3.55
+     },
+     {
+      "date": "2024-10-04",
+      "value": 3.93
+     },
+     {
+      "date": "2024-10-11",
+      "value": 3.95
+     },
+     {
+      "date": "2024-10-18",
+      "value": 3.95
+     },
+     {
+      "date": "2024-10-25",
+      "value": 4.11
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.21
+     },
+     {
+      "date": "2024-11-08",
+      "value": 4.26
+     },
+     {
+      "date": "2024-11-15",
+      "value": 4.31
+     },
+     {
+      "date": "2024-11-22",
+      "value": 4.37
+     },
+     {
+      "date": "2024-11-29",
+      "value": 4.13
+     },
+     {
+      "date": "2024-12-06",
+      "value": 4.1
+     },
+     {
+      "date": "2024-12-13",
+      "value": 4.25
+     },
+     {
+      "date": "2024-12-20",
+      "value": 4.3
+     },
+     {
+      "date": "2024-12-27",
+      "value": 4.31
+     },
+     {
+      "date": "2025-01-03",
+      "value": 4.28
+     },
+     {
+      "date": "2025-01-10",
+      "value": 4.4
+     },
+     {
+      "date": "2025-01-17",
+      "value": 4.27
+     },
+     {
+      "date": "2025-01-24",
+      "value": 4.27
+     },
+     {
+      "date": "2025-01-31",
+      "value": 4.22
+     },
+     {
+      "date": "2025-02-07",
+      "value": 4.29
+     },
+     {
+      "date": "2025-02-14",
+      "value": 4.26
+     },
+     {
+      "date": "2025-02-21",
+      "value": 4.19
+     },
+     {
+      "date": "2025-02-28",
+      "value": 3.99
+     },
+     {
+      "date": "2025-03-07",
+      "value": 3.99
+     },
+     {
+      "date": "2025-03-14",
+      "value": 4.02
+     },
+     {
+      "date": "2025-03-21",
+      "value": 3.94
+     },
+     {
+      "date": "2025-03-28",
+      "value": 3.89
+     },
+     {
+      "date": "2025-04-04",
+      "value": 3.68
+     },
+     {
+      "date": "2025-04-11",
+      "value": 3.96
+     },
+     {
+      "date": "2025-04-17",
+      "value": 3.81
+     },
+     {
+      "date": "2025-04-25",
+      "value": 3.74
+     },
+     {
+      "date": "2025-05-02",
+      "value": 3.83
+     },
+     {
+      "date": "2025-05-09",
+      "value": 3.88
+     },
+     {
+      "date": "2025-05-16",
+      "value": 3.98
+     },
+     {
+      "date": "2025-05-23",
+      "value": 4.0
+     },
+     {
+      "date": "2025-05-30",
+      "value": 3.89
+     },
+     {
+      "date": "2025-06-06",
+      "value": 4.04
+     },
+     {
+      "date": "2025-06-13",
+      "value": 3.96
+     },
+     {
+      "date": "2025-06-20",
+      "value": 3.9
+     },
+     {
+      "date": "2025-06-27",
+      "value": 3.73
+     },
+     {
+      "date": "2025-07-03",
+      "value": 3.88
+     },
+     {
+      "date": "2025-07-11",
+      "value": 3.9
+     },
+     {
+      "date": "2025-07-18",
+      "value": 3.88
+     },
+     {
+      "date": "2025-07-25",
+      "value": 3.91
+     },
+     {
+      "date": "2025-08-01",
+      "value": 3.69
+     },
+     {
+      "date": "2025-08-08",
+      "value": 3.76
+     },
+     {
+      "date": "2025-08-15",
+      "value": 3.75
+     },
+     {
+      "date": "2025-08-22",
+      "value": 3.68
+     },
+     {
+      "date": "2025-08-29",
+      "value": 3.59
+     },
+     {
+      "date": "2025-09-05",
+      "value": 3.51
+     },
+     {
+      "date": "2025-09-12",
+      "value": 3.56
+     },
+     {
+      "date": "2025-09-19",
+      "value": 3.57
+     },
+     {
+      "date": "2025-09-26",
+      "value": 3.63
+     },
+     {
+      "date": "2025-10-03",
+      "value": 3.58
+     },
+     {
+      "date": "2025-10-10",
+      "value": 3.52
+     },
+     {
+      "date": "2025-10-17",
+      "value": 3.46
+     },
+     {
+      "date": "2025-10-24",
+      "value": 3.48
+     },
+     {
+      "date": "2025-10-31",
+      "value": 3.6
+     },
+     {
+      "date": "2025-11-07",
+      "value": 3.55
+     },
+     {
+      "date": "2025-11-14",
+      "value": 3.62
+     },
+     {
+      "date": "2025-11-21",
+      "value": 3.51
+     },
+     {
+      "date": "2025-11-28",
+      "value": 3.47
+     },
+     {
+      "date": "2025-12-05",
+      "value": 3.56
+     },
+     {
+      "date": "2025-12-12",
+      "value": 3.52
+     },
+     {
+      "date": "2025-12-19",
+      "value": 3.48
+     },
+     {
+      "date": "2025-12-26",
+      "value": 3.46
+     },
+     {
+      "date": "2026-01-02",
+      "value": 3.47
+     },
+     {
+      "date": "2026-01-09",
+      "value": 3.54
+     },
+     {
+      "date": "2026-01-16",
+      "value": 3.59
+     },
+     {
+      "date": "2026-01-23",
+      "value": 3.6
+     },
+     {
+      "date": "2026-01-30",
+      "value": 3.52
+     },
+     {
+      "date": "2026-02-06",
+      "value": 3.5
+     },
+     {
+      "date": "2026-02-13",
+      "value": 3.4
+     },
+     {
+      "date": "2026-02-20",
+      "value": 3.48
+     },
+     {
+      "date": "2026-02-27",
+      "value": 3.38
+     },
+     {
+      "date": "2026-03-06",
+      "value": 3.56
+     },
+     {
+      "date": "2026-03-13",
+      "value": 3.73
+     },
+     {
+      "date": "2026-03-20",
+      "value": 3.88
+     },
+     {
+      "date": "2026-03-27",
+      "value": 3.88
+     },
+     {
+      "date": "2026-04-03",
+      "value": 3.84
+     },
+     {
+      "date": "2026-04-10",
+      "value": 3.81
+     },
+     {
+      "date": "2026-04-17",
+      "value": 3.71
+     },
+     {
+      "date": "2026-04-23",
+      "value": 3.83
+     }
+    ],
+    "treasury_10y": [
+     {
+      "date": "2024-04-26",
+      "value": 4.67
+     },
+     {
+      "date": "2024-05-03",
+      "value": 4.5
+     },
+     {
+      "date": "2024-05-10",
+      "value": 4.5
+     },
+     {
+      "date": "2024-05-17",
+      "value": 4.42
+     },
+     {
+      "date": "2024-05-24",
+      "value": 4.46
+     },
+     {
+      "date": "2024-05-31",
+      "value": 4.51
+     },
+     {
+      "date": "2024-06-07",
+      "value": 4.43
+     },
+     {
+      "date": "2024-06-14",
+      "value": 4.2
+     },
+     {
+      "date": "2024-06-21",
+      "value": 4.25
+     },
+     {
+      "date": "2024-06-28",
+      "value": 4.36
+     },
+     {
+      "date": "2024-07-05",
+      "value": 4.28
+     },
+     {
+      "date": "2024-07-12",
+      "value": 4.18
+     },
+     {
+      "date": "2024-07-19",
+      "value": 4.25
+     },
+     {
+      "date": "2024-07-26",
+      "value": 4.2
+     },
+     {
+      "date": "2024-08-02",
+      "value": 3.8
+     },
+     {
+      "date": "2024-08-09",
+      "value": 3.94
+     },
+     {
+      "date": "2024-08-16",
+      "value": 3.89
+     },
+     {
+      "date": "2024-08-23",
+      "value": 3.81
+     },
+     {
+      "date": "2024-08-30",
+      "value": 3.91
+     },
+     {
+      "date": "2024-09-06",
+      "value": 3.72
+     },
+     {
+      "date": "2024-09-13",
+      "value": 3.66
+     },
+     {
+      "date": "2024-09-20",
+      "value": 3.73
+     },
+     {
+      "date": "2024-09-27",
+      "value": 3.75
+     },
+     {
+      "date": "2024-10-04",
+      "value": 3.98
+     },
+     {
+      "date": "2024-10-11",
+      "value": 4.08
+     },
+     {
+      "date": "2024-10-18",
+      "value": 4.08
+     },
+     {
+      "date": "2024-10-25",
+      "value": 4.25
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.37
+     },
+     {
+      "date": "2024-11-08",
+      "value": 4.3
+     },
+     {
+      "date": "2024-11-15",
+      "value": 4.43
+     },
+     {
+      "date": "2024-11-22",
+      "value": 4.41
+     },
+     {
+      "date": "2024-11-29",
+      "value": 4.18
+     },
+     {
+      "date": "2024-12-06",
+      "value": 4.15
+     },
+     {
+      "date": "2024-12-13",
+      "value": 4.4
+     },
+     {
+      "date": "2024-12-20",
+      "value": 4.52
+     },
+     {
+      "date": "2024-12-27",
+      "value": 4.62
+     },
+     {
+      "date": "2025-01-03",
+      "value": 4.6
+     },
+     {
+      "date": "2025-01-10",
+      "value": 4.77
+     },
+     {
+      "date": "2025-01-17",
+      "value": 4.61
+     },
+     {
+      "date": "2025-01-24",
+      "value": 4.63
+     },
+     {
+      "date": "2025-01-31",
+      "value": 4.58
+     },
+     {
+      "date": "2025-02-07",
+      "value": 4.49
+     },
+     {
+      "date": "2025-02-14",
+      "value": 4.47
+     },
+     {
+      "date": "2025-02-21",
+      "value": 4.42
+     },
+     {
+      "date": "2025-02-28",
+      "value": 4.24
+     },
+     {
+      "date": "2025-03-07",
+      "value": 4.32
+     },
+     {
+      "date": "2025-03-14",
+      "value": 4.31
+     },
+     {
+      "date": "2025-03-21",
+      "value": 4.25
+     },
+     {
+      "date": "2025-03-28",
+      "value": 4.27
+     },
+     {
+      "date": "2025-04-04",
+      "value": 4.01
+     },
+     {
+      "date": "2025-04-11",
+      "value": 4.48
+     },
+     {
+      "date": "2025-04-17",
+      "value": 4.34
+     },
+     {
+      "date": "2025-04-25",
+      "value": 4.29
+     },
+     {
+      "date": "2025-05-02",
+      "value": 4.33
+     },
+     {
+      "date": "2025-05-09",
+      "value": 4.37
+     },
+     {
+      "date": "2025-05-16",
+      "value": 4.43
+     },
+     {
+      "date": "2025-05-23",
+      "value": 4.51
+     },
+     {
+      "date": "2025-05-30",
+      "value": 4.41
+     },
+     {
+      "date": "2025-06-06",
+      "value": 4.51
+     },
+     {
+      "date": "2025-06-13",
+      "value": 4.41
+     },
+     {
+      "date": "2025-06-20",
+      "value": 4.38
+     },
+     {
+      "date": "2025-06-27",
+      "value": 4.29
+     },
+     {
+      "date": "2025-07-03",
+      "value": 4.35
+     },
+     {
+      "date": "2025-07-11",
+      "value": 4.43
+     },
+     {
+      "date": "2025-07-18",
+      "value": 4.44
+     },
+     {
+      "date": "2025-07-25",
+      "value": 4.4
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.23
+     },
+     {
+      "date": "2025-08-08",
+      "value": 4.27
+     },
+     {
+      "date": "2025-08-15",
+      "value": 4.33
+     },
+     {
+      "date": "2025-08-22",
+      "value": 4.26
+     },
+     {
+      "date": "2025-08-29",
+      "value": 4.23
+     },
+     {
+      "date": "2025-09-05",
+      "value": 4.1
+     },
+     {
+      "date": "2025-09-12",
+      "value": 4.06
+     },
+     {
+      "date": "2025-09-19",
+      "value": 4.14
+     },
+     {
+      "date": "2025-09-26",
+      "value": 4.2
+     },
+     {
+      "date": "2025-10-03",
+      "value": 4.13
+     },
+     {
+      "date": "2025-10-10",
+      "value": 4.05
+     },
+     {
+      "date": "2025-10-17",
+      "value": 4.02
+     },
+     {
+      "date": "2025-10-24",
+      "value": 4.02
+     },
+     {
+      "date": "2025-10-31",
+      "value": 4.11
+     },
+     {
+      "date": "2025-11-07",
+      "value": 4.11
+     },
+     {
+      "date": "2025-11-14",
+      "value": 4.14
+     },
+     {
+      "date": "2025-11-21",
+      "value": 4.06
+     },
+     {
+      "date": "2025-11-28",
+      "value": 4.02
+     },
+     {
+      "date": "2025-12-05",
+      "value": 4.14
+     },
+     {
+      "date": "2025-12-12",
+      "value": 4.19
+     },
+     {
+      "date": "2025-12-19",
+      "value": 4.16
+     },
+     {
+      "date": "2025-12-26",
+      "value": 4.14
+     },
+     {
+      "date": "2026-01-02",
+      "value": 4.19
+     },
+     {
+      "date": "2026-01-09",
+      "value": 4.18
+     },
+     {
+      "date": "2026-01-16",
+      "value": 4.24
+     },
+     {
+      "date": "2026-01-23",
+      "value": 4.24
+     },
+     {
+      "date": "2026-01-30",
+      "value": 4.26
+     },
+     {
+      "date": "2026-02-06",
+      "value": 4.22
+     },
+     {
+      "date": "2026-02-13",
+      "value": 4.04
+     },
+     {
+      "date": "2026-02-20",
+      "value": 4.08
+     },
+     {
+      "date": "2026-02-27",
+      "value": 3.97
+     },
+     {
+      "date": "2026-03-06",
+      "value": 4.15
+     },
+     {
+      "date": "2026-03-13",
+      "value": 4.28
+     },
+     {
+      "date": "2026-03-20",
+      "value": 4.39
+     },
+     {
+      "date": "2026-03-27",
+      "value": 4.44
+     },
+     {
+      "date": "2026-04-03",
+      "value": 4.35
+     },
+     {
+      "date": "2026-04-10",
+      "value": 4.31
+     },
+     {
+      "date": "2026-04-17",
+      "value": 4.26
+     },
+     {
+      "date": "2026-04-23",
+      "value": 4.34
+     }
+    ],
+    "unemployment": [
+     {
+      "date": "2024-04-01",
+      "value": 3.9
+     },
+     {
+      "date": "2024-05-01",
+      "value": 3.9
+     },
+     {
+      "date": "2024-06-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-07-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-08-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-09-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-10-01",
+      "value": 4.1
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.2
+     },
+     {
+      "date": "2024-12-01",
+      "value": 4.1
+     },
+     {
+      "date": "2025-01-01",
+      "value": 4.0
+     },
+     {
+      "date": "2025-02-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-03-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-04-01",
+      "value": 4.2
+     },
+     {
+      "date": "2025-05-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-06-01",
+      "value": 4.1
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.3
+     },
+     {
+      "date": "2025-09-01",
+      "value": 4.4
+     },
+     {
+      "date": "2025-11-01",
+      "value": 4.5
+     },
+     {
+      "date": "2025-12-01",
+      "value": 4.4
+     },
+     {
+      "date": "2026-01-01",
+      "value": 4.3
+     },
+     {
+      "date": "2026-02-01",
+      "value": 4.4
+     },
+     {
+      "date": "2026-03-01",
+      "value": 4.3
+     }
+    ],
+    "fed_funds_rate": [
+     {
+      "date": "2024-04-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-05-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-06-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-07-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-08-01",
+      "value": 5.33
+     },
+     {
+      "date": "2024-09-01",
+      "value": 5.13
+     },
+     {
+      "date": "2024-10-01",
+      "value": 4.83
+     },
+     {
+      "date": "2024-11-01",
+      "value": 4.64
+     },
+     {
+      "date": "2024-12-01",
+      "value": 4.48
+     },
+     {
+      "date": "2025-01-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-02-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-03-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-04-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-05-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-06-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-07-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-08-01",
+      "value": 4.33
+     },
+     {
+      "date": "2025-09-01",
+      "value": 4.22
+     },
+     {
+      "date": "2025-10-01",
+      "value": 4.09
+     },
+     {
+      "date": "2025-11-01",
+      "value": 3.88
+     },
+     {
+      "date": "2025-12-01",
+      "value": 3.72
+     },
+     {
+      "date": "2026-01-01",
+      "value": 3.64
+     },
+     {
+      "date": "2026-02-01",
+      "value": 3.64
+     },
+     {
+      "date": "2026-03-01",
+      "value": 3.64
+     }
+    ],
+    "m2_money_supply": [
+     {
+      "date": "2024-04-01",
+      "value": 20958.8
+     },
+     {
+      "date": "2024-05-01",
+      "value": 21019.9
+     },
+     {
+      "date": "2024-06-01",
+      "value": 21067.7
+     },
+     {
+      "date": "2024-07-01",
+      "value": 21094.4
+     },
+     {
+      "date": "2024-08-01",
+      "value": 21185.8
+     },
+     {
+      "date": "2024-09-01",
+      "value": 21268.6
+     },
+     {
+      "date": "2024-10-01",
+      "value": 21331.0
+     },
+     {
+      "date": "2024-11-01",
+      "value": 21451.6
+     },
+     {
+      "date": "2024-12-01",
+      "value": 21485.3
+     },
+     {
+      "date": "2025-01-01",
+      "value": 21547.6
+     },
+     {
+      "date": "2025-02-01",
+      "value": 21613.2
+     },
+     {
+      "date": "2025-03-01",
+      "value": 21693.5
+     },
+     {
+      "date": "2025-04-01",
+      "value": 21775.5
+     },
+     {
+      "date": "2025-05-01",
+      "value": 21833.8
+     },
+     {
+      "date": "2025-06-01",
+      "value": 21938.7
+     },
+     {
+      "date": "2025-07-01",
+      "value": 22019.9
+     },
+     {
+      "date": "2025-08-01",
+      "value": 22086.8
+     },
+     {
+      "date": "2025-09-01",
+      "value": 22169.8
+     },
+     {
+      "date": "2025-10-01",
+      "value": 22250.4
+     },
+     {
+      "date": "2025-11-01",
+      "value": 22296.5
+     },
+     {
+      "date": "2025-12-01",
+      "value": 22386.9
+     },
+     {
+      "date": "2026-01-01",
+      "value": 22469.1
+     },
+     {
+      "date": "2026-02-01",
+      "value": 22667.3
+     }
+    ],
+    "nonfarm_payrolls": [
+     {
+      "date": "2024-04-01",
+      "value": 157530.0
+     },
+     {
+      "date": "2024-05-01",
+      "value": 157608.0
+     },
+     {
+      "date": "2024-06-01",
+      "value": 157695.0
+     },
+     {
+      "date": "2024-07-01",
+      "value": 157748.0
+     },
+     {
+      "date": "2024-08-01",
+      "value": 157757.0
+     },
+     {
+      "date": "2024-09-01",
+      "value": 157912.0
+     },
+     {
+      "date": "2024-10-01",
+      "value": 157945.0
+     },
+     {
+      "date": "2024-11-01",
+      "value": 158079.0
+     },
+     {
+      "date": "2024-12-01",
+      "value": 158316.0
+     },
+     {
+      "date": "2025-01-01",
+      "value": 158268.0
+     },
+     {
+      "date": "2025-02-01",
+      "value": 158310.0
+     },
+     {
+      "date": "2025-03-01",
+      "value": 158377.0
+     },
+     {
+      "date": "2025-04-01",
+      "value": 158485.0
+     },
+     {
+      "date": "2025-05-01",
+      "value": 158498.0
+     },
+     {
+      "date": "2025-06-01",
+      "value": 158478.0
+     },
+     {
+      "date": "2025-07-01",
+      "value": 158542.0
+     },
+     {
+      "date": "2025-08-01",
+      "value": 158472.0
+     },
+     {
+      "date": "2025-09-01",
+      "value": 158548.0
+     },
+     {
+      "date": "2025-10-01",
+      "value": 158408.0
+     },
+     {
+      "date": "2025-11-01",
+      "value": 158449.0
+     },
+     {
+      "date": "2025-12-01",
+      "value": 158432.0
+     },
+     {
+      "date": "2026-01-01",
+      "value": 158592.0
+     },
+     {
+      "date": "2026-02-01",
+      "value": 158459.0
+     },
+     {
+      "date": "2026-03-01",
+      "value": 158637.0
+     }
+    ],
+    "yield_curve_spread": [
+     {
+      "date": "2024-04-26",
+      "value": -0.29
+     },
+     {
+      "date": "2024-05-03",
+      "value": -0.31
+     },
+     {
+      "date": "2024-05-10",
+      "value": -0.37
+     },
+     {
+      "date": "2024-05-17",
+      "value": -0.41
+     },
+     {
+      "date": "2024-05-24",
+      "value": -0.47
+     },
+     {
+      "date": "2024-05-31",
+      "value": -0.38
+     },
+     {
+      "date": "2024-06-07",
+      "value": -0.44
+     },
+     {
+      "date": "2024-06-14",
+      "value": -0.47
+     },
+     {
+      "date": "2024-06-21",
+      "value": -0.45
+     },
+     {
+      "date": "2024-06-28",
+      "value": -0.35
+     },
+     {
+      "date": "2024-07-05",
+      "value": -0.32
+     },
+     {
+      "date": "2024-07-12",
+      "value": -0.27
+     },
+     {
+      "date": "2024-07-19",
+      "value": -0.24
+     },
+     {
+      "date": "2024-07-26",
+      "value": -0.16
+     },
+     {
+      "date": "2024-08-02",
+      "value": -0.08
+     },
+     {
+      "date": "2024-08-09",
+      "value": -0.11
+     },
+     {
+      "date": "2024-08-16",
+      "value": -0.17
+     },
+     {
+      "date": "2024-08-23",
+      "value": -0.09
+     },
+     {
+      "date": "2024-08-30",
+      "value": 0.0
+     },
+     {
+      "date": "2024-09-06",
+      "value": 0.06
+     },
+     {
+      "date": "2024-09-13",
+      "value": 0.09
+     },
+     {
+      "date": "2024-09-20",
+      "value": 0.18
+     },
+     {
+      "date": "2024-09-27",
+      "value": 0.2
+     },
+     {
+      "date": "2024-10-04",
+      "value": 0.05
+     },
+     {
+      "date": "2024-10-11",
+      "value": 0.13
+     },
+     {
+      "date": "2024-10-18",
+      "value": 0.13
+     },
+     {
+      "date": "2024-10-25",
+      "value": 0.14
+     },
+     {
+      "date": "2024-11-01",
+      "value": 0.16
+     },
+     {
+      "date": "2024-11-08",
+      "value": 0.04
+     },
+     {
+      "date": "2024-11-15",
+      "value": 0.12
+     },
+     {
+      "date": "2024-11-22",
+      "value": 0.04
+     },
+     {
+      "date": "2024-11-29",
+      "value": 0.05
+     },
+     {
+      "date": "2024-12-06",
+      "value": 0.05
+     },
+     {
+      "date": "2024-12-13",
+      "value": 0.15
+     },
+     {
+      "date": "2024-12-20",
+      "value": 0.22
+     },
+     {
+      "date": "2024-12-27",
+      "value": 0.31
+     },
+     {
+      "date": "2025-01-03",
+      "value": 0.32
+     },
+     {
+      "date": "2025-01-10",
+      "value": 0.37
+     },
+     {
+      "date": "2025-01-17",
+      "value": 0.34
+     },
+     {
+      "date": "2025-01-24",
+      "value": 0.36
+     },
+     {
+      "date": "2025-01-31",
+      "value": 0.36
+     },
+     {
+      "date": "2025-02-07",
+      "value": 0.2
+     },
+     {
+      "date": "2025-02-14",
+      "value": 0.21
+     },
+     {
+      "date": "2025-02-21",
+      "value": 0.23
+     },
+     {
+      "date": "2025-02-28",
+      "value": 0.25
+     },
+     {
+      "date": "2025-03-07",
+      "value": 0.33
+     },
+     {
+      "date": "2025-03-14",
+      "value": 0.29
+     },
+     {
+      "date": "2025-03-21",
+      "value": 0.31
+     },
+     {
+      "date": "2025-03-28",
+      "value": 0.38
+     },
+     {
+      "date": "2025-04-04",
+      "value": 0.33
+     },
+     {
+      "date": "2025-04-11",
+      "value": 0.52
+     },
+     {
+      "date": "2025-04-17",
+      "value": 0.53
+     },
+     {
+      "date": "2025-04-25",
+      "value": 0.55
+     },
+     {
+      "date": "2025-05-02",
+      "value": 0.5
+     },
+     {
+      "date": "2025-05-09",
+      "value": 0.49
+     },
+     {
+      "date": "2025-05-16",
+      "value": 0.45
+     },
+     {
+      "date": "2025-05-23",
+      "value": 0.51
+     },
+     {
+      "date": "2025-05-30",
+      "value": 0.52
+     },
+     {
+      "date": "2025-06-06",
+      "value": 0.47
+     },
+     {
+      "date": "2025-06-13",
+      "value": 0.45
+     },
+     {
+      "date": "2025-06-20",
+      "value": 0.48
+     },
+     {
+      "date": "2025-06-27",
+      "value": 0.56
+     },
+     {
+      "date": "2025-07-03",
+      "value": 0.47
+     },
+     {
+      "date": "2025-07-11",
+      "value": 0.53
+     },
+     {
+      "date": "2025-07-18",
+      "value": 0.56
+     },
+     {
+      "date": "2025-07-25",
+      "value": 0.49
+     },
+     {
+      "date": "2025-08-01",
+      "value": 0.54
+     },
+     {
+      "date": "2025-08-08",
+      "value": 0.51
+     },
+     {
+      "date": "2025-08-15",
+      "value": 0.58
+     },
+     {
+      "date": "2025-08-22",
+      "value": 0.58
+     },
+     {
+      "date": "2025-08-29",
+      "value": 0.64
+     },
+     {
+      "date": "2025-09-05",
+      "value": 0.59
+     },
+     {
+      "date": "2025-09-12",
+      "value": 0.5
+     },
+     {
+      "date": "2025-09-19",
+      "value": 0.57
+     },
+     {
+      "date": "2025-09-26",
+      "value": 0.57
+     },
+     {
+      "date": "2025-10-03",
+      "value": 0.55
+     },
+     {
+      "date": "2025-10-10",
+      "value": 0.53
+     },
+     {
+      "date": "2025-10-17",
+      "value": 0.56
+     },
+     {
+      "date": "2025-10-24",
+      "value": 0.54
+     },
+     {
+      "date": "2025-10-31",
+      "value": 0.51
+     },
+     {
+      "date": "2025-11-07",
+      "value": 0.56
+     },
+     {
+      "date": "2025-11-14",
+      "value": 0.52
+     },
+     {
+      "date": "2025-11-21",
+      "value": 0.55
+     },
+     {
+      "date": "2025-11-28",
+      "value": 0.55
+     },
+     {
+      "date": "2025-12-05",
+      "value": 0.58
+     },
+     {
+      "date": "2025-12-12",
+      "value": 0.67
+     },
+     {
+      "date": "2025-12-19",
+      "value": 0.68
+     },
+     {
+      "date": "2025-12-26",
+      "value": 0.68
+     },
+     {
+      "date": "2026-01-02",
+      "value": 0.72
+     },
+     {
+      "date": "2026-01-09",
+      "value": 0.64
+     },
+     {
+      "date": "2026-01-16",
+      "value": 0.65
+     },
+     {
+      "date": "2026-01-23",
+      "value": 0.64
+     },
+     {
+      "date": "2026-01-30",
+      "value": 0.74
+     },
+     {
+      "date": "2026-02-06",
+      "value": 0.72
+     },
+     {
+      "date": "2026-02-13",
+      "value": 0.64
+     },
+     {
+      "date": "2026-02-20",
+      "value": 0.6
+     },
+     {
+      "date": "2026-02-27",
+      "value": 0.59
+     },
+     {
+      "date": "2026-03-06",
+      "value": 0.59
+     },
+     {
+      "date": "2026-03-13",
+      "value": 0.55
+     },
+     {
+      "date": "2026-03-20",
+      "value": 0.51
+     },
+     {
+      "date": "2026-03-27",
+      "value": 0.56
+     },
+     {
+      "date": "2026-04-03",
+      "value": 0.51
+     },
+     {
+      "date": "2026-04-10",
+      "value": 0.5
+     },
+     {
+      "date": "2026-04-17",
+      "value": 0.55
+     },
+     {
+      "date": "2026-04-24",
+      "value": 0.53
+     }
+    ]
+   },
+   "interest_coverage": null,
+   "quarterly_free_cf": [
+    {
+     "value": -11484000000.0,
+     "period": "Q3",
+     "yoy_growth": -15.220226748269289
+    },
+    {
+     "value": -9967000000.0,
+     "period": "Q2",
+     "yoy_growth": -2653.314917127072
+    },
+    {
+     "value": -362000000.0,
+     "period": "Q1",
+     "yoy_growth": 87.61546356483065
+    },
+    {
+     "value": -2923000000.0,
+     "period": "Q4",
+     "yoy_growth": -4216.901408450704
+    },
+    {
+     "value": 71000000.0,
+     "period": "Q3",
+     "yoy_growth": 102.66316579144785
+    },
+    {
+     "value": -2666000000.0,
+     "period": "Q2",
+     "yoy_growth": -152.0296643247463
+    },
+    {
+     "value": 5124000000.0,
+     "period": "Q1",
+     "yoy_growth": 56.07675906183369
+    },
+    {
+     "value": 3283000000.0,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_revenue": [
+    {
+     "value": 17190000000.0,
+     "period": "Q3",
+     "yoy_growth": 7.049445759123178
+    },
+    {
+     "value": 16058000000.0,
+     "period": "Q2",
+     "yoy_growth": 7.58408146857832
+    },
+    {
+     "value": 14926000000.0,
+     "period": "Q1",
+     "yoy_growth": -6.143494938062001
+    },
+    {
+     "value": 15903000000.0,
+     "period": "Q4",
+     "yoy_growth": 12.547770700636942
+    },
+    {
+     "value": 14130000000.0,
+     "period": "Q3",
+     "yoy_growth": 0.505014581406928
+    },
+    {
+     "value": 14059000000.0,
+     "period": "Q2",
+     "yoy_growth": 5.651161043060044
+    },
+    {
+     "value": 13307000000.0,
+     "period": "Q1",
+     "yoy_growth": -6.859382655561
+    },
+    {
+     "value": 14287000000.0,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "fifty_two_week_low": 134.57,
+   "dcf_intrinsic_value": 49.2751637654182,
+   "fifty_two_week_high": 345.72,
+   "quarterly_net_margin": [
+    {
+     "value": 21.65,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 38.21,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 19.61,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 21.55,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 20.78,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 22.41,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 22.01,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 22.01,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_total_debt": [
+    {
+     "value": 162165000000.0,
+     "period": "Q3",
+     "yoy_growth": 30.372389175630698
+    },
+    {
+     "value": 124386000000.0,
+     "period": "Q2",
+     "yoy_growth": 18.00320655731484
+    },
+    {
+     "value": 105409000000.0,
+     "period": "Q1",
+     "yoy_growth": 1.2535541381695228
+    },
+    {
+     "value": 104104000000.0,
+     "period": "Q4",
+     "yoy_growth": 8.130790643566414
+    },
+    {
+     "value": 96276000000.0,
+     "period": "Q3",
+     "yoy_growth": 8.63423000541614
+    },
+    {
+     "value": 88624000000.0,
+     "period": "Q2",
+     "yoy_growth": 4.861858841625747
+    },
+    {
+     "value": 84515000000.0,
+     "period": "Q1",
+     "yoy_growth": -9.244663029938577
+    },
+    {
+     "value": 93124000000.0,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "forward_eps_estimates": [
+    {
+     "actual": null,
+     "period": "2030-05",
+     "estimate": 5.96
+    },
+    {
+     "actual": null,
+     "period": "2030-02",
+     "estimate": 5.39
+    },
+    {
+     "actual": null,
+     "period": "2029-11",
+     "estimate": 5.05
+    },
+    {
+     "actual": null,
+     "period": "2029-08",
+     "estimate": 4.62
+    },
+    {
+     "actual": null,
+     "period": "2029-05",
+     "estimate": 4.69
+    },
+    {
+     "actual": null,
+     "period": "2029-02",
+     "estimate": 4.13
+    },
+    {
+     "actual": null,
+     "period": "2028-11",
+     "estimate": 3.81
+    },
+    {
+     "actual": null,
+     "period": "2028-08",
+     "estimate": 3.38
+    }
+   ],
+   "quarterly_gross_margin": [
+    {
+     "value": 62.16,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 66.53,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 67.28,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 70.19,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 70.31,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 70.94,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 70.65,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 72.53,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_operating_cf": [
+    {
+     "value": 7151000000.0,
+     "period": "Q3",
+     "yoy_growth": 246.12778315585672
+    },
+    {
+     "value": 2066000000.0,
+     "period": "Q2",
+     "yoy_growth": -74.61916461916462
+    },
+    {
+     "value": 8140000000.0,
+     "period": "Q1",
+     "yoy_growth": 32.20724378755887
+    },
+    {
+     "value": 6157000000.0,
+     "period": "Q4",
+     "yoy_growth": 3.775493005225013
+    },
+    {
+     "value": 5933000000.0,
+     "period": "Q3",
+     "yoy_growth": 354.9846625766871
+    },
+    {
+     "value": 1304000000.0,
+     "period": "Q2",
+     "yoy_growth": -82.44243974686954
+    },
+    {
+     "value": 7427000000.0,
+     "period": "Q1",
+     "yoy_growth": 22.134517349120213
+    },
+    {
+     "value": 6081000000.0,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_current_ratio": [
+    {
+     "value": 1.35,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 0.91,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 0.62,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 0.75,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 1.02,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 0.81,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 0.72,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 0.72,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "forward_revenue_estimates": [
+    {
+     "actual": null,
+     "period": "2030-05",
+     "estimate": 60068000000.0
+    },
+    {
+     "actual": null,
+     "period": "2030-02",
+     "estimate": 57509000000.0
+    },
+    {
+     "actual": null,
+     "period": "2029-11",
+     "estimate": 55157000000.0
+    },
+    {
+     "actual": null,
+     "period": "2029-08",
+     "estimate": 52581000000.0
+    },
+    {
+     "actual": null,
+     "period": "2029-05",
+     "estimate": 53580000000.0
+    },
+    {
+     "actual": null,
+     "period": "2029-02",
+     "estimate": 48184000000.0
+    },
+    {
+     "actual": null,
+     "period": "2028-11",
+     "estimate": 43912000000.0
+    },
+    {
+     "actual": null,
+     "period": "2028-08",
+     "estimate": 39766000000.0
+    }
+   ],
+   "quarterly_operating_margin": [
+    {
+     "value": 32.79,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 29.46,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 28.65,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 32.13,
+     "period": "Q4",
+     "yoy_growth": null
+    },
+    {
+     "value": 30.84,
+     "period": "Q3",
+     "yoy_growth": null
+    },
+    {
+     "value": 30.02,
+     "period": "Q2",
+     "yoy_growth": null
+    },
+    {
+     "value": 29.99,
+     "period": "Q1",
+     "yoy_growth": null
+    },
+    {
+     "value": 32.8,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ],
+   "quarterly_shareholders_equity": [
+    {
+     "value": 39051000000.0,
+     "period": "Q3",
+     "yoy_growth": 28.216830285320288
+    },
+    {
+     "value": 30457000000.0,
+     "period": "Q2",
+     "yoy_growth": 23.477661558420497
+    },
+    {
+     "value": 24666000000.0,
+     "period": "Q1",
+     "yoy_growth": 17.630788306547764
+    },
+    {
+     "value": 20969000000.0,
+     "period": "Q4",
+     "yoy_growth": 21.481953536875036
+    },
+    {
+     "value": 17261000000.0,
+     "period": "Q3",
+     "yoy_growth": 21.248946333239672
+    },
+    {
+     "value": 14236000000.0,
+     "period": "Q2",
+     "yoy_growth": 26.328866802733163
+    },
+    {
+     "value": 11269000000.0,
+     "period": "Q1",
+     "yoy_growth": 21.97207489988094
+    },
+    {
+     "value": 9239000000.0,
+     "period": "Q4",
+     "yoy_growth": null
+    }
+   ]
+  },
+  "transcript_analysis": null
+ }
+}

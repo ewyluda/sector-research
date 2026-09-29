@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   workspaceApi,
   type WorkspaceRun,
@@ -36,18 +36,29 @@ export function WorkspaceReport({ runId }: { runId: string }) {
   const [stepFailures, setStepFailures] = useState<Record<string, string>>({});
   const [verdict, setVerdict] = useState<WorkspaceRun["verdict"]>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // Hydrate from REST on mount (handles already-complete runs)
-  useEffect(() => {
+  // REST is the source of truth: on mount, and again when the run finishes
+  // (for the saved model version, final status and error).
+  const refresh = useCallback(() => {
     workspaceApi.get(runId).then((r) => {
       setRun(r);
-      setStepOutputs(r.step_outputs);
+      // Merge: outputs the stream already delivered win over an older snapshot.
+      setStepOutputs((prev) => ({ ...r.step_outputs, ...prev }));
       setVerdict(r.verdict);
-    });
+      if (r.error) setError(r.error);
+    }).catch((e) => setLoadError(e instanceof Error ? e.message : String(e)));
   }, [runId]);
 
-  // SSE subscription
+  useEffect(() => { refresh(); }, [refresh]);
+
+  // Live updates, only while the run is going. A finished run has nothing to
+  // stream, and the server closing its stream would make EventSource reconnect
+  // in a loop. Transient errors are left to EventSource's own reconnect (they
+  // used to close the stream for good).
+  const running = run?.status === "running";
   useEffect(() => {
+    if (!running) return;
     const es = new EventSource(workspaceApi.streamUrl(runId));
 
     es.onmessage = (msg) => {
@@ -68,19 +79,25 @@ export function WorkspaceReport({ runId }: { runId: string }) {
           setVerdict(evt.verdict);
           setActiveStep(null);
           es.close();
+          refresh();
           break;
         case "workspace_run_failed":
           setError(evt.error);
           setActiveStep(null);
           es.close();
+          refresh();
           break;
       }
     };
 
-    es.onerror = () => es.close();
-
     return () => es.close();
-  }, [runId]);
+  }, [runId, running, refresh]);
+
+  if (loadError) {
+    return (
+      <div className="p-6 text-sm text-[var(--error-text)]">Couldn&apos;t load this workspace run: {loadError}</div>
+    );
+  }
 
   if (!run) {
     return (
@@ -106,7 +123,7 @@ export function WorkspaceReport({ runId }: { runId: string }) {
                   : ""}
               </>
             )}{" "}
-            · {new Date(run.created_at).toLocaleString()}
+            · {new Date(run.created_at).toLocaleString()} · {run.status}
           </p>
         </div>
         <VerdictBadge verdict={verdict} />

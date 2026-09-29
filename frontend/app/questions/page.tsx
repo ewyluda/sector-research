@@ -141,7 +141,7 @@ function QuestionsPageInner() {
   };
 
   return (
-    <main className="max-w-5xl mx-auto p-6">
+    <div className="max-w-5xl mx-auto p-6">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-[var(--text)]">Questions</h1>
         <p className="text-[var(--text-muted)] text-sm mt-1">
@@ -286,13 +286,13 @@ function QuestionsPageInner() {
           )}
         </div>
       )}
-    </main>
+    </div>
   );
 }
 
 export default function QuestionsPage() {
   return (
-    <Suspense fallback={<main className="max-w-5xl mx-auto p-6"><p className="text-[var(--text-faint)] text-sm">Loading…</p></main>}>
+    <Suspense fallback={<div className="max-w-5xl mx-auto p-6"><p className="text-[var(--text-faint)] text-sm">Loading…</p></div>}>
       <QuestionsPageInner />
     </Suspense>
   );

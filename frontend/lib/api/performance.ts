@@ -4,7 +4,7 @@ import { apiFetch } from "./core";
 
 export type SnapshotOffset = "1d" | "1w" | "1m" | "3m" | "6m";
 export type SourceType = "research_run" | "workspace_run";
-export type Benchmark = "spy" | "sector" | "theme_basket";
+export type Benchmark = "spy" | "spy_beta" | "sector" | "theme_basket";
 export type Window = "30d" | "90d" | "1y" | "all";
 
 export interface SnapshotRead {
@@ -91,6 +91,8 @@ export interface OutcomeSummaryQuery {
   snapshotOffset?: SnapshotOffset;
   benchmark?: Benchmark;
   sourceType?: SourceType | "all";
+  /** Superseded calls (a later run on the same position) are excluded unless set. */
+  includeSuperseded?: boolean;
 }
 
 export interface OutcomeListQuery {
@@ -111,6 +113,7 @@ export const outcomesApi = {
     if (q.snapshotOffset) params.set("snapshot_offset", q.snapshotOffset);
     if (q.benchmark) params.set("benchmark", q.benchmark);
     if (q.sourceType) params.set("source_type", q.sourceType);
+    if (q.includeSuperseded) params.set("include_superseded", "true");
     return apiFetch(`/api/outcomes/summary?${params.toString()}`);
   },
 

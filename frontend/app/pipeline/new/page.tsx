@@ -68,7 +68,7 @@ function NewPipelineForm() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+    <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="mb-8">
@@ -113,7 +113,7 @@ function NewPipelineForm() {
                     onClick={() => setTicker(t)}
                     className={`font-mono text-[11px] px-2 py-0.5 rounded border transition-colors cursor-pointer ${
                       ticker === t
-                        ? "bg-[var(--primary)]/15 text-[var(--primary)] border-[var(--primary)]/30"
+                        ? "bg-[var(--primary)]/15 text-[var(--primary-dk)] border-[var(--primary)]/30"
                         : "bg-[var(--surface)] text-[var(--text-muted)] border-[var(--border)] hover:border-[var(--primary)]/40 hover:text-[var(--text)]"
                     }`}
                   >
@@ -174,7 +174,7 @@ function NewPipelineForm() {
               ].map(({ num, label, sub }) => (
                 <div key={num} className="flex items-start gap-3">
                   <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-[var(--primary)]/15
-                                   text-[var(--primary)] text-xs font-semibold flex items-center justify-center">
+                                   text-[var(--primary-dk)] text-xs font-semibold flex items-center justify-center">
                     {num}
                   </span>
                   <div>
@@ -211,7 +211,7 @@ function NewPipelineForm() {
           </button>
         </form>
       </div>
-    </main>
+    </div>
   );
 }
 
@@ -222,9 +222,9 @@ export default function NewPipelinePage() {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
+        <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center p-6">
           <div className="w-6 h-6 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-        </main>
+        </div>
       }
     >
       <NewPipelineForm />

@@ -48,7 +48,7 @@ from backend.app.graph.llm import complete_structured, DEEP_MODEL, FAST_MODEL
 from backend.app.graph.routing import MAX_RISK_LOOPS, should_loop
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
-    DEEP_DIVE_SYSTEM, DEEP_DIVE_USER, DEEP_DIVE_CATEGORIES,
+    DEEP_DIVE_SYSTEM, DEEP_DIVE_SHARED, DEEP_DIVE_USER, DEEP_DIVE_CATEGORIES,
     THESIS_SYSTEM, THESIS_USER,
     RISK_SYSTEM, RISK_USER,
     POSITION_SYSTEM, POSITION_USER,
@@ -279,6 +279,23 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
 
 # ── Phase 3: deep_dive (parallel subgraph) ────────────────────────────────────
 
+async def warm_then_fan_out(run, items: list) -> list:
+    """Run `run(item)` for every item in parallel, except that the first call
+    goes alone until its response begins (it gets an Event to set) or it
+    finishes. The calls share a cached prompt prefix, and a parallel request
+    can't read a cache entry another request is still writing — so without
+    this, every call pays the cache write and none reads it."""
+    if not items:
+        return []
+    warmed = asyncio.Event()
+    first = asyncio.create_task(run(items[0], warmed))
+    waiter = asyncio.create_task(warmed.wait())
+    await asyncio.wait({first, waiter}, return_when=asyncio.FIRST_COMPLETED)
+    waiter.cancel()
+    rest = await asyncio.gather(*(run(item) for item in items[1:]))
+    return [await first, *rest]
+
+
 async def _run_one_category(
     category: str,
     ticker: str,
@@ -294,18 +311,17 @@ async def _run_one_category(
     counterparty_context_text: str = "",
     quant_context: str = "",
     prior_questions_text: str = "",
+    first_event: asyncio.Event | None = None,
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
         parsed = await asyncio.wait_for(
             complete_structured(
-                system=DEEP_DIVE_SYSTEM.format(category=category),
+                system=DEEP_DIVE_SYSTEM.format(),
+                shared_prefix=DEEP_DIVE_SHARED.format(ticker=ticker, theme=theme, as_of=_as_of(), data=data),
+                first_event=first_event,
                 user=DEEP_DIVE_USER.format(
-                    ticker=ticker,
-                    theme=theme,
-                    as_of=_as_of(),
                     category=category,
-                    data=data,
                     transcript_data=transcript_context,
                     macro_data=macro_context,
                     technical_data=technical_context,
@@ -585,9 +601,8 @@ async def node_deep_dive(
     for cat, pq in zip(categories_to_run, prior_q_lists):
         prior_q_map[cat] = pq if isinstance(pq, list) else []
 
-    # Run all categories in parallel
-    tasks = [
-        _run_one_category(
+    def run(cat: str, first_event: asyncio.Event | None = None):
+        return _run_one_category(
             cat, state.ticker, _theme_context(state), data_text, loop_ctx_str,
             category_contexts[cat]["transcript"], category_contexts[cat]["macro"],
             category_contexts[cat]["technical"], category_contexts[cat]["sentiment"],
@@ -596,10 +611,10 @@ async def node_deep_dive(
             category_contexts[cat]["counterparty"],
             category_contexts[cat]["quant"],
             _render_prior_questions_slot(prior_q_map[cat]),
+            first_event=first_event,
         )
-        for cat in categories_to_run
-    ]
-    results = await asyncio.gather(*tasks)
+
+    results = await warm_then_fan_out(run, categories_to_run)
 
     for result in results:
         state.set_category_result(result)
@@ -673,11 +688,10 @@ def _build_targeted_followup_user_msg(
 
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────
 
-async def node_thesis_construction(state: ResearchState) -> ResearchState:
-    """Phase 4: synthesise all Phase 3 outputs into a structured thesis."""
-    logger.info("[%s] thesis_construction starting", state.ticker)
-    state.phase = "thesis_construction"
-
+def build_thesis_user_message(state: ResearchState) -> str:
+    """The thesis prompt's user message for a state that has finished its deep
+    dive. Shared with the eval harness, which checks that numbers in a thesis
+    trace back to this text."""
     # Format category results
     results = state.get_deep_dive_results()
 
@@ -710,24 +724,32 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
     failed = state.failed_categories()
     loop_ctx = str(state.loop_context) if state.loop_context else "None"
 
+    return THESIS_USER.format(
+        ticker=state.ticker,
+        theme=_theme_context(state),
+        as_of=_as_of(),
+        market_data=_market_data_block(state),
+        quick_screen_verdict=qs_verdict,
+        quick_screen_score=qs_score,
+        quick_screen_thesis=qs_thesis,
+        quick_screen_risk=qs_risk,
+        category_summary=category_summary,
+        category_results=results_text,
+        failed_categories=", ".join(failed) if failed else "None",
+        loop_context=loop_ctx,
+        questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
+    )
+
+
+async def node_thesis_construction(state: ResearchState, fmp: FMPClient | None = None) -> ResearchState:
+    """Phase 4: synthesise all Phase 3 outputs into a structured thesis."""
+    logger.info("[%s] thesis_construction starting", state.ticker)
+    state.phase = "thesis_construction"
+
     try:
         parsed = await complete_structured(
             system=THESIS_SYSTEM,
-            user=THESIS_USER.format(
-                ticker=state.ticker,
-                theme=_theme_context(state),
-                as_of=_as_of(),
-                market_data=_market_data_block(state),
-                quick_screen_verdict=qs_verdict,
-                quick_screen_score=qs_score,
-                quick_screen_thesis=qs_thesis,
-                quick_screen_risk=qs_risk,
-                category_summary=category_summary,
-                category_results=results_text,
-                failed_categories=", ".join(failed) if failed else "None",
-                loop_context=loop_ctx,
-                questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
-            ),
+            user=build_thesis_user_message(state),
             output_model=ThesisLLMOutput,
             model=DEEP_MODEL,
             max_tokens=6000,
@@ -753,12 +775,13 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
         # Tier 1.3: promote parsed catalysts into first-class DB rows.
         # Failure here is non-fatal — JSONB still has the canonical copy.
         try:
-            fmp = FMPClient()
+            client = fmp or FMPClient()  # the pipeline passes its shared client
             try:
                 async with unit_of_work() as cat_db:
-                    await promote_catalysts(state, parsed, fmp, cat_db)
+                    await promote_catalysts(state, parsed, client, cat_db)
             finally:
-                await fmp.close()
+                if fmp is None:
+                    await client.close()
         except Exception as cat_err:
             logger.warning(
                 "[%s] catalyst promotion failed: %s", state.ticker, cat_err

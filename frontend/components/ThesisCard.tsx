@@ -327,7 +327,7 @@ export function ThesisCard({
         className="rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-3.5"
         style={{ borderLeft: "3px solid var(--primary)" }}
       >
-        <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--primary)] mb-1.5">
+        <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--primary-dk)] mb-1.5">
           Core Thesis
         </div>
         <div className="text-xs text-[var(--text)] leading-relaxed">

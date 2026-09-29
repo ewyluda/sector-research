@@ -343,7 +343,7 @@ function GraphRender({ graph, depth }: { graph: SupplyChainGraph; depth: Depth }
           No extracted relationships for {root.ticker}.{" "}
           <Link
             href="/filings"
-            className="text-[var(--color-primary)] hover:underline font-medium"
+            className="text-[var(--primary-dk)] hover:underline font-medium"
           >
             Ingest filings →
           </Link>
@@ -566,7 +566,7 @@ function EdgeRowBody({
   const nameNode = ticker ? (
     <Link
       href={`/pipeline/new?ticker=${encodeURIComponent(ticker)}`}
-      className="text-[var(--color-accent)] hover:underline font-medium"
+      className="text-[var(--primary-dk)] hover:underline font-medium"
     >
       {name}
     </Link>
@@ -639,7 +639,7 @@ function ThemeBadge({
   if (inSelected) {
     return (
       <span
-        className="text-[9px] text-[var(--color-accent)] uppercase tracking-wide"
+        className="text-[9px] text-[var(--primary-dk)] uppercase tracking-wide"
         title="In the selected theme"
       >
         ● theme

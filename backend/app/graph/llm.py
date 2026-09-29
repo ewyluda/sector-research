@@ -15,15 +15,17 @@ every newer model reject it with a 400 (found 2026-04-11, commit 68f99af, then
 reintroduced at five call sites before this guard existed).
 """
 
+import asyncio
 import json
 import logging
 import time
-from typing import TypeVar
+from typing import Awaitable, Callable, TypeVar
 
 import anthropic
 from pydantic import BaseModel, ValidationError
 
 from backend.app.config import get_settings
+from backend.app.services.llm_usage import CallUsage, prompt_version
 
 logger = logging.getLogger(__name__)
 
@@ -70,17 +72,32 @@ def _system_blocks(system: str, use_cache: bool) -> list[dict]:
     return system_content
 
 
-def _log_usage(kind: str, model: str, message, started: float) -> None:
-    """One structured log line per call — tokens, cache, latency, stop reason."""
+# Set by main.py's lifespan to llm_usage.record; None in tests and scripts.
+usage_sink: Callable[[CallUsage], Awaitable[None]] | None = None
+
+
+async def _report_usage(kind: str, model: str, system: str, message, started: float) -> None:
+    """One structured log line per call — tokens, cache, latency, stop reason,
+    cost — and one llm_calls row when a sink is registered."""
     usage = getattr(message, "usage", None)
-    logger.info(
-        "llm_call kind=%s model=%s stop=%s in=%s out=%s cache_read=%s cache_write=%s latency_ms=%d",
-        kind, model, getattr(message, "stop_reason", None),
-        getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None),
-        getattr(usage, "cache_read_input_tokens", None),
-        getattr(usage, "cache_creation_input_tokens", None),
-        int((time.monotonic() - started) * 1000),
+    call = CallUsage(
+        kind=kind, model=model, prompt_version=prompt_version(system),
+        stop_reason=getattr(message, "stop_reason", None),
+        input_tokens=getattr(usage, "input_tokens", None) or 0,
+        output_tokens=getattr(usage, "output_tokens", None) or 0,
+        cache_read_tokens=getattr(usage, "cache_read_input_tokens", None) or 0,
+        cache_write_tokens=getattr(usage, "cache_creation_input_tokens", None) or 0,
+        latency_ms=int((time.monotonic() - started) * 1000),
     )
+    cost = call.cost_usd
+    logger.info(
+        "llm_call kind=%s model=%s stop=%s in=%s out=%s cache_read=%s cache_write=%s latency_ms=%d cost_usd=%s",
+        kind, model, call.stop_reason, call.input_tokens, call.output_tokens,
+        call.cache_read_tokens, call.cache_write_tokens, call.latency_ms,
+        f"{cost:.4f}" if cost is not None else "n/a",
+    )
+    if usage_sink is not None:
+        await usage_sink(call)
 
 
 def _check_stop_reason(message, model: str) -> None:
@@ -105,7 +122,7 @@ async def complete(
         messages=[{"role": "user", "content": user}],
         **_request_params(model, max_tokens),
     )
-    _log_usage("text", model, message, started)
+    await _report_usage("text", model, system, message, started)
     _check_stop_reason(message, model)
     return "".join(b.text for b in message.content if b.type == "text")
 
@@ -117,8 +134,17 @@ async def complete_structured(
     model: str = DEEP_MODEL,
     max_tokens: int = 4096,
     use_cache: bool = True,
+    shared_prefix: str | None = None,
+    first_event: asyncio.Event | None = None,
 ) -> T:
     """Single-turn completion constrained to `output_model`'s JSON schema.
+
+    `shared_prefix` is user content identical across a batch of calls; it is
+    sent ahead of `user` with its own cache breakpoint so the batch can share
+    it. Passing `first_event` streams the call and sets the event as soon as
+    the response starts — the moment its cache entry becomes readable — so a
+    caller can hold back the rest of a parallel batch until then. The event is
+    set even if the call fails, so waiters never hang.
 
     Returns a validated instance. Raises LLMOutputError when the output was
     truncated or refused, and pydantic.ValidationError when a constraint the
@@ -136,14 +162,30 @@ async def complete_structured(
         **params.get("output_config", {}),
         "format": {"type": "json_schema", "schema": anthropic.transform_schema(output_model)},
     }
-    started = time.monotonic()
-    message = await get_client().messages.create(
+    content: str | list[dict] = user
+    if shared_prefix is not None:
+        prefix_block: dict = {"type": "text", "text": shared_prefix}
+        if use_cache:
+            prefix_block["cache_control"] = {"type": "ephemeral"}
+        content = [prefix_block, {"type": "text", "text": user}]
+    request = dict(
         model=model,
-        system=_system_blocks(system, use_cache),  # type: ignore[arg-type]
-        messages=[{"role": "user", "content": user}],
+        system=_system_blocks(system, use_cache),
+        messages=[{"role": "user", "content": content}],
         **params,
     )
-    _log_usage(f"structured:{output_model.__name__}", model, message, started)
+    started = time.monotonic()
+    if first_event is None:
+        message = await get_client().messages.create(**request)  # type: ignore[arg-type]
+    else:
+        try:
+            async with get_client().messages.stream(**request) as stream:  # type: ignore[arg-type]
+                async for _ in stream:
+                    first_event.set()
+                message = await stream.get_final_message()
+        finally:
+            first_event.set()
+    await _report_usage(f"structured:{output_model.__name__}", model, system, message, started)
     _check_stop_reason(message, model)
     text = "".join(b.text for b in message.content if b.type == "text")
     if not text:

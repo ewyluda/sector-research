@@ -50,6 +50,7 @@ from backend.app.services.relationship_context import (
 )
 from backend.app.services.run_timestamps import mark_terminal_completed_at
 from backend.app.services.event_broker import EventBroker
+from backend.app.services import llm_usage
 from backend.app.graph.deep_dive_routing import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
@@ -217,6 +218,7 @@ class PipelineService:
         async with async_session() as db:
             while state.status == "in_progress":
                 phase = state.phase
+                llm_usage.set_scope("research", run_id, phase)
                 self._emit(run_id, {"type": "phase_start", "phase": phase,
                                      "label": PHASE_META.get(phase, {}).get("label", phase)})
 
@@ -226,7 +228,7 @@ class PipelineService:
                     elif phase == "deep_dive":
                         state = await self._run_deep_dive_with_streaming(state, run_id, db)
                     elif phase == "thesis_construction":
-                        state = await nodes.node_thesis_construction(state)
+                        state = await nodes.node_thesis_construction(state, self._fmp)
                     elif phase == "risk_stress_test":
                         state = await nodes.node_risk_stress_test(state)
                     elif phase == "position_monitor":
@@ -341,6 +343,7 @@ class PipelineService:
 
                 snapshot = outcome_tracker.build_research_run_signal_snapshot(
                     state=state, signals_row=signals_row, kill_states=[],
+                    beta_raw=(profile or {}).get("beta"),
                 )
 
                 await outcome_tracker.record_verdict(
@@ -350,12 +353,16 @@ class PipelineService:
                     theme_id=state.theme_id,
                     theme_seed_tickers=theme_seed_tickers,
                     sector=sector,
-                    verdict=state.status,
+                    verdict=outcome_tracker.research_verdict(state),
                     verdict_emitted_at=_coerce_to_datetime(state.completed_at) or datetime.now(timezone.utc),
                     signal_snapshot=snapshot,
                     fmp=self._fmp,
                     db=db,
                 )
+        except LookupError as exc:
+            # Entry is the next trading day's close, which doesn't exist yet at
+            # completion; the daily 03:00 UTC outcome job records it then.
+            logger.info("outcome for run %s pending: %s", run_id, exc)
         except Exception:
             logger.exception("record_verdict failed for run %s", run_id)
 

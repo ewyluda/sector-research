@@ -56,7 +56,7 @@ function CompareInner() {
   // the focus is just the first chip, so pass an empty focus and manage the
   // full ticker list here.
   return (
-    <main className="mx-auto max-w-[1400px] space-y-4 px-6 py-6">
+    <div className="mx-auto max-w-[1400px] space-y-4 px-6 py-6">
       <div>
         <h1 className="text-lg font-semibold text-[var(--text)]">Compare</h1>
         <p className="text-xs text-[var(--text-muted)]">
@@ -89,7 +89,7 @@ function CompareInner() {
         <div className="text-sm text-[var(--text-muted)]">Loading…</div>
       )}
       {comp?.table && <PeerCompTable table={comp.table} />}
-    </main>
+    </div>
   );
 }
 

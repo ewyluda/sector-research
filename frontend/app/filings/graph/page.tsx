@@ -38,7 +38,7 @@ export default async function FilingsGraphPage() {
         </div>
         <Link
           href="/filings/graph/theme"
-          className="shrink-0 text-sm text-[var(--color-accent)] hover:underline"
+          className="shrink-0 text-sm text-[var(--primary-dk)] hover:underline"
         >
           Theme map →
         </Link>

@@ -225,7 +225,7 @@ export default function CurationPanel() {
                       </div>
                       <div className="text-[10px] text-[var(--text-faint)] font-mono">
                         {c.ticker ?? "(no ticker)"} · CIK {c.cik} ·{" "}
-                        <span className="text-[var(--primary)]">
+                        <span className="text-[var(--primary-dk)]">
                           {c.score.toFixed(0)}
                         </span>
                       </div>

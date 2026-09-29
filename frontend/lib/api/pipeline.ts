@@ -491,7 +491,27 @@ export type SSEEvent =
 
 // ── Pipeline endpoints ─────────────────────────────────────────────────────────
 
+/** GET /api/runs/{id}/usage — rolled up from llm_calls (runs from 2026-09-28 on). */
+export interface RunUsageTotals {
+  calls: number;
+  cost_usd: number;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  cache_hit_rate: number | null;
+}
+
+export interface RunUsage extends RunUsageTotals {
+  run_id: string;
+  wall_clock_s: number | null;
+  unpriced_calls: number;
+  by_phase: Array<RunUsageTotals & { phase: string }>;
+}
+
 export const pipeline = {
+  usage: (runId: string) => apiFetch<RunUsage>(`/api/runs/${runId}/usage`),
+
   start: (ticker: string, theme_id: string) =>
     apiFetch<RunDetail>("/api/runs", {
       method: "POST",

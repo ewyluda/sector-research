@@ -42,10 +42,10 @@ export function PositionCard({
             <span className="text-2xl font-mono font-bold text-[var(--text)] tracking-wide">
               {ticker}
             </span>
-            <span className="text-lg font-mono font-semibold text-[var(--primary)]">
+            <span className="text-lg font-mono font-semibold text-[var(--primary-dk)]">
               {structured.position_size_pct.toFixed(1)}%
             </span>
-            <span className="px-3 py-0.5 rounded-full border text-[11px] font-semibold tracking-wider bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/30">
+            <span className="px-3 py-0.5 rounded-full border text-[11px] font-semibold tracking-wider bg-[var(--primary)]/10 text-[var(--primary-dk)] border-[var(--primary)]/30">
               {structured.time_horizon.toUpperCase()}
             </span>
           </div>
@@ -83,7 +83,7 @@ export function PositionCard({
         className="rounded-lg border border-[var(--primary)]/20 bg-[var(--primary)]/5 p-3.5"
         style={{ borderLeft: "3px solid var(--primary)" }}
       >
-        <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--primary)] mb-1.5">
+        <div className="text-[10px] uppercase tracking-wider font-semibold text-[var(--primary-dk)] mb-1.5">
           Position Sizing — {structured.position_size_pct.toFixed(1)}% of Portfolio
         </div>
         <div className="text-xs text-[var(--text)] leading-relaxed">
@@ -156,7 +156,7 @@ export function PositionCard({
                 <tr key={i} className="border-t border-[var(--border)]">
                   <td className="px-3 py-2 text-[var(--text)]">{item.metric}</td>
                   <td className="px-3 py-2">
-                    <span className="px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary)] text-[10px] font-medium">
+                    <span className="px-2 py-0.5 rounded-full bg-[var(--primary)]/10 text-[var(--primary-dk)] text-[10px] font-medium">
                       {item.cadence}
                     </span>
                   </td>

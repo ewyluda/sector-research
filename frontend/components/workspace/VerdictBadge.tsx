@@ -3,7 +3,7 @@ import type { WorkspaceVerdict } from "@/lib/api";
 // Uses app CSS variable tokens to match the warm light palette.
 const PALETTE: Record<WorkspaceVerdict, string> = {
   healthy:   "bg-[var(--accent-bg)] text-[var(--success)] border-[var(--success)]",
-  imminent:  "bg-[var(--accent-bg)] text-[var(--primary)] border-[var(--primary)]",
+  imminent:  "bg-[var(--accent-bg)] text-[var(--primary-dk)] border-[var(--primary)]",
   triggered: "bg-[var(--accent-bg)] text-[var(--warning)] border-[var(--warning)]",
   broken:    "bg-[var(--error-bg)] text-[var(--error)] border-[var(--error-border)]",
 };

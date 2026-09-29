@@ -92,7 +92,7 @@ export default function NewThemePage() {
       <div>
         <Link
           href="/themes"
-          className="text-xs text-[var(--text-muted)] hover:text-[var(--primary)] transition-colors"
+          className="text-xs text-[var(--text-muted)] hover:text-[var(--primary-dk)] transition-colors"
         >
           ← Back to themes
         </Link>

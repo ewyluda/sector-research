@@ -81,7 +81,7 @@ class TestResolveEntryPrices(unittest.TestCase):
         self.assertIsNone(bundle.sector_etf_ticker)
         self.assertEqual(bundle.theme_basket_constituents, [])
 
-    def test_includes_theme_constituents(self):
+    def test_theme_constituents_exclude_the_ticker(self):
         prices = {
             "NVDA": {date(2026, 1, 5): Decimal("850.00")},
             "SPY":  {date(2026, 1, 5): Decimal("550.00")},
@@ -97,7 +97,7 @@ class TestResolveEntryPrices(unittest.TestCase):
             fmp=fmp,
         ))
         tickers = {c.ticker for c in bundle.theme_basket_constituents}
-        self.assertEqual(tickers, {"NVDA", "AMD", "TSM"})
+        self.assertEqual(tickers, {"AMD", "TSM"})
 
     def test_raises_when_ticker_has_no_price_in_lookahead(self):
         prices = {"SPY": {date(2026, 1, 5): Decimal("550.00")}}
@@ -138,10 +138,12 @@ class TestResolveSectorEtf(unittest.TestCase):
         self.assertIsNone(asyncio.run(_run("Cryptocurrency")))
 
 
-from backend.app.services.outcome_tracker import (
+from backend.app.graph.state import CategoryResult, ResearchState  # noqa: E402
+from backend.app.services.outcome_tracker import (  # noqa: E402
     build_research_run_signal_snapshot,
     build_workspace_run_signal_snapshot,
     compute_basket_value,
+    research_verdict,
 )
 
 
@@ -176,22 +178,27 @@ class TestComputeBasketValue(unittest.TestCase):
         self.assertIsNone(compute_basket_value(constituents, {}))
 
 
+def _state_with_scores(scores: dict) -> ResearchState:
+    """A real ResearchState whose deep dive produced the given category scores."""
+    state = ResearchState(ticker="NVDA", theme_id="t", run_id="run-1")
+    for category, score in scores.items():
+        state.set_category_result(CategoryResult(category=category, content="{}", score=score, key_findings=[]))
+    return state
+
+
 class TestSignalSnapshotBuilders(unittest.TestCase):
     def test_research_run_snapshot_shape(self):
-        state = MagicMock()
-        state.deep_dive_results = {
-            "Business Quality": MagicMock(score=72),
-            "Risk Assessment":  MagicMock(score=58),
-        }
+        state = _state_with_scores({"Business Quality": 72, "Risk Assessment": 58})
         signals_row = {"velocity": 12.3, "fundamental": 0.78, "discovery": 0.65, "surprise": None}
         kill_states = [{"ordinal": 1, "state": "armed"}]
 
         snap = build_research_run_signal_snapshot(
-            state=state, signals_row=signals_row, kill_states=kill_states
+            state=state, signals_row=signals_row, kill_states=kill_states, beta_raw=2.0,
         )
         self.assertEqual(snap["signals_row"], signals_row)
         self.assertEqual(snap["deep_dive_scores"]["Business Quality"], 72)
         self.assertEqual(snap["kill_criterion_state"], kill_states)
+        self.assertAlmostEqual(snap["beta"], 1.67)  # Blume-adjusted
         self.assertNotIn("workspace_step_verdicts", snap)
 
     def test_workspace_run_snapshot_shape(self):
@@ -215,50 +222,30 @@ class TestSignalSnapshotBuilders(unittest.TestCase):
     # ── M3.4: warn-log + incomplete marker on missing fields ─────────────────
 
     def test_research_run_snapshot_incomplete_when_deep_dive_missing(self):
-        """Missing deep_dive_results → incomplete=True + warning logged."""
+        """No deep-dive results → incomplete=True + warning logged."""
         import logging
-        state = MagicMock()
-        state.ticker = "NVDA"
-        state.run_id = "run-123"
-        state.deep_dive_results = None  # missing
+        state = _state_with_scores({})
 
         with self.assertLogs("backend.app.services.outcome_tracker", level=logging.WARNING) as cm:
-            snap = build_research_run_signal_snapshot(
-                state=state, signals_row={}, kill_states=[]
-            )
+            snap = build_research_run_signal_snapshot(state=state, signals_row={}, kill_states=[])
 
         self.assertTrue(snap.get("incomplete"))
         self.assertEqual(snap["deep_dive_scores"], {})
-        self.assertTrue(any("deep_dive_results" in line for line in cm.output))
-
-    def test_research_run_snapshot_incomplete_when_deep_dive_corrupt(self):
-        """Truthy non-dict deep_dive_results (e.g. a list) → warn + incomplete=True."""
-        import logging
-        state = MagicMock()
-        state.ticker = "NVDA"
-        state.run_id = "run-corrupt"
-        state.deep_dive_results = ["not", "a", "dict"]  # corrupt state
-
-        with self.assertLogs("backend.app.services.outcome_tracker", level=logging.WARNING) as cm:
-            snap = build_research_run_signal_snapshot(
-                state=state, signals_row={}, kill_states=[]
-            )
-
-        self.assertTrue(snap.get("incomplete"))
-        self.assertEqual(snap["deep_dive_scores"], {})
-        self.assertTrue(any("deep_dive_results" in line for line in cm.output))
+        self.assertTrue(any("deep-dive" in line for line in cm.output))
 
     def test_research_run_snapshot_no_incomplete_when_deep_dive_present(self):
         """Complete snapshot must NOT have the incomplete key."""
-        state = MagicMock()
-        state.ticker = "AAPL"
-        state.run_id = "run-456"
-        state.deep_dive_results = {"Business Quality": MagicMock(score=70)}
-
         snap = build_research_run_signal_snapshot(
-            state=state, signals_row={}, kill_states=[]
+            state=_state_with_scores({"Business Quality": 70}), signals_row={}, kill_states=[]
         )
         self.assertNotIn("incomplete", snap)
+
+    def test_verdict_is_the_thesis_stance_when_there_is_one(self):
+        state = _state_with_scores({"Business Quality": 70})
+        state.status = "completed"
+        self.assertEqual(research_verdict(state), "completed")  # legacy run, no stance
+        state.phase_outputs["thesis"] = {"structured": {"stance": "short"}}
+        self.assertEqual(research_verdict(state), "short")
 
     def test_workspace_run_snapshot_incomplete_when_step_outputs_missing(self):
         """Missing step_outputs → incomplete=True + warning logged."""
@@ -441,7 +428,8 @@ class TestRecordVerdict(unittest.TestCase):
         self.assertEqual(outcome.sector_etf_ticker, "XLK")
         self.assertEqual(outcome.sector_etf_entry_price, Decimal("200.00"))
         self.assertEqual(outcome.theme_basket_entry_value, Decimal("100"))
-        self.assertEqual(len(outcome.theme_basket_constituents), 2)
+        # The ticker is excluded from its own theme basket.
+        self.assertEqual([c["ticker"] for c in outcome.theme_basket_constituents], ["AMD"])
 
     def test_idempotent_on_source_id(self):
         engine, Session = _build_async_test_session()

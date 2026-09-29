@@ -178,7 +178,7 @@ function RunRow({ run, onAbandon }: { run: RunSummary; onAbandon: (run: RunSumma
         )}
         <Link
           href={`/pipeline/${run.id}`}
-          className="text-xs text-[var(--color-accent)] hover:underline"
+          className="text-xs text-[var(--primary-dk)] hover:underline"
         >
           open →
         </Link>
@@ -206,22 +206,22 @@ function TickerGroupCard({
         allAbandoned ? "opacity-60" : ""
       }`}
     >
-      {/* div+role, not <button>: the ticker <Link> inside would be invalid
-          interactive-inside-interactive HTML. Keyboard parity via Enter/Space. */}
+      {/* The header toggles on click anywhere (a mouse convenience); the
+          chevron is the real <button>, beside — not around — the ticker link.
+          (A role="button" header wrapping the link was nested-interactive, and
+          its Enter/Space handler swallowed those keys on the link.) */}
       <div
-        role="button"
-        tabIndex={0}
         onClick={() => setExpanded((e) => !e)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            setExpanded((x) => !x);
-          }
-        }}
-        aria-expanded={expanded}
         className="w-full flex items-center gap-3 px-4 py-3.5 text-left cursor-pointer
                    hover:bg-[var(--color-accent)]/3 transition-colors"
       >
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-label={`${expanded ? "Collapse" : "Expand"} ${group.ticker} runs`}
+          onClick={(e) => { e.stopPropagation(); setExpanded((x) => !x); }}
+          className="rounded p-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary-dk)]"
+        >
         <svg
           className={`w-3.5 h-3.5 flex-shrink-0 text-[var(--color-text-muted)] transition-transform ${
             expanded ? "rotate-180" : ""
@@ -234,11 +234,12 @@ function TickerGroupCard({
         >
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
+        </button>
         <Link
           href={`/company/${group.ticker}`}
           onClick={(e) => e.stopPropagation()}
           className="text-lg font-mono font-bold text-[var(--color-text-primary)] tracking-wide
-                     hover:text-[var(--color-accent)] transition-colors"
+                     hover:text-[var(--primary-dk)] transition-colors"
         >
           {group.ticker}
         </Link>
@@ -321,7 +322,7 @@ function DataGapsView({
                       <button
                         key={t}
                         onClick={() => onTickerClick(t)}
-                        className="px-1.5 py-0.5 rounded bg-[var(--color-accent)]/10 text-[var(--color-accent)]
+                        className="px-1.5 py-0.5 rounded bg-[var(--color-accent)]/10 text-[var(--primary-dk)]
                                    text-xs font-mono font-medium hover:bg-[var(--color-accent)]/20 transition-colors"
                       >
                         {t}
@@ -435,7 +436,7 @@ export default function LibraryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--color-bg)] py-10 px-6">
+    <div className="min-h-screen bg-[var(--color-bg)] py-10 px-6">
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
@@ -474,6 +475,7 @@ export default function LibraryPage() {
             />
           </div>
           <select
+            aria-label="Filter by theme"
             value={themeId}
             onChange={(e) => setThemeId(e.target.value)}
             className="px-3 py-2 rounded-lg bg-[var(--color-surface)] border border-[var(--color-border)]
@@ -514,7 +516,7 @@ export default function LibraryPage() {
                 <span>{label}</span>
                 {count != null && (
                   <span className={`text-[10px] tabular-nums font-mono ${
-                    isActive ? "text-white/80" : "text-[var(--color-text-muted)]"
+                    isActive ? "text-white" : "text-[var(--color-text-muted)]"
                   }`}>
                     {count}
                   </span>
@@ -568,6 +570,6 @@ export default function LibraryPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

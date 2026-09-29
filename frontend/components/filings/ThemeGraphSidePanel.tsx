@@ -88,7 +88,7 @@ export default function ThemeGraphSidePanel({
       {node.ticker && node.tracked && (
         <Link
           href={`/filings/graph?root=${encodeURIComponent(node.ticker)}`}
-          className="inline-block text-sm text-[var(--color-accent)] hover:underline"
+          className="inline-block text-sm text-[var(--primary-dk)] hover:underline"
         >
           Open root graph →
         </Link>
