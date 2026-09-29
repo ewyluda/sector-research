@@ -15,6 +15,10 @@ const FIXTURE = process.env.MOCK_API_FIXTURE ?? fileURLToPath(new URL("./fixture
 const recordFrom = process.argv.includes("--record") ? process.argv[process.argv.indexOf("--record") + 1] : null;
 const store = recordFrom || !existsSync(FIXTURE) ? {} : JSON.parse(readFileSync(FIXTURE, "utf8"));
 const misses = new Set();
+// Requests that carry today's date (the calendar's start/end) fall back to the
+// recorded one with dates masked — otherwise the suite fails the day after recording.
+const mask = (key) => key.replace(/\d{4}-\d{2}-\d{2}/g, "<date>");
+const undated = new Map(Object.keys(store).map((k) => [mask(k), k]));
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +49,7 @@ createServer(async (req, res) => {
     res.end(body);
     return;
   }
-  const hit = store[key];
+  const hit = store[key] ?? store[undated.get(mask(key))];
   if (!hit) {
     if (!misses.has(key)) console.error(`[mock-api] unrecorded: ${key}`);
     misses.add(key);
