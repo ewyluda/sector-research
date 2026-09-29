@@ -210,3 +210,5 @@ Desktop-first, single user, no auth — a local tool. Tests: see [CLAUDE.md](CLA
 | `frontend/app/`, `frontend/components/` | Next.js pages and components |
 | `docs/adr/` | architecture decisions |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | full reference |
+
+MIT licensed — see [LICENSE](LICENSE).
