@@ -185,6 +185,7 @@ export default function PipelineRunnerPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   // Phase data
   const [quickScreenStructured, setQuickScreenStructured] = useState<QuickScreenStructured | null>(null);
@@ -670,6 +671,20 @@ export default function PipelineRunnerPage() {
               <p className="text-xs text-[var(--error-text)]/70 mt-1">
                 The pipeline encountered an error during the {currentPhase.replace(/_/g, " ")} phase. Partial results are shown below.
               </p>
+              <button
+                data-print-hide="true"
+                disabled={retrying}
+                onClick={() => {
+                  setRetrying(true);
+                  api.advance(runId, "retry")
+                    .then((r) => { setRun(r); setStreamError(null); setIsLive(true); })
+                    .catch((e) => setStreamError(e instanceof Error ? e.message : String(e)))
+                    .finally(() => setRetrying(false));
+                }}
+                className="mt-3 px-3 py-1.5 rounded-md text-xs font-medium bg-[var(--primary)] text-white disabled:opacity-60"
+              >
+                {retrying ? "Retrying…" : `Retry from ${currentPhase.replace(/_/g, " ")}`}
+              </button>
             </div>
           )}
 

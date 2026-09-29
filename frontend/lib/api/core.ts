@@ -3,10 +3,23 @@
  * All other api/* modules import `apiFetch` and `BASE` from here.
  */
 
-export const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/** Read-only demo build: answers from recorded responses (see demo.ts). */
+export const DEMO = process.env.NEXT_PUBLIC_DEMO === "1";
+
+export const BASE = DEMO ? "" : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000");
+
+/** fetch, or the recorded-response responder in a demo build. Use this
+ *  rather than fetch() so every call works in both. */
+export async function request(url: string, init?: RequestInit): Promise<Response> {
+  if (DEMO) {
+    const { demoFetch } = await import("./demo");
+    return demoFetch(url, init);
+  }
+  return fetch(url, init);
+}
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await request(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...init?.headers },
     ...init,
   });

@@ -1,4 +1,4 @@
-import { BASE } from "./core";
+import { BASE, request } from "./core";
 import type { Citation } from "./core";
 import type { ReadThroughItem } from "./status";
 import type { PeerCompTable } from "./peers";
@@ -146,7 +146,7 @@ export const workspaceApi = {
     const qs = researchRunId
       ? `?research_run_id=${encodeURIComponent(researchRunId)}`
       : "";
-    const r = await fetch(
+    const r = await request(
       `${BASE}/api/workspace/${encodeURIComponent(ticker)}/preflight${qs}`,
     );
     if (!r.ok) throw new Error(`preflight ${r.status}`);
@@ -159,7 +159,7 @@ export const workspaceApi = {
     const qs = researchRunId
       ? `?research_run_id=${encodeURIComponent(researchRunId)}`
       : "";
-    const r = await fetch(
+    const r = await request(
       `${BASE}/api/workspace/${encodeURIComponent(ticker)}/runs${qs}`,
       { method: "POST" },
     );
@@ -167,17 +167,17 @@ export const workspaceApi = {
     return r.json();
   },
   get: async (runId: string): Promise<WorkspaceRun> => {
-    const r = await fetch(`${BASE}/api/workspace/runs/${runId}`);
+    const r = await request(`${BASE}/api/workspace/runs/${runId}`);
     if (!r.ok) throw new Error(`workspace get failed: ${r.status}`);
     return r.json();
   },
   history: async (ticker: string): Promise<WorkspaceRun[]> => {
-    const r = await fetch(`${BASE}/api/workspace/${encodeURIComponent(ticker)}/history`);
+    const r = await request(`${BASE}/api/workspace/${encodeURIComponent(ticker)}/history`);
     if (!r.ok) throw new Error(`workspace history failed: ${r.status}`);
     return r.json();
   },
   recent: async (): Promise<WorkspaceRun[]> => {
-    const r = await fetch(`${BASE}/api/workspace/recent`);
+    const r = await request(`${BASE}/api/workspace/recent`);
     if (!r.ok) throw new Error(`workspace recent failed: ${r.status}`);
     return r.json();
   },

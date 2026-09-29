@@ -1,4 +1,4 @@
-import { BASE } from "./core";
+import { BASE, request } from "./core";
 
 // ── Prospectus reports ────────────────────────────────────────────────────────
 
@@ -116,7 +116,7 @@ export const prospectusApi = {
   create: async (
     body: { url_or_accession: string; theme_id?: string | null },
   ): Promise<{ report_id: string }> => {
-    const r = await fetch(`${BASE}/api/prospectus`, {
+    const r = await request(`${BASE}/api/prospectus`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -125,17 +125,17 @@ export const prospectusApi = {
     return r.json();
   },
   get: async (reportId: string): Promise<ProspectusReport> => {
-    const r = await fetch(`${BASE}/api/prospectus/${reportId}`);
+    const r = await request(`${BASE}/api/prospectus/${reportId}`);
     if (!r.ok) throw new Error(`prospectus get failed: ${r.status}`);
     return r.json();
   },
   list: async (limit = 50): Promise<ProspectusReport[]> => {
-    const r = await fetch(`${BASE}/api/prospectus?limit=${limit}`);
+    const r = await request(`${BASE}/api/prospectus?limit=${limit}`);
     if (!r.ok) throw new Error(`prospectus list failed: ${r.status}`);
     return r.json();
   },
   remove: async (reportId: string): Promise<void> => {
-    const r = await fetch(`${BASE}/api/prospectus/${reportId}`, { method: "DELETE" });
+    const r = await request(`${BASE}/api/prospectus/${reportId}`, { method: "DELETE" });
     if (!r.ok && r.status !== 204) throw new Error(`prospectus delete failed: ${r.status}`);
   },
   streamUrl: (reportId: string) => `${BASE}/api/prospectus/${reportId}/stream`,

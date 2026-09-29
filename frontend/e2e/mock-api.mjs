@@ -11,7 +11,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 8010);
-const FIXTURE = fileURLToPath(new URL("./fixtures/api.json", import.meta.url));
+const FIXTURE = process.env.MOCK_API_FIXTURE ?? fileURLToPath(new URL("./fixtures/api.json", import.meta.url));
 const recordFrom = process.argv.includes("--record") ? process.argv[process.argv.indexOf("--record") + 1] : null;
 const store = recordFrom || !existsSync(FIXTURE) ? {} : JSON.parse(readFileSync(FIXTURE, "utf8"));
 const misses = new Set();

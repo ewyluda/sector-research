@@ -22,7 +22,7 @@ export function isTerminalStatus(status: PhaseStatus): boolean {
 }
 
 export type ThesisStatus = "STRONG_BUY" | "BUY" | "WATCHLIST" | "PASS" | "BROKEN" | "PENDING";
-export type AdvanceAction = "approve" | "flag" | "stop";
+export type AdvanceAction = "approve" | "flag" | "stop" | "retry";
 
 export interface RunSummary {
   id: string;
