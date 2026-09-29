@@ -213,6 +213,12 @@ Your thesis must be:
     ... 2-5 points total
   ],
   "variant_perception": "<what you believe that consensus does not — 1-3 sentences>",
+  "valuation_basis": "<how you value the business at time_horizon, BEFORE comparing to the price: the method (e.g. EV/EBITDA or P/E on forward estimates, DCF, peer multiples), the key inputs with their sources, and the resulting per-share value for each scenario>",
+  "price_targets": {"bear": <per-share price>, "base": <per-share price>, "bull": <per-share price>},
+  "stance": "long" | "avoid" | "short",
+  "time_horizon": "<e.g. '12 months'>",
+  "conviction_score": <int 0-100 — conviction in the stance above>,
+  "conviction_rationale": "<why this specific score — 1-3 sentences>",
   "catalysts": [
     {
       "timeframe": "<e.g. 'Next 1-3 mo', 'Q2 2026', '6-12 mo'>",
@@ -223,11 +229,6 @@ Your thesis must be:
     },
     ... 3-5 catalysts
   ],
-  "stance": "long" | "avoid" | "short",
-  "time_horizon": "<e.g. '12 months'>",
-  "price_targets": {"bear": <per-share price>, "base": <per-share price>, "bull": <per-share price>},
-  "conviction_score": <int 0-100 — conviction in the stance above>,
-  "conviction_rationale": "<why this specific score — 1-3 sentences>",
   "kill_criteria": [
     {
       "condition": "<what would falsify the thesis>",
@@ -252,10 +253,9 @@ Your thesis must be:
 
 ## Rules
 - Output ONLY the JSON object. No backticks, no commentary, no preamble.
-- stance is the call you would make today: "long" (expect the stock to outperform over the horizon), "short" (expect it to underperform), or "avoid" (no edge either way). The quick screen above is a coarse pre-screen, not the answer — the stance follows the full evidence and may contradict it.
-- conviction_score is conviction IN THE STANCE. A short thesis you strongly believe is a high score with stance "short".
-- price_targets are per-share prices at time_horizon under the bear, base and bull scenarios for the stock (bear <= base <= bull), anchored to the current price in Market data. The pipeline computes reward/risk from them — do not state a ratio yourself.
-- Be calibrated. A conviction of 70 means genuinely good, not great. 85+ means exceptional with clear catalysts.
+- Value first, then compare. Derive price_targets from valuation_basis — what the business is worth under each scenario at time_horizon — without anchoring on the current price. Only then compare the base target with the current price in Market data. (bear <= base <= bull, per-share prices. The pipeline computes reward/risk from them — do not state a ratio yourself.)
+- stance follows from that comparison: "long" when the base target is at least 10% above the current price, "short" when it is at least 10% below, "avoid" only when your own valuation lands within 10% of the price. Evidence that is mixed is normal for a real company; it is not by itself a reason to avoid — the scenarios and their targets are where you weigh it. The quick screen above is a coarse pre-screen, not the answer.
+- conviction_score is conviction IN THE STANCE, and uses the whole scale: 20-40 a lean you would not act on, 45-60 a real but contestable call, 65-80 a strong call with specific evidence, 85+ exceptional with clear catalysts. Score this company on its evidence; there is no default middle value.
 - Bull and bear points must have specific evidence, not generic statements.
 - Catalysts must have concrete timeframes, not vague "eventually".
 - Every claim must trace to a category analysis from the deep dive results below.

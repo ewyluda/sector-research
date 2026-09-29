@@ -39,7 +39,7 @@ class StartRunRequest(BaseModel):
 
 
 class AdvanceRunRequest(BaseModel):
-    action: Literal["approve", "flag", "stop"]
+    action: Literal["approve", "flag", "stop", "retry"]
     feedback: str | None = None
 
 
@@ -234,6 +234,21 @@ async def advance_run(
         run.status = "in_progress"
         run.state = state.to_dict()
         await db.commit()
+        await db.refresh(run)  # updated_at is set server-side; load it before serializing
+        asyncio.create_task(pipeline._run_phase(run.id, state))
+        return _run_to_detail(run)
+
+    # A run that failed mid-phase (API outage, exhausted credits) re-runs the
+    # phase that failed; completed phases — e.g. a paid-for deep dive — are kept.
+    if payload.action == "retry":
+        if run.status != "error":
+            raise HTTPException(status_code=400, detail=f"Only failed runs can be retried (this one is '{run.status}')")
+        state = ResearchState.from_dict(run.state)
+        state.status = "in_progress"
+        run.status = "in_progress"
+        run.state = state.to_dict()
+        await db.commit()
+        await db.refresh(run)  # updated_at is set server-side; load it before serializing
         asyncio.create_task(pipeline._run_phase(run.id, state))
         return _run_to_detail(run)
 

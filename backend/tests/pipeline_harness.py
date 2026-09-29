@@ -105,8 +105,21 @@ CANNED: dict[str, dict] = {
         "catalysts": [{"timeframe": "Q4 2026", "description": f"Catalyst {i}", "type": "earnings"} for i in range(3)],
         "conviction_score": 58, "conviction_rationale": "Fixture rationale.",
         "stance": "long", "time_horizon": "12 months",
+        "valuation_basis": "Fixture: 20x forward EBITDA.",
+        "kill_criteria": [{"condition": "Margin falls", "threshold": "GM < 30% two quarters", "monitoring_source": "10-Q"}],
+        "pre_mortem": {"framing": "Imagine it's 18 months from now and this thesis is dead. What killed it?",
+                       "failure_modes": [{"mode": f"Mode {i}", "leading_indicator": "Signal", "probability": "Low"}
+                                         for i in range(3)]},
         # Targets are relative to the recorded price at request time; see FakeAnthropic.
         "price_targets": {"bear": 1.0, "base": 1.0, "bull": 1.0},
+    },
+    "PositionMonitorOutput": {
+        "entry_price_low": "$230", "entry_price_high": "$245", "entry_rationale": "Fixture.",
+        "position_size_pct": 2.0, "sizing_rationale": "Fixture.", "add_triggers": ["Margin beat"],
+        "stop_loss_level": "$200", "stop_loss_rationale": "Fixture.", "invalidation_conditions": ["Guide cut"],
+        "monitoring": [{"metric": "Gross margin", "cadence": "quarterly", "threshold": "< 30%"},
+                       {"metric": "Backlog", "cadence": "quarterly", "threshold": "down QoQ"}],
+        "exit_conditions": ["Target reached"], "time_horizon": "12 months",
     },
     "RiskStressTestOutput": {
         "risks": [{"risk": f"Risk {i}", "category": "Financial Health", "probability": "Medium",
@@ -124,11 +137,13 @@ class FakeAnthropic:
     (bear -30%, base +15%, bull +50% → reward/risk 0.5, below the 2.0 loop
     threshold, so a requested loop is honoured)."""
 
-    def __init__(self, *, price: float, risk_loops: int = 0) -> None:
+    def __init__(self, *, price: float, risk_loops: int = 0, fail_once: set[str] | None = None) -> None:
         self.messages = self
         self.requests: list[dict] = []
         self._price = price
         self._risk_loops = risk_loops
+        # Schema titles whose first call fails, like an API error mid-run.
+        self._fail_once = set(fail_once or ())
 
     def _body(self, request: dict) -> str:
         fmt = (request.get("output_config") or {}).get("format")
@@ -145,6 +160,10 @@ class FakeAnthropic:
         return json.dumps(body)
 
     def _message(self, request: dict):
+        title = ((request.get("output_config") or {}).get("format") or {}).get("schema", {}).get("title")
+        if title in self._fail_once:
+            self._fail_once.discard(title)
+            raise RuntimeError("Your credit balance is too low to access the Anthropic API.")
         self.requests.append(request)
         usage = SimpleNamespace(input_tokens=1000, output_tokens=500,
                                 cache_read_input_tokens=0, cache_creation_input_tokens=0)

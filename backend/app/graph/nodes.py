@@ -57,7 +57,7 @@ from backend.app.graph.state import (
     ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
 from backend.app.models.phase_schemas import (
-    QuickScreenOutput, ThesisLLMOutput, RiskStressTestOutput, PositionMonitorOutput,
+    QuickScreenOutput, ThesisLLMOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput,
     DeepDiveCategoryOutput, reward_risk,
     quick_screen_recommendation, quick_screen_score,
 )
@@ -688,10 +688,11 @@ def _build_targeted_followup_user_msg(
 
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────
 
-def build_thesis_user_message(state: ResearchState) -> str:
+def build_thesis_user_message(state: ResearchState, as_of: str | None = None) -> str:
     """The thesis prompt's user message for a state that has finished its deep
     dive. Shared with the eval harness, which checks that numbers in a thesis
-    trace back to this text."""
+    trace back to this text and pins `as_of` to the date its frozen input was
+    produced (today's date otherwise)."""
     # Format category results
     results = state.get_deep_dive_results()
 
@@ -727,7 +728,7 @@ def build_thesis_user_message(state: ResearchState) -> str:
     return THESIS_USER.format(
         ticker=state.ticker,
         theme=_theme_context(state),
-        as_of=_as_of(),
+        as_of=as_of or _as_of(),
         market_data=_market_data_block(state),
         quick_screen_verdict=qs_verdict,
         quick_screen_score=qs_score,
@@ -778,7 +779,7 @@ async def node_thesis_construction(state: ResearchState, fmp: FMPClient | None =
             client = fmp or FMPClient()  # the pipeline passes its shared client
             try:
                 async with unit_of_work() as cat_db:
-                    await promote_catalysts(state, parsed, client, cat_db)
+                    await promote_catalysts(state, ThesisOutput.model_validate(structured), client, cat_db)
             finally:
                 if fmp is None:
                     await client.close()

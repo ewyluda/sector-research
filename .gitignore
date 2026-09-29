@@ -41,7 +41,9 @@ docs/superpowers/specs/
 .worktrees/
 
 # Claude Code local settings + worktrees
-.claude/
+.claude/*
+# Shared workflow skills are part of the repo (see README "How it was built").
+!.claude/skills/
 
 # Research memos drafted outside the app (not for the public repo)
 docs/public-equity/

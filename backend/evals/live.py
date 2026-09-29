@@ -108,6 +108,7 @@ def summarize(ticker: str, runs: list[dict], price: float | None) -> dict:
         "conviction_mean": statistics.fmean(convictions),
         "conviction_sd": statistics.pstdev(convictions),
         "base_target_cv": statistics.pstdev(bases) / statistics.fmean(bases),
+        "implied_move": (statistics.median(bases) / price - 1) if price else None,
         "grounded_data": med([r["grounded_data"] for r in runs if r["grounded_data"] is not None]),
         "grounded_prompt": med([r["grounded_prompt"] for r in runs if r["grounded_prompt"] is not None]),
         "uncited_share": med([r["uncited_share"] for r in runs if r["uncited_share"] is not None]),
@@ -147,7 +148,9 @@ async def main(reruns: int, tickers: list[str] | None, judge: bool, dry_run: boo
     llm.usage_sink = sink
 
     async def per_ticker(ticker: str, state: ResearchState) -> tuple[str, list[dict]]:
-        prompt = build_thesis_user_message(state)
+        # The date the frozen input was produced, not today: otherwise every
+        # input reads as months stale.
+        prompt = build_thesis_user_message(state, as_of=(state.created_at or "")[:10] or None)
         runs = []
         for _ in range(reruns):  # sequential: later reruns and judgements read the cache
             try:
@@ -165,28 +168,43 @@ async def main(reruns: int, tickers: list[str] | None, judge: bool, dry_run: boo
         per[ticker]["errors"] = [r["error"] for r in runs if "error" in r]
 
     RESULTS.mkdir(parents=True, exist_ok=True)
-    out_path = RESULTS / f"{date.today().isoformat()}_{THESIS_PROMPT_VERSION}.json"
+    out_path = RESULTS / f"{date.today().isoformat()}_{THESIS_PROMPT_VERSION}_{len(states)}x{reruns}.json"
     out_path.write_text(json.dumps({
         "date": date.today().isoformat(), "thesis_prompt_version": THESIS_PROMPT_VERSION,
         "model": DEEP_MODEL, "judge_model": JUDGE_MODEL if judge else None, "reruns": reruns,
         "total_cost_usd": round(sum(u.cost_usd or 0 for u in usage), 4),
-        "summary": per, "runs": results,
+        "spread": spread(results), "summary": per, "runs": results,
     }, indent=1, default=str))
     print_table(per)
+    print(f"\nspread: {spread(results)}")
     print(f"\nactual cost ${sum(u.cost_usd or 0 for u in usage):.2f} · wrote {out_path}")
+
+
+def spread(results: dict) -> dict:
+    """Does the step discriminate? The 2026-09-28 run said avoid for 29 of 30
+    theses with conviction 55-58 — perfectly 'stable' and useless."""
+    theses = [r["thesis"] for runs in results.values() for r in runs if "error" not in r]
+    convictions = [t["conviction_score"] for t in theses]
+    return {
+        "stances": dict(Counter(t["stance"] for t in theses)),
+        "distinct_convictions": len(set(convictions)),
+        "conviction_range": [min(convictions), max(convictions)] if convictions else None,
+        "conviction_sd": statistics.pstdev(convictions) if convictions else None,
+    }
 
 
 def print_table(per: dict) -> None:
     pct = lambda v: "—" if v is None else f"{v:.0%}"  # noqa: E731
-    print("\n| ticker | stance (agree) | conviction ± sd | base-target CV | grounded in data | uncited | issues | judge |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("\n| ticker | stance (agree) | conviction ± sd | base vs price | base-target CV | grounded in data | uncited | issues | judge |")
+    print("|---|---|---|---|---|---|---|---|---|")
     for s in per.values():
         if not s.get("reruns"):
             print(f"| {s['ticker']} | failed: {s.get('errors')} |")
             continue
         top = max(s["stances"], key=s["stances"].get)
         judge = " / ".join(f"{s['judge'][d]:.1f}" for d in DIMENSIONS) if "judge" in s else "—"
-        print(f"| {s['ticker']} | {top} ({pct(s['stance_agreement'])}) | {s['conviction_mean']:.0f} ± {s['conviction_sd']:.0f} "
+        move = "—" if s.get("implied_move") is None else f"{s['implied_move']:+.0%}"
+        print(f"| {s['ticker']} | {top} ({pct(s['stance_agreement'])}) | {s['conviction_mean']:.0f} ± {s['conviction_sd']:.0f} | {move} "
               f"| {s['base_target_cv']:.1%} | {pct(s['grounded_data'])} | {pct(s['uncited_share'])} "
               f"| {', '.join(f'{k}×{v}' for k, v in s['issues'].items()) or '—'} | {judge} |")
     print(f"\njudge columns: {' / '.join(DIMENSIONS)} (1-5)")

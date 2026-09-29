@@ -29,6 +29,12 @@ ENABLED = os.environ.get("PIPELINE_E2E") == "1"
 
 @unittest.skipUnless(ENABLED, "set PIPELINE_E2E=1 and point DATABASE_URL at a migrated Postgres")
 class PipelineEndToEndTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncTearDown(self):
+        # Each test runs on its own event loop; pooled connections are bound to
+        # the loop that opened them, so drop them between tests.
+        from backend.app.db import engine
+        await engine.dispose()
+
     async def test_a_run_completes_every_phase_with_one_loop_back(self):
         import httpx
         from sqlalchemy import select
@@ -113,6 +119,70 @@ class PipelineEndToEndTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(report["phases"]["thesis"]["structured"]["stance"], "long")
         self.assertEqual(usage["calls"], len(calls))
         self.assertEqual(fmp.misses and [m for m in fmp.misses if m.startswith("get_income")], [])
+
+    async def test_a_failed_run_retries_from_the_phase_that_failed(self):
+        """An API failure at the thesis step (e.g. exhausted credits) leaves the
+        run in error on that phase; retry re-runs it and keeps the deep dive."""
+        import httpx
+        from sqlalchemy import select
+
+        from backend.app.db import async_session
+        from backend.app.graph import llm
+        from backend.app.graph.prompts import DEEP_DIVE_CATEGORIES
+        from backend.app.graph.state import ResearchState
+        from backend.app.main import app
+        from backend.app.models.research_run import ResearchRun
+        from backend.app.models.theme import Theme
+        from backend.app.services.pipeline import PipelineService
+        from backend.tests.pipeline_harness import FIXTURES, FakeAnthropic, ReplayFMP
+
+        fmp = ReplayFMP(FIXTURES / "fmp_VRT.json")
+        profile, _ = await fmp.get_company_profile("VRT")
+        price = float((profile[0] if isinstance(profile, list) else profile)["price"])
+        fake = FakeAnthropic(price=price, fail_once={"ThesisLLMOutput"})
+
+        async def settle():
+            pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+            await asyncio.gather(*pending, return_exceptions=True)
+
+        async def load(run_id):
+            async with async_session() as db:
+                return (await db.execute(select(ResearchRun).where(ResearchRun.id == run_id))).scalar_one()
+
+        with patch.object(llm, "get_client", return_value=fake):
+            svc = PipelineService(fmp=fmp)
+            app.state.pipeline = svc
+            async with async_session() as db:
+                theme = Theme(name="E2E retry theme", description="Retry test.")
+                db.add(theme)
+                await db.commit()
+                run = await svc.create_run("VRT", theme.id, db)
+            await svc._run_phase(run.id, ResearchState.from_dict(run.state))
+            await settle()
+            failed = await load(run.id)
+            self.assertEqual((failed.status, failed.phase), ("error", "thesis_construction"))
+
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as client:
+                r = await client.post(f"/api/runs/{run.id}/advance", json={"action": "retry"})
+                self.assertEqual(r.status_code, 200, r.text)
+                again = await client.post(f"/api/runs/{run.id}/advance", json={"action": "retry"})
+                self.assertEqual(again.status_code, 400)  # only failed runs retry
+            await settle()
+
+        done = await load(run.id)
+        self.assertEqual(done.status, "completed")
+
+        # Approving a completed run starts the position monitor; the response
+        # must serialize (the route used to commit and then read expired fields).
+        with patch.object(llm, "get_client", return_value=fake):
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as client:
+                r = await client.post(f"/api/runs/{run.id}/advance", json={"action": "approve"})
+            self.assertEqual(r.status_code, 200, r.text)
+            await settle()
+        self.assertIn("position", (await load(run.id)).state["phase_outputs"])
+        deep_dive_calls = [r for r in fake.requests
+                           if r.get("output_config", {}).get("format", {}).get("schema", {}).get("title") == "DeepDiveCategoryOutput"]
+        self.assertEqual(len(deep_dive_calls), len(DEEP_DIVE_CATEGORIES))  # the deep dive ran once
 
 
 if __name__ == "__main__":

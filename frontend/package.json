@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "node --test lib/*.test.mts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:demo": "node demo/split.mjs && NEXT_PUBLIC_DEMO=1 next build"
   },
   "dependencies": {
     "clsx": "^2.1.1",

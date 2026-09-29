@@ -1,4 +1,4 @@
-import { apiFetch, BASE } from "./core";
+import { apiFetch, BASE, request } from "./core";
 
 // ── Transcript delta ────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ export interface TranscriptDeltaRead {
 
 export const transcriptDeltaApi = {
   async getLatest(ticker: string): Promise<TranscriptDeltaRead | null> {
-    const r = await fetch(`${BASE}/api/transcripts/delta/${encodeURIComponent(ticker)}/latest`);
+    const r = await request(`${BASE}/api/transcripts/delta/${encodeURIComponent(ticker)}/latest`);
     if (r.status === 204) return null;
     if (!r.ok) throw new Error(`getLatest ${ticker}: ${r.status}`);
     return r.json();
@@ -51,7 +51,7 @@ export const transcriptDeltaApi = {
   },
   async compute(ticker: string, opts: { force?: boolean } = {}): Promise<TranscriptDeltaRead> {
     const qs = opts.force ? "?force=true" : "";
-    const r = await fetch(
+    const r = await request(
       `${BASE}/api/transcripts/delta/${encodeURIComponent(ticker)}${qs}`,
       { method: "POST" },
     );
