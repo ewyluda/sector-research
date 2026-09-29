@@ -1,6 +1,6 @@
 import json
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 from backend.app.models.prospectus_schemas import (
     CategoriesStepOutput,
@@ -8,6 +8,7 @@ from backend.app.models.prospectus_schemas import (
     ProspectusCategoryResult,
 )
 from backend.app.services.prospectus_thesis import synthesize_thesis
+from backend.tests.llm_fakes import structured_returning
 
 
 def _sample_categories() -> CategoriesStepOutput:
@@ -43,8 +44,8 @@ class TestSynthesizeThesis(unittest.IsolatedAsyncioTestCase):
                 },
             ],
         })
-        with patch("backend.app.services.prospectus_thesis.complete",
-                   new=AsyncMock(return_value=payload)):
+        with patch("backend.app.services.prospectus_thesis.complete_structured",
+                   new=structured_returning(payload)):
             out = await synthesize_thesis(
                 issuer_name="ACME Rockets",
                 categories=_sample_categories(),

@@ -78,7 +78,9 @@ Rules:
 - Include EVERY existing open catalyst in catalyst_updates. If unchanged, new_status="still_pending".
 """
 
-CHALLENGE_USER_TEMPLATE = """Existing thesis (summary):
+CHALLENGE_USER_TEMPLATE = """As of: {as_of}
+
+Existing thesis (summary):
 {prior_thesis}
 
 Existing kill criteria (with ordinals):

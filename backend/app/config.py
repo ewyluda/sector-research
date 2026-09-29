@@ -32,6 +32,13 @@ class Settings(BaseSettings):
     fmp_base_url: str = "https://financialmodelingprep.com/stable"
     x_base_url: str = "https://api.twitter.com/2"
 
+    # ── LLM models ────────────────────────────────────────────────────────────
+    # Deep tier = synthesis (thinking always on; effort sets depth, latency, cost).
+    # Fast tier = extraction / classification. Override per environment.
+    llm_model_deep: str = "claude-opus-5-5"
+    llm_deep_effort: str = "medium"  # low | medium | high | xhigh | max
+    llm_model_fast: str = "claude-haiku-4-5-20251001"
+
     # ── App ───────────────────────────────────────────────────────────────────
     log_level: str = "INFO"
     cors_origins: list[str] = [

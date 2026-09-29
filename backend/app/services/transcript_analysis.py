@@ -10,13 +10,13 @@ in tests, not this module).
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 from dataclasses import dataclass
 from typing import Literal
 
 from backend.app.clients.fmp import FMPClient
-from backend.app.graph.llm import HAIKU, SONNET
+from backend.app.graph.llm import FAST_MODEL, DEEP_MODEL
+from backend.app.graph.output_parser import extract_json_value
 from backend.app.graph.prompts import (
     TRANSCRIPT_PASS1_SYSTEM,
     TRANSCRIPT_PASS2_SYSTEM,
@@ -60,14 +60,19 @@ async def run_transcript_analysis(
         return TranscriptAnalysisResult(status="no_data", value=None, error=None)
 
     def _parse_pass(raw):
-        """Parse LLM response as JSON, falling back to raw string on failure."""
+        """Parse a pass's JSON. Models wrap it in ```json fences or add a
+        preamble, and a bare json.loads left all 128 stored passes as strings
+        that build_transcript_context then skipped — so transcript analysis
+        never reached a deep-dive prompt. Keep the raw string only when no
+        JSON can be recovered."""
         if isinstance(raw, Exception):
             return str(raw)
         if isinstance(raw, str):
-            try:
-                return json.loads(raw)
-            except (json.JSONDecodeError, ValueError):
+            value = extract_json_value(raw)
+            if value is None:
+                logger.warning("transcript pass returned no JSON for %s; head: %r", ticker, raw[:200])
                 return raw
+            return value
         return raw
 
     try:
@@ -80,10 +85,11 @@ async def run_transcript_analysis(
 
         results = {}
 
-        # Passes 1–2: Haiku
+        # Passes 1–2: Haiku. Their JSON runs past 1,000 tokens on a full
+        # call; the old 800/1,000 caps truncated every one (live, 2026-09-27).
         pass1, pass2 = await asyncio.gather(
-            complete(TRANSCRIPT_PASS1_SYSTEM, transcript_text, model=HAIKU, max_tokens=1000),
-            complete(TRANSCRIPT_PASS2_SYSTEM, transcript_text, model=HAIKU, max_tokens=800),
+            complete(TRANSCRIPT_PASS1_SYSTEM, transcript_text, model=FAST_MODEL, max_tokens=4000),
+            complete(TRANSCRIPT_PASS2_SYSTEM, transcript_text, model=FAST_MODEL, max_tokens=4000),
             return_exceptions=True,
         )
         results["pass1_claims"] = _parse_pass(pass1)
@@ -93,9 +99,9 @@ async def run_transcript_analysis(
         qa_section = transcript_text[transcript_text.lower().find("question"):] if "question" in transcript_text.lower() else transcript_text
         qa_section = qa_section[:16800]
         pass3, pass4, pass5 = await asyncio.gather(
-            complete(TRANSCRIPT_PASS3_SYSTEM, qa_section, model=SONNET, max_tokens=1000),
-            complete(TRANSCRIPT_PASS4_SYSTEM, all_transcripts_text, model=SONNET, max_tokens=1200),
-            complete(TRANSCRIPT_PASS5_SYSTEM, all_transcripts_text, model=SONNET, max_tokens=1000),
+            complete(TRANSCRIPT_PASS3_SYSTEM, qa_section, model=DEEP_MODEL, max_tokens=1000),
+            complete(TRANSCRIPT_PASS4_SYSTEM, all_transcripts_text, model=DEEP_MODEL, max_tokens=1200),
+            complete(TRANSCRIPT_PASS5_SYSTEM, all_transcripts_text, model=DEEP_MODEL, max_tokens=1000),
             return_exceptions=True,
         )
         results["pass3_qa_tensions"] = _parse_pass(pass3)
@@ -107,7 +113,7 @@ async def run_transcript_analysis(
         has_capex = any(kw in transcript_text.lower() for kw in capex_keywords)
         if has_capex:
             try:
-                pass6 = await complete(TRANSCRIPT_PASS6_SYSTEM, transcript_text[:4000], model=SONNET, max_tokens=1200)
+                pass6 = await complete(TRANSCRIPT_PASS6_SYSTEM, transcript_text[:4000], model=DEEP_MODEL, max_tokens=1200)
             except Exception as exc:
                 pass6 = exc
             results["pass6_bom"] = _parse_pass(pass6)

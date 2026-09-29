@@ -63,6 +63,48 @@ class XClientError(Exception):
     pass
 
 
+def _x_error(e: httpx.HTTPStatusError) -> XClientError:
+    """Rate-limit (429) and out-of-credits (402) responses raise instead of
+    returning [] — an empty list used to be stored as a real "0 mentions,
+    decelerating" signal, overwriting the last good value."""
+    code = e.response.status_code
+    if code == 429:
+        return XClientError("X API rate limit (429)")
+    if code == 402:
+        return XClientError("X API credits depleted (402)")
+    return XClientError(f"X API error: {e}")
+
+
+VELOCITY_RECENT_DAYS = 3
+VELOCITY_BASELINE_DAYS = 4
+
+
+def velocity_from_daily_counts(daily: list[int]) -> dict:
+    """Pure: velocity signal from daily counts (oldest first, last bucket partial)."""
+    complete = daily[:-1] if len(daily) > 1 else daily
+    recent = complete[-VELOCITY_RECENT_DAYS:]
+    baseline = complete[-(VELOCITY_RECENT_DAYS + VELOCITY_BASELINE_DAYS):-VELOCITY_RECENT_DAYS]
+    recent_avg = sum(recent) / len(recent) if recent else 0.0
+    baseline_avg = sum(baseline) / len(baseline) if baseline else 0.0
+    ratio = round(recent_avg / baseline_avg, 3) if baseline_avg > 0 else None
+    if ratio is None:
+        direction = "accelerating" if recent_avg > 0 else "stable"
+    elif ratio > 1.3:
+        direction = "accelerating"
+    elif ratio < 0.7:
+        direction = "decelerating"
+    else:
+        direction = "stable"
+    return {
+        "ratio": ratio,
+        "count_7d": sum(complete[-7:]),
+        "recent_daily_avg": round(recent_avg, 1),
+        "baseline_daily_avg": round(baseline_avg, 1),
+        "daily_counts": daily,
+        "direction": direction,
+    }
+
+
 class XClient:
     """Async X API v2 client with rate limiting and signal computation."""
 
@@ -103,13 +145,25 @@ class XClient:
             data = resp.json()
             return data.get("data", [])
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                logger.warning("X API rate limit hit, backing off 60s")
-                await asyncio.sleep(60)
-                return []
-            raise XClientError(f"X API error: {e}") from e
+            raise _x_error(e) from e
         except Exception as e:
             raise XClientError(f"X request failed: {e}") from e
+
+    async def _counts_recent(self, query: str) -> list[int]:
+        """Daily post counts for the last 7 days, oldest first (the final
+        bucket is today, partial). One request, no pagination, no 100 cap."""
+        await self._limiter.acquire()
+        try:
+            resp = await self._http.get(
+                f"{self._base_url}/tweets/counts/recent",
+                params={"query": query, "granularity": "day"},
+            )
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise _x_error(e) from e
+        except Exception as e:
+            raise XClientError(f"X request failed: {e}") from e
+        return [int(b.get("tweet_count", 0)) for b in resp.json().get("data", [])]
 
     def _build_ticker_query(self, ticker: str, company_name: str = "") -> str:
         """Build an X search query for a ticker."""
@@ -170,61 +224,27 @@ class XClient:
         ticker: str,
         company_name: str = "",
     ) -> tuple[dict, Citation]:
-        """
-        Velocity = 7d_count / 30d_count ratio.
+        """Mention velocity from X's daily post counts.
 
-        Returns:
-          {
-            "ratio": float,
-            "count_7d": int,
-            "count_30d": int,
-            "direction": "accelerating" | "stable" | "decelerating",
-            "prior_ratio": float | None   # for SurpriseAlert comparison
-          }
+        ratio = mean daily posts over the last 3 complete days / mean over the
+        4 complete days before them (>1.3 accelerating, <0.7 decelerating).
+
+        Replaces a computation that could only ever return 1.0: it scaled the
+        7-day count by 4 and divided it back out, made a second identical
+        (paid) search whose result it discarded, and capped counts at the
+        100 posts of one search page.
         """
-        now = datetime.now(timezone.utc)
         query = self._build_ticker_query(ticker, company_name)
-
-        # Fetch 7-day window
-        posts_7d = await self._search_recent(
-            query, max_results=100, start_time=now - timedelta(days=7)
-        )
-        count_7d = len(posts_7d)
-
-        # X Basic only goes back 7 days on search/recent, so we approximate
-        # 30-day count by scaling 7d count with a smoothing factor.
-        # When full archive access is available, replace this with two real queries.
-        # For now: fetch a second sample at different time and extrapolate.
-        await self._search_recent(
-            query, max_results=100, start_time=now - timedelta(days=7)
-        )
-        # Approximation: treat 7d sample as ~25% of 30d volume (conservative)
-        count_30d_approx = max(count_7d * 4, 1)
-
-        ratio = count_7d / (count_30d_approx / 4) if count_30d_approx > 0 else 1.0
-
-        if ratio > 1.3:
-            direction = "accelerating"
-        elif ratio < 0.7:
-            direction = "decelerating"
-        else:
-            direction = "stable"
-
-        signal_data = {
-            "ratio": round(ratio, 3),
-            "count_7d": count_7d,
-            "count_30d_approx": count_30d_approx,
-            "direction": direction,
-        }
+        daily = await self._counts_recent(query)
+        signal_data = velocity_from_daily_counts(daily)
 
         citation = Citation(
-            value=f"{direction} ({count_7d} posts/7d)",
+            value=f"{signal_data['direction']} ({signal_data['count_7d']} posts/7d)",
             metric="X Velocity Signal",
-            source_name="X API v2 /tweets/search/recent",
-            source_url=f"https://api.twitter.com/2/tweets/search/recent?query={query[:60]}",
+            source_name="X API v2 /tweets/counts/recent",
+            source_url=f"https://api.twitter.com/2/tweets/counts/recent?query={query[:60]}",
             tier=2,
         )
-
         return signal_data, citation
 
     async def compute_narrative_signal(

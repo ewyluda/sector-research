@@ -42,3 +42,6 @@ docs/superpowers/specs/
 
 # Claude Code local settings + worktrees
 .claude/
+
+# Research memos drafted outside the app (not for the public repo)
+docs/public-equity/

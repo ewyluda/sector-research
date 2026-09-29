@@ -13,7 +13,9 @@ function StmtTable({ title, lines, stmt, state, focused, onFocus, onEdit }: {
 }) {
   return (
     <div className="mb-6">
-      <h2 className="px-6 py-1 text-sm font-semibold text-[var(--text)] sticky top-0 bg-[var(--surface)] border-b border-[var(--border)] z-10">{title}</h2>
+      <h2 className="px-6 py-1 text-sm font-semibold text-[var(--text)] sticky top-0 bg-[var(--surface)] border-b border-[var(--border)] z-10">
+        {title} <span className="font-normal text-xs text-[var(--text-faint)]">$M · shares M · EPS $</span>
+      </h2>
       <div className="overflow-x-auto">
         <table className="border-collapse w-max">
           <thead>
@@ -32,7 +34,7 @@ function StmtTable({ title, lines, stmt, state, focused, onFocus, onEdit }: {
                 <td className="sticky left-0 bg-[var(--surface)] text-left text-xs text-[var(--text)] px-6 py-1">{li}</td>
                 {state.periods.map((p) => {
                   const path = toWire(statementPath(stmt, li, p.label));
-                  return <CellRenderer key={path} cell={state[stmt][li]?.[p.label]} cellPath={path}
+                  return <CellRenderer key={path} cell={state[stmt][li]?.[p.label]} cellPath={path} valueKey={li}
                                        focused={focused === path} onFocus={onFocus} onCommitEdit={onEdit}
                                        editable={!p.is_historical} />;
                 })}

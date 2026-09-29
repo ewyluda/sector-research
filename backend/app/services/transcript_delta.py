@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-import json
 import logging
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -37,15 +36,23 @@ def compute_fingerprint(window: list[dict]) -> str:
     return hashlib.sha1(payload.encode("utf-8")).hexdigest()
 
 
+from pydantic import BaseModel  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.exc import IntegrityError  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
 from backend.app.clients.fmp import FMPClient  # noqa: E402
-from backend.app.graph.llm import HAIKU, complete  # noqa: E402
+from backend.app.graph.llm import FAST_MODEL, complete_structured  # noqa: E402
 from backend.app.models.transcript_delta import TranscriptDelta  # noqa: E402
 from backend.app.models.transcript_delta_schemas import AxesDelta  # noqa: E402
 from backend.app.services.edgar_transcripts_relationships import fetch_recent_transcripts  # noqa: E402
+
+
+class _AxesEnvelope(BaseModel):
+    """Top-level output shape the prompt asks for: {"axes": {...}}."""
+
+    axes: AxesDelta
+
 
 TRANSCRIPT_WINDOW = 4
 MIN_TRANSCRIPTS_FOR_DELTA = 2
@@ -161,18 +168,14 @@ async def compute_delta(
         return await compute_delta(ticker=ticker, db=db, fmp=fmp, force=force)
 
     try:
-        raw = await complete(
-            model=HAIKU,
+        parsed = await complete_structured(
+            model=FAST_MODEL,
             system=_SYSTEM_PROMPT,
             user=_build_user_prompt(transcripts),
-            assistant_prefill='{"axes":',
+            output_model=_AxesEnvelope,
             max_tokens=2500,
         )
-        # Haiku occasionally appends trailing content (whitespace, a stray note)
-        # after the JSON object. raw_decode parses the first JSON value and
-        # ignores anything past it; json.loads would raise "Extra data".
-        parsed, _end = json.JSONDecoder().raw_decode(raw.lstrip())
-        axes = AxesDelta.model_validate(parsed["axes"]).model_dump()
+        axes = parsed.axes.model_dump()
 
         if existing is not None:
             # force=True path: refresh in place — avoids unique constraint violation

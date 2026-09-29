@@ -3,7 +3,7 @@ from __future__ import annotations
 import copy
 import json
 import logging as _logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Callable
 
 from sqlalchemy.exc import IntegrityError as _IntegrityError
@@ -16,7 +16,7 @@ from backend.app.models.workspace_schemas import (
     Highlight, OpenQuestionDelta,
     ImpliedDriver, SensitivityGrid as WSSensitivityGrid, ThesisVsPriced,
 )
-from backend.app.graph.llm import complete as anthropic_complete, HAIKU, SONNET
+from backend.app.graph.llm import complete as anthropic_complete, FAST_MODEL, DEEP_MODEL
 from backend.app.graph.workspace_prompts import (
     RESEARCH_SYSTEM, RESEARCH_USER_TEMPLATE,
     CHALLENGE_SYSTEM, CHALLENGE_USER_TEMPLATE,
@@ -29,22 +29,17 @@ from backend.app.services.reverse_dcf import (
 )
 from backend.app.services.peer_comp import build_peer_comp_table
 from backend.app.services.peer_sets import peers_for_ticker
+from backend.app.services.model_history import map_fmp_quarter, rows_by_quarter
+from backend.app.services.model_periods import calendar_quarter_label
 
 
 def _fmp_period_label(row: dict) -> str | None:
-    """Combine FMP 'period' (e.g. 'Q1') + 'calendarYear' (e.g. '2026') → '2026Q1'.
-
-    Annual rows use 'FY' or similar; we skip those (historical patching is
-    quarterly-only in this step).
-    """
-    period = row.get("period", "")
-    year = str(row.get("calendarYear", ""))
-    if not period or not year:
-        return None
-    # Quarterly: period like "Q1", "Q2", "Q3", "Q4"
-    if period.startswith("Q") and period[1:].isdigit():
-        return f"{year}{period}"
-    return None
+    """Calendar-quarter model label ('2026Q2') for an FMP quarterly row, from
+    its period-end date. FMP /stable/ returns fiscalYear and no calendarYear,
+    so the old calendarYear-based label matched nothing and this refresh never
+    promoted a reported quarter. Shares model_periods' calendarization."""
+    d = row.get("date")
+    return calendar_quarter_label(d) if d else None
 
 
 def _make_cell(value: float, source: str, citation_id: str | None):
@@ -55,39 +50,29 @@ def _make_cell(value: float, source: str, citation_id: str | None):
 
 def _patch_statement(
     statement: dict,
-    rows: list[dict],
-    field_map: dict[str, str],
+    values_by_label: dict[str, dict[str, float]],
     citation_id: str | None,
     historical_labels: set[str],
     promoted_labels: set[str] | None = None,
 ) -> None:
-    """Patch historical cells in a statement dict from FMP rows.
+    """Patch historical cells in a statement dict with reported values.
 
-    A period is patched when it's in `historical_labels` (cell already
-    historical) or in `promoted_labels` (a forecast period that just got
-    actuals reported and is being aged into historical in this refresh).
+    `values_by_label` is {period_label: {line_item: value}} (see
+    model_history.map_fmp_quarter). A period is patched when it's in
+    `historical_labels` (cell already historical) or in `promoted_labels` (a
+    forecast period that just got actuals and is being aged into historical).
 
-    For non-promoted historical periods, existing user overrides /
-    formula / driver cells are preserved (only refreshes prior historical
-    values). For promoted periods, the FMP-reported value overwrites
-    whatever was there — that's the whole point of promotion.
+    For non-promoted historical periods, existing user overrides / formula /
+    driver cells are preserved (only refreshes prior historical values). For
+    promoted periods, the reported value overwrites whatever was there — that's
+    the whole point of promotion.
     """
     promoted_labels = promoted_labels or set()
-    for row in rows:
-        period = _fmp_period_label(row)
-        if not period:
-            continue
+    for period, lines in values_by_label.items():
         is_promoted = period in promoted_labels
         if not is_promoted and period not in historical_labels:
             continue
-        for fmp_key, line_item in field_map.items():
-            raw = row.get(fmp_key)
-            if raw is None:
-                continue
-            try:
-                value = float(raw)
-            except (TypeError, ValueError):
-                continue
+        for line_item, value in lines.items():
             line_dict = statement.setdefault(line_item, {})
             existing = line_dict.get(period)
             if existing is None or existing.source == "historical" or is_promoted:
@@ -108,32 +93,6 @@ def _promote_forecast_periods(state, fmp_period_labels: set[str]) -> set[str]:
     for label in promoted:
         state.drivers.pop(label, None)
     return promoted
-
-
-# FMP income statement field → ModelState line_item
-_INCOME_FIELD_MAP: dict[str, str] = {
-    "revenue": "revenue",
-    "grossProfit": "gross_profit",
-    "operatingIncome": "ebit",
-    "netIncome": "net_income",
-    "eps": "eps_diluted",
-    "weightedAverageShsOutDil": "shares_diluted",
-}
-
-# FMP balance sheet field → ModelState line_item
-_BALANCE_FIELD_MAP: dict[str, str] = {
-    "cashAndCashEquivalents": "cash_and_equivalents",
-    "totalDebt": "long_term_debt",   # best available single-field proxy
-    "totalAssets": "total_assets",
-    "totalEquity": "total_equity",
-}
-
-# FMP cash flow field → ModelState line_item
-_CF_FIELD_MAP: dict[str, str] = {
-    "operatingCashFlow": "operating_cash_flow",
-    "capitalExpenditure": "capex",
-    "freeCashFlow": "free_cash_flow",
-}
 
 
 async def _fetch_live_price(fmp, ticker: str) -> float:
@@ -240,18 +199,20 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
 
     # Identify FMP-reported periods so any that are still in our forecast set
     # can be promoted to historical (the "newly reported quarter" case).
-    fmp_period_labels: set[str] = set()
-    for rows in (income_rows, balance_rows, cf_rows):
-        for row in rows:
-            label = _fmp_period_label(row)
-            if label:
-                fmp_period_labels.add(label)
-    promoted_labels = _promote_forecast_periods(new_state, fmp_period_labels)
+    # One mapping shared with baseline seeding (model_history), so a refreshed
+    # quarter carries the same full statements the model was built from.
+    quarters = rows_by_quarter(income_rows, balance_rows, cf_rows)
+    mapped = {label: map_fmp_quarter(*rows) for label, rows in quarters.items()}
+    promoted_labels = _promote_forecast_periods(new_state, set(quarters))
     historical_labels: set[str] = {p.label for p in new_state.periods if p.is_historical}
 
-    _patch_statement(new_state.income_statement, income_rows, _INCOME_FIELD_MAP, income_cit_id, historical_labels, promoted_labels)
-    _patch_statement(new_state.balance_sheet, balance_rows, _BALANCE_FIELD_MAP, balance_cit_id, historical_labels, promoted_labels)
-    _patch_statement(new_state.cash_flow, cf_rows, _CF_FIELD_MAP, cf_cit_id, historical_labels, promoted_labels)
+    for stmt_name, cit_id in (("income_statement", income_cit_id), ("balance_sheet", balance_cit_id),
+                              ("cash_flow", cf_cit_id)):
+        _patch_statement(
+            getattr(new_state, stmt_name),
+            {label: m[stmt_name] for label, m in mapped.items()},
+            cit_id, historical_labels, promoted_labels,
+        )
 
     # ── 4. Recompute derived cells on both states so that computed-only cells
     #       cancel out in the diff; only genuinely new/changed actuals remain. ──
@@ -326,18 +287,18 @@ async def step_update_refresh(ctx: WorkspaceContext) -> UpdateRefreshOutput:
     )
 
 
-async def haiku_complete(*, system: str, user: str, anthropic) -> str:
+async def fast_complete(*, system: str, user: str, anthropic) -> str:
     """Thin wrapper around graph.llm.complete; named for easy patching in tests."""
     return await anthropic_complete(
-        system=system, user=user, model=HAIKU,
+        system=system, user=user, model=FAST_MODEL,
         max_tokens=2048,
     )
 
 
-async def sonnet_complete(*, system: str, user: str, anthropic) -> str:
+async def deep_complete(*, system: str, user: str, anthropic) -> str:
     """Thin wrapper around graph.llm.complete using Sonnet; named for easy patching in tests."""
     return await anthropic_complete(
-        system=system, user=user, model=SONNET,
+        system=system, user=user, model=DEEP_MODEL,
         max_tokens=4096,
     )
 
@@ -445,7 +406,7 @@ async def step_research(ctx: WorkspaceContext) -> ResearchOutput:
         existing_open_questions=existing_qs_text,
     )
 
-    raw = await haiku_complete(system=RESEARCH_SYSTEM, user=user, anthropic=ctx.anthropic)
+    raw = await fast_complete(system=RESEARCH_SYSTEM, user=user, anthropic=ctx.anthropic)
     payload = _parse_json_lenient(raw)
 
     highlights = [Highlight.model_validate(h) for h in payload.get("highlights", [])]
@@ -563,6 +524,46 @@ async def step_validation(ctx: WorkspaceContext) -> ValidationOutput:
     )
 
 
+MODEL_DELTA_MAX_CELLS = 30
+NEW_SOURCES_BUDGET_CHARS = 8000
+
+
+def _render_model_deltas(refresh: dict | None) -> str:
+    """The update_refresh step's changed cells, as the challenge prompt reads
+    them. (This slot used to receive the literal placeholder
+    "(see step_outputs.update_refresh.changed_cells)".)"""
+    if not refresh or "error" in refresh:
+        return "(model refresh unavailable this run)"
+    if refresh.get("model_skipped"):
+        return "(no saved model for this ticker — model refresh skipped)"
+    cells = refresh.get("changed_cells") or []
+    lines = [
+        f"  {c.get('cell_path')}: {c.get('prior_value')} -> {c.get('new_value')} ({c.get('source')})"
+        for c in cells[:MODEL_DELTA_MAX_CELLS]
+    ]
+    for d in refresh.get("consensus_delta") or []:
+        lines.append(
+            f"  consensus {d.get('metric')} {d.get('period')}: "
+            f"{d.get('prior_consensus')} -> {d.get('new_consensus')}"
+        )
+    return "\n".join(lines) if lines else "(no model cells changed)"
+
+
+def _render_new_sources(refresh: dict | None, research: dict | None) -> str:
+    """New filings from update_refresh plus the research step's findings.
+    (This slot used to receive the literal placeholder "(no new excerpts)".)"""
+    parts: list[str] = []
+    for f in (refresh or {}).get("new_filings") or []:
+        parts.append(f"New filing: {f.get('form')} {f.get('accession')}")
+    if research and "error" not in research:
+        for h in research.get("highlights") or []:
+            parts.append(f"[{h.get('classification')}] {h.get('text')}")
+        if research.get("summary"):
+            parts.append(f"Research summary: {research['summary']}")
+    text = "\n".join(parts)
+    return text[:NEW_SOURCES_BUDGET_CHARS] if text else "(no new filings or research findings)"
+
+
 async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
     import logging
     from sqlalchemy import select
@@ -628,11 +629,14 @@ async def step_challenge(ctx: WorkspaceContext) -> ChallengeOutput:
         prior_thesis=prior_thesis,
         kill_criteria=kill_text,
         catalysts=cat_text,
-        model_deltas="(see step_outputs.update_refresh.changed_cells)",
-        new_sources="(no new excerpts)",
+        model_deltas=_render_model_deltas(ctx.step_outputs.get("update_refresh")),
+        new_sources=_render_new_sources(
+            ctx.step_outputs.get("update_refresh"), ctx.step_outputs.get("research"),
+        ),
+        as_of=date.today().isoformat(),
     )
 
-    raw = await sonnet_complete(system=CHALLENGE_SYSTEM, user=user, anthropic=ctx.anthropic)
+    raw = await deep_complete(system=CHALLENGE_SYSTEM, user=user, anthropic=ctx.anthropic)
     payload = _parse_json_lenient(raw)
 
     writes = [KillCriterionWrite(**w) for w in payload.get("kill_criterion_writes", [])]
@@ -730,6 +734,7 @@ STEP_FUNCTIONS = {
 async def run_steps_in_sequence(ctx: WorkspaceContext, emit: Callable[[dict], None]) -> dict:
     """Run all 5 steps in order. Per-step errors do NOT abort; output dict is keyed by step name."""
     outputs: dict = {}
+    ctx.step_outputs = outputs  # later steps (challenge) read earlier outputs
     for name in STEP_NAMES:
         emit({"type": "step_start", "step": name})
         try:

@@ -11,13 +11,10 @@ A missing year is an explicit null, not a corrupted row.
 """
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any
 
-from pydantic import ValidationError
 
-from backend.app.graph.llm import SONNET, complete
+from backend.app.graph.llm import DEEP_MODEL, complete_structured
 from backend.app.models.prospectus_schemas import ProspectusFinancials
 
 logger = logging.getLogger(__name__)
@@ -70,24 +67,13 @@ async def extract_financials(*, mda_text: str, selected_financials_text: str) ->
     user = f"Extract financials from the following prospectus narrative.\n\n---\n{body[:CHAR_BUDGET]}\n---"
 
     try:
-        raw = await complete(
+        return await complete_structured(
             system=_SYSTEM,
             user=user,
-            model=SONNET,
+            output_model=ProspectusFinancials,
+            model=DEEP_MODEL,
             max_tokens=4096,
-            assistant_prefill='{"annual":',
         )
     except Exception as e:
         logger.warning("prospectus financials Sonnet call failed: %s", e)
-        return ProspectusFinancials()
-
-    # complete() prepends the prefill back when assistant_prefill is set, so
-    # the raw string already starts with the prefill in the happy path.
-    candidate = raw if raw.lstrip().startswith("{") else '{"annual":' + raw
-
-    try:
-        payload: Any = json.loads(candidate)
-        return ProspectusFinancials.model_validate(payload)
-    except (json.JSONDecodeError, ValidationError) as e:
-        logger.warning("prospectus financials parse failed: %s; first 200 chars: %r", e, candidate[:200])
         return ProspectusFinancials()

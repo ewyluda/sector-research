@@ -10,13 +10,13 @@ Six core workflows:
 
 **Discovery** — Open a curated investment theme (e.g., "AI Power Infrastructure") and see every company in that space ranked by signal strength. FMP screener data and X mention velocity surface unknown players alongside known ones. Combined signal score = 40% X velocity + 40% FMP fundamental quality + 20% discovery score.
 
-**Pipeline** — Push any ticker through a 6-phase due diligence framework powered by LangGraph. Phases 1-5 (quick_screen → deep_dive → thesis_construction → risk_stress_test) run continuously after `POST /api/runs`; risk_stress_test can loop back to deep_dive when `loop_required` is set (capped at 2 loops). Phase 6 (position_monitor) is the only manually-gated step — triggered via `POST /api/runs/{id}/advance` once the prior phases complete. Citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
+**Pipeline** — Push any ticker through a 6-phase due diligence framework run as an explicit state machine (see `docs/adr/0004`). Phases 1-5 (quick_screen → deep_dive → thesis_construction → risk_stress_test) run continuously after `POST /api/runs`; risk_stress_test can loop back to deep_dive when `loop_required` is set (capped at 2 loops). Phase 6 (position_monitor) is the only manually-gated step — triggered via `POST /api/runs/{id}/advance` once the prior phases complete. Citations on every data point. Exports to Obsidian markdown when complete. Every phase produces structured JSON output rendered as purpose-built dashboard components.
 
 **Filings** — Extract and analyze SEC EDGAR 10-K / 10-Q / DEF 14A narrative sections. Haiku-powered relationship extraction surfaces customers, suppliers, partners, competitors, and concentration risks from filings. Counterparty names are resolved to canonical tickers via fuzzy matching against the EDGAR universe (~10K entities). Results power a 1-hop supply-chain card in the deep-dive dashboard, a dedicated multi-hop graph page at `/filings/graph` that BFS-walks counterparties of counterparties (optionally gated to a theme's seed tickers), a curation queue for manual resolution, and the Business Quality / Risk Assessment / Future Durability deep-dive prompts — the LLM cites named counterparties as anchors rather than re-quoting filing text. One-click fan-out walks a whole theme's seed tickers through ingest → extract → resolve in sequence.
 
-**Model** — Editable 5-year financial model per ticker, AI-seeded from the latest completed research run. Sonnet emits forecast drivers, the balancing engine recomputes the full 3-statement P&L / BS / CF on every cell edit (plug into `retained_earnings` keeps A=L+E), versions persist to `ticker_models` with a single working draft per ticker. The reverse-DCF tab solves implied revenue growth / EBIT margin / terminal multiple from the live FMP quote, computes the implied IRR, and renders three 21×21 sensitivity heatmaps plus a thesis-vs-priced-in summary. Cell edits, history diff (cell-path-keyed), and a what-if scratch panel (illustrative sliders).
+**Model** — Editable 5-year financial model per ticker, AI-seeded from the latest completed research run. Opus emits forecast drivers over a history seeded from FMP; the engine recomputes the full 3-statement P&L / BS / CF per period on every cell edit and balances without a plug, versions persist to `ticker_models` with a single working draft per ticker. The reverse-DCF tab solves implied revenue growth / EBIT margin / terminal multiple from the live FMP quote, computes the implied IRR, and renders three 21×21 sensitivity heatmaps plus a thesis-vs-priced-in summary. Cell edits, history diff (cell-path-keyed), and a what-if scratch panel (illustrative sliders).
 
-**Workspace Loop** — Five-step thesis refresh that pulls a completed research run forward in time: `update_refresh → research → challenge → differentiate → validate`. Re-pulls FMP financials and promotes newly-published forecast periods from `ai_baseline` → `historical` (warning when previously-edited override cells are evicted), then runs Sonnet/Haiku passes to surface what's changed in the thesis. Produces a fresh `WorkspaceVerdict` (`healthy | imminent | triggered | broken`). Streams via SSE; runs persist to `workspace_runs` with a JSONB `step_outputs` column. Index at `/workspace`, per-run report at `/workspace/[runId]`.
+**Workspace Loop** — Five-step thesis refresh that pulls a completed research run forward in time: `update_refresh → research → challenge → differentiate → validate`. Re-pulls FMP financials and promotes newly-published forecast periods from `ai_baseline` → `historical` (warning when previously-edited override cells are evicted), then runs Opus/Haiku passes to surface what's changed in the thesis. Produces a fresh `WorkspaceVerdict` (`healthy | imminent | triggered | broken`). Streams via SSE; runs persist to `workspace_runs` with a JSONB `step_outputs` column. Index at `/workspace`, per-run report at `/workspace/[runId]`.
 
 **Status Board** — Live tracker of every active thesis across all themes. Aggregates the latest completed run per `(ticker, theme)` with health badges (Healthy / Imminent / Stale / Triggered / Broken), nearest-catalyst proximity, and a kill-criteria summary you can toggle armed/triggered inline. Polls every 60s while the tab is visible. The post-thesis fleet-management view — what to pay attention to and what's quietly aging out. Companion `/catalysts` and `/questions` pages surface the calendar and open-question log feeding the same data.
 
@@ -28,9 +28,9 @@ Six core workflows:
 |---|---|
 | Frontend | Next.js 16 (App Router) + React 19 + Tailwind v4 + Recharts + lightweight-charts |
 | Backend | FastAPI + async SQLAlchemy |
-| Agent orchestration | LangGraph |
+| Pipeline orchestration | Explicit state machine (`graph/routing.py`), state persisted to Postgres per phase |
 | Database | PostgreSQL |
-| LLM (heavy) | Claude Sonnet (`claude-sonnet-4-6`) |
+| LLM (deep tier) | Claude Opus 5.5 (`claude-opus-5-5`, effort `medium`) |
 | LLM (light) | Claude Haiku (`claude-haiku-4-5-20251001`) |
 | Data: fundamentals | FMP API (ultimate tier) — financials, key metrics TTM, growth rates, DCF, estimates, transcripts, analyst grades, insider trading |
 | Data: macro | FRED API — 9 economic series (fed funds, treasuries, CPI, unemployment, GDP, M2, payrolls) |
@@ -53,7 +53,7 @@ Six core workflows:
 ┌─────────────────────────────────▼────────────────────────────────┐
 │                         FastAPI Backend                          │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐ │
-│  │Discovery │ │ LangGraph│ │ Workspace│ │ Filings  │ │ Status │ │
+│  │Discovery │ │ Research │ │ Workspace│ │ Filings  │ │ Status │ │
 │  │ Engine   │ │ Pipeline │ │   Loop   │ │ EDGAR +  │ │ Board  │ │
 │  │(FMP + X) │ │(6-phase) │ │(5-step)  │ │  graph   │ │+ kill  │ │
 │  └────┬─────┘ └────┬─────┘ └────┬─────┘ └────┬─────┘ └───┬────┘ │
@@ -81,21 +81,21 @@ Six core workflows:
 START (POST /api/runs)
   │
   ▼
-[quick_screen]          ← Phase 1: FMP data pull + scoring (Haiku)
+[quick_screen]          ← Phase 1: FMP data pull + scoring (Haiku 4.5)
   │
   ▼
-[deep_dive]             ← Phase 2: 9 categories in parallel (Sonnet)
+[deep_dive]             ← Phase 2: 9 categories in parallel (Opus 5.5)
   │
   ▼
-[thesis_construction]   ← Phase 3 (Sonnet)
+[thesis_construction]   ← Phase 3: stance, targets, horizon (Opus 5.5)
   │
   ▼
-[risk_stress_test]      ← Phase 4 (Sonnet)
+[risk_stress_test]      ← Phase 4: R/R computed in code (Opus 5.5)
   │
-  ├──(loop_required & loop_count ≤ 2)──► [deep_dive] ← targeted loop back
+  ├──(model asks & R/R < 2 & loops < 2)──► [deep_dive] ← re-runs named categories
   │
   ▼
-COMPLETED  ← phases 1-5 run continuously, no interrupts
+COMPLETED  ← phases 1-4 run continuously, no interrupts
   │
   ▼
 ⚡ MANUAL ADVANCE       ← POST /api/runs/{id}/advance (action="approve")
@@ -169,13 +169,14 @@ Beyond the card, the resolved counterparty list is routed into the Business Qual
 
 ## Financial Model + Reverse DCF
 
-Per-ticker editable 3-statement model with versioning and a reverse-DCF engine. Lives at `/model/{ticker}`. All on-demand — no automatic trigger from the LangGraph pipeline.
+Per-ticker editable 3-statement model with versioning and a reverse-DCF engine. Lives at `/model/{ticker}`. All on-demand — no automatic trigger from the research pipeline.
 
 ```
 POST /api/models/{ticker}/initialize?force=
-  ↓  Loads latest completed research_run + risk-free rate (FRED DGS10)
-  ↓  Sonnet emits forecast drivers (annual, cloned to quarterly)
-  ↓  Seeds historical cells from CuratedFinancials, runs recompute()
+  ↓  Seeds 8 calendar quarters of history from FMP statements (balances, reproduces reported EBIT)
+  ↓  WACC from beta + FRED DGS10; exit multiple from TTM EV/EBITDA, bounded [6, 30]
+  ↓  Default drivers: TTM ratios, consensus-then-fade growth; Opus drivers from the latest research run override
+  ↓  recompute() per period (IS → CF → BS), no balancing plug
   ↓  Persists v1 to ticker_models (idempotent unless force=true)
 
 GET /api/models/{ticker}
@@ -211,7 +212,7 @@ Frontend has three hash-routed tabs: `#forecast` (the spreadsheet + driver panel
 
 ### Structured Phase Outputs
 
-Every pipeline phase produces validated JSON output via Pydantic schemas, parsed with a generic `parse_structured_output` function that handles LLM quirks (prose preamble, markdown fences). Each phase has a dedicated React dashboard component with prose fallback for old runs or parse failures.
+Every pipeline phase produces JSON through the API's native structured outputs (`complete_structured`: schema from the Pydantic model, stop_reason checked before parsing, over-length fields clamped, too-short output rejected rather than defaulted). Each phase has a dedicated React dashboard component with prose fallback for old runs or parse failures.
 
 | Phase | Schema | Dashboard |
 |---|---|---|
@@ -279,7 +280,7 @@ No auth system — personal local tool.
 | `CLAUDE.md` | Claude Code guidance for this repo |
 | `backend/app/models/phase_schemas.py` | All Pydantic schemas for structured phase outputs |
 | `backend/app/models/filing.py` | Filing, FilingSection, Relationship, CounterpartyAlias ORM models |
-| `backend/app/graph/pipeline.py` | LangGraph StateGraph definition |
+| `backend/app/graph/routing.py` | Phase routing — the single source of routing truth |
 | `backend/app/graph/nodes.py` | Phase node implementations + data routing tables |
 | `backend/app/graph/prompts.py` | All LLM prompts |
 | `backend/app/clients/edgar.py` | SEC EDGAR client (CIK lookup, company facts, filing fetch) |
@@ -299,7 +300,7 @@ No auth system — personal local tool.
 | `backend/app/api/catalysts.py` | Catalyst calendar |
 | `backend/app/api/questions.py` | Open-question log (dismiss / resolve / retry-auto) |
 | `backend/app/models/model_state.py` | `ModelState` Pydantic + `ModelCell` (drivers/statements/assumptions) |
-| `backend/app/services/model_baseline.py` | Sonnet-seeded baseline orchestrator (`build_baseline_state`, `initialize_or_get_model`) |
+| `backend/app/services/model_baseline.py` | AI-seeded baseline orchestrator (`build_baseline_state`, `initialize_or_get_model`) |
 | `backend/app/services/model_balancing.py` | Pure recompute pipeline: P&L → CF → BS plug into `retained_earnings` |
 | `backend/app/services/dcf.py` | DCF over forecast FCF + terminal value (Gordon growth or EV/EBITDA multiple) |
 | `backend/app/services/reverse_dcf.py` | Bisection solvers + 21×21 sensitivity grids + thesis-vs-priced-in |

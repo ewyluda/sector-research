@@ -6,6 +6,8 @@ import os
 import unittest
 from unittest.mock import AsyncMock, patch
 
+from backend.tests.llm_fakes import structured_returning
+
 os.environ.setdefault("FMP_API_KEY", "test")
 os.environ.setdefault("X_BEARER_TOKEN", "test")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test")
@@ -52,8 +54,8 @@ class ClassifyTests(unittest.IsolatedAsyncioTestCase):
             ' "summary": "The company announced its CFO resigned."}'
         )
         with patch(
-            "backend.app.services.event_classifier.complete",
-            new=AsyncMock(return_value=raw),
+            "backend.app.services.event_classifier.complete_structured",
+            new=structured_returning(raw),
         ):
             result, err = await classify_8k(
                 ticker="NVDA", filing_date="2026-06-09",
@@ -70,8 +72,8 @@ class ClassifyTests(unittest.IsolatedAsyncioTestCase):
             ' "headline": "h", "summary": "s"}'
         )
         with patch(
-            "backend.app.services.event_classifier.complete",
-            new=AsyncMock(return_value=raw),
+            "backend.app.services.event_classifier.complete_structured",
+            new=structured_returning(raw),
         ):
             result, err = await classify_8k(
                 ticker="NVDA", filing_date="2026-06-09", item_codes="", text="x",
@@ -85,8 +87,8 @@ class ClassifyTests(unittest.IsolatedAsyncioTestCase):
             ' "headline": "h", "summary": "s"}'
         )
         with patch(
-            "backend.app.services.event_classifier.complete",
-            new=AsyncMock(return_value=raw),
+            "backend.app.services.event_classifier.complete_structured",
+            new=structured_returning(raw),
         ):
             result, err = await classify_8k(
                 ticker="NVDA", filing_date="2026-06-09", item_codes="", text="x",
@@ -96,7 +98,7 @@ class ClassifyTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_call_failure_returns_error_not_raise(self):
         with patch(
-            "backend.app.services.event_classifier.complete",
+            "backend.app.services.event_classifier.complete_structured",
             new=AsyncMock(side_effect=RuntimeError("api down")),
         ):
             result, err = await classify_8k(

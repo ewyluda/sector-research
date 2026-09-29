@@ -24,6 +24,7 @@ from typing import Any
 import httpx
 
 from backend.app.config import get_settings
+from backend.app.logging_filters import redact_secrets
 from backend.app.models.citation import Citation
 
 logger = logging.getLogger(__name__)
@@ -131,9 +132,11 @@ class FMPClient:
                 import asyncio
                 await asyncio.sleep(wait)
 
-        raise FMPClientError(
+        # httpx error text embeds the full URL, apikey included — redact
+        # before it can reach run state, HTTP responses or logs.
+        raise FMPClientError(redact_secrets(
             f"FMP {endpoint} failed after {MAX_RETRIES} attempts: {last_error}"
-        )
+        )) from None
 
     def _make_citation(
         self, endpoint: str, metric: str, value: Any, params: dict | None = None

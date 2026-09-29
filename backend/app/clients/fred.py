@@ -14,6 +14,7 @@ from typing import Any
 import httpx
 
 from backend.app.config import get_settings
+from backend.app.logging_filters import redact_secrets
 from backend.app.models.citation import Citation
 
 logger = logging.getLogger(__name__)
@@ -95,7 +96,9 @@ class FREDClient:
                 import asyncio
                 await asyncio.sleep(wait)
 
-        raise FREDClientError(f"FRED {endpoint} failed after {MAX_RETRIES} attempts: {last_error}")
+        raise FREDClientError(redact_secrets(
+            f"FRED {endpoint} failed after {MAX_RETRIES} attempts: {last_error}"
+        )) from None
 
     def _make_citation(self, series_id: str, series_name: str) -> Citation:
         return Citation(

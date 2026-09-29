@@ -2,7 +2,7 @@
 
 Exercises:
 1. Direct DB persist of synthetic extracted questions (mimics deep_dive merge)
-2. node_targeted_followup against the synthetic run (Sonnet mocked)
+2. retry_auto_answer on the P1 question (LLM mocked)
 3. Manual dismiss
 4. Cross-run resurfacing query
 
@@ -19,10 +19,10 @@ from uuid import uuid4
 
 from backend.app.db import async_session
 from backend.app.graph import nodes
-from backend.app.graph.state import CategoryResult, ResearchState
 from backend.app.models.question import Question
 from backend.app.models.research_run import ResearchRun
 from backend.app.models.theme import Theme
+from backend.app.services.questions import retry_auto_answer
 from sqlalchemy import delete, select
 
 SYNTH_TICKER = "ZZZQ"
@@ -78,11 +78,9 @@ async def _cleanup(run_id: str) -> None:
         await db.commit()
 
 
-async def _mock_complete(*args, **kwargs):
-    """Return a JSON string matching the TargetedAnswer schema. The
-    assistant_prefill prefix '{"answer_text":' is included because
-    complete() prepends it back on real calls."""
-    return '{"answer_text": "MOCK_ANSWER: data shows X."}'
+async def _mock_structured(*, output_model, **_kwargs):
+    """Stand-in for complete_structured: a validated TargetedAnswer."""
+    return output_model(answer_text="MOCK_ANSWER: data shows X.")
 
 
 async def main() -> None:
@@ -97,36 +95,22 @@ async def main() -> None:
         p1_id, p3_id = ids
         print(f"  ✓ persisted 2 synthetic questions ({p1_id[:8]}..., {p3_id[:8]}...)")
 
-        # 2. Run node_targeted_followup with Sonnet mocked
-        state = ResearchState(
-            ticker=SYNTH_TICKER, theme_id="", run_id=run_id,
-            phase="targeted_followup",
-        )
-        cat_result = CategoryResult(
-            category="Macro & Regime",
-            content="Mock category content.",
-            score=70,
-            key_findings=["finding 1", "finding 2"],
-        )
-        state.phase_outputs["Macro & Regime"] = cat_result.to_dict()
-
-        with patch("backend.app.graph.nodes.complete", _mock_complete):
-            new_state = await nodes.node_targeted_followup(state)
+        # 2. "Retry auto" on the P1 question (the targeted_followup pipeline
+        #    phase was removed — ADR-0005; this manual path replaces it)
+        with patch("backend.app.services.questions.complete_structured", _mock_structured):
+            async with async_session() as db:
+                q = (await db.execute(select(Question).where(Question.id == p1_id))).scalar_one()
+                await retry_auto_answer(db, q)
 
         async with async_session() as db:
             p1 = (await db.execute(select(Question).where(Question.id == p1_id))).scalar_one()
             assert p1.status == "resolved_auto", f"expected resolved_auto, got {p1.status}"
             assert p1.answer_text and "MOCK_ANSWER" in p1.answer_text, "answer_text not populated"
-            assert p1.answer_source == "targeted_followup"
-            print("  ✓ P1 resolved_auto by node_targeted_followup")
+            print("  ✓ P1 resolved_auto by retry_auto_answer")
 
             p3 = (await db.execute(select(Question).where(Question.id == p3_id))).scalar_one()
             assert p3.status == "open", f"expected open, got {p3.status}"
-            print("  ✓ P3 still open (priority filter)")
-
-        assert len(new_state.questions_resolved_this_run) == 1
-        assert "MOCK_ANSWER" in new_state.questions_resolved_this_run[0]["answer_text"]
-        print("  ✓ state.questions_resolved_this_run staged for thesis prompt")
+            print("  ✓ P3 untouched")
 
         # 3. Manual dismiss the P3 row (mimics endpoint)
         async with async_session() as db:

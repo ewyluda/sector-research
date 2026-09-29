@@ -83,7 +83,8 @@ async def initialize(ticker: Ticker = Depends(TickerPath), force: bool = False) 
 # Task 19: PUT /draft (cell edit + recompute)
 # ---------------------------------------------------------------------------
 
-from datetime import datetime  # noqa: E402
+import asyncio  # noqa: E402
+from datetime import datetime, timezone  # noqa: E402
 from pydantic import BaseModel as _BM  # noqa: E402
 
 
@@ -99,7 +100,7 @@ def _apply_edit(state_dict: dict, edit: DraftEditRequest) -> dict:
     Raises ValueError on unknown cell_path shapes or registry keys.
     """
     path = parse_cell_path(edit.cell_path)
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
     if isinstance(path, DriverPath):
         state_dict["drivers"][path.period][path.key] = {
             "value": edit.value,
@@ -325,9 +326,19 @@ async def get_reverse_dcf(
     if not target:
         raise HTTPException(status_code=502, detail="no live price available")
 
+    # CPU-bound (three 21x21 grids of full recomputes, ~4s each on a real
+    # model): run it on a worker thread so the event loop — every other
+    # request, SSE stream and in-flight run — isn't frozen meanwhile.
+    payload = await asyncio.to_thread(_reverse_dcf_payload, state, target)
     return {
         "price_used": target,
         "price_source": "user_override" if price is not None else "fmp_live",
+        **payload,
+    }
+
+
+def _reverse_dcf_payload(state: ModelState, target: float) -> dict:
+    return {
         "implied_drivers": {
             "revenue_growth_pct": _safe_solve(state, "revenue_growth_pct", target),
             "ebit_margin_pct": _safe_solve(state, "ebit_margin_pct", target),

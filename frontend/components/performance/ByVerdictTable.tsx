@@ -1,5 +1,5 @@
 import type { OutcomeSummary, StatGroup } from "@/lib/api";
-import { ReturnCell } from "./ReturnCell";
+import { RateCell, ReturnCell } from "./ReturnCell";
 
 const RUN_VERDICT_ORDER = ["completed", "watchlist", "passed"] as const;
 // "stale" is included to match status-board vocabulary; the backend VerdictStats model
@@ -70,7 +70,7 @@ function VerdictRow({ verdict, stats }: { verdict: string; stats: StatGroup }) {
       <td className="py-1 text-right">{stats.n}</td>
       <td className="py-1 text-right"><ReturnCell value={stats.mean_return_pct} /></td>
       <td className="py-1 text-right"><ReturnCell value={stats.mean_excess_pct} /></td>
-      <td className="py-1 text-right"><ReturnCell value={stats.win_rate} asPercent /></td>
+      <td className="py-1 text-right"><RateCell value={stats.win_rate} /></td>
       <td className="py-1 text-right"><ReturnCell value={stats.median_excess_pct} /></td>
     </tr>
   );

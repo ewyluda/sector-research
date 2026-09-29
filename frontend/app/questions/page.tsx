@@ -44,8 +44,10 @@ function QuestionsPageInner() {
   useEffect(() => {
     let mounted = true;
 
-    const load = async () => {
-      setLoading(true);
+    // Only the first load shows the spinner; background polls swap data in
+    // place so the list (and any checked rows) doesn't flash away every minute.
+    const load = async (showSpinner: boolean) => {
+      if (showSpinner) setLoading(true);
       try {
         if (tab === "by_ticker") {
           const r = await questionsApi.byTicker();
@@ -63,9 +65,9 @@ function QuestionsPageInner() {
       }
     };
 
-    load();
+    load(true);
     const interval = setInterval(() => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") load(false);
     }, 60_000);
 
     return () => {

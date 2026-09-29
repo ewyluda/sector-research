@@ -5,7 +5,7 @@ services/insider_ingest.py) so daily re-ingests are idempotent without
 guessing FMP's uniqueness semantics. `accession_number`/`sec_link` keep the
 door open for a raw-EDGAR backfill later (spec decision)."""
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Date, DateTime, Index, Numeric, String, UniqueConstraint
@@ -36,7 +36,7 @@ class InsiderTransaction(Base):
     sec_link: Mapped[str | None] = mapped_column(String(512), nullable=True)
     natural_key: Mapped[str] = mapped_column(String(64), nullable=False)
     ingested_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     __table_args__ = (

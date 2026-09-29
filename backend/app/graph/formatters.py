@@ -6,8 +6,6 @@ DB access.  Extracted from ``backend.app.graph.nodes`` as part of the M2.2
 campaign; all names and signatures are unchanged.
 
 Symbols exported:
-  _extract_score
-  _extract_key_findings
   _first_metric
   _fmt_fundamentals
   _build_curated_financials
@@ -17,7 +15,6 @@ Symbols exported:
 from __future__ import annotations
 
 import logging
-import re
 from typing import TYPE_CHECKING, Any
 
 from backend.app.services.quant_fingerprint import build_quant_fingerprint
@@ -29,35 +26,6 @@ logger = logging.getLogger(__name__)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _extract_score(text: str) -> int:
-    """Parse 'SCORE: XX/100' or 'CONVICTION: XX/100' from LLM output."""
-    for pattern in [r"(?:SCORE|CONVICTION):\s*(\d+)/100", r"(\d+)/100"]:
-        m = re.search(pattern, text, re.IGNORECASE)
-        if m:
-            return min(100, max(0, int(m.group(1))))
-    return 50  # default if not found
-
-
-def _extract_key_findings(text: str) -> list[str]:
-    """Pull bullet points from the 'Key findings' section."""
-    lines = text.split("\n")
-    findings = []
-    in_findings = False
-    for line in lines:
-        if "key finding" in line.lower():
-            in_findings = True
-            continue
-        if in_findings:
-            stripped = line.strip().lstrip("•-*123456789. ")
-            if stripped and len(stripped) > 10:
-                findings.append(stripped)
-            if len(findings) >= 5:
-                break
-            if line.strip() == "" and findings:
-                break
-    return findings
-
 
 def _first_metric(*candidates: tuple[dict | None, str]) -> float | None:
     """First non-None float across (dict, key) candidates — same contract as
@@ -85,17 +53,67 @@ def _fv(val: Any, divisor: float = 1e9, suffix: str = "B") -> str:
     return f"${val / divisor:.2f}{suffix}"
 
 
+# Growth beyond this is a tiny-base artifact, not a signal (same threshold as
+# peer_comp.NM_GROWTH_THRESHOLD and the frontend's formatStat).
+GROWTH_NM_THRESHOLD_PCT = 1000.0
+
+
+def _growth_pct(current: float, prior: float | None) -> float | None:
+    """Percent growth, or None ("n/m") when the base is zero or negative or the
+    result is a tiny-base artifact (FCF once showed -14,740% "YoY")."""
+    if prior is None:
+        return None
+    prior = float(prior)
+    if prior <= 0:
+        return None
+    g = (current - prior) / prior * 100
+    return None if abs(g) > GROWTH_NM_THRESHOLD_PCT else g
+
+
+def _quarter_label(stmt: dict) -> str:
+    """'Q3 FY26' from FMP's period + fiscalYear. The /stable/ API returns
+    fiscalYear and no calendarYear, so labels used to lose their year."""
+    q = stmt.get("period", "") or ""
+    fy = stmt.get("fiscalYear")
+    if q and fy:
+        return f"{q} FY{str(fy)[-2:]}"
+    cy = stmt.get("calendarYear")
+    if q and cy:
+        return f"{q} {cy}"
+    return q or (stmt.get("date", "") or "")[:7]
+
+
 def _fmt_profile_section(ticker: str, profile: dict) -> list[str]:
     """Company profile: name, sector, market cap, beta, description."""
     if not (profile and isinstance(profile, dict)):
         return []
-    return [
+    lines = [
         f"Company: {profile.get('companyName', ticker)}",
         f"Sector: {profile.get('sector')} | Industry: {profile.get('industry')}",
         f"Market Cap: ${profile.get('marketCap', 0)/1e9:.1f}B",
+    ]
+    price_line = fmt_price_line(profile)
+    if price_line:
+        lines.append(price_line)
+    lines += [
         f"Beta: {profile.get('beta', 'N/A')}",
         f"Description: {str(profile.get('description', ''))[:300]}",
     ]
+    return lines
+
+
+def fmt_price_line(profile: dict) -> str | None:
+    """Current share price (+ 52-week range) — without it the model guesses the
+    price (a VRT position plan assumed ~$100 when the stock was ~$300)."""
+    price = profile.get("price")
+    try:
+        price = float(price)
+    except (TypeError, ValueError):
+        return None
+    if price <= 0:
+        return None
+    rng = profile.get("range")
+    return f"Price: ${price:,.2f}" + (f" (52-week range ${rng})" if rng else "")
 
 
 def _fmt_valuation_section(key_metrics: dict | None, ratios: dict | None) -> list[str]:
@@ -567,11 +585,12 @@ def _build_curated_financials(
         metrics = []
         for i, stmt in enumerate(statements):
             val = stmt.get(field_name, 0) or 0
-            q = stmt.get("period", "")
-            cy = stmt.get("calendarYear", "")
-            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
-            prev_val = statements[i + 1].get(field_name, 0) if i + 1 < len(statements) else None
-            yoy = pct(val, prev_val) if prev_val else None
+            period = _quarter_label(stmt)
+            # Same quarter one year earlier (statements are newest-first).
+            # This compared against the previous quarter (i + 1) while the UI
+            # labelled it "YoY" — SMCI showed -19.2% "YoY" for a +122.7% year.
+            prev_val = statements[i + 4].get(field_name, 0) if i + 4 < len(statements) else None
+            yoy = _growth_pct(float(val), prev_val)
             metrics.append(QuarterlyMetric(period=period, value=float(val), yoy_growth=yoy))
         return metrics
 
@@ -582,9 +601,7 @@ def _build_curated_financials(
             rev = stmt.get(denominator, 0) or 0
             num = stmt.get(numerator, 0) or 0
             margin = (num / rev * 100) if rev else 0
-            q = stmt.get("period", "")
-            cy = stmt.get("calendarYear", "")
-            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
+            period = _quarter_label(stmt)
             metrics.append(QuarterlyMetric(period=period, value=round(margin, 2), yoy_growth=None))
         return metrics
 
@@ -616,7 +633,9 @@ def _build_curated_financials(
         dcf_value = dcf.get("dcf")
         dcf_value = float(dcf_value) if dcf_value is not None else None
         stock_price = dcf.get("Stock Price") or dcf.get("stockPrice") or current_price
-        if dcf_value and stock_price:
+        # A non-positive DCF value (negative FCF) makes the gap meaningless —
+        # it rendered as "-303% Overvalued" for SMCI.
+        if dcf_value and dcf_value > 0 and stock_price:
             dcf_gap = round((dcf_value - float(stock_price)) / float(stock_price) * 100, 2)
 
     # Balance sheet ratios
@@ -633,9 +652,7 @@ def _build_curated_financials(
             ca = float(stmt.get("totalCurrentAssets", 0) or 0)
             cl = float(stmt.get("totalCurrentLiabilities", 0) or 0)
             cr = round(ca / cl, 2) if cl else 0
-            q = stmt.get("period", "")
-            cy = stmt.get("calendarYear", "")
-            period = f"{q} {cy}".strip() if q and cy else q or stmt.get("date", "")[:7]
+            period = _quarter_label(stmt)
             metrics.append(QuarterlyMetric(period=period, value=cr, yoy_growth=None))
         return metrics
 

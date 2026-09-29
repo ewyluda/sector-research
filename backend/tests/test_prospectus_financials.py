@@ -5,6 +5,8 @@ from unittest.mock import AsyncMock, patch
 
 from backend.app.services.prospectus_financials import extract_financials
 from backend.app.models.prospectus_schemas import ProspectusFinancials
+from backend.app.graph.llm import LLMOutputError
+from backend.tests.llm_fakes import structured_returning
 
 
 class TestExtractFinancials(unittest.TestCase):
@@ -25,8 +27,8 @@ class TestExtractFinancials(unittest.TestCase):
             "interim": []
         })
         with patch(
-            "backend.app.services.prospectus_financials.complete",
-            new=AsyncMock(return_value=mock_response),
+            "backend.app.services.prospectus_financials.complete_structured",
+            new=structured_returning(mock_response),
         ):
             import asyncio
             fin = asyncio.run(extract_financials(
@@ -43,10 +45,12 @@ class TestExtractFinancials(unittest.TestCase):
         self.assertEqual(fin.annual, [])
         self.assertEqual(fin.interim, [])
 
-    def test_garbled_response_returns_empty_struct(self):
+    def test_unusable_output_returns_empty_struct(self):
+        # Structured outputs can't return non-JSON; the failure mode is now a
+        # truncated/refused response surfaced as LLMOutputError.
         with patch(
-            "backend.app.services.prospectus_financials.complete",
-            new=AsyncMock(return_value="not json at all"),
+            "backend.app.services.prospectus_financials.complete_structured",
+            new=AsyncMock(side_effect=LLMOutputError("truncated at max_tokens")),
         ):
             import asyncio
             fin = asyncio.run(extract_financials(

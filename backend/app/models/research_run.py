@@ -29,7 +29,7 @@ class ResearchRun(Base, TimestampMixin):
         String(32), nullable=False, default="in_progress"
     )  # in_progress | paused | completed | watchlist | pass | abandoned
 
-    # Full LangGraph state, serialised
+    # Full ResearchState, serialised
     state: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
 
     # Loop tracking (Phase 5 → Phase 3 loop-backs, max 2)

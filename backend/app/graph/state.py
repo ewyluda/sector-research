@@ -1,4 +1,4 @@
-"""ResearchState — the single source of truth flowing through the LangGraph pipeline.
+"""ResearchState — the single source of truth flowing through the research pipeline.
 
 Persisted to PostgreSQL at every interrupt via research_runs.state (JSONB).
 """
@@ -328,6 +328,10 @@ class ResearchState:
     ticker: str
     theme_id: str
     run_id: str
+    # Theme name + description, resolved once at run creation so every prompt
+    # sees the investment theme itself (prompts used to receive the UUID).
+    theme_name: str = ""
+    theme_description: str = ""
 
     # Pipeline position
     phase: str = "quick_screen"
@@ -341,7 +345,7 @@ class ResearchState:
     scores: dict[str, int] = field(default_factory=dict)
 
     # Overall conviction (0–100), computed after Phase 4
-    conviction_score: int = 0
+    conviction_score: int | None = None  # set by thesis_construction
 
     # Thesis status
     thesis_status: str = "PENDING"  # PENDING | ON TRACK | DRIFTING | BROKEN

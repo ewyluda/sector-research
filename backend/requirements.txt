@@ -24,7 +24,6 @@ apscheduler==3.11.0
 
 # LLM
 anthropic>=0.52.0
-langgraph>=0.4.1
 
 # Graph analysis
 networkx==3.4.2

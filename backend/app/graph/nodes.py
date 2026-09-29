@@ -1,4 +1,4 @@
-"""Phase node implementations for the LangGraph pipeline.
+"""Phase node implementations for the research pipeline (see graph/routing.py).
 
 Each node receives ResearchState, does work, mutates state, and returns it.
 Every node is a pure async function — no side effects except state mutation.
@@ -27,13 +27,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import re
-import traceback
 from datetime import date
 
 from backend.app.clients.fmp import FMPClient, recent_13f_quarters
 from backend.app.clients.fred import FREDClient
-from backend.app.db import async_session, unit_of_work
+from backend.app.db import unit_of_work
+from backend.app.logging_filters import redact_secrets
 from backend.app.graph.deep_dive_context import DeepDiveContext, build_all_contexts
 from backend.app.graph.deep_dive_helpers import (
     unwrap_gather_citation,
@@ -42,25 +41,26 @@ from backend.app.graph.deep_dive_helpers import (
 from backend.app.graph.formatters import (  # noqa: F401  re-exported for backwards compat
     _build_curated_financials,
     _build_technical_data,
-    _extract_key_findings,
-    _extract_score,
     _first_metric,
     _fmt_fundamentals,
 )
-from backend.app.graph.llm import complete, SONNET, HAIKU
-from backend.app.graph.output_parser import parse_structured_output
+from backend.app.graph.llm import complete_structured, DEEP_MODEL, FAST_MODEL
+from backend.app.graph.routing import MAX_RISK_LOOPS, should_loop
 from backend.app.graph.prompts import (
     QUICK_SCREEN_SYSTEM, QUICK_SCREEN_USER,
     DEEP_DIVE_SYSTEM, DEEP_DIVE_USER, DEEP_DIVE_CATEGORIES,
     THESIS_SYSTEM, THESIS_USER,
     RISK_SYSTEM, RISK_USER,
     POSITION_SYSTEM, POSITION_USER,
-    TARGETED_FOLLOWUP_SYSTEM,
 )
 from backend.app.graph.state import (
     ResearchState, CategoryResult, CategoryError, StateCitation, StateQuestion, StateResolvedQuestion
 )
-from backend.app.models.phase_schemas import QuickScreenOutput, ThesisOutput, RiskStressTestOutput, PositionMonitorOutput, DeepDiveCategoryOutput, TargetedAnswer
+from backend.app.models.phase_schemas import (
+    QuickScreenOutput, ThesisLLMOutput, RiskStressTestOutput, PositionMonitorOutput,
+    DeepDiveCategoryOutput, reward_risk,
+    quick_screen_recommendation, quick_screen_score,
+)
 from backend.app.services.catalyst_promotion import promote_catalysts
 from backend.app.services.edgar_transcripts_relationships import (
     TRANSCRIPT_QUARTER_LIMIT,
@@ -77,7 +77,82 @@ from backend.app.services.transcript_analysis import run_transcript_analysis  # 
 
 logger = logging.getLogger(__name__)
 
-CATEGORY_TIMEOUT = 90  # seconds per deep-dive category
+# Seconds per deep-dive category. Sized for a thinking model (Opus 5.5 at
+# medium effort); the llm_call log lines report the real latency per call.
+CATEGORY_TIMEOUT = 300
+
+# Theme descriptions are free text pasted by the user and can run to several
+# thousand characters; the prompt gets the name plus a bounded excerpt.
+THEME_DESCRIPTION_BUDGET_CHARS = 1200
+
+
+def _theme_context(state: ResearchState) -> str:
+    """The investment theme as the model should see it: name + description."""
+    if not state.theme_name:
+        return "(theme not recorded for this run)"
+    desc = " ".join(state.theme_description.split())[:THEME_DESCRIPTION_BUDGET_CHARS]
+    return f"{state.theme_name} — {desc}" if desc else state.theme_name
+
+
+def _market_data_block(state: ResearchState) -> str:
+    """Price context for steps that talk about levels or reward/risk. Without
+    it the model invents a price (VRT plan assumed ~$100; actual ~$300)."""
+    cf = state.curated_financials or {}
+    price = cf.get("current_price")
+    if not isinstance(price, (int, float)) or price <= 0:
+        return "(no current price available)"
+    lines = [f"Current price: ${price:,.2f}"]
+    lo, hi = cf.get("fifty_two_week_low"), cf.get("fifty_two_week_high")
+    if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+        lines.append(f"52-week range: ${lo:,.2f} – ${hi:,.2f}")
+    last = (cf.get("daily_prices") or [{}])[-1] or {}
+    tech = [
+        f"{label} ${last[key]:,.2f}" for key, label in (("sma_50", "SMA50"), ("sma_200", "SMA200"))
+        if isinstance(last.get(key), (int, float))
+    ]
+    if isinstance(last.get("rsi"), (int, float)):
+        tech.append(f"RSI14 {last['rsi']:.0f}")
+    if tech:
+        lines.append("Technicals: " + ", ".join(tech))
+    dcf = cf.get("dcf_intrinsic_value")
+    if isinstance(dcf, (int, float)):
+        # A non-positive DCF value (negative FCF) makes a "gap" meaningless.
+        lines.append(f"FMP DCF value: ${dcf:,.2f}" if dcf > 0 else "FMP DCF value: n/m (non-positive)")
+    return "\n".join(lines)
+
+
+def _category_analysis_text(result: CategoryResult) -> str:
+    """What the thesis step reads per category: the rationale, the analysis
+    and the stated data gaps. (It used to get content[:800] — the head of the
+    raw JSON, which ends before the analysis field starts.)"""
+    st = result.structured or {}
+    if not st.get("analysis"):
+        return result.content[:3000]
+    parts = [st.get("score_rationale", ""), st["analysis"]]
+    gaps = st.get("data_gaps") or []
+    if gaps:
+        parts.append("Data gaps: " + "; ".join(gaps))
+    return "\n\n".join(p for p in parts if p)
+
+
+def _reward_risk_line(thesis_struct: dict, computed_rr: float | None) -> str:
+    """The thesis's call as the risk step should see it."""
+    stance = thesis_struct.get("stance")
+    targets = thesis_struct.get("price_targets") or {}
+    if not stance:
+        return "(no directional call on this thesis)"
+    line = f"Stance: {stance}"
+    if targets:
+        line += (f"; targets ({thesis_struct.get('time_horizon') or 'horizon n/a'}): "
+                 f"bear ${targets.get('bear')}, base ${targets.get('base')}, bull ${targets.get('bull')}")
+    if computed_rr is not None:
+        line += f"; reward/risk computed from these targets: {computed_rr}:1"
+    return line
+
+
+def _as_of() -> str:
+    """Today's date, so catalyst timing and 'within N days' rules have an anchor."""
+    return date.today().isoformat()
 TARGETED_FOLLOWUP_CONTEXT_BUDGET_CHARS = 14000
 
 
@@ -144,45 +219,42 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
             profile[0] if isinstance(profile, list) and profile else profile or {},
         )
 
-        response = await complete(
+        parsed = await complete_structured(
             system=QUICK_SCREEN_SYSTEM,
             user=QUICK_SCREEN_USER.format(
                 ticker=state.ticker,
-                theme=state.theme_id,
+                theme=_theme_context(state),
+                as_of=_as_of(),
                 fundamental_data=fundamentals_text,
             ),
-            model=HAIKU,
+            output_model=QuickScreenOutput,
+            model=FAST_MODEL,
             max_tokens=2500,
-            assistant_prefill="{",
         )
 
-        parsed, parse_err = parse_structured_output(response, QuickScreenOutput)
-
-        if parsed is not None:
-            score = parsed.overall_score
-            recommendation = parsed.recommendation
-            structured = parsed.model_dump()
-        else:
-            # Fallback — preserves original behavior so runs still complete.
-            logger.warning(
-                "[%s] quick_screen JSON parse failed: %s", state.ticker, parse_err
+        # Score and verdict are derived in code from the dimension scores;
+        # the model's own totals are kept only for auditing disagreement.
+        score = quick_screen_score(parsed.dimensions)
+        recommendation = quick_screen_recommendation(score)
+        if (score, recommendation) != (parsed.overall_score, parsed.recommendation):
+            logger.info(
+                "[%s] quick_screen model said %d/%s; dimensions sum to %d/%s",
+                state.ticker, parsed.overall_score, parsed.recommendation,
+                score, recommendation,
             )
-            score = _extract_score(response)
-            if score >= 60:
-                recommendation = "GO"
-            elif score >= 35:
-                recommendation = "WATCHLIST"
-            else:
-                recommendation = "PASS"
-            structured = None
+        structured = parsed.model_copy(
+            update={"overall_score": score, "recommendation": recommendation}
+        ).model_dump()
 
         state.phase_outputs["quick_screen"] = {
             "__type__": "PhaseOutput",
-            "content": response,
+            "content": parsed.model_dump_json(),
             "structured": structured,
             "score": score,
             "recommendation": recommendation,
-            "parse_error": parse_err,
+            "model_overall_score": parsed.overall_score,
+            "model_recommendation": parsed.recommendation,
+            "parse_error": None,
         }
         state.scores["quick_screen"] = score
 
@@ -193,11 +265,12 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
         state.status = "in_progress"
 
     except Exception as e:
-        logger.error("[%s] quick_screen failed: %s", state.ticker, e)
+        logger.exception("[%s] quick_screen failed", state.ticker)
+        # Stored state is served by /api/runs — redacted message only; the
+        # traceback stays in the server log.
         state.phase_outputs["quick_screen"] = {
             "__type__": "PhaseError",
-            "reason": str(e),
-            "traceback": traceback.format_exc(),
+            "reason": redact_secrets(str(e)),
         }
         state.status = "error"
 
@@ -209,7 +282,7 @@ async def node_quick_screen(state: ResearchState, fmp: FMPClient) -> ResearchSta
 async def _run_one_category(
     category: str,
     ticker: str,
-    theme_id: str,
+    theme: str,
     data: str,
     loop_context: str,
     transcript_context: str = "",
@@ -224,12 +297,13 @@ async def _run_one_category(
 ) -> CategoryResult | CategoryError:
     """Run a single deep-dive category with a timeout."""
     try:
-        response = await asyncio.wait_for(
-            complete(
+        parsed = await asyncio.wait_for(
+            complete_structured(
                 system=DEEP_DIVE_SYSTEM.format(category=category),
                 user=DEEP_DIVE_USER.format(
                     ticker=ticker,
-                    theme=theme_id,
+                    theme=theme,
+                    as_of=_as_of(),
                     category=category,
                     data=data,
                     transcript_data=transcript_context,
@@ -243,38 +317,26 @@ async def _run_one_category(
                     prior_questions=prior_questions_text,
                     loop_context=loop_context,
                 ),
-                model=SONNET,
+                output_model=DeepDiveCategoryOutput,
+                model=DEEP_MODEL,
                 max_tokens=3000,
             ),
             timeout=CATEGORY_TIMEOUT,
         )
-
-        parsed, parse_err = parse_structured_output(response, DeepDiveCategoryOutput)
-
-        if parsed is not None:
-            score = parsed.score
-            findings = [f.finding for f in parsed.key_findings]
-            structured = parsed.model_dump()
-        else:
-            # Fallback — regex extraction preserves original behavior.
-            logger.warning(
-                "[%s] Category '%s' JSON parse failed: %s", ticker, category, parse_err
-            )
-            score = _extract_score(response)
-            findings = _extract_key_findings(response)
-            structured = None
-
+        # Failures (truncation, refusal, validation) land in the except below
+        # as a CategoryError — the old regex fallback invented a score.
         return CategoryResult(
-            category=category, content=response, score=score,
-            key_findings=findings, structured=structured,
+            category=category, content=parsed.model_dump_json(), score=parsed.score,
+            key_findings=[f.finding for f in parsed.key_findings],
+            structured=parsed.model_dump(),
         )
 
     except asyncio.TimeoutError:
         logger.warning("[%s] Category '%s' timed out after %ds", ticker, category, CATEGORY_TIMEOUT)
         return CategoryError(category=category, reason=f"Timeout after {CATEGORY_TIMEOUT}s")
     except Exception as e:
-        logger.error("[%s] Category '%s' failed: %s", ticker, category, e)
-        return CategoryError(category=category, reason=str(e), traceback=traceback.format_exc())
+        logger.exception("[%s] Category '%s' failed", ticker, category)
+        return CategoryError(category=category, reason=redact_secrets(str(e)))
 
 
 async def node_deep_dive(
@@ -435,8 +497,11 @@ async def node_deep_dive(
         )
         state.curated_financials = curated.to_dict()
 
-        # Run transcript analysis (6 passes)
-        if transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
+        # Run transcript analysis (6 passes). A loop-back re-runs a few
+        # categories against the same transcripts, so reuse the first result.
+        if state.loop_count > 0 and state.transcript_analysis is not None:
+            logger.info("[%s] Reusing transcript analysis from the first pass", state.ticker)
+        elif transcripts and isinstance(transcripts, list) and len(transcripts) > 0:
             logger.info("[%s] Running transcript analysis (%d transcripts)", state.ticker, len(transcripts))
             ta_result = await run_transcript_analysis(state.ticker, transcripts, fmp)
             if ta_result.status == "ok":
@@ -523,7 +588,7 @@ async def node_deep_dive(
     # Run all categories in parallel
     tasks = [
         _run_one_category(
-            cat, state.ticker, state.theme_id, data_text, loop_ctx_str,
+            cat, state.ticker, _theme_context(state), data_text, loop_ctx_str,
             category_contexts[cat]["transcript"], category_contexts[cat]["macro"],
             category_contexts[cat]["technical"], category_contexts[cat]["sentiment"],
             category_contexts[cat]["edgar"],
@@ -606,105 +671,6 @@ def _build_targeted_followup_user_msg(
     return "\n\n".join(parts)
 
 
-async def node_targeted_followup(state: ResearchState) -> ResearchState:
-    """Tier 1.2 targeted second-pass.
-
-    Picks ≤3 priority-1 + auto_answerable questions created this run,
-    runs them in parallel through focused Sonnet calls, persists answers
-    back to the questions table, and stages StateResolvedQuestion entries
-    for node_thesis_construction to see."""
-    from backend.app.models.question import Question
-    from sqlalchemy import select, update
-    from datetime import datetime, timezone
-
-    state.phase = "targeted_followup"
-
-    # 1. Pick eligible questions. All ID columns are UUID(as_uuid=False) — strings.
-    async with async_session() as db:
-        stmt = (
-            select(Question)
-            .where(Question.created_run_id == state.run_id)
-            .where(Question.priority == 1)
-            .where(Question.auto_answerable.is_(True))
-            .where(Question.status == "open")
-            .order_by(Question.category.asc(), Question.created_at.asc())
-            .limit(3)
-        )
-        eligible = (await db.execute(stmt)).scalars().all()
-        snapshots = [
-            {"id": q.id, "category": q.category, "question_text": q.question_text}
-            for q in eligible
-        ]
-
-    if not snapshots:
-        state.status = "in_progress"
-        return state
-
-    deep = state.get_deep_dive_results()
-
-    async def _answer_one(snap: dict) -> tuple[str, str | None]:
-        cat = snap["category"]
-        result = deep.get(cat)
-        content = ""
-        if result is not None and hasattr(result, "key_findings"):
-            content = (getattr(result, "content", "") or "")[:6000]
-
-        user_msg = _build_targeted_followup_user_msg(
-            question_text=snap["question_text"],
-            category=cat,
-            key_findings=list(getattr(result, "key_findings", []) or []) if result is not None else [],
-            analysis=content,
-            routed_context=(state.targeted_followup_context or {}).get(cat, ""),
-        )
-
-        try:
-            raw = await complete(
-                model=SONNET,
-                system=TARGETED_FOLLOWUP_SYSTEM,
-                user=user_msg,
-                max_tokens=600,
-                assistant_prefill='{"answer_text":',
-            )
-            parsed = TargetedAnswer.model_validate_json(raw)
-            return snap["id"], parsed.answer_text
-        except Exception:  # noqa: BLE001
-            logger.exception("targeted_followup failed for question %s — leaving open", snap["id"])
-            return snap["id"], None
-
-    answers = await asyncio.gather(*(_answer_one(s) for s in snapshots))
-
-    async with async_session() as db:
-        for qid, answer in answers:
-            if answer is None:
-                continue  # Sonnet failure — leave question open for retry
-            stmt = (
-                update(Question)
-                .where(Question.id == qid)
-                .where(Question.status == "open")
-                .values(
-                    status="resolved_auto",
-                    answer_text=answer,
-                    answer_source="targeted_followup",
-                    resolved_run_id=state.run_id,
-                    resolved_at=datetime.now(timezone.utc),
-                )
-            )
-            await db.execute(stmt)
-        await db.commit()
-
-    for snap, (_, answer) in zip(snapshots, answers):
-        if answer is None:
-            continue
-        state.questions_resolved_this_run.append(StateResolvedQuestion(
-            question_text=snap["question_text"],
-            answer_text=answer,
-            source="targeted_followup",
-        ).to_dict())
-
-    state.status = "in_progress"
-    return state
-
-
 # ── Phase 4: thesis_construction ─────────────────────────────────────────────
 
 async def node_thesis_construction(state: ResearchState) -> ResearchState:
@@ -722,7 +688,7 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
         if isinstance(result, CategoryResult):
             top_findings = "; ".join(result.key_findings[:2]) if result.key_findings else "No key findings"
             summary_lines.append(f"- {cat}: {result.score}/100 — {top_findings}")
-            results_text += f"\n\n## {cat} (Score: {result.score}/100)\n{result.content[:800]}"
+            results_text += f"\n\n## {cat} (Score: {result.score}/100)\n{_category_analysis_text(result)}"
         else:
             summary_lines.append(f"- {cat}: FAILED — {result.reason}")
             results_text += f"\n\n## {cat}\n[FAILED: {result.reason}]"
@@ -745,11 +711,13 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
     loop_ctx = str(state.loop_context) if state.loop_context else "None"
 
     try:
-        response = await complete(
+        parsed = await complete_structured(
             system=THESIS_SYSTEM,
             user=THESIS_USER.format(
                 ticker=state.ticker,
-                theme=state.theme_id,
+                theme=_theme_context(state),
+                as_of=_as_of(),
+                market_data=_market_data_block(state),
                 quick_screen_verdict=qs_verdict,
                 quick_screen_score=qs_score,
                 quick_screen_thesis=qs_thesis,
@@ -760,28 +728,23 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
                 loop_context=loop_ctx,
                 questions_resolved=_render_questions_resolved(state.questions_resolved_this_run),
             ),
-            model=SONNET,
+            output_model=ThesisLLMOutput,
+            model=DEEP_MODEL,
             max_tokens=6000,
         )
-
-        parsed, parse_err = parse_structured_output(response, ThesisOutput)
-
-        if parsed is not None:
-            conviction = parsed.conviction_score
-            structured = parsed.model_dump()
-        else:
-            logger.warning(
-                "[%s] thesis JSON parse failed: %s", state.ticker, parse_err
-            )
-            conviction = _extract_score(response)
-            structured = None
+        # A failed or truncated thesis raises into the except below — no
+        # regex fallback that invents a conviction score (it recorded 50 for
+        # a model-stated 68 on CORZ).
+        conviction = parsed.conviction_score
+        structured = parsed.model_dump()
 
         state.phase_outputs["thesis"] = {
             "__type__": "PhaseOutput",
-            "content": response,
+            "content": parsed.model_dump_json(),
             "structured": structured,
             "conviction_score": conviction,
-            "parse_error": parse_err,
+            "stance": parsed.stance,
+            "parse_error": None,
         }
         state.conviction_score = conviction
         state.thesis_status = "ON TRACK"
@@ -789,22 +752,21 @@ async def node_thesis_construction(state: ResearchState) -> ResearchState:
 
         # Tier 1.3: promote parsed catalysts into first-class DB rows.
         # Failure here is non-fatal — JSONB still has the canonical copy.
-        if parsed is not None:
+        try:
+            fmp = FMPClient()
             try:
-                fmp = FMPClient()
-                try:
-                    async with unit_of_work() as cat_db:
-                        await promote_catalysts(state, parsed, fmp, cat_db)
-                finally:
-                    await fmp.close()
-            except Exception as cat_err:
-                logger.warning(
-                    "[%s] catalyst promotion failed: %s", state.ticker, cat_err
-                )
+                async with unit_of_work() as cat_db:
+                    await promote_catalysts(state, parsed, fmp, cat_db)
+            finally:
+                await fmp.close()
+        except Exception as cat_err:
+            logger.warning(
+                "[%s] catalyst promotion failed: %s", state.ticker, cat_err
+            )
 
         logger.info(
-            "[%s] thesis complete: conviction %d/100 (structured=%s)",
-            state.ticker, conviction, structured is not None,
+            "[%s] thesis complete: %s, conviction %d/100",
+            state.ticker, parsed.stance, conviction,
         )
         state.status = "in_progress"
 
@@ -829,75 +791,75 @@ async def node_risk_stress_test(state: ResearchState) -> ResearchState:
     scores_text = "\n".join(f"  {k}: {v}/100" for k, v in state.scores.items())
 
     try:
-        response = await complete(
+        thesis_struct = thesis_output.get("structured") if isinstance(thesis_output, dict) else None
+        thesis_struct = thesis_struct or {}
+        price = (state.curated_financials or {}).get("current_price")
+        computed_rr = reward_risk(thesis_struct.get("stance"), price, thesis_struct.get("price_targets"))
+
+        parsed = await complete_structured(
             system=RISK_SYSTEM,
             user=RISK_USER.format(
                 ticker=state.ticker,
-                theme=state.theme_id,
+                theme=_theme_context(state),
+                as_of=_as_of(),
                 loop_count=state.loop_count,
-                thesis=thesis_text[:2000],
+                market_data=_market_data_block(state),
+                reward_risk=_reward_risk_line(thesis_struct, computed_rr),
+                # Full thesis: bear case, catalysts and kill criteria sit past
+                # the first ~2.5K chars, and the stress test must see them.
+                thesis=thesis_text,
                 scores=scores_text,
             ),
-            model=SONNET,
+            output_model=RiskStressTestOutput,
+            model=DEEP_MODEL,
             max_tokens=3000,
         )
 
-        parsed, parse_err = parse_structured_output(response, RiskStressTestOutput)
-
-        if parsed is not None:
-            rr_ratio = parsed.rr_ratio
-            loop_required = parsed.loop_required
-            loop_cats = parsed.loop_categories
-            loop_reason = parsed.loop_reason
-            structured = parsed.model_dump()
-        else:
-            # Fallback — regex extraction preserves original behavior.
-            logger.warning(
-                "[%s] risk JSON parse failed: %s", state.ticker, parse_err
-            )
-            rr_match = re.search(r"(?:RISK_REWARD|rr_ratio)[:\s]*([\d.]+)", response)
-            loop_match = re.search(r"(?:LOOP_REQUIRED|loop_required)[:\s]*(YES|NO|true|false)", response, re.IGNORECASE)
-            cats_match = re.search(r"(?:LOOP_CATEGORIES|loop_categories)[:\s]*\[([^\]]*)\]", response)
-            reason_match = re.search(r"(?:LOOP_REASON|loop_reason)[:\s]*[\"']?(.+?)(?:[\"']?\s*[,}]|$)", response)
-
-            rr_ratio = float(rr_match.group(1)) if rr_match else 0.0
-            loop_required = loop_match.group(1).upper() in ("YES", "TRUE") if loop_match else False
-            loop_cats = [c.strip().strip('"\'') for c in cats_match.group(1).split(",") if c.strip()] if cats_match else []
-            loop_reason = reason_match.group(1).strip() if reason_match else ""
-            structured = None
+        # Reward/risk comes from the thesis's own targets when it can be
+        # computed; the model's estimate is kept for comparison only.
+        rr_ratio = computed_rr if computed_rr is not None else parsed.rr_ratio
+        loop_cats = [c for c in parsed.loop_categories if c in DEEP_DIVE_CATEGORIES]
+        loop = should_loop(
+            model_wants_loop=parsed.loop_required, categories=loop_cats,
+            loop_count=state.loop_count, rr=rr_ratio,
+        )
+        structured = parsed.model_dump()
 
         state.phase_outputs["risk"] = {
             "__type__": "PhaseOutput",
-            "content": response,
+            "content": parsed.model_dump_json(),
             "structured": structured,
             "rr_ratio": rr_ratio,
-            "loop_required": loop_required,
+            "rr_source": "thesis_targets" if computed_rr is not None else "model_estimate",
+            "model_rr_ratio": parsed.rr_ratio,
+            "loop_required": loop,
             "loop_categories": loop_cats,
-            "loop_reason": loop_reason,
-            "parse_error": parse_err,
+            "loop_reason": parsed.loop_reason,
+            "parse_error": None,
         }
 
-        # Determine loop-back
-        if loop_required and state.loop_count < 2:
+        if loop:
             state.loop_count += 1
             state.loop_context = {
                 "categories": loop_cats,
-                "reason": loop_reason,
+                "reason": parsed.loop_reason,
                 "rr_ratio": rr_ratio,
             }
             # Auto-advance back to deep_dive; _next_phase() routes
             # back when loop_context is set.
             state.status = "in_progress"
             logger.info("[%s] Loop-back triggered (count %d): %s", state.ticker, state.loop_count, loop_cats)
-        elif loop_required and state.loop_count >= 2:
+        elif parsed.loop_required and loop_cats and state.loop_count >= MAX_RISK_LOOPS:
+            # Gaps the model still wants investigated after the loop cap:
+            # finish the run, but flag it rather than calling it on track.
             state.status = "watchlist"
-            state.thesis_status = "BROKEN"
-            logger.info("[%s] Loop cap reached — forcing WATCHLIST", state.ticker)
+            state.thesis_status = "DRIFTING"
+            logger.info("[%s] Loop cap reached with open gaps — WATCHLIST", state.ticker)
         else:
             state.status = "completed"
             logger.info(
-                "[%s] risk_stress_test complete: RR %.1f:1 — approved (structured=%s)",
-                state.ticker, rr_ratio, structured is not None,
+                "[%s] risk_stress_test complete: R/R %s (%s)",
+                state.ticker, rr_ratio, state.phase_outputs["risk"]["rr_source"],
             )
 
     except Exception as e:
@@ -916,52 +878,41 @@ async def node_position_monitor(state: ResearchState) -> ResearchState:
     state.phase = "position_monitor"
 
     thesis_output = state.phase_outputs.get("thesis", {})
-    thesis_text = thesis_output.get("content", "")[:1000] if isinstance(thesis_output, dict) else ""
+    thesis_text = thesis_output.get("content", "") if isinstance(thesis_output, dict) else ""
 
     risk_output = state.phase_outputs.get("risk", {})
-    risk_text = risk_output.get("content", "")[:800] if isinstance(risk_output, dict) else ""
+    risk_text = risk_output.get("content", "") if isinstance(risk_output, dict) else ""
 
     try:
-        response = await complete(
+        parsed = await complete_structured(
             system=POSITION_SYSTEM,
             user=POSITION_USER.format(
                 ticker=state.ticker,
+                as_of=_as_of(),
+                market_data=_market_data_block(state),
                 conviction_score=state.conviction_score,
                 thesis_status=state.thesis_status,
                 thesis_summary=thesis_text,
                 risk_summary=risk_text,
             ),
-            model=HAIKU,
+            output_model=PositionMonitorOutput,
+            model=FAST_MODEL,
             max_tokens=2000,
-            assistant_prefill="{",
         )
-
-        parsed, parse_err = parse_structured_output(response, PositionMonitorOutput)
-
-        if parsed is not None:
-            structured = parsed.model_dump()
-        else:
-            logger.warning(
-                "[%s] position JSON parse failed: %s", state.ticker, parse_err
-            )
-            structured = None
 
         state.phase_outputs["position"] = {
             "__type__": "PhaseOutput",
-            "content": response,
-            "structured": structured,
-            "parse_error": parse_err,
+            "content": parsed.model_dump_json(),
+            "structured": parsed.model_dump(),
+            "parse_error": None,
         }
         state.status = "completed"
         state.phase = "completed"
-        logger.info(
-            "[%s] position_monitor complete — run finished (structured=%s)",
-            state.ticker, structured is not None,
-        )
+        logger.info("[%s] position_monitor complete — run finished", state.ticker)
 
     except Exception as e:
-        logger.error("[%s] position_monitor failed: %s", state.ticker, e)
-        state.phase_outputs["position"] = {"__type__": "PhaseError", "reason": str(e)}
+        logger.exception("[%s] position_monitor failed", state.ticker)
+        state.phase_outputs["position"] = {"__type__": "PhaseError", "reason": redact_secrets(str(e))}
         state.status = "completed"
         state.phase = "completed"
 

@@ -1,4 +1,5 @@
 import type { CuratedFinancials } from "@/lib/api";
+import { ttmEpsGrowth } from "@/lib/curatedFinancials";
 
 interface HeadlineMetricsProps {
   financials: CuratedFinancials;
@@ -6,9 +7,11 @@ interface HeadlineMetricsProps {
 
 function fmt(value: number, type: "currency" | "pct" | "ratio" | "eps"): string {
   if (type === "currency") {
-    if (Math.abs(value) >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
-    if (Math.abs(value) >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
-    return `$${value.toFixed(0)}`;
+    const sign = value < 0 ? "\u2212" : "";
+    const abs = Math.abs(value);
+    if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(1)}B`;
+    if (abs >= 1e6) return `${sign}$${(abs / 1e6).toFixed(0)}M`;
+    return `${sign}$${abs.toFixed(0)}`;
   }
   if (type === "pct") return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
   if (type === "ratio") return value.toFixed(2);
@@ -31,15 +34,13 @@ export function HeadlineMetrics({ financials }: HeadlineMetricsProps) {
   const latestFcf = financials.quarterly_free_cf[0];
   const latestOpMargin = financials.quarterly_operating_margin[0];
   const ttmEps = financials.quarterly_eps.slice(0, 4).reduce((sum, m) => sum + m.value, 0);
-  const prevTtmEps = financials.quarterly_eps.length >= 5
-    ? financials.quarterly_eps.slice(1, 5).reduce((sum, m) => sum + m.value, 0)
-    : null;
-  const epsGrowth = prevTtmEps && prevTtmEps !== 0 ? ((ttmEps - prevTtmEps) / Math.abs(prevTtmEps)) * 100 : null;
+  // vs TTM a year earlier (quarters 4–7); this used quarters 1–4, a one-quarter shift.
+  const epsGrowth = ttmEpsGrowth(financials.quarterly_eps);
 
   const deLabel = financials.debt_to_equity < 0.5 ? "Low Leverage" : financials.debt_to_equity < 1.5 ? "Moderate" : "High Leverage";
   const dcfLabel = financials.dcf_gap_percent != null
     ? (financials.dcf_gap_percent > 0 ? "Undervalued" : "Overvalued")
-    : "N/A";
+    : financials.dcf_intrinsic_value != null && financials.dcf_intrinsic_value <= 0 ? "n/m (negative DCF)" : "N/A";
 
   const marginDir = financials.quarterly_operating_margin.length >= 2
     ? (financials.quarterly_operating_margin[0].value > financials.quarterly_operating_margin[1].value ? "Expanding" : "Contracting")
@@ -50,13 +51,13 @@ export function HeadlineMetrics({ financials }: HeadlineMetricsProps) {
       <MetricCard
         label="Revenue"
         value={latestRev ? fmt(latestRev.value, "currency") : "—"}
-        subtitle={latestRev?.yoy_growth != null ? fmt(latestRev.yoy_growth, "pct") + " YoY" : "—"}
+        subtitle={latestRev?.yoy_growth != null ? fmt(latestRev.yoy_growth, "pct") + " YoY" : "n/m YoY"}
         subtitleColor={latestRev?.yoy_growth != null ? (latestRev.yoy_growth >= 0 ? "text-emerald-400" : "text-red-400") : undefined}
       />
       <MetricCard
         label="Free Cash Flow"
         value={latestFcf ? fmt(latestFcf.value, "currency") : "—"}
-        subtitle={latestFcf?.yoy_growth != null ? fmt(latestFcf.yoy_growth, "pct") + " YoY" : "—"}
+        subtitle={latestFcf?.yoy_growth != null ? fmt(latestFcf.yoy_growth, "pct") + " YoY" : "n/m YoY"}
         subtitleColor={latestFcf?.yoy_growth != null ? (latestFcf.yoy_growth >= 0 ? "text-emerald-400" : "text-red-400") : undefined}
       />
       <MetricCard

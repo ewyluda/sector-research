@@ -8,7 +8,7 @@ so we can accumulate XBRL history across many filings and tickers without
 bloating run state.
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, Numeric, SmallInteger, String, Text, UniqueConstraint
@@ -61,7 +61,7 @@ class XBRLFact(Base):
     value: Mapped[float] = mapped_column(Numeric, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     __table_args__ = (
@@ -101,7 +101,7 @@ class FilingSection(Base):
     extraction_method: Mapped[str] = mapped_column(String(16), nullable=False)
 
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     # Timestamp of the most recent Haiku relationship-extraction pass.
@@ -188,7 +188,7 @@ class Relationship(Base):
     resolved_to_ticker: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
 
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     __table_args__ = (
@@ -218,7 +218,7 @@ class FilingSegment(Base):
     segment_name: Mapped[str] = mapped_column(String(256), nullable=False)
     narrative: Mapped[str] = mapped_column(Text, nullable=False)
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     __table_args__ = (
@@ -258,7 +258,7 @@ class CompetitorLandscape(Base):
     area_of_competition: Mapped[str] = mapped_column(Text, nullable=False)
     competitors: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
     extracted_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
 
     __table_args__ = (
@@ -307,7 +307,7 @@ class CounterpartyAlias(Base):
     confidence_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=lambda: datetime.utcnow()
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
     # Identifier for the manual curator — nullable for auto-resolved rows.
     created_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -333,7 +333,7 @@ class TranscriptExtraction(Base):
     extracted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.utcnow(),
+        default=lambda: datetime.now(timezone.utc),
     )
     relationships_added: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { pipeline as api, getCatalystsForRun } from "@/lib/api";
+import { pipeline as api, getCatalystsForRun, isTerminalStatus } from "@/lib/api";
 import type {
   RunDetail,
   ReportResponse,
@@ -26,6 +26,7 @@ import { RiskCard } from "@/components/RiskCard";
 import { PositionCard } from "@/components/PositionCard";
 import { DeepDiveDashboard } from "@/components/deep-dive/DeepDiveDashboard";
 import { ReportHeader } from "@/components/deep-dive/ReportHeader";
+import { normalizeCuratedFinancials } from "@/lib/curatedFinancials";
 import { CatalystCalendar } from "@/components/CatalystCalendar";
 import { OpenQuestionsPanel } from "@/components/questions/OpenQuestionsPanel";
 import { MarkdownProse } from "@/components/deep-dive/renderMarkdown";
@@ -233,7 +234,7 @@ export default function PipelineRunnerPage() {
       setQuickScreenStructured((qsOutput?.structured as QuickScreenStructured) ?? null);
 
       // Curated financials + EDGAR XBRL facts
-      setCuratedFinancials(r.phases.deep_dive?.curated_financials ?? null);
+      setCuratedFinancials(normalizeCuratedFinancials(r.phases.deep_dive?.curated_financials ?? null));
       setTranscriptAnalysis(r.phases.deep_dive?.transcript_analysis ?? null);
       setEdgarFacts(r.phases.deep_dive?.edgar_facts ?? {});
 
@@ -293,7 +294,7 @@ export default function PipelineRunnerPage() {
       setCurrentPhase(r.phase);
       setConvictionScore(r.conviction_score);
 
-      const isCompleted = r.status === "completed" || r.status === "watchlist" || r.status === "error";
+      const isCompleted = isTerminalStatus(r.status);
 
       if (isCompleted) {
         setIsLive(false);
@@ -385,7 +386,7 @@ export default function PipelineRunnerPage() {
         break;
 
       case "deep_dive_start":
-        setCuratedFinancials(event.curated_financials ?? null);
+        setCuratedFinancials(normalizeCuratedFinancials(event.curated_financials ?? null));
         setTranscriptAnalysis(event.transcript_analysis ?? null);
         setEdgarFacts(event.edgar_facts ?? {});
         // Mark all categories as running
@@ -534,7 +535,7 @@ export default function PipelineRunnerPage() {
         setCurrentPhase(r.phase);
         setConvictionScore(r.conviction_score);
 
-        if (r.status === "completed" || r.status === "watchlist" || r.status === "error") {
+        if (isTerminalStatus(r.status)) {
           setIsLive(false);
           setGeneratingPosition(false);
           loadReportData(runId);
@@ -651,11 +652,21 @@ export default function PipelineRunnerPage() {
             </div>
           )}
 
+          {!isLive && run.status === "abandoned" && (
+            <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+              <p className="text-sm font-semibold text-[var(--text-muted)]">Run abandoned</p>
+              <p className="text-xs text-[var(--text-faint)] mt-1">
+                This run stopped during the {currentPhase.replace(/_/g, " ")} phase and was marked abandoned. Partial results are shown below.
+              </p>
+            </div>
+          )}
+
           {/* Report Header — shows when quick screen data or financials available */}
           {(quickScreenStructured || curatedFinancials) && (
             <ReportHeader
               financials={curatedFinancials}
               quickScreen={quickScreenStructured}
+              thesis={thesisStructured}
               convictionScore={convictionScore}
               ticker={ticker}
               runId={runId}

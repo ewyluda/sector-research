@@ -7,7 +7,9 @@ import type {
   XSignalVelocity,
   EdgarFacts,
   QuickScreenStructured,
+  ThesisStructured,
 } from "./api";
+import { normalizeCuratedFinancials } from "./curatedFinancials";
 
 export interface DashboardProps {
   financials: CuratedFinancials | null;
@@ -18,6 +20,7 @@ export interface DashboardProps {
   edgarFacts: EdgarFacts;
   convictionScore: number | null;
   quickScreen: QuickScreenStructured | null;
+  thesis: ThesisStructured | null;
   themeId?: string;
 }
 
@@ -41,7 +44,7 @@ export function reportToDashboardProps(report: ReportResponse): DashboardProps {
   }
 
   return {
-    financials: deep?.curated_financials ?? null,
+    financials: normalizeCuratedFinancials(deep?.curated_financials ?? null),
     categories,
     scores: report.scores ?? {},
     transcriptAnalysis: deep?.transcript_analysis ?? null,
@@ -49,6 +52,7 @@ export function reportToDashboardProps(report: ReportResponse): DashboardProps {
     edgarFacts: deep?.edgar_facts ?? {},
     convictionScore: report.conviction_score ?? null,
     quickScreen: (report.phases.quick_screen?.structured as QuickScreenStructured) ?? null,
+    thesis: (report.phases.thesis?.structured as ThesisStructured) ?? null,
     themeId: report.theme_id ?? undefined,
   };
 }

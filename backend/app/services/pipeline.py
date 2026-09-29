@@ -36,11 +36,12 @@ from backend.app.clients.edgar import EdgarClient
 from backend.app.clients.fmp import FMPClient
 from backend.app.clients.fred import FREDClient
 from backend.app.graph import nodes
-from backend.app.graph.pipeline import make_graph, next_phase as _next_phase_fn
+from backend.app.graph.routing import next_phase as _next_phase_fn
 from backend.app.graph.state import ResearchState
 from backend.app.db import async_session, unit_of_work
 from backend.app.services import outcome_tracker
 from backend.app.models.research_run import ResearchRun
+from backend.app.models.theme import Theme
 from backend.app.models.signal import Signal
 from backend.app.services import edgar_ingest, edgar_sections_ingest
 from backend.app.services.relationship_context import (
@@ -52,6 +53,14 @@ from backend.app.services.event_broker import EventBroker
 from backend.app.graph.deep_dive_routing import EDGAR_ROUTING, FILING_EXCERPT_ROUTING
 
 logger = logging.getLogger(__name__)
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
 
 # ── Phase display metadata ────────────────────────────────────────────────────
 
@@ -88,7 +97,6 @@ class PipelineService:
         self._fmp = fmp
         self._fred = fred
         self._edgar = edgar
-        self._graph = make_graph(fmp)
         # SSE fan-out. replay=False: events emitted before any subscriber are
         # dropped — acceptable because the frontend REST-hydrates
         # /pipeline/[runId] on load, so events dropped in the connect window
@@ -111,10 +119,17 @@ class PipelineService:
     ) -> ResearchRun:
         """Create a new research run and persist initial state."""
         run_id = str(uuid.uuid4())
+        theme = None
+        if theme_id and _is_uuid(theme_id):
+            theme = (await db.execute(
+                select(Theme).where(Theme.id == theme_id)
+            )).scalar_one_or_none()
         state = ResearchState(
             ticker=ticker.upper(),
             theme_id=theme_id,
             run_id=run_id,
+            theme_name=theme.name if theme else "",
+            theme_description=(theme.description or "") if theme else "",
         )
 
         run = ResearchRun(
@@ -187,7 +202,7 @@ class PipelineService:
     def _next_phase(self, state: ResearchState) -> str:
         """Determine next phase based on current phase and state.
 
-        Delegates to the single source of routing truth in graph/pipeline.py.
+        Delegates to the single source of routing truth in graph/routing.py.
         """
         return _next_phase_fn(
             state.phase,
@@ -210,8 +225,6 @@ class PipelineService:
                         state = await nodes.node_quick_screen(state, self._fmp)
                     elif phase == "deep_dive":
                         state = await self._run_deep_dive_with_streaming(state, run_id, db)
-                    elif phase == "targeted_followup":
-                        state = await nodes.node_targeted_followup(state)
                     elif phase == "thesis_construction":
                         state = await nodes.node_thesis_construction(state)
                     elif phase == "risk_stress_test":

@@ -3,6 +3,8 @@ import asyncio
 import unittest
 from unittest.mock import MagicMock, patch
 
+from backend.tests.llm_fakes import structured_from
+
 from sqlalchemy.exc import IntegrityError
 
 from backend.app.services import transcript_delta
@@ -65,7 +67,7 @@ class TestComputeDeltaInFlightGuard(unittest.TestCase):
         transcript_delta._IN_FLIGHT.clear()
 
         with patch.object(transcript_delta, "fetch_recent_transcripts", fake_fetch), \
-             patch.object(transcript_delta, "complete", fake_complete):
+             patch.object(transcript_delta, "complete_structured", structured_from(fake_complete)):
 
             async def run_both():
                 return await asyncio.gather(
@@ -123,7 +125,7 @@ class TestComputeDeltaCrossSessionRace(unittest.TestCase):
         transcript_delta._IN_FLIGHT.clear()
 
         with patch.object(transcript_delta, "fetch_recent_transcripts", fake_fetch), \
-             patch.object(transcript_delta, "complete", fake_complete):
+             patch.object(transcript_delta, "complete_structured", structured_from(fake_complete)):
             result = asyncio.run(transcript_delta.compute_delta(
                 ticker="NVDA", db=db, fmp=MagicMock(),
             ))

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import type { OutcomeSummary } from "@/lib/api";
-import { ReturnCell } from "./ReturnCell";
+import { RateCell, ReturnCell } from "./ReturnCell";
 
 export function ByThemeTable({ summary }: { summary: OutcomeSummary }) {
   const router = useRouter();
@@ -44,7 +44,7 @@ export function ByThemeTable({ summary }: { summary: OutcomeSummary }) {
               <td className="py-1 text-right">{r.stats.n}</td>
               <td className="py-1 text-right"><ReturnCell value={r.stats.mean_return_pct} /></td>
               <td className="py-1 text-right"><ReturnCell value={r.stats.mean_excess_pct} /></td>
-              <td className="py-1 text-right"><ReturnCell value={r.stats.win_rate} asPercent /></td>
+              <td className="py-1 text-right"><RateCell value={r.stats.win_rate} /></td>
             </tr>
           ))}
         </tbody>

@@ -110,22 +110,23 @@ def _mock_fmp_no_change():
 
 def _mock_fmp_with_new_quarter():
     fmp = AsyncMock()
-    # FMP returns period="Q3", calendarYear="2025" — step must join them into "2025Q3"
+    # FMP /stable/ rows carry a period-end date + fiscalYear (no calendarYear);
+    # the step calendarizes the date: 2025-09-30 -> "2025Q3"
     # 2025Q3 is a HISTORICAL period in the model fixture but has no revenue data yet,
     # so this patch adds a genuine new historical actual.
     fmp.get_income_statement = AsyncMock(return_value=(
-        [{"period": "Q3", "calendarYear": "2025",
+        [{"period": "Q3", "fiscalYear": "2025", "date": "2025-09-30",
           "revenue": 120.0, "grossProfit": 60.0, "operatingIncome": 35.0,
           "netIncome": 25.0, "eps": 0.62, "weightedAverageShsOutDil": 40.0}],
         MagicMock(id="cit-fmp-1"),
     ))
     fmp.get_balance_sheet = AsyncMock(return_value=(
-        [{"period": "Q3", "calendarYear": "2025",
+        [{"period": "Q3", "fiscalYear": "2025", "date": "2025-09-30",
           "cashAndCashEquivalents": 60.0, "totalDebt": 80.0, "totalAssets": 300.0}],
         MagicMock(id="cit-fmp-2"),
     ))
     fmp.get_cash_flow = AsyncMock(return_value=(
-        [{"period": "Q3", "calendarYear": "2025",
+        [{"period": "Q3", "fiscalYear": "2025", "date": "2025-09-30",
           "operatingCashFlow": 30.0, "capitalExpenditure": -5.0, "freeCashFlow": 25.0}],
         MagicMock(id="cit-fmp-3"),
     ))

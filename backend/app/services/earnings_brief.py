@@ -10,11 +10,11 @@ import json
 import logging
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.graph.llm import HAIKU, complete
+from backend.app.graph.llm import FAST_MODEL, LLMOutputError, complete_structured
 from backend.app.models.catalyst import Catalyst
 from backend.app.models.earnings_print import EarningsPrint
 from backend.app.models.research_run import ResearchRun
@@ -120,17 +120,14 @@ async def compute_brief(
         },
     }
 
-    raw = await complete(
-        model=HAIKU,
-        system=EARNINGS_BRIEF_SYSTEM,
-        user=json.dumps(user_payload, indent=2),
-        assistant_prefill='{"summary_md":',
-        max_tokens=800,
-    )
-    full_json = raw
     try:
-        parsed = BriefOutput.model_validate_json(full_json)
-    except Exception as e:
-        logger.exception("BriefOutput parse failed: raw=%s", raw[:300])
+        return await complete_structured(
+            model=FAST_MODEL,
+            system=EARNINGS_BRIEF_SYSTEM,
+            user=json.dumps(user_payload, indent=2),
+            output_model=BriefOutput,
+            max_tokens=800,
+        )
+    except (LLMOutputError, ValidationError) as e:
+        logger.exception("BriefOutput generation failed")
         raise ValueError(f"brief parse failed: {e}") from e
-    return parsed

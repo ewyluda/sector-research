@@ -10,6 +10,7 @@ import unittest
 
 from backend.app.models.model_state import ModelCell, Period
 from backend.app.services.workspace_steps import (
+    _fmp_period_label,
     _patch_statement,
     _promote_forecast_periods,
 )
@@ -75,13 +76,11 @@ class TestPatchStatementPromoted(unittest.TestCase):
                 "2026Q1": ModelCell(value=900.0, source="computed"),
             },
         }
-        rows = [{"period": "Q1", "calendarYear": "2026", "revenue": 1000.0}]
-        field_map = {"revenue": "revenue"}
+        values = {"2026Q1": {"revenue": 1000.0}}
 
         _patch_statement(
             statement,
-            rows,
-            field_map,
+            values,
             citation_id="cit-1",
             historical_labels=set(),
             promoted_labels={"2026Q1"},
@@ -94,13 +93,11 @@ class TestPatchStatementPromoted(unittest.TestCase):
         statement = {
             "revenue": {"2026Q2": ModelCell(value=900.0, source="computed")},
         }
-        rows = [{"period": "Q2", "calendarYear": "2026", "revenue": 1000.0}]
-        field_map = {"revenue": "revenue"}
+        values = {"2026Q2": {"revenue": 1000.0}}
 
         _patch_statement(
             statement,
-            rows,
-            field_map,
+            values,
             citation_id="cit-1",
             historical_labels=set(),
             promoted_labels=set(),
@@ -116,13 +113,11 @@ class TestPatchStatementPromoted(unittest.TestCase):
         statement = {
             "revenue": {"2025Q4": ModelCell(value=900.0, source="override")},
         }
-        rows = [{"period": "Q4", "calendarYear": "2025", "revenue": 1000.0}]
-        field_map = {"revenue": "revenue"}
+        values = {"2025Q4": {"revenue": 1000.0}}
 
         _patch_statement(
             statement,
-            rows,
-            field_map,
+            values,
             citation_id="cit-1",
             historical_labels={"2025Q4"},
             promoted_labels=set(),
@@ -130,6 +125,15 @@ class TestPatchStatementPromoted(unittest.TestCase):
 
         self.assertEqual(statement["revenue"]["2025Q4"].value, 900.0)
         self.assertEqual(statement["revenue"]["2025Q4"].source, "override")
+
+
+class TestPeriodLabel(unittest.TestCase):
+    def test_label_comes_from_the_statement_date(self):
+        # FMP /stable/ rows carry fiscalYear, not calendarYear (live-checked
+        # 2026-09-27); NVDA's quarter ending 2026-07-26 is calendar 2026Q2.
+        self.assertEqual(_fmp_period_label({"date": "2026-07-26", "period": "Q2", "fiscalYear": "2027"}), "2026Q2")
+        self.assertEqual(_fmp_period_label({"date": "2026-03-31"}), "2026Q1")
+        self.assertIsNone(_fmp_period_label({"period": "Q1", "calendarYear": "2026"}))
 
 
 if __name__ == "__main__":

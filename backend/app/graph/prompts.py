@@ -38,11 +38,12 @@ Evaluate a ticker across exactly {len(QUICK_SCREEN_DIMENSIONS)} dimensions, then
 - Every dimension must appear exactly once, with the name spelled exactly as listed above, in that order.
 - Be calibrated. A score of 14/20 is "solid", 18 is "exceptional". Most companies fall 10-14.
 - If data is unavailable for a dimension, still produce a rationale that calls it out explicitly and score conservatively.
-- Recommendation ladder: overall_score >= 60 => GO, 35-59 => WATCHLIST, < 35 => PASS.
+- overall_score is the sum of the five dimension scores. Recommendation ladder: overall_score >= 60 => GO, 35-59 => WATCHLIST, < 35 => PASS.
 """
 
 QUICK_SCREEN_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
 
 Fundamental data:
 {fundamental_data}
@@ -87,6 +88,7 @@ Your output will be one section of a full institutional-grade research report.
 
 DEEP_DIVE_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
 Category: {category}
 
 Available data:
@@ -217,7 +219,10 @@ Your thesis must be:
     },
     ... 3-5 catalysts
   ],
-  "conviction_score": <int 0-100>,
+  "stance": "long" | "avoid" | "short",
+  "time_horizon": "<e.g. '12 months'>",
+  "price_targets": {"bear": <per-share price>, "base": <per-share price>, "bull": <per-share price>},
+  "conviction_score": <int 0-100 — conviction in the stance above>,
   "conviction_rationale": "<why this specific score — 1-3 sentences>",
   "kill_criteria": [
     {
@@ -243,6 +248,9 @@ Your thesis must be:
 
 ## Rules
 - Output ONLY the JSON object. No backticks, no commentary, no preamble.
+- stance is the call you would make today: "long" (expect the stock to outperform over the horizon), "short" (expect it to underperform), or "avoid" (no edge either way). The quick screen above is a coarse pre-screen, not the answer — the stance follows the full evidence and may contradict it.
+- conviction_score is conviction IN THE STANCE. A short thesis you strongly believe is a high score with stance "short".
+- price_targets are per-share prices at time_horizon under the bear, base and bull scenarios for the stock (bear <= base <= bull), anchored to the current price in Market data. The pipeline computes reward/risk from them — do not state a ratio yourself.
 - Be calibrated. A conviction of 70 means genuinely good, not great. 85+ means exceptional with clear catalysts.
 - Bull and bear points must have specific evidence, not generic statements.
 - Catalysts must have concrete timeframes, not vague "eventually".
@@ -267,10 +275,14 @@ Your thesis must be:
 
 THESIS_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
+
+## Market data
+{market_data}
 
 ## Established findings (reference these — do NOT restate)
 
-Quick Screen: {quick_screen_verdict} ({quick_screen_score}/100)
+Quick Screen (pre-screen on annual data): {quick_screen_verdict} ({quick_screen_score}/100)
 Quick Screen Thesis: "{quick_screen_thesis}"
 Quick Screen Key Risk: "{quick_screen_risk}"
 
@@ -299,8 +311,8 @@ RISK_SYSTEM = """You are stress-testing an investment thesis to determine risk/r
 Your job:
 1. Identify the 5 most significant risks (from SEC filings, macro, competitive, execution, valuation)
 2. For each risk: probability (Low/Medium/High), potential impact (e.g. "-15% to price target"), mitigation
-3. Estimate risk/reward ratio: upside case / downside case
-4. If risk/reward < 2:1, identify SPECIFICALLY which deep-dive categories need deeper investigation
+3. Judge whether the thesis's reward/risk (computed from its own price targets, given below) holds up against these risks
+4. If a specific deep-dive category has a gap that would change the thesis if filled, name it
 
 ## Output format — JSON only, no preamble, no markdown fences:
 
@@ -325,14 +337,21 @@ Your job:
 - Output ONLY the JSON object. No backticks, no commentary, no preamble.
 - Include 3-7 risks, ordered by significance (highest impact first).
 - probability must be exactly "Low", "Medium", or "High".
-- rr_ratio is upside/downside as a float (e.g. 2.5 means 2.5:1).
-- Set loop_required=true ONLY if rr_ratio < 2.0 AND loop_count < 2. If loop_count is already 2, set loop_required=false regardless.
+- rr_ratio is upside/downside as a float (e.g. 2.5 means 2.5:1). When a computed reward/risk is given, restate it unless the targets are indefensible — then give your own and say why in rr_verdict.
+- Set loop_required=true when one or more named categories have a gap that would change the thesis if filled. The pipeline decides whether a loop actually runs (loop cap and reward/risk threshold are applied in code).
 - loop_categories must use exact category names from the deep dive: Business Quality, Financial Health, Growth & Earnings, Management & Governance, Technical & Market Structure, Macro & Regime, Sentiment & Narrative, Risk Assessment, Future Durability.
 - Be calibrated. Most theses have 2-4 material risks. Don't invent risks for filler."""
 
 RISK_USER = """Ticker: {ticker}
 Theme: {theme}
+As of: {as_of}
 Loop count: {loop_count}/2
+
+## Market data
+{market_data}
+
+## The thesis's call
+{reward_risk}
 
 ## Thesis to stress-test (do NOT re-derive the underlying analysis)
 
@@ -380,6 +399,7 @@ POSITION_SYSTEM = """You are building a structured position plan for an approved
 ## Rules
 - Output ONLY the JSON object. No backticks, no commentary, no preamble.
 - Be specific with numbers. No vague ranges — use exact price levels.
+- Anchor every price level (entry, stop, add triggers) to the current price in Market data. Never assume a price; if Market data has no current price, say so in entry_rationale and express levels as % from the current price.
 - Reference the conviction score when justifying position size.
 - Entry rationale must cite both a technical level and a fundamental anchor.
 - Stop loss must be a specific price or percentage, not "below support".
@@ -387,8 +407,12 @@ POSITION_SYSTEM = """You are building a structured position plan for an approved
 - Invalidation conditions are thesis-BREAKING, not just risks — they mean full exit."""
 
 POSITION_USER = """Ticker: {ticker}
+As of: {as_of}
 Conviction score: {conviction_score}/100
 Thesis status: {thesis_status}
+
+Market data:
+{market_data}
 
 Thesis summary:
 {thesis_summary}
@@ -398,9 +422,3 @@ Risk register summary:
 
 Build the position plan. Output the JSON described above."""
 
-TARGETED_FOLLOWUP_SYSTEM = """You are a senior equity research analyst answering ONE specific question that surfaced during deep-dive analysis. You have:
-
-- The original category's key findings
-- The same data payload the original analyst saw (financials, filing excerpts, transcripts, EDGAR facts, counterparty context as relevant)
-
-Answer the question concisely (3-5 sentences). Cite specific numbers, quotes, or filing line items. If the data is insufficient to answer, say so explicitly rather than speculating — that is itself a useful answer."""

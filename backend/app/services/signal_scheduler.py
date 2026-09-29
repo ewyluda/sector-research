@@ -142,9 +142,10 @@ async def refresh_theme_signals(
             await db.commit()
 
             # ── Surprise alert check ──────────────────────────────────────────
-            current_ratio = velocity_data.get("ratio", 1.0)
+            current_ratio = velocity_data.get("ratio")
             if (
                 prior_ratio is not None
+                and current_ratio is not None
                 and current_ratio > prior_ratio * VELOCITY_SURPRISE_MULTIPLIER
             ):
                 # Check no unacknowledged alert already exists

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { OutcomeSummary } from "@/lib/api";
-import { ReturnCell } from "./ReturnCell";
+import { RateCell, ReturnCell } from "./ReturnCell";
 
 export function BySignalBucketPanel({ summary }: { summary: OutcomeSummary }) {
   const signals = Object.keys(summary.by_signal_bucket);
@@ -52,7 +52,7 @@ export function BySignalBucketPanel({ summary }: { summary: OutcomeSummary }) {
               <td className="py-1">{b.bucket}</td>
               <td className="py-1 text-right">{b.n}</td>
               <td className="py-1 text-right"><ReturnCell value={b.mean_excess_pct} /></td>
-              <td className="py-1 text-right"><ReturnCell value={b.win_rate} asPercent /></td>
+              <td className="py-1 text-right"><RateCell value={b.win_rate} /></td>
             </tr>
           ))}
         </tbody>

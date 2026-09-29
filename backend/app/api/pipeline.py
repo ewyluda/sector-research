@@ -62,6 +62,14 @@ class RunSummary(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+def _conviction(state: dict) -> int | None:
+    """Conviction is the thesis phase's output. Runs that stopped earlier stored
+    the dataclass default of 0, which the UI rendered as a real "0 · Very Low"."""
+    if "thesis" not in (state.get("phase_outputs") or {}):
+        return None
+    return state.get("conviction_score")
+
+
 def _run_to_summary(run: ResearchRun, theme_name: str | None = None) -> dict:
     state = run.state or {}
     return {
@@ -72,7 +80,7 @@ def _run_to_summary(run: ResearchRun, theme_name: str | None = None) -> dict:
         "phase": run.phase,
         "status": run.status,
         "loop_count": run.loop_count,
-        "conviction_score": state.get("conviction_score"),
+        "conviction_score": _conviction(state),
         "thesis_status": state.get("thesis_status"),
         "gap_count": len(compute_data_gaps(state)),
         "created_at": run.created_at.isoformat() if run.created_at else None,
@@ -376,7 +384,7 @@ async def get_report(run_id: str = Depends(RunIdPath), db: AsyncSession = Depend
         "ticker": run.ticker,
         "theme_id": run.theme_id,
         "status": run.status,
-        "conviction_score": state.get("conviction_score", 0),
+        "conviction_score": _conviction(state),
         "thesis_status": state.get("thesis_status", "PENDING"),
         "loop_count": run.loop_count,
         "x_signal_velocity": x_signal_velocity,
@@ -408,7 +416,7 @@ async def get_report(run_id: str = Depends(RunIdPath), db: AsyncSession = Depend
         "obsidian": {
             "ticker": run.ticker,
             "theme_id": run.theme_id,
-            "conviction_score": state.get("conviction_score", 0),
+            "conviction_score": _conviction(state),
             "thesis_status": state.get("thesis_status", "PENDING"),
             "phase_reached": run.phase,
             "date_researched": run.created_at.strftime("%Y-%m-%d") if run.created_at else "",

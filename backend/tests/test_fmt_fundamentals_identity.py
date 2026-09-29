@@ -69,6 +69,10 @@ def _fmt_fundamentals_legacy(
         parts.append(f"Company: {profile.get('companyName', ticker)}")
         parts.append(f"Sector: {profile.get('sector')} | Industry: {profile.get('industry')}")
         parts.append(f"Market Cap: ${profile.get('marketCap', 0)/1e9:.1f}B")
+        # 2026-09-26: current price line added deliberately (see fmt_price_line).
+        if isinstance(profile.get("price"), (int, float)) and profile["price"] > 0:
+            rng = profile.get("range")
+            parts.append(f"Price: ${float(profile['price']):,.2f}" + (f" (52-week range ${rng})" if rng else ""))
         parts.append(f"Beta: {profile.get('beta', 'N/A')}")
         parts.append(f"Description: {str(profile.get('description', ''))[:300]}")
 

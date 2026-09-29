@@ -2,7 +2,8 @@
 
 Surface for Tier 1.2 question log. Rows survive runs. Lifecycle:
 - created during deep-dive (status='open')
-- resolved_auto by node_targeted_followup (priority-1 + auto_answerable)
+- resolved_auto by the manual "Retry auto" action (services/questions.py; the
+  automatic targeted_followup phase was removed — ADR-0005)
 - resolved_inline by next run's deep-dive resurfacing slot
 - resolved_manual or dismissed by /questions UI
 """

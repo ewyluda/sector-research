@@ -92,6 +92,7 @@ export function ResearchTab({ ticker }: { ticker: string }) {
           <ReportHeader
             financials={props.financials}
             quickScreen={props.quickScreen}
+            thesis={props.thesis}
             convictionScore={props.convictionScore}
             ticker={ticker}
             runId={activeRunId!}

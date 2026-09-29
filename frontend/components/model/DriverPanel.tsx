@@ -53,7 +53,7 @@ export function DriverPanel({
                             </td>
                           );
                         }
-                        return <CellRenderer key={path} cell={state.drivers[p.label]?.[k]} cellPath={path}
+                        return <CellRenderer key={path} cell={state.drivers[p.label]?.[k]} cellPath={path} valueKey={k}
                                              focused={focused === path} onFocus={onFocus} onCommitEdit={onEdit} />;
                       })}
                     </tr>
