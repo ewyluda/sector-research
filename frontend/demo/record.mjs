@@ -4,6 +4,7 @@
 //
 //   node demo/record.mjs            # needs the backend on :8000; builds and serves the app itself
 import { spawn, execSync } from "node:child_process";
+import { writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 
 const API = "http://127.0.0.1:8000";
@@ -55,4 +56,5 @@ await page.keyboard.press("Meta+k");          // the ⌘K palette's tickers + ru
 await wait(2000);
 await browser.close();
 app.kill(); mock.kill();
+writeFileSync(new URL("./meta.json", import.meta.url), JSON.stringify({ recorded: new Date().toISOString().slice(0, 10) }) + "\n");
 console.log(`recorded ${urls.length} pages`);
