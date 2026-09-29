@@ -43,3 +43,6 @@ next-env.d.ts
 # playwright
 /test-results/
 /playwright-report/
+
+# generated from demo/api.json by demo/split.mjs
+/public/demo-data/

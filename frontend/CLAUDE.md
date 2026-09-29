@@ -28,3 +28,4 @@
 - **Print view:** `@media print` in `app/globals.css` hides any element carrying `data-print-hide="true"` and forces opaque surfaces. When you add new sticky UI (nav, action buttons, modals), tag it with that attribute so it drops out of the PDF.
 - Path alias: `@/*` → project root. Tailwind v4 via `@tailwindcss/postcss`.
 - Chart libraries: **Recharts** (bar, line, radar charts) and **lightweight-charts** (TradingView candlestick + RSI).
+- **Read-only demo build:** `npm run build:demo` (sets `NEXT_PUBLIC_DEMO=1`). Every API call goes through `lib/api/core.ts::request`, which in a demo build answers from `demo/api.json` (recorded by `node demo/record.mjs` against a running backend) instead of the network — server code reads it from the bundle, the browser fetches per-response files that `demo/split.mjs` writes to `public/demo-data/` (gitignored). Writes return 403; `DemoBanner` explains. Use `request()`, never bare `fetch()`, for new API calls or the demo breaks.
